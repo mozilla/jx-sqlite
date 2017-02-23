@@ -1,0 +1,6 @@
+{
+	"use": "sqlite",
+	"debug": {
+		"trace":true
+	}
+}
