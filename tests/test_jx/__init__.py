@@ -17,32 +17,33 @@ from mo_testing.fuzzytestcase import FuzzyTestCase
 from pyLibrary.queries.expressions import NullOp
 
 TEST_TABLE = "testdata"
-NULL = NullOp
+NULL = NullOp()
 
 global_settings = None
+utils = None
 
 
 class BaseTestCase(FuzzyTestCase):
 
-    utils = None
-
-    def __init__(self, utils, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         FuzzyTestCase.__init__(self, *args, **kwargs)
         if not utils:
-            Log.error("Something wrong with test setup")
-        BaseTestCase.utils = utils
-
+            try:
+                import tests
+            except Exception, e:
+                Log.error("Expecting ./tests/__init__.py to set `global_settings` and `utils` so tests can be run")
+        self.utils = utils
 
     @classmethod
     def setUpClass(cls):
-        BaseTestCase.utils.setUpClass()
+        utils.setUpClass()
 
     @classmethod
     def tearDownClass(cls):
-        BaseTestCase.utils.tearDownClass()
+        utils.tearDownClass()
 
     def setUp(self):
-        BaseTestCase.utils.setUp()
+        utils.setUp()
 
     def tearDown(self):
-        BaseTestCase.utils.tearDown()
+        utils.tearDown()

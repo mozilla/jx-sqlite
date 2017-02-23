@@ -128,6 +128,7 @@ class Table_usingSQLite(Container):
                 column = Column(
                     names={name: cname},
                     type=ctype,
+                    nested_path=['.'],
                     es_column=typed_column(cname, ctype),
                     es_index=name
                 )

@@ -83,7 +83,8 @@ def wrap_from(frum, schema=None):
         settings = set_default(
             {
                 "index": index,
-                "name": frum
+                "name": frum,
+                "exists": True,
             },
             _containers.config.default.settings
         )

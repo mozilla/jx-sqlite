@@ -170,7 +170,6 @@ class TestSetOps(BaseTestCase):
         }
         self.utils.execute_es_tests(test)
 
-
     def test_concat(self):
         test = {
             "data": [
@@ -454,7 +453,6 @@ class TestSetOps(BaseTestCase):
             }
         }
         self.utils.execute_es_tests(test)
-
 
     def test_select_gt_on_sub(self):
         test = {

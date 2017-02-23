@@ -1,5 +1,8 @@
 {
 	"use": "sqlite",
+	"constants": {
+		"pyLibrary.sql.sqlite.DEBUG": true
+	},
 	"debug": {
 		"trace":true
 	}
