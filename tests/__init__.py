@@ -24,7 +24,7 @@ from mo_logs import Log, Except, constants
 from mo_logs.exceptions import extract_stack
 from mo_testing.fuzzytestcase import assertAlmostEqual
 
-from jx_sqlite.list_usingSQLite import Table_usingSQLite
+from jx_sqlite.query_table import QueryTable
 from pyLibrary import convert
 from pyLibrary.queries import jx
 from pyLibrary.queries.query import QueryOp
@@ -41,7 +41,7 @@ class SQLiteUtils(object):
         self._index = None
 
     def setUp(self):
-        self._index = Table_usingSQLite("testing")
+        self._index = QueryTable("testing")
 
     def tearDown(self):
         pass

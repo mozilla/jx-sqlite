@@ -23,8 +23,6 @@ from mo_times import Date, Duration
 
 from pyLibrary import convert
 
-_containers = None
-
 UID = "__id__"  # will not be quoted
 GUID = "__guid__"
 ORDER = "__order__"

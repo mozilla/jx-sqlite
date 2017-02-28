@@ -49,12 +49,12 @@ def _delayed_imports():
     from pyLibrary.queries.containers.cube import Cube as _Cube
     from pyLibrary.queries.jx import run as _run
     from pyLibrary.queries.query import QueryOp as _Query
-    from jx_sqlite.list_usingSQLite import Table_usingSQLite
+    from jx_sqlite.query_table import QueryTable
 
     set_default(type2container, {
         "elasticsearch": _FromES,
         "mysql": _MySQL,
-        "sqlite": Table_usingSQLite,
+        "sqlite": QueryTable,
         "memory": None
     })
 
