@@ -255,3 +255,5 @@ class FromES(Container):
             if response.errors:
                 Log.error("could not update: {{error}}", error=[e.error for i in response["items"] for e in i.values() if e.status not in (200, 201)])
 
+from pyLibrary.queries.containers import type2container
+type2container["elasticsearch"]=FromES

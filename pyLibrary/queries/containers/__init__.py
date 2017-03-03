@@ -31,6 +31,7 @@ _run = None
 _Query = None
 _Normal = None
 
+
 def _delayed_imports():
     global type2container
     global _ListContainer
@@ -39,24 +40,10 @@ def _delayed_imports():
     global _Query
     global _Normal
 
-    try:
-        from pyLibrary.queries.jx_usingMySQL import MySQL as _MySQL
-    except Exception:
-        _MySQL = None
-
-    from pyLibrary.queries.jx_usingES import FromES as _FromES
     from pyLibrary.queries.containers.list_usingPythonList import ListContainer as _ListContainer
     from pyLibrary.queries.containers.cube import Cube as _Cube
     from pyLibrary.queries.jx import run as _run
     from pyLibrary.queries.query import QueryOp as _Query
-    from jx_sqlite.list_usingSQLite import Table_usingSQLite
-
-    set_default(type2container, {
-        "elasticsearch": _FromES,
-        "mysql": _MySQL,
-        "sqlite": Table_usingSQLite,
-        "memory": None
-    })
 
     _ = _run
     _ = _Query
