@@ -462,3 +462,6 @@ aggregates = {
     "var": "POWER(STDDEV({{code}}), 2)",
     "variance": "POWER(STDDEV({{code}}), 2)"
 }
+
+from pyLibrary.queries.containers import type2container
+type2container["mysql"]=MySQL

@@ -13,26 +13,15 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
-from collections import Mapping, OrderedDict
-from copy import copy
+from collections import OrderedDict
 
-import mo_json
-from mo_collections.matrix import Matrix, index_to_coordinate
-from mo_dots import listwrap, coalesce, Data, wrap, Null, unwraplist, split_field, join_field, startswith_field, literal_field, unwrap, \
-    relative_field, concat_field
+from mo_dots import listwrap, join_field
 from mo_kwargs import override
-from mo_logs import Log
-from mo_math import Math
-from mo_math import UNION, MAX
 
-from jx_sqlite import GUID, typed_column, quote_table, quoted_UID, _quote_column, sql_types, untyped_column, get_type, get_column, quote_value, _make_column_name, sql_text_array_to_set, STATS, sql_aggs, ORDER, COLUMN, set_column, \
-    quoted_PARENT, UID, PARENT, unique_name
+from jx_sqlite import GUID, typed_column, quote_table, quoted_UID, _quote_column, sql_types, untyped_column
 from pyLibrary.queries import jx, Index
-from pyLibrary.queries.containers import Container, STRUCT
-from pyLibrary.queries.domains import SimpleSetDomain, DefaultDomain, TimeDomain, DurationDomain
-from pyLibrary.queries.expressions import jx_expression, Variable, sql_type_to_json_type, TupleOp, LeavesOp
+from pyLibrary.queries.containers import Container
 from pyLibrary.queries.meta import Column
-from pyLibrary.queries.query import QueryOp
 from pyLibrary.sql.sqlite import Sqlite
 
 
