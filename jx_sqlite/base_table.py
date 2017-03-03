@@ -25,6 +25,9 @@ from pyLibrary.queries.meta import Column
 from pyLibrary.sql.sqlite import Sqlite
 
 
+_config=None
+
+
 class BaseTable(Container):
     @override
     def __init__(self, name, db=None, uid=GUID, exists=False, kwargs=None):
@@ -34,12 +37,20 @@ class BaseTable(Container):
         :param uid: THE UNIQUE INDEX FOR THIS TABLE
         :return: HANDLE FOR TABLE IN db
         """
-
+        global _config
         Container.__init__(self, frum=None)
         if db:
             self.db = db
         else:
             self.db = db = Sqlite()
+
+        if not _config:
+            from pyLibrary.queries.containers import config as _config
+            if not _config.default:
+                _config.default = {
+                    "type": "sqlite",
+                    "settings": {"db": db}
+                }
 
         self.name = name
         self.uid = listwrap(uid)

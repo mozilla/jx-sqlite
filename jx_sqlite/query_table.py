@@ -393,4 +393,3 @@ class QueryTable(AggsTable):
 from pyLibrary.queries.containers import type2container
 
 type2container["sqlite"] = QueryTable
-
