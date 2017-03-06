@@ -436,9 +436,9 @@ def _normalize_edge(edge, schema=None):
         if schema:
             try:
                 e = schema[edge]
-            except Exception, _:
+            except Exception, e:
                 e = None
-            e = unwrap(unwraplist(e))
+            e = unwraplist(e)
             if e and not isinstance(e, (_Column, set, list)):
                 if isinstance(e, _Column):
                     return Data(

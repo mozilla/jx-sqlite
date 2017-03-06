@@ -559,9 +559,9 @@ class MySQL(object):
             elif Math.is_number(value):
                 return SQL(unicode(value))
             elif isinstance(value, datetime):
-                return SQL("str_to_date('" + value.strftime("%Y%m%d%H%M%S") + "', '%Y%m%d%H%i%s')")
+                return SQL("str_to_date('" + value.strftime("%Y%m%d%H%M%S.%f") + "', '%Y%m%d%H%i%s.%f')")
             elif isinstance(value, Date):
-                return SQL("str_to_date('"+value.format("%Y%m%d%H%M%S")+"', '%Y%m%d%H%i%s')")
+                return SQL("str_to_date('"+value.format("%Y%m%d%H%M%S.%f")+"', '%Y%m%d%H%i%s.%f')")
             elif hasattr(value, '__iter__'):
                 return SQL(self.db.literal(json_encode(value)))
             else:

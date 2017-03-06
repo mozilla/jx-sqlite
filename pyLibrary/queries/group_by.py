@@ -21,7 +21,7 @@ from mo_logs import Log
 from mo_dots import listwrap, Null, Data
 from mo_dots.lists import FlatList
 from pyLibrary.queries.containers import Container
-from pyLibrary.queries.expressions import jx_expression_to_function, jx_expression, TupleOp
+from pyLibrary.queries.expressions import jx_expression_to_function, jx_expression
 
 
 def groupby(data, keys=None, size=None, min_size=None, max_size=None, contiguous=False):
@@ -55,7 +55,7 @@ def groupby(data, keys=None, size=None, min_size=None, max_size=None, contiguous
             return Null
 
 
-        accessor = jx_expression_to_function(TupleOp("tuple", keys))  # CAN RETURN Null, WHICH DOES NOT PLAY WELL WITH __cmp__
+        accessor = jx_expression_to_function(jx_expression({"tuple": keys}))  # CAN RETURN Null, WHICH DOES NOT PLAY WELL WITH __cmp__
         def _output():
             start = 0
             prev = accessor(data[0])

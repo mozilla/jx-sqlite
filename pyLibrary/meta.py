@@ -17,7 +17,7 @@ import mo_json
 from mo_dots import set_default, wrap, _get_attr, Null, coalesce
 from mo_logs import Log
 from mo_logs.exceptions import Except
-from mo_logs.strings import expand_template
+from mo_logs.strings import expand_template, quote
 from mo_math.randoms import Random
 from mo_threads import Lock
 from mo_times.dates import Date
@@ -300,7 +300,7 @@ temp = {{name}}
             "len_slots": len(slots),
             "dict": "{" + (", ".join(convert.value2quote(s) + ": self." + s for s in slots)) + "}",
             "assign": "; ".join("_set(output, "+convert.value2quote(s)+", self."+s+")" for s in slots),
-            "types": "{" + (",".join(convert.string2quote(k) + ": " + v.__name__ for k, v in types.items())) + "}"
+            "types": "{" + (",".join(quote(k) + ": " + v.__name__ for k, v in types.items())) + "}"
         }
     )
 

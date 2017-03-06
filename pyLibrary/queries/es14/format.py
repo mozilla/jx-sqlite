@@ -13,10 +13,12 @@ from __future__ import unicode_literals
 
 from collections import Mapping
 
-from pyLibrary import convert
 from mo_collections.matrix import Matrix
+from mo_dots import Data, set_default, wrap, split_field
 from mo_logs import Log
-from mo_dots import Data, set_default, coalesce, wrap, split_field, Null
+from mo_logs.strings import quote
+
+from pyLibrary import convert
 from pyLibrary.queries.containers.cube import Cube
 from pyLibrary.queries.es14.aggs import count_dim, aggs_iterator, format_dispatch, drill
 from pyLibrary.queries.expressions import TupleOp
@@ -137,9 +139,9 @@ def format_tab(decoders, aggs, start, query, select):
     table = format_table(decoders, aggs, start, query, select)
 
     def data():
-        yield "\t".join(map(convert.string2quote, table.header))
+        yield "\t".join(map(quote, table.header))
         for d in table.data:
-            yield "\t".join(map(convert.string2quote, d))
+            yield "\t".join(map(quote, d))
 
     return data()
 
@@ -148,9 +150,9 @@ def format_csv(decoders, aggs, start, query, select):
     table = format_table(decoders, aggs, start, query, select)
 
     def data():
-        yield ", ".join(map(convert.string2quote, table.header))
+        yield ", ".join(map(quote, table.header))
         for d in table.data:
-            yield ", ".join(map(convert.string2quote, d))
+            yield ", ".join(map(quote, d))
 
     return data()
 
