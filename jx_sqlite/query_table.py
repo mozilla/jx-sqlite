@@ -31,6 +31,9 @@ class QueryTable(AggsTable):
     def get_column_name(self, column):
         return column.names[self.name]
 
+    def quote_column(self, column, table=None):
+        return self.db.quote_column(column, table)
+
     def __len__(self):
         counter = self.db.query("SELECT COUNT(*) FROM " + quote_table(self.name))[0][0]
         return counter

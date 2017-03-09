@@ -163,24 +163,26 @@ class InsertTable(AlterTable):
                         elif c.type not in [c.type for c in self.columns[c.name]]:
                             self.columns[column.name].add(column)
 
-        command = "UPDATE " + quote_table(self.name) + " SET " + \
-                  ",\n".join(
-                      [
-                          _quote_column(c) + "=" + quote_value(get_if_type(v, c.type))
-                          for k, v in command.set.items()
-                          if get_type(v) != "nested"
-                          for c in self.columns[k]
-                          if c.type != "nested" and len(c.nested_path) == 1
-                          ] +
-                      [
-                          _quote_column(c) + "=NULL"
-                          for k in listwrap(command['clear'])
-                          if k in self.columns
-                          for c in self.columns[k]
-                          if c.type != "nested" and len(c.nested_path) == 1
-                          ]
-                  ) + \
-                  " WHERE " + where_sql
+        command = (
+            "UPDATE " + quote_table(self.name) + " SET " +
+            ",\n".join(
+                [
+                    _quote_column(c) + "=" + quote_value(get_if_type(v, c.type))
+                    for k, v in command.set.items()
+                    if get_type(v) != "nested"
+                    for c in self.columns[k]
+                    if c.type != "nested" and len(c.nested_path) == 1
+                    ] +
+                [
+                    _quote_column(c) + "=NULL"
+                    for k in listwrap(command['clear'])
+                    if k in self.columns
+                    for c in self.columns[k]
+                    if c.type != "nested" and len(c.nested_path) == 1
+                    ]
+            ) +
+            " WHERE " + where_sql
+        )
 
         self.db.execute(command)
 
@@ -374,6 +376,12 @@ class InsertTable(AlterTable):
             required_changes = []
 
         return doc_collection
+
+    def next_uid(self):
+        try:
+            return self._next_uid
+        finally:
+            self._next_uid += 1
 
     def _insert(self, collection):
         for nested_path, details in collection.items():
