@@ -332,7 +332,7 @@ class SetOpTable(InsertTable):
                 else:
                     # TABLES ONLY USE THE FIRST-LEVEL PROPERTY NAMES
                     # PUSH ALL DEEPER NAMES TO CHILD
-                    header[c.push_column] = sf[0]
+                    header[c.push_column] = c.push_name #sf[0]
                     c.push_child = join_field(sf[1:] + split_field(c.push_child))
 
             output_data = []
