@@ -109,6 +109,48 @@ class TestSetOps(BaseTestCase):
         self.utils.execute_es_tests(test)
 
 
+    def test_select_on_shallow_missing_field(self):
+        test = {
+            "data": [
+                {"a": {"b": {"c": 1}}},
+                {"a": {"b": {"c": 2}}},
+                {"a": {"b": {"c": 3}}},
+                {"a": {"b": {"c": 4}}},
+                {"a": {"b": {"c": 5}}}
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "select": "d"
+            },
+            "expecting_list": {
+                "meta": {"format": "list"}, "data": [
+                {},
+                {},
+                {},
+                {},
+                {}
+            ]},
+            "expecting_table": {
+                "meta": {"format": "table"},
+                "header": ["a.b.d"],
+                "data": [[NULL], [NULL], [NULL], [NULL], [NULL]]
+            },
+            "expecting_cube": {
+                "meta": {"format": "cube"},
+                "edges": [
+                    {
+                        "name": "rownum",
+                        "domain": {"type": "rownum", "min": 0, "max": 5, "interval": 1}
+                    }
+                ],
+                "data": {
+                    "a.b.d": [NULL, NULL, NULL, NULL, NULL]
+                }
+            }
+        }
+        self.utils.execute_es_tests(test)
+
+
     def test_single_deep_select(self):
 
         test = {
