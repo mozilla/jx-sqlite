@@ -132,7 +132,7 @@ class TestSetOps(BaseTestCase):
             ]},
             "expecting_table": {
                 "meta": {"format": "table"},
-                "header": ["a.b.d"],
+                "header": ["d"],
                 "data": [[NULL], [NULL], [NULL], [NULL], [NULL]]
             },
             "expecting_cube": {
@@ -144,7 +144,7 @@ class TestSetOps(BaseTestCase):
                     }
                 ],
                 "data": {
-                    "a.b.d": [NULL, NULL, NULL, NULL, NULL]
+                    "d": [NULL, NULL, NULL, NULL, NULL]
                 }
             }
         }
