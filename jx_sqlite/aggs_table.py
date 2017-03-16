@@ -17,7 +17,7 @@ from mo_dots import listwrap, coalesce, Data, split_field, join_field, startswit
 from mo_logs import Log
 from mo_math import Math
 
-from jx_sqlite import GUID, quote_table, get_column, quote_value, _make_column_name, sql_text_array_to_set, STATS, sql_aggs, PARENT
+from jx_sqlite import GUID, quote_table, get_column, quote_value, _make_column_name, STATS, sql_aggs, PARENT, sql_text_array_to_set
 from jx_sqlite.setop_table import SetOpTable
 from pyLibrary.queries import jx
 from pyLibrary.queries.domains import DefaultDomain, TimeDomain, DurationDomain
