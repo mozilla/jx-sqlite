@@ -18,10 +18,10 @@ from collections import Mapping
 from copy import copy
 
 from mo_dots import Data, split_field, join_field, concat_field
+from mo_logs.strings import quote
 from mo_math.randoms import Random
 from mo_times import Date, Duration
 
-from pyLibrary import convert
 from pyLibrary.meta import DataClass
 
 UID = "__id__"  # will not be quoted
@@ -33,17 +33,17 @@ COLUMN = "__column"
 ALL_TYPES = "bns"
 
 
-_do_not_quote = re.compile(r"^\w+$", re.UNICODE)
+_no_need_to_quote = re.compile(r"^\w+$", re.UNICODE)
 
 
 def quote_table(column):
-    if _do_not_quote.match(column):
+    if _no_need_to_quote.match(column):
         return column
-    return convert.string2quote(column)
+    return quote(column)
 
 
 def _quote_column(column):
-    return convert.string2quote(column.es_column)
+    return quote(column.es_column)
 
 
 def quote_value(value):

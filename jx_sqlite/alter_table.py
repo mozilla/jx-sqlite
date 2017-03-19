@@ -15,8 +15,7 @@ from __future__ import unicode_literals
 
 from copy import copy
 
-from mo_dots import Data, wrap, split_field, join_field, startswith_field, literal_field, unwrap, \
-    relative_field, concat_field
+from mo_dots import Data, wrap, split_field, join_field, startswith_field, literal_field, unwrap, concat_field
 from mo_logs import Log
 
 from jx_sqlite import quote_table, quoted_UID, _quote_column, sql_types, ORDER, quoted_PARENT
@@ -175,13 +174,4 @@ class AlterTable(BaseTable):
                   "\nWHERE\n" + has_nested_data
         self.db.execute(command)
 
-    def add_column_to_schema(self, nest_to_schema, column):
-        abs_table = literal_field(self.name)
-        abs_name = column.names[abs_table]
-
-        for nest, schema in nest_to_schema.items():
-            rel_table = literal_field(join_field([self.name] + split_field(nest)))
-            rel_name = relative_field(abs_name, nest)
-
-            column.names[rel_table] = rel_name
 

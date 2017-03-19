@@ -17,7 +17,7 @@ import mo_json
 from mo_dots import set_default, wrap, _get_attr, Null, coalesce
 from mo_logs import Log, strings
 from mo_logs.exceptions import Except
-from mo_logs.strings import expand_template
+from mo_logs.strings import expand_template, quote
 from mo_math.randoms import Random
 from mo_threads import Lock
 from mo_times.dates import Date

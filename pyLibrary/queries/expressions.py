@@ -226,7 +226,7 @@ class Variable(Expression):
         else:
             if self.var == "_id":
                 return 'doc["_uid"].value.substring(doc["_uid"].value.indexOf(\'#\')+1)'
-            q = convert.string2quote(self.var)
+            q = quote(self.var)
             if not_null:
                 if boolean:
                     return "doc[" + q + "].value==\"T\""
@@ -526,11 +526,11 @@ class Literal(Expression):
             if v is False:
                 return "false"
             if isinstance(v, basestring):
-                return convert.string2quote(v)
+                return quote(v)
             if isinstance(v, (int, long, float)):
                 return unicode(v)
             if isinstance(v, dict):
-                return "[" + ", ".join(convert.string2quote(k) + ": " + _convert(vv) for k, vv in v.items()) + "]"
+                return "[" + ", ".join(quote(k) + ": " + _convert(vv) for k, vv in v.items()) + "]"
             if isinstance(v, list):
                 return "[" + ", ".join(_convert(vv) for vv in v) + "]"
 
@@ -749,7 +749,7 @@ class DateOp(Literal):
         Literal.__init__(self, op, Date(term.date).unix)
 
     def to_python(self, not_null=False, boolean=False):
-        return "Date("+convert.string2quote(self.value)+").unix"
+        return "Date("+quote(self.value)+").unix"
 
     def to_sql(self, schema, not_null=False, boolean=False):
         return wrap([{"name": ".", "sql": {"n": sql_quote(json2value(self.json))}}])
@@ -1820,7 +1820,7 @@ class MissingOp(Expression):
             if self.expr.var == "_id":
                 return "false"
             else:
-                return "doc[" + convert.string2quote(self.expr.var) + "].isEmpty()"
+                return "doc[" + quote(self.expr.var) + "].isEmpty()"
         elif isinstance(self.expr, Literal):
             return self.expr.missing().to_ruby()
         else:
@@ -1879,7 +1879,7 @@ class ExistsOp(Expression):
 
     def to_ruby(self, not_null=False, boolean=False):
         if isinstance(self.field, Variable):
-            return "!doc["+convert.string2quote(self.field.var)+"].isEmpty()"
+            return "!doc["+quote(self.field.var)+"].isEmpty()"
         elif isinstance(self.field, Literal):
             return self.field.exists().to_ruby()
         else:
@@ -2328,7 +2328,7 @@ class FindOp(Expression):
         self.start = kwargs.get("start", Literal(None, 0))
 
     def to_python(self, not_null=False, boolean=False):
-        return "((" + convert.string2quote(self.substring) + " in " + self.var.to_python() + ") if " + self.var.to_python() + "!=None else False)"
+        return "((" + quote(self.substring) + " in " + self.var.to_python() + ") if " + self.var.to_python() + "!=None else False)"
 
     def to_ruby(self, not_null=False, boolean=False):
         missing = self.missing()

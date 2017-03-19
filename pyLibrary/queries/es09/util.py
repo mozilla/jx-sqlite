@@ -203,7 +203,7 @@ def compileString2Term(edge):
 
     value = edge.value
     if isKeyword(value):
-        value = strings.expand_template("getDocValue({{path}})", {"path": convert.string2quote(value)})
+        value = strings.expand_template("getDocValue({{path}})", {"path": quote(value)})
     else:
         Log.error("not handled")
 
