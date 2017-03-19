@@ -22,6 +22,7 @@ from mo_math.randoms import Random
 from mo_times import Date, Duration
 
 from pyLibrary import convert
+from pyLibrary.meta import DataClass
 
 UID = "__id__"  # will not be quoted
 GUID = "__guid__"
@@ -236,4 +237,25 @@ def copy_cols(cols, nest_to_alias):
     return output
 
 
-
+ColumnMapping = DataClass(
+    "ColumnMapping",
+    [
+        "push_name",    # NAME OF THE COLUMN
+        "push_child",   # PATH INTO COLUMN WHERE VALUE IS STORED ("." MEANS COLUMN HOLDS PRIMITIVE VALUE)
+        "push_column",  # THE COLUMN NUMBER
+        "pull",         # A FUNCTION THAT WILL RETURN A VALUE
+        {               # A LIST OF MULTI-SQL REQUIRED TO GET THE VALUE FROM THE DATABASE
+            "name": "sql",
+            "type": list
+        },
+        "type",         # THE NAME OF THE JSON DATA TYPE EXPECTED
+        {               # A LIST OF PATHS EACH INDICATING AN ARRAY
+            "name": "nested_path",
+            "type": list
+        }
+    ],
+    constraint={"and": [
+        {"in": {"type": ["null", "boolean", "number", "string", "object"]}},
+        {"gte": [{"length": "nested_path"}, 1]}
+    ]}
+)
