@@ -240,6 +240,14 @@ def copy_cols(cols, nest_to_alias):
 ColumnMapping = DataClass(
     "ColumnMapping",
     [
+        {               # EDGES ARE AUTOMATICALLY INCLUDED IN THE OUTPUT, USE THIS TO INDICATE EDGES SO WE DO NOT DOUBLE-PRINT
+            "name":"is_edge",
+            "default": False
+        },
+        {               # TRACK NUMBER OF TABLE COLUMNS THIS column REPRESENTS
+            "name":"num_push_columns",
+            "nulls": True
+        },
         "push_name",    # NAME OF THE COLUMN
         "push_child",   # PATH INTO COLUMN WHERE VALUE IS STORED ("." MEANS COLUMN HOLDS PRIMITIVE VALUE)
         "push_column",  # THE COLUMN NUMBER
@@ -251,7 +259,8 @@ ColumnMapping = DataClass(
         "type",         # THE NAME OF THE JSON DATA TYPE EXPECTED
         {               # A LIST OF PATHS EACH INDICATING AN ARRAY
             "name": "nested_path",
-            "type": list
+            "type": list,
+            "default": ["."]
         }
     ],
     constraint={"and": [

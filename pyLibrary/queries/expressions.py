@@ -17,7 +17,7 @@ from decimal import Decimal
 
 import mo_json
 from mo_dots import coalesce, wrap, set_default, literal_field, Null, split_field, startswith_field, Data, join_field, unwraplist, \
-    ROOT_PATH, relative_field
+    ROOT_PATH, relative_field, unwrap
 from mo_logs import Log
 from mo_logs.exceptions import suppress_exception
 from mo_math import Math
@@ -539,7 +539,7 @@ class Literal(Expression):
         return _convert(convert.json_decoder(self.json))
 
     def to_python(self, not_null=False, boolean=False):
-        return self.json
+        return repr(unwrap(mo_json.json2value(self.json)))
 
     def to_sql(self, schema, not_null=False, boolean=False):
         value = mo_json.json2value(self.json)

@@ -15,7 +15,7 @@ from types import FunctionType
 
 import mo_json
 from mo_dots import set_default, wrap, _get_attr, Null, coalesce
-from mo_logs import Log
+from mo_logs import Log, strings
 from mo_logs.exceptions import Except
 from mo_logs.strings import expand_template
 from mo_math.randoms import Random
@@ -23,7 +23,7 @@ from mo_threads import Lock
 from mo_times.dates import Date
 from mo_times.durations import DAY
 from pyLibrary import convert
-from pyLibrary.queries.expressions import jx_expression_to_function
+from pyLibrary.queries.expressions import jx_expression_to_function, jx_expression
 
 _ = jx_expression_to_function
 
@@ -210,7 +210,7 @@ class _FakeLock():
         pass
 
 
-def DataClass(name, columns, constraint=None):
+def DataClass(name, columns, constraint=True):
     """
     Each column has {"name", "required", "nulls", "default", "type"} properties
     """
@@ -218,6 +218,7 @@ def DataClass(name, columns, constraint=None):
     slots = columns.name
     required = wrap(filter(lambda c: c.required and not c.nulls and not c.default, columns)).name
     nulls = wrap(filter(lambda c: c.nulls, columns)).name
+    defaults = {c.name: coalesce(c.default, None) for c in columns}
     types = {c.name: coalesce(c.type, object) for c in columns}
 
 
@@ -228,19 +229,21 @@ from collections import Mapping
 
 meta = None
 types_ = {{types}}
+defaults_ = {{defaults}}
 
 class {{class_name}}(Mapping):
     __slots__ = {{slots}}
-""" +
-("    constraint = jx_expression_to_function({{constraint}})\n" if constraint else "    constraint=lambda row, rownum, rows: True\n") +
-"""
+
+
+    def _constraint(row, rownum, rows):
+        return {{constraint_expr}}
 
     def __init__(self, **kwargs):
         if not kwargs:
             return
 
         for s in {{slots}}:
-            object.__setattr__(self, s, kwargs.get(s, kwargs.get('default', Null)))
+            object.__setattr__(self, s, kwargs.get(s, {{defaults}}.get(s, None)))
 
         missed = {{required}}-set(kwargs.keys())
         if missed:
@@ -250,8 +253,8 @@ class {{class_name}}(Mapping):
         if illegal:
             Log.error("{"+"{names}} are not a valid properties", names=illegal)
 
-        if not {{class_name}}.constraint(self, 0, [self]):
-            Log.error("constraint not satisfied {{expect}}", expect={{constraint}})
+        if not self._constraint(0, [self]):
+            Log.error("constraint not satisfied {"+"{expect}}\\n{"+"{value|indent}}", expect={{constraint}}, value=self)
 
     def __getitem__(self, item):
         return getattr(self, item)
@@ -264,8 +267,8 @@ class {{class_name}}(Mapping):
         if item not in {{slots}}:
             Log.error("{"+"{item|quote}} not valid attribute", item=item)
         object.__setattr__(self, item, value)
-        if not {{class_name}}.constraint(self, 0, [self]):
-            Log.error("constraint not satisfied {{expect}}", expect={{constraint}})
+        if not self._constraint(0, [self]):
+            Log.error("constraint not satisfied {"+"{expect}}\\n{"+"{value|indent}}", expect={{constraint}}, value=self)
 
     def __getattr__(self, item):
         Log.error("{"+"{item|quote}} not valid attribute", item=item)
@@ -306,10 +309,12 @@ temp = {{class_name}}
             "slots": "(" + (", ".join(convert.value2quote(s) for s in slots)) + ")",
             "required": "{" + (", ".join(convert.value2quote(s) for s in required)) + "}",
             "nulls": "{" + (", ".join(convert.value2quote(s) for s in nulls)) + "}",
+            "defaults": jx_expression({"literal": defaults}).to_python(),
             "len_slots": len(slots),
             "dict": "{" + (", ".join(convert.value2quote(s) + ": self." + s for s in slots)) + "}",
             "assign": "; ".join("_set(output, "+convert.value2quote(s)+", self."+s+")" for s in slots),
             "types": "{" + (",".join(convert.string2quote(k) + ": " + v.__name__ for k, v in types.items())) + "}",
+            "constraint_expr": jx_expression(constraint).to_python(),
             "constraint": convert.value2json(constraint)
         }
     )
