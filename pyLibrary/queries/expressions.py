@@ -835,7 +835,7 @@ class LeavesOp(Expression):
         prefix_length = len(split_field(term))
         return wrap([
             {
-                "name": literal_field(join_field(split_field(schema.get_column_name(c))[prefix_length:])),
+                "name": join_field(split_field(schema.get_column_name(c))[prefix_length:]),
                 "sql": Variable(schema.get_column_name(c)).to_sql(schema)[0].sql
             }
             for n, cols in schema.columns.items()

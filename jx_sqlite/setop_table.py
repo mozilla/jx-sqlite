@@ -13,7 +13,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
-from mo_dots import listwrap, Data, unwraplist, split_field, join_field, startswith_field, unwrap, relative_field, concat_field
+from mo_dots import listwrap, Data, unwraplist, split_field, join_field, startswith_field, unwrap, relative_field, concat_field, literal_field
 from mo_math import UNION, MAX
 
 from jx_sqlite import quote_table, quoted_UID, get_column, quote_value, _make_column_name, ORDER, COLUMN, set_column, quoted_PARENT, ColumnMapping
@@ -256,7 +256,7 @@ class SetOpTable(InsertTable):
                             if value == '':
                                 continue
 
-                            relative_path = relative_field(concat_field(c.push_name, c.push_child), curr_nested_path)
+                            relative_path = relative_field(join_field([c.push_name]+split_field(c.push_child)), curr_nested_path)
                             if relative_path == ".":
                                 doc = value
                             else:
@@ -323,17 +323,17 @@ class SetOpTable(InsertTable):
             num_column = MAX([c.push_column for c in cols])+1
             header = [None]*num_column
             for c in cols:
-                # header[c.push_column] = c.push_name
-                sf = split_field(c.push_name)
-                if len(sf) == 0:
-                    header[c.push_column] = "."
-                elif len(sf) == 1:
-                    header[c.push_column] = sf[0]
-                else:
-                    # TABLES ONLY USE THE FIRST-LEVEL PROPERTY NAMES
-                    # PUSH ALL DEEPER NAMES TO CHILD
-                    header[c.push_column] = sf[0]
-                    c.push_child = join_field(sf[1:] + split_field(c.push_child))
+                header[c.push_column] = c.push_name
+                # sf = split_field(c.push_name)  # TODO: SINCE push_name IS LITERAL, WE SHOULD NOT split_field() IT
+                # if len(sf) == 0:
+                #     header[c.push_column] = "."
+                # elif len(sf) == 1:
+                #     header[c.push_column] = sf[0]
+                # else:
+                #     # TABLES ONLY USE THE FIRST-LEVEL PROPERTY NAMES
+                #     # PUSH ALL DEEPER NAMES TO CHILD
+                #     header[c.push_column] = sf[0]
+                #     c.push_child = join_field(sf[1:] + split_field(c.push_child))
 
             output_data = []
             for d in result.data:

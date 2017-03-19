@@ -248,7 +248,7 @@ ColumnMapping = DataClass(
             "name":"num_push_columns",
             "nulls": True
         },
-        "push_name",    # NAME OF THE COLUMN
+        "push_name",    # LITERAL NAME OF THE COLUMN (WITH NO ESCAPING DOTS, NOT IN LEAF FORM)
         "push_child",   # PATH INTO COLUMN WHERE VALUE IS STORED ("." MEANS COLUMN HOLDS PRIMITIVE VALUE)
         "push_column",  # THE COLUMN NUMBER
         "pull",         # A FUNCTION THAT WILL RETURN A VALUE

@@ -673,7 +673,7 @@ class TestSetOps(BaseTestCase):
     def test_select_w_star(self):
         test = {
             "data": [
-                {"a": {"b": 0, "c": 0}},
+                {"a": {"b": 0, "c": 0}, "d": 7},
                 {"a": {"b": 0, "c": 1}},
                 {"a": {"b": 1, "c": 0}},
                 {"a": {"b": 1, "c": 1}},
@@ -685,7 +685,7 @@ class TestSetOps(BaseTestCase):
             },
             "expecting_list": {
                 "meta": {"format": "list"}, "data": [
-                    {"a.b": 0, "a.c": 0},
+                    {"a.b": 0, "a.c": 0, "d": 7},
                     {"a.b": 0, "a.c": 1},
                     {"a.b": 1, "a.c": 0},
                     {"a.b": 1, "a.c": 1}
@@ -693,12 +693,12 @@ class TestSetOps(BaseTestCase):
             },
             "expecting_table": {
                 "meta": {"format": "table"},
-                "header": ["a.b", "a.c"],
+                "header": ["a.b", "a.c", "d"],
                 "data": [
-                    [0, 0],
-                    [0, 1],
-                    [1, 0],
-                    [1, 1]
+                    [0, 0, 7],
+                    [0, 1, NULL],
+                    [1, 0, NULL],
+                    [1, 1, NULL]
                 ]
             },
             "expecting_cube": {
@@ -711,7 +711,8 @@ class TestSetOps(BaseTestCase):
                 ],
                 "data": {
                     "a.b": [0, 0, 1, 1],
-                    "a.c": [0, 1, 0, 1]
+                    "a.c": [0, 1, 0, 1],
+                    "d": [7, NULL, NULL, NULL]
                 }
             }
         }
