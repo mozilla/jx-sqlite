@@ -58,7 +58,7 @@ class Emailer:
     def __exit__(self, type, value, traceback):
         try:
             self.server.quit()
-        except Exception, e:
+        except Exception as e:
             Log.warning("Problem with smtp server quit(), ignoring problem", e)
 
         self.server = None

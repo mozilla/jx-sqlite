@@ -87,7 +87,7 @@ def es_terms(es, mvel, query):
             for s in select:
                 try:
                     output[s.name][term_coord] = term[aggregates[s.aggregate]]
-                except Exception, e:
+                except Exception as e:
                     # USUALLY CAUSED BY output[s.name] NOT BEING BIG ENOUGH TO HANDLE NULL COUNTS
                     pass
     cube = Cube(query.select, query.edges, output)

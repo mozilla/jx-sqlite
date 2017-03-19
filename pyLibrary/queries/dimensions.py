@@ -247,7 +247,7 @@ class Dimension(Container):
                             "style":coalesce(subpart.style, subpart.parent.style),
                             "weight":subpart.weight   # YO!  WHAT DO WE *NOT* COPY?
                         })
-                except Exception, e:
+                except Exception as e:
                     Log.error("", e)
         else:
             Log.error("deeper than 2 is not supported yet")

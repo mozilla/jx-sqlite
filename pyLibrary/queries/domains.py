@@ -39,7 +39,7 @@ class Domain(object):
         if cls == Domain:
             try:
                 return name_to_type[desc.get("type")](**desc)
-            except Exception, e:
+            except Exception as e:
                 Log.error("Do not know domain of type {{type}}", type=desc.get("type"), cause=e)
         else:
             return object.__new__(cls)
@@ -285,7 +285,7 @@ class SimpleSetDomain(Domain):
             if output is None:
                 return len(self.partitions)
             return output
-        except Exception, e:
+        except Exception as e:
             Log.error("problem", e)
 
 
@@ -295,7 +295,7 @@ class SimpleSetDomain(Domain):
             if not canonical:
                 return self.NULL
             return canonical
-        except Exception, e:
+        except Exception as e:
             Log.error("problem", e)
 
     def getPartByIndex(self, index):
@@ -392,7 +392,7 @@ class SetDomain(Domain):
             if output is None:
                 return len(self.partitions)
             return output
-        except Exception, e:
+        except Exception as e:
             Log.error("problem", e)
 
 
@@ -402,7 +402,7 @@ class SetDomain(Domain):
             if not canonical:
                 return self.NULL
             return canonical
-        except Exception, e:
+        except Exception as e:
             Log.error("problem", e)
 
     def getKey(self, part):

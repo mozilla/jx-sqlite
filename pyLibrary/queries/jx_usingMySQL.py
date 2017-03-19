@@ -334,7 +334,7 @@ def _isolate(separator, list):
             return "(\n" + indent((" " + separator + "\n").join(list)) + "\n)"
         else:
             return list[0]
-    except Exception, e:
+    except Exception as e:
         Log.error("Programming problem: separator={{separator}}, list={{list}",
             list=list,
             separator=separator,

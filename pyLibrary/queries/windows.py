@@ -299,7 +299,7 @@ class Percentile(WindowFunction):
         try:
             i = self.total.index(value)
             self.total = self.total[:i] + self.total[i+1:]
-        except Exception, e:
+        except Exception as e:
             Log.error("Problem with window function", e)
 
     def end(self):

@@ -250,5 +250,5 @@ def es_deepop(es, query):
         output.meta.content_type = mime_type
         output.meta.es_query = es_query
         return output
-    except Exception, e:
+    except Exception as e:
         Log.error("problem formatting", e)

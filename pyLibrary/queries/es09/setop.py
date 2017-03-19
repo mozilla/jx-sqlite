@@ -87,7 +87,7 @@ def es_fieldop(es, query):
         else:
             try:
                 matricies[s.name] = Matrix.wrap([unwrap(t.fields).get(s.value, None) for t in T])
-            except Exception, e:
+            except Exception as e:
                 Log.error("", e)
 
     cube = Cube(query.select, query.edges, matricies, frum=query)

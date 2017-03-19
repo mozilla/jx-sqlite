@@ -34,7 +34,7 @@ def get_class(path):
         output = __import__(".".join(path[0:-1]), globals(), locals(), [path[-1]], 0)
         return _get_attr(output, path[-1:])
         # return output
-    except Exception, e:
+    except Exception as e:
         from mo_logs import Log
 
         Log.error("Could not find module {{module|quote}}",  module= ".".join(path))
@@ -58,18 +58,18 @@ def new_instance(settings):
     try:
         temp = __import__(path, globals(), locals(), [class_name], -1)
         constructor = object.__getattribute__(temp, class_name)
-    except Exception, e:
+    except Exception as e:
         Log.error("Can not find class {{class}}", {"class": path}, cause=e)
 
     settings['class'] = None
     try:
         return constructor(settings=settings)  # MAYBE IT TAKES A SETTINGS OBJECT
-    except Exception, e:
+    except Exception as e:
         pass
 
     try:
         return constructor(**settings)
-    except Exception, e:
+    except Exception as e:
         Log.error("Can not create instance of {{name}}", name=".".join(path), cause=e)
 
 
@@ -87,7 +87,7 @@ def get_function_by_name(full_name):
         temp = __import__(path, globals(), locals(), [function_name], -1)
         output = object.__getattribute__(temp, function_name)
         return output
-    except Exception, e:
+    except Exception as e:
         Log.error("Can not find function {{name}}",  name= full_name, cause=e)
 
 
@@ -173,7 +173,7 @@ def wrap_function(cache_store, func_):
                     with cache_store.locker:
                         _cache[args] = (now + cache_store.timeout, args, value, None)
                     return value
-                except Exception, e:
+                except Exception as e:
                     e = Except.wrap(e)
                     with cache_store.locker:
                         _cache[args] = (now + cache_store.timeout, args, None, e)
@@ -211,7 +211,7 @@ def DataClass(name, columns, constraint=True):
     """
     Use the DataClass to define a class, but with some extra features:
     1. restrict the datatype of property
-    2. restrict if `required`, or if `null` is allowed
+    2. restrict if `required`, or if `nulls` are allowed
     3. generic constraints on object properties
 
     It is expected that this class become a real class (or be removed) in the
@@ -221,7 +221,7 @@ def DataClass(name, columns, constraint=True):
     :param name: Name of the class we are creating
     :param columns: Each columns[i] has properties {
             "name",     - (required) name of the property
-            "required", - False if not required (can be None, or missing)
+            "required", - False if it must be defined (even if None)
             "nulls",    - True if property can be None, or missing
             "default",  - A default value, if none is provided
             "type"      - a Python datatype

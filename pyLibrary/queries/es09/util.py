@@ -47,7 +47,7 @@ def post(es, es_query, limit):
 
             if not DEBUG and not limit and len(f.terms) == limit:
                 Log.error("Not all data delivered (" + str(len(f.terms)) + "/" + str(f.total) + ") try smaller range")
-    except Exception, e:
+    except Exception as e:
         Log.error("Error with FromES", e)
 
     return post_result

@@ -436,7 +436,7 @@ def _normalize_edge(edge, schema=None):
         if schema:
             try:
                 e = schema[edge]
-            except Exception, _:
+            except Exception:
                 e = None
             e = unwrap(unwraplist(e))
             if e and not isinstance(e, (_Column, set, list)):
@@ -656,7 +656,7 @@ def _where_terms(master, where, schema):
             try:
                 output = _map_term_using_schema(master, [], where.term, schema.edges)
                 return output
-            except Exception, e:
+            except Exception as e:
                 Log.error("programmer problem?", e)
         elif where.terms:
             # MAP TERM
@@ -673,7 +673,7 @@ def _where_terms(master, where, schema):
                         return {"terms": {edge: v}}
                     try:
                         domain = edge.getDomain()
-                    except Exception, e:
+                    except Exception as e:
                         Log.error("programmer error", e)
                     fields = domain.dimension.fields
                     if isinstance(fields, Mapping):

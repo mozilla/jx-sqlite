@@ -43,7 +43,7 @@ def format_cube(decoders, aggs, start, query, select):
             try:
                 v = _pull(s, agg)
                 m[coord] = v
-            except Exception, e:
+            except Exception as e:
                 Log.error("", e)
 
     cube = Cube(query.select, new_edges, {s.name: m for s, m in matricies})

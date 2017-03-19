@@ -15,13 +15,11 @@ import itertools
 from collections import Mapping
 from decimal import Decimal
 
-import mo_json
-from mo_dots import coalesce, wrap, set_default, literal_field, Null, split_field, startswith_field, Data, join_field, unwraplist, \
-    ROOT_PATH, relative_field, unwrap
+from mo_dots import coalesce, wrap, set_default, literal_field, Null, split_field, startswith_field, Data, join_field, unwraplist, ROOT_PATH, relative_field, unwrap
+from mo_json import quote, json2value
 from mo_logs import Log
 from mo_logs.exceptions import suppress_exception
-from mo_math import Math
-from mo_math import OR, MAX
+from mo_math import Math, OR, MAX
 from mo_times.dates import Date
 from pyLibrary import convert
 from pyLibrary.queries.containers import STRUCT, OBJECT
@@ -69,7 +67,7 @@ def jx_expression(expr):
 
     try:
         items = expr.items()
-    except Exception, e:
+    except Exception as e:
         Log.error("programmer error expr = {{value|quote}}", value=expr, cause=e)
 
     for item in items:
@@ -393,7 +391,7 @@ class RowsOp(Expression):
 
     def to_python(self, not_null=False, boolean=False):
         agg = "rows[rownum+" + self.offset.to_python() + "]"
-        path = split_field(mo_json.json2value(self.var.json))
+        path = split_field(json2value(self.var.json))
         if not path:
             return agg
 
@@ -403,7 +401,7 @@ class RowsOp(Expression):
 
     def __data__(self):
         if isinstance(self.var, Literal) and isinstance(self.offset, Literal):
-            return {"rows": {self.var.json, mo_json.json2value(self.offset.json)}}
+            return {"rows": {self.var.json, json2value(self.offset.json)}}
         else:
             return {"rows": [self.var.__data__(), self.offset.__data__()]}
 
@@ -431,7 +429,7 @@ class GetOp(Expression):
 
     def __data__(self):
         if isinstance(self.var, Literal) and isinstance(self.offset, Literal):
-            return {"get": {self.var.json, mo_json.json2value(self.offset.json)}}
+            return {"get": {self.var.json, json2value(self.offset.json)}}
         else:
             return {"get": [self.var.__data__(), self.offset.__data__()]}
 
@@ -514,7 +512,7 @@ class Literal(Expression):
         from mo_testing.fuzzytestcase import assertAlmostEqual
 
         try:
-            assertAlmostEqual(mo_json.json2value(self.json), other)
+            assertAlmostEqual(json2value(self.json), other)
             return True
         except Exception:
             return False
@@ -539,10 +537,10 @@ class Literal(Expression):
         return _convert(convert.json_decoder(self.json))
 
     def to_python(self, not_null=False, boolean=False):
-        return repr(unwrap(mo_json.json2value(self.json)))
+        return repr(unwrap(json2value(self.json)))
 
     def to_sql(self, schema, not_null=False, boolean=False):
-        value = mo_json.json2value(self.json)
+        value = json2value(self.json)
         v = sql_quote(value)
         if v == None:
             return wrap([{"name": "."}])
@@ -556,10 +554,10 @@ class Literal(Expression):
             return wrap([{"name": ".", "sql": {"j": sql_quote(self.json)}}])
 
     def to_esfilter(self):
-        return mo_json.json2value(self.json)
+        return json2value(self.json)
 
     def __data__(self):
-        return {"literal": mo_json.json2value(self.json)}
+        return {"literal": json2value(self.json)}
 
     def vars(self):
         return set()
@@ -573,7 +571,7 @@ class Literal(Expression):
         return FalseOp()
 
     def __call__(self, row=None, rownum=None, rows=None):
-        return mo_json.json2value(self.json)
+        return json2value(self.json)
 
     def __unicode__(self):
         return self.json
@@ -754,10 +752,10 @@ class DateOp(Literal):
         return "Date("+convert.string2quote(self.value)+").unix"
 
     def to_sql(self, schema, not_null=False, boolean=False):
-        return wrap([{"name": ".", "sql": {"n": sql_quote(mo_json.json2value(self.json))}}])
+        return wrap([{"name": ".", "sql": {"n": sql_quote(json2value(self.json))}}])
 
     def to_esfilter(self):
-        return mo_json.json2value(self.json)
+        return json2value(self.json)
 
     def __data__(self):
         return {"date": self.value}
@@ -926,13 +924,13 @@ class BinaryOp(Expression):
         elif self.op in ["ne", "neq"]:
             return {"not": {"term": {self.lhs.var: self.rhs.to_esfilter()}}}
         elif self.op in BinaryOp.ineq_ops:
-            return {"range": {self.lhs.var: {self.op: mo_json.json2value(self.rhs.json)}}}
+            return {"range": {self.lhs.var: {self.op: json2value(self.rhs.json)}}}
         else:
             Log.error("Logic error")
 
     def __data__(self):
         if isinstance(self.lhs, Variable) and isinstance(self.rhs, Literal):
-            return {self.op: {self.lhs.var, mo_json.json2value(self.rhs.json)}, "default": self.default}
+            return {self.op: {self.lhs.var, json2value(self.rhs.json)}, "default": self.default}
         else:
             return {self.op: [self.lhs.__data__(), self.rhs.__data__()], "default": self.default}
 
@@ -1026,13 +1024,13 @@ class InequalityOp(Expression):
 
     def to_esfilter(self):
         if isinstance(self.lhs, Variable) and isinstance(self.rhs, Literal):
-            return {"range": {self.lhs.var: {self.op: mo_json.json2value(self.rhs.json)}}}
+            return {"range": {self.lhs.var: {self.op: json2value(self.rhs.json)}}}
         else:
             return {"script": {"script": self.to_ruby()}}
 
     def __data__(self):
         if isinstance(self.lhs, Variable) and isinstance(self.rhs, Literal):
-            return {self.op: {self.lhs.var, mo_json.json2value(self.rhs.json)}, "default": self.default}
+            return {self.op: {self.lhs.var, json2value(self.rhs.json)}, "default": self.default}
         else:
             return {self.op: [self.lhs.__data__(), self.rhs.__data__()], "default": self.default}
 
@@ -1103,7 +1101,7 @@ class DivOp(Expression):
 
     def __data__(self):
         if isinstance(self.lhs, Variable) and isinstance(self.rhs, Literal):
-            return {"div": {self.lhs.var, mo_json.json2value(self.rhs.json)}, "default": self.default}
+            return {"div": {self.lhs.var, json2value(self.rhs.json)}, "default": self.default}
         else:
             return {"div": [self.lhs.__data__(), self.rhs.__data__()], "default": self.default}
 
@@ -1152,7 +1150,7 @@ class FloorOp(Expression):
 
     def __data__(self):
         if isinstance(self.lhs, Variable) and isinstance(self.rhs, Literal):
-            return {"floor": {self.lhs.var, mo_json.json2value(self.rhs.json)}, "default": self.default}
+            return {"floor": {self.lhs.var, json2value(self.rhs.json)}, "default": self.default}
         else:
             return {"floor": [self.lhs.__data__(), self.rhs.__data__()], "default": self.default}
 
@@ -1227,7 +1225,7 @@ class EqOp(Expression):
 
     def to_esfilter(self):
         if isinstance(self.lhs, Variable) and isinstance(self.rhs, Literal):
-            rhs = mo_json.json2value(self.rhs.json)
+            rhs = json2value(self.rhs.json)
             if isinstance(rhs, list):
                 if len(rhs) == 1:
                     return {"term": {self.lhs.var: rhs[0]}}
@@ -1240,7 +1238,7 @@ class EqOp(Expression):
 
     def __data__(self):
         if isinstance(self.lhs, Variable) and isinstance(self.rhs, Literal):
-            return {"eq": {self.lhs.var, mo_json.json2value(self.rhs.json)}}
+            return {"eq": {self.lhs.var, json2value(self.rhs.json)}}
         else:
             return {"eq": [self.lhs.__data__(), self.rhs.__data__()]}
 
@@ -1302,7 +1300,7 @@ class NeOp(Expression):
 
     def __data__(self):
         if isinstance(self.lhs, Variable) and isinstance(self.rhs, Literal):
-            return {"ne": {self.lhs.var, mo_json.json2value(self.rhs.json)}}
+            return {"ne": {self.lhs.var, json2value(self.rhs.json)}}
         else:
             return {"ne": [self.lhs.__data__(), self.rhs.__data__()]}
 
@@ -1458,7 +1456,7 @@ class LengthOp(Expression):
 
     def to_sql(self, schema, not_null=False, boolean=False):
         if isinstance(self.term, Literal):
-            val = mo_json.json2value(self.term)
+            val = json2value(self.term)
             if isinstance(val, unicode):
                 return wrap([{"name":".", "sql": {"n": convert.value2json(len(val))}}])
             elif isinstance(val, (float, int)):
@@ -1725,7 +1723,7 @@ class RegExpOp(Expression):
         self.var, self.pattern = term
 
     def to_python(self, not_null=False, boolean=False):
-        return "re.match(" + convert.string2quote(convert.json2value(self.pattern.json)+"$") + ", " + self.var.to_python() + ")"
+        return "re.match(" + quote(json2value(self.pattern.json) + "$") + ", " + self.var.to_python() + ")"
 
     def to_sql(self, schema, not_null=False, boolean=False):
         pattern = schema.db.quote_value(convert.json2value(self.pattern.json))
@@ -1735,7 +1733,7 @@ class RegExpOp(Expression):
         ])
 
     def to_esfilter(self):
-        return {"regexp": {self.var.var: mo_json.json2value(self.pattern.json)}}
+        return {"regexp": {self.var.var: json2value(self.pattern.json)}}
 
     def __data__(self):
         return {"regexp": {self.var.var: self.pattern}}
@@ -1945,13 +1943,13 @@ class PrefixOp(Expression):
 
     def to_esfilter(self):
         if isinstance(self.field, Variable) and isinstance(self.prefix, Literal):
-            return {"prefix": {self.field.var: mo_json.json2value(self.prefix.json)}}
+            return {"prefix": {self.field.var: json2value(self.prefix.json)}}
         else:
             return {"script": {"script": self.to_ruby()}}
 
     def __data__(self):
         if isinstance(self.field, Variable) and isinstance(self.prefix, Literal):
-            return {"prefix": {self.field.var: mo_json.json2value(self.prefix.json)}}
+            return {"prefix": {self.field.var: json2value(self.prefix.json)}}
         else:
             return {"prefix": [self.field.__data__(), self.prefix.__data__()]}
 
@@ -1987,7 +1985,7 @@ class ConcatOp(Expression):
         acc = []
         for t in self.terms:
             acc.append("((" + t.missing().to_ruby(boolean=True) + ") ? \"\" : (" + self.separator.json+"+"+t.to_ruby(not_null=True) + "))")
-        expr_ = "("+"+".join(acc)+").substring("+unicode(len(mo_json.json2value(self.separator.json)))+")"
+        expr_ = "("+"+".join(acc)+").substring("+unicode(len(json2value(self.separator.json)))+")"
 
         return "("+self.missing().to_ruby()+") ? ("+self.default.to_ruby()+") : ("+expr_+")"
 
@@ -2034,11 +2032,11 @@ class ConcatOp(Expression):
 
     def __data__(self):
         if isinstance(self.value, Variable) and isinstance(self.length, Literal):
-            output = {"concat": {self.terms[0].var: mo_json.json2value(self.terms[2].json)}}
+            output = {"concat": {self.terms[0].var: json2value(self.terms[2].json)}}
         else:
             output = {"concat": [t.__data__() for t in self.terms]}
         if self.separator.json != '""':
-            output["separator"] = mo_json.json2value(self.terms[2].json)
+            output["separator"] = json2value(self.terms[2].json)
         return output
 
     def vars(self):
@@ -2148,7 +2146,7 @@ class LeftOp(Expression):
 
     def __data__(self):
         if isinstance(self.value, Variable) and isinstance(self.length, Literal):
-            return {"left": {self.value.var: mo_json.json2value(self.length.json)}}
+            return {"left": {self.value.var: json2value(self.length.json)}}
         else:
             return {"left": [self.value.__data__(), self.length.__data__()]}
 
@@ -2200,7 +2198,7 @@ class NotLeftOp(Expression):
 
     def __data__(self):
         if isinstance(self.value, Variable) and isinstance(self.length, Literal):
-            return {"not_left": {self.value.var: mo_json.json2value(self.length.json)}}
+            return {"not_left": {self.value.var: json2value(self.length.json)}}
         else:
             return {"not_left": [self.value.__data__(), self.length.__data__()]}
 
@@ -2250,7 +2248,7 @@ class RightOp(Expression):
 
     def __data__(self):
         if isinstance(self.value, Variable) and isinstance(self.length, Literal):
-            return {"right": {self.value.var: mo_json.json2value(self.length.json)}}
+            return {"right": {self.value.var: json2value(self.length.json)}}
         else:
             return {"right": [self.value.__data__(), self.length.__data__()]}
 
@@ -2300,7 +2298,7 @@ class NotRightOp(Expression):
 
     def __data__(self):
         if isinstance(self.value, Variable) and isinstance(self.length, Literal):
-            return {"not_right": {self.value.var: mo_json.json2value(self.length.json)}}
+            return {"not_right": {self.value.var: json2value(self.length.json)}}
         else:
             return {"not_right": [self.value.__data__(), self.length.__data__()]}
 
@@ -2375,7 +2373,7 @@ class FindOp(Expression):
 
     def to_esfilter(self):
         if isinstance(self.value, Variable) and isinstance(self.find, Literal):
-            return {"regexp": {self.value.var: ".*" + convert.string2regexp(mo_json.json2value(self.find.json)) + ".*"}}
+            return {"regexp": {self.value.var: ".*" + convert.string2regexp(json2value(self.find.json)) + ".*"}}
         else:
             return {"script": {"script": self.to_ruby()}}
 
@@ -2443,12 +2441,12 @@ class BetweenOp(Expression):
         }
 
     def to_ruby(self, not_null=False, boolean=False):
-        if isinstance(self.prefix, Literal) and isinstance(mo_json.json2value(self.prefix.json), int):
+        if isinstance(self.prefix, Literal) and isinstance(json2value(self.prefix.json), int):
             value_is_missing = self.value.missing().to_ruby()
             value = self.value.to_ruby(not_null=True)
             start = "max("+self.prefix.json+", 0)"
 
-            if isinstance(self.suffix, Literal) and isinstance(mo_json.json2value(self.suffix.json), int):
+            if isinstance(self.suffix, Literal) and isinstance(json2value(self.suffix.json), int):
                 check = "(" + value_is_missing + ")"
                 end = "min(" + self.suffix.to_ruby() + ", " + value + ".length())"
             else:
@@ -2463,7 +2461,7 @@ class BetweenOp(Expression):
             value_is_missing = self.value.missing().to_ruby()
             value = self.value.to_ruby(not_null=True)
             prefix = self.prefix.to_ruby()
-            len_prefix = unicode(len(mo_json.json2value(self.prefix.json))) if isinstance(self.prefix, Literal) else "("+prefix+").length()"
+            len_prefix = unicode(len(json2value(self.prefix.json))) if isinstance(self.prefix, Literal) else "("+prefix+").length()"
             suffix = self.suffix.to_ruby()
             start_index = self.start.to_ruby()
             if start_index == "null":
@@ -2595,17 +2593,17 @@ class InOp(Expression):
         if not isinstance(self.values, Literal):
             Log.error("Not supported")
         var = self.field.to_sql(schema)
-        return " OR ".join("(" + var + "==" + sql_quote(v) + ")" for v in mo_json.json2value(self.values))
+        return " OR ".join("(" + var + "==" + sql_quote(v) + ")" for v in json2value(self.values))
 
     def to_esfilter(self):
         if isinstance(self.field, Variable):
-            return {"terms": {self.field.var: mo_json.json2value(self.values.json)}}
+            return {"terms": {self.field.var: json2value(self.values.json)}}
         else:
             return {"script": self.to_ruby()}
 
     def __data__(self):
         if isinstance(self.field, Variable) and isinstance(self.values, Literal):
-            return {"in": {self.field.var: mo_json.json2value(self.values.json)}}
+            return {"in": {self.field.var: json2value(self.values.json)}}
         else:
             return {"in": [self.field.__data__(), self.values.__data__()]}
 
@@ -2622,7 +2620,7 @@ class RangeOp(Expression):
     def __new__(cls, op, term, *args):
         Expression.__new__(cls, *args)
         field, comparisons = term  # comparisons IS A Literal()
-        return AndOp("and", [operators[op](op, [field, Literal(None, value)]) for op, value in mo_json.json2value(comparisons.json).items()])
+        return AndOp("and", [operators[op](op, [field, Literal(None, value)]) for op, value in json2value(comparisons.json).items()])
 
     def __init__(self, op, term):
         Log.error("Should never happen!")
@@ -2757,7 +2755,7 @@ def simplify_esfilter(esfilter):
 
         output.isNormal = None
         return output
-    except Exception, e:
+    except Exception as e:
         from mo_logs import Log
 
         Log.unexpected("programmer error", cause=e)

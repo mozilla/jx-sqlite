@@ -734,5 +734,5 @@ def replacePrefix(value, prefix, new_prefix):
         if value.startswith(prefix):
             return new_prefix+value[len(prefix)::]
         return value
-    except Exception, e:
+    except Exception as e:
         Log.error("can not replace prefix", e)
