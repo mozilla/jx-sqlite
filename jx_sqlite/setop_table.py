@@ -324,22 +324,23 @@ class SetOpTable(InsertTable):
             header = [None]*num_column
             for c in cols:
                 # header[c.push_column] = c.push_name
-                sf = split_field(c.push_name)
-                if len(sf) == 0:
+                
+                if len(c.push_name) == 0:
                     header[c.push_column] = "."
-                elif len(sf) == 1:
-                    header[c.push_column] = sf[0]
+                elif len(c.push_name) == 1:
+                    header[c.push_column] = c.push_name
                 else:
                     # TABLES ONLY USE THE FIRST-LEVEL PROPERTY NAMES
                     # PUSH ALL DEEPER NAMES TO CHILD
                     header[c.push_column] = c.push_name #sf[0]
-                    c.push_child = join_field(sf[1:] + split_field(c.push_child))
+
+                    c.push_child = join_field(split_field(c.push_name)[1:] + split_field(c.push_child))
 
             output_data = []
             for d in result.data:
                 row = [None] * num_column
                 for c in cols:
-                    set_column(row, c.push_column, c.push_child, c.pull(d))
+                    set_column(row, c.push_column, c.push_name, c.push_child, c.pull(d),header)
                 output_data.append(row)
             return Data(
                 meta={"format": "table"},
