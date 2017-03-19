@@ -22,6 +22,7 @@ from mo_math.randoms import Random
 from mo_times import Date, Duration
 
 from pyLibrary import convert
+from pyLibrary.meta import DataClass
 
 UID = "__id__"  # will not be quoted
 GUID = "__guid__"
@@ -212,10 +213,19 @@ def get_column(column):
 
 
 def set_column(row, col, child, value):
+    """
+    EXECUTE `row[col][child]=value` KNOWING THAT row[col] MIGHT BE None
+    :param row:
+    :param col:
+    :param child:
+    :param value:
+    :return:
+    """
     if child == ".":
         row[col] = value
     else:
         column = row[col]
+
         if column is None:
             column = row[col] = {}
         Data(column)[child] = value
@@ -236,4 +246,34 @@ def copy_cols(cols, nest_to_alias):
     return output
 
 
-
+ColumnMapping = DataClass(
+    "ColumnMapping",
+    [
+        {               # EDGES ARE AUTOMATICALLY INCLUDED IN THE OUTPUT, USE THIS TO INDICATE EDGES SO WE DO NOT DOUBLE-PRINT
+            "name":"is_edge",
+            "default": False
+        },
+        {               # TRACK NUMBER OF TABLE COLUMNS THIS column REPRESENTS
+            "name":"num_push_columns",
+            "nulls": True
+        },
+        "push_name",    # LITERAL NAME OF THE COLUMN (WITH NO ESCAPING DOTS, NOT IN LEAF FORM)
+        "push_child",   # PATH INTO COLUMN WHERE VALUE IS STORED ("." MEANS COLUMN HOLDS PRIMITIVE VALUE)
+        "push_column",  # THE COLUMN NUMBER
+        "pull",         # A FUNCTION THAT WILL RETURN A VALUE
+        {               # A LIST OF MULTI-SQL REQUIRED TO GET THE VALUE FROM THE DATABASE
+            "name": "sql",
+            "type": list
+        },
+        "type",         # THE NAME OF THE JSON DATA TYPE EXPECTED
+        {               # A LIST OF PATHS EACH INDICATING AN ARRAY
+            "name": "nested_path",
+            "type": list,
+            "default": ["."]
+        }
+    ],
+    constraint={"and": [
+        {"in": {"type": ["null", "boolean", "number", "string", "object"]}},
+        {"gte": [{"length": "nested_path"}, 1]}
+    ]}
+)

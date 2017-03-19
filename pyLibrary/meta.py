@@ -15,7 +15,7 @@ from types import FunctionType
 
 import mo_json
 from mo_dots import set_default, wrap, _get_attr, Null, coalesce
-from mo_logs import Log
+from mo_logs import Log, strings
 from mo_logs.exceptions import Except
 from mo_logs.strings import expand_template
 from mo_math.randoms import Random
@@ -23,6 +23,9 @@ from mo_threads import Lock
 from mo_times.dates import Date
 from mo_times.durations import DAY
 from pyLibrary import convert
+from pyLibrary.queries.expressions import jx_expression_to_function, jx_expression
+
+_ = jx_expression_to_function
 
 
 def get_class(path):
@@ -207,7 +210,7 @@ class _FakeLock():
         pass
 
 
-def DataClass(name, columns):
+def DataClass(name, columns, constraint=True):
     """
     Each column has {"name", "required", "nulls", "default", "type"} properties
     """
@@ -215,24 +218,32 @@ def DataClass(name, columns):
     slots = columns.name
     required = wrap(filter(lambda c: c.required and not c.nulls and not c.default, columns)).name
     nulls = wrap(filter(lambda c: c.nulls, columns)).name
+    defaults = {c.name: coalesce(c.default, None) for c in columns}
     types = {c.name: coalesce(c.type, object) for c in columns}
 
-    code = expand_template("""
+
+    code = expand_template(
+"""
 from __future__ import unicode_literals
 from collections import Mapping
 
 meta = None
 types_ = {{types}}
+defaults_ = {{defaults}}
 
-class {{name}}(Mapping):
+class {{class_name}}(Mapping):
     __slots__ = {{slots}}
+
+
+    def _constraint(row, rownum, rows):
+        return {{constraint_expr}}
 
     def __init__(self, **kwargs):
         if not kwargs:
             return
 
         for s in {{slots}}:
-            setattr(self, s, kwargs.get(s, kwargs.get('default', Null)))
+            object.__setattr__(self, s, kwargs.get(s, {{defaults}}.get(s, None)))
 
         missed = {{required}}-set(kwargs.keys())
         if missed:
@@ -241,6 +252,9 @@ class {{name}}(Mapping):
         illegal = set(kwargs.keys())-set({{slots}})
         if illegal:
             Log.error("{"+"{names}} are not a valid properties", names=illegal)
+
+        if not self._constraint(0, [self]):
+            Log.error("constraint not satisfied {"+"{expect}}\\n{"+"{value|indent}}", expect={{constraint}}, value=self)
 
     def __getitem__(self, item):
         return getattr(self, item)
@@ -252,11 +266,9 @@ class {{name}}(Mapping):
     def __setattr__(self, item, value):
         if item not in {{slots}}:
             Log.error("{"+"{item|quote}} not valid attribute", item=item)
-        #if not isinstance(value, types_[item]):
-        #   Log.error("{"+"{item|quote}} not of type "+"{"+"{type}}", item=item, type=types_[item])
-        if item=="nested_path" and (not isinstance(value, list) or len(value)==0):
-            Log.error("expecting list for nested path")
         object.__setattr__(self, item, value)
+        if not self._constraint(0, [self]):
+            Log.error("constraint not satisfied {"+"{expect}}\\n{"+"{value|indent}}", expect={{constraint}}, value=self)
 
     def __getattr__(self, item):
         Log.error("{"+"{item|quote}} not valid attribute", item=item)
@@ -265,7 +277,7 @@ class {{name}}(Mapping):
         return object.__hash__(self)
 
     def __eq__(self, other):
-        if isinstance(other, {{name}}) and dict(self)==dict(other) and self is not other:
+        if isinstance(other, {{class_name}}) and dict(self)==dict(other) and self is not other:
             Log.error("expecting to be same object")
         return self is other
 
@@ -277,7 +289,7 @@ class {{name}}(Mapping):
 
     def __copy__(self):
         _set = object.__setattr__
-        output = object.__new__({{name}})
+        output = object.__new__({{class_name}})
         {{assign}}
         return output
 
@@ -290,17 +302,20 @@ class {{name}}(Mapping):
     def __str__(self):
         return str({{dict}})
 
-temp = {{name}}
+temp = {{class_name}}
 """,
         {
-            "name": name,
+            "class_name": name,
             "slots": "(" + (", ".join(convert.value2quote(s) for s in slots)) + ")",
             "required": "{" + (", ".join(convert.value2quote(s) for s in required)) + "}",
             "nulls": "{" + (", ".join(convert.value2quote(s) for s in nulls)) + "}",
+            "defaults": jx_expression({"literal": defaults}).to_python(),
             "len_slots": len(slots),
             "dict": "{" + (", ".join(convert.value2quote(s) + ": self." + s for s in slots)) + "}",
             "assign": "; ".join("_set(output, "+convert.value2quote(s)+", self."+s+")" for s in slots),
-            "types": "{" + (",".join(convert.string2quote(k) + ": " + v.__name__ for k, v in types.items())) + "}"
+            "types": "{" + (",".join(convert.string2quote(k) + ": " + v.__name__ for k, v in types.items())) + "}",
+            "constraint_expr": jx_expression(constraint).to_python(),
+            "constraint": convert.value2json(constraint)
         }
     )
 
@@ -309,9 +324,12 @@ temp = {{name}}
 
 def _exec(code, name):
     temp = None
-    exec (code)
-    globals()[name] = temp
-    return temp
+    try:
+        exec (code)
+        globals()[name] = temp
+        return temp
+    except Exception as e:
+        Log.error("Can not make class\n{{code}}", code=code, cause=e)
 
 
 def value2quote(value):
