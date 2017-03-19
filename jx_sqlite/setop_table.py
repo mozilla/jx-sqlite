@@ -13,10 +13,10 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
-from mo_dots import listwrap, Data, unwraplist, split_field, join_field, startswith_field, unwrap, relative_field, concat_field
+from mo_dots import listwrap, Data, unwraplist, split_field, join_field, startswith_field, unwrap, relative_field, concat_field, literal_field
 from mo_math import UNION, MAX
 
-from jx_sqlite import quote_table, quoted_UID, get_column, quote_value, _make_column_name, ORDER, COLUMN, set_column, quoted_PARENT
+from jx_sqlite import quote_table, quoted_UID, get_column, quote_value, _make_column_name, ORDER, COLUMN, set_column, quoted_PARENT, ColumnMapping
 from jx_sqlite.insert_table import InsertTable
 from pyLibrary.queries.containers import STRUCT
 from pyLibrary.queries.expressions import sql_type_to_json_type, LeavesOp
@@ -141,7 +141,7 @@ class SetOpTable(InsertTable):
                                     # SQL HAS ABS TABLE REFERENCE
                                     column_alias = _make_column_name(column_number)
                                     sql_selects.append(unsorted_sql + " AS " + column_alias)
-                                    index_to_column[column_number] = nested_doc_details['index_to_column'][column_number] = Data(
+                                    index_to_column[column_number] = nested_doc_details['index_to_column'][column_number] = ColumnMapping(
                                         push_name=concat_field(s.name, column.name),
                                         push_column=si,
                                         push_child=".",
@@ -162,7 +162,7 @@ class SetOpTable(InsertTable):
                                     # SQL HAS ABS TABLE REFERENCE
                                     column_alias = _make_column_name(column_number)
                                     sql_selects.append(unsorted_sql + " AS " + column_alias)
-                                    index_to_column[column_number] = nested_doc_details['index_to_column'][column_number] = Data(
+                                    index_to_column[column_number] = nested_doc_details['index_to_column'][column_number] = ColumnMapping(
                                         push_name=s.name,
                                         push_column=si,
                                         push_child=column.name,
@@ -185,7 +185,7 @@ class SetOpTable(InsertTable):
                     unsorted_sql = nest_to_alias[nested_path[0]] + "." + quote_table(c.es_column)
                     column_alias = _make_column_name(column_number)
                     sql_selects.append(unsorted_sql + " AS " + column_alias)
-                    index_to_column[column_number] = nested_doc_details['index_to_column'][column_number] = Data(
+                    index_to_column[column_number] = nested_doc_details['index_to_column'][column_number] = ColumnMapping(
                         push_name=s.name,
                         push_column=si,
                         push_child=relative_field(c.name, s.name),
@@ -256,7 +256,7 @@ class SetOpTable(InsertTable):
                             if value == '':
                                 continue
 
-                            relative_path = relative_field(concat_field(c.push_name, c.push_child), curr_nested_path)
+                            relative_path = relative_field(join_field([c.push_name]+split_field(c.push_child)), curr_nested_path)
                             if relative_path == ".":
                                 doc = value
                             else:
@@ -323,18 +323,7 @@ class SetOpTable(InsertTable):
             num_column = MAX([c.push_column for c in cols])+1
             header = [None]*num_column
             for c in cols:
-                # header[c.push_column] = c.push_name
-
-                if len(c.push_name) == 0:
-                    header[c.push_column] = "."
-                elif len(c.push_name) == 1:
-                    header[c.push_column] = c.push_name
-                else:
-                    # TABLES ONLY USE THE FIRST-LEVEL PROPERTY NAMES
-                    # PUSH ALL DEEPER NAMES TO CHILD
-                    header[c.push_column] = c.push_name #sf[0]
-
-                    c.push_child = join_field(split_field(c.push_name)[1:] + split_field(c.push_child))
+                header[c.push_column] = c.push_name
 
             output_data = []
             for d in result.data:

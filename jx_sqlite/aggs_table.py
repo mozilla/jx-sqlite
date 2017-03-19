@@ -17,7 +17,7 @@ from mo_dots import listwrap, coalesce, Data, split_field, join_field, startswit
 from mo_logs import Log
 from mo_math import Math
 
-from jx_sqlite import GUID, quote_table, get_column, quote_value, _make_column_name, sql_text_array_to_set, STATS, sql_aggs, PARENT
+from jx_sqlite import GUID, quote_table, get_column, quote_value, _make_column_name, sql_text_array_to_set, STATS, sql_aggs, PARENT, ColumnMapping
 from jx_sqlite.setop_table import SetOpTable
 from pyLibrary.queries import jx
 from pyLibrary.queries.domains import DefaultDomain, TimeDomain, DurationDomain
@@ -105,7 +105,7 @@ class AggsTable(SetOpTable):
                     push_child = "."
                     num_push_columns = None
 
-                index_to_column[num_sql_columns] = Data(
+                index_to_column[num_sql_columns] = ColumnMapping(
                     is_edge=True,
                     push_name=query_edge.name,
                     push_column=edge_index,
@@ -301,7 +301,7 @@ class AggsTable(SetOpTable):
 
                 column_number = len(outer_selects)
                 outer_selects.append(sql)
-                index_to_column[column_number] = Data(
+                index_to_column[column_number] = ColumnMapping(
                     push_name=s.name,
                     push_column=si,
                     push_child=".",
@@ -320,7 +320,7 @@ class AggsTable(SetOpTable):
                         column_number = len(outer_selects)
                         count_sql = "COUNT(DISTINCT(" + sql + ")) AS " + _make_column_name(column_number)
                         outer_selects.append(count_sql)
-                        index_to_column[column_number] = Data(
+                        index_to_column[column_number] = ColumnMapping(
                             push_name=s.name,
                             push_column=si,
                             push_child=".",
@@ -342,7 +342,7 @@ class AggsTable(SetOpTable):
                         concat_sql = concat_sql[0] + " AS " + _make_column_name(column_number)
 
                     outer_selects.append(concat_sql)
-                    index_to_column[column_number] = Data(
+                    index_to_column[column_number] = ColumnMapping(
                         push_name=s.name,
                         push_column=si,
                         push_child=".",
@@ -358,7 +358,7 @@ class AggsTable(SetOpTable):
                         full_sql = code.replace("{{value}}", sql)
                         column_number = len(outer_selects)
                         outer_selects.append(full_sql + " AS " + _make_column_name(column_number))
-                        index_to_column[column_number] = Data(
+                        index_to_column[column_number] = ColumnMapping(
                             push_name=s.name,
                             push_column=si,
                             push_child=name,
@@ -374,7 +374,7 @@ class AggsTable(SetOpTable):
                         if s.default != None:
                             sql = "COALESCE(" + sql + ", " + quote_value(s.default) + ")"
                         outer_selects.append(sql + " AS " + _make_column_name(column_number))
-                        index_to_column[column_number] = Data(
+                        index_to_column[column_number] = ColumnMapping(
                             push_name=s.name,
                             push_column=si,
                             push_child=".",  # join_field(split_field(details.name)[1::]),
@@ -473,7 +473,7 @@ class AggsTable(SetOpTable):
             groupby.append(sql)
             selects.append(sql + " AS " + e.name)
 
-            index_to_column[column_number] = Data(
+            index_to_column[column_number] = ColumnMapping(
                 is_edge=True,
                 push_name=e.name,
                 push_column=column_number,
@@ -492,7 +492,7 @@ class AggsTable(SetOpTable):
             else:
                 selects.append(sql_aggs[s.aggregate] + "(" + sql + ") AS " + quote_table(s.name))
 
-            index_to_column[column_number] = Data(
+            index_to_column[column_number] = ColumnMapping(
                 push_name=s.name,
                 push_column=column_number,
                 push_child=".",

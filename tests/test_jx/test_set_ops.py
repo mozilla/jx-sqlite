@@ -673,7 +673,7 @@ class TestSetOps(BaseTestCase):
     def test_select_w_star(self):
         test = {
             "data": [
-                {"a": {"b": 0, "c": 0}},
+                {"a": {"b": 0, "c": 0}, "d": 7},
                 {"a": {"b": 0, "c": 1}},
                 {"a": {"b": 1, "c": 0}},
                 {"a": {"b": 1, "c": 1}},
@@ -681,6 +681,54 @@ class TestSetOps(BaseTestCase):
             "query": {
                 "from": TEST_TABLE,
                 "select": "*",
+                "sort": ["a.b", "a.c"]
+            },
+            "expecting_list": {
+                "meta": {"format": "list"}, "data": [
+                    {"a.b": 0, "a.c": 0, "d": 7},
+                    {"a.b": 0, "a.c": 1},
+                    {"a.b": 1, "a.c": 0},
+                    {"a.b": 1, "a.c": 1}
+                ]
+            },
+            "expecting_table": {
+                "meta": {"format": "table"},
+                "header": ["a.b", "a.c", "d"],
+                "data": [
+                    [0, 0, 7],
+                    [0, 1, NULL],
+                    [1, 0, NULL],
+                    [1, 1, NULL]
+                ]
+            },
+            "expecting_cube": {
+                "meta": {"format": "cube"},
+                "edges": [
+                    {
+                        "name": "rownum",
+                        "domain": {"type": "rownum", "min": 0, "max": 4, "interval": 1}
+                    }
+                ],
+                "data": {
+                    "a.b": [0, 0, 1, 1],
+                    "a.c": [0, 1, 0, 1],
+                    "d": [7, NULL, NULL, NULL]
+                }
+            }
+        }
+        self.utils.execute_es_tests(test)
+
+    def test_select_w_deep_star(self):
+        test = {
+            "data": [
+                {"a": {"b": 0, "c": 0}},
+                {"a": {"b": 0, "c": 1}},
+                {"a": {"b": 1, "c": 0}},
+                {"a": {"b": 1, "c": 1}},
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "select": "a.*",
                 "sort": ["a.b", "a.c"]
             },
             "expecting_list": {
@@ -709,8 +757,8 @@ class TestSetOps(BaseTestCase):
                     }
                 ],
                 "data": {
-                    "a\.b": [0, 0, 1, 1],
-                    "a\.c": [0, 1, 0, 1]
+                    "a.b": [0, 0, 1, 1],
+                    "a.c": [0, 1, 0, 1]
                 }
             }
         }
