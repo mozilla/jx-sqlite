@@ -211,15 +211,20 @@ def get_column(column):
     return _get
 
 
-def set_column(row, col, name, child, value, header):
+def set_column(row, col, child, value):
+    """
+    EXECUTE `row[col][child]=value` KNOWING THAT row[col] MIGHT BE None
+    :param row:
+    :param col:
+    :param child:
+    :param value:
+    :return:
+    """
     if child == ".":
         row[col] = value
     else:
         column = row[col]
 
-        if column is None and child in header[col]:
-            column = {}
-            row[col] = value        
         if column is None:
             column = row[col] = {}
         Data(column)[child] = value

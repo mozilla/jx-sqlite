@@ -324,7 +324,7 @@ class SetOpTable(InsertTable):
             header = [None]*num_column
             for c in cols:
                 # header[c.push_column] = c.push_name
-                
+
                 if len(c.push_name) == 0:
                     header[c.push_column] = "."
                 elif len(c.push_name) == 1:
@@ -340,7 +340,7 @@ class SetOpTable(InsertTable):
             for d in result.data:
                 row = [None] * num_column
                 for c in cols:
-                    set_column(row, c.push_column, c.push_name, c.push_child, c.pull(d),header)
+                    set_column(row, c.push_column, c.push_child, c.pull(d))
                 output_data.append(row)
             return Data(
                 meta={"format": "table"},
