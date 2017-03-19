@@ -197,9 +197,6 @@ def repr(obj):
     return _repr.repr(obj)
 
 
-
-
-
 class _FakeLock():
 
 
@@ -212,15 +209,33 @@ class _FakeLock():
 
 def DataClass(name, columns, constraint=True):
     """
-    Each column has {"name", "required", "nulls", "default", "type"} properties
+    Use the DataClass to define a class, but with some extra features:
+    1. restrict the datatype of property
+    2. restrict if `required`, or if `null` is allowed
+    3. generic constraints on object properties
+
+    It is expected that this class become a real class (or be removed) in the
+    long term because it is expensive to use and should only be good for
+    verifying program correctness, not user input.
+
+    :param name: Name of the class we are creating
+    :param columns: Each columns[i] has properties {
+            "name",     - (required) name of the property
+            "required", - False if not required (can be None, or missing)
+            "nulls",    - True if property can be None, or missing
+            "default",  - A default value, if none is provided
+            "type"      - a Python datatype
+        }
+    :param constraint: a JSON query Expression for extra constraints
+    :return: The class that has been created
     """
+
     columns = wrap([{"name": c, "required": True, "nulls": False, "type": object} if isinstance(c, basestring) else c for c in columns])
     slots = columns.name
     required = wrap(filter(lambda c: c.required and not c.nulls and not c.default, columns)).name
     nulls = wrap(filter(lambda c: c.nulls, columns)).name
     defaults = {c.name: coalesce(c.default, None) for c in columns}
     types = {c.name: coalesce(c.type, object) for c in columns}
-
 
     code = expand_template(
 """
