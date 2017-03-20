@@ -378,6 +378,49 @@ class TestgroupBy1(BaseTestCase):
         }
         self.utils.execute_es_tests(test)
 
+    def test_groupby_value(self):
+        test = {
+            "data": [
+                {"a": 1, "b": [1, 2, 3]},
+                {"a": 2, "b": [4, 5, 6]},
+                {"a": 3, "b": [2, 3, 4]},
+                {"a": 4},
+                {"a": 5, "b": [3, 4, 5]},
+                {"a": 6, "b": 6}
+            ],
+            "query": {
+                "from": TEST_TABLE + ".b",
+                "groupby": [{"name": "b", "value": "."}]
+            },
+            "expecting_list": {
+                "meta": {"format": "list"},
+                "data": [
+                    {"b": 1, "count": 1},
+                    {"b": 2, "count": 2},
+                    {"b": 3, "count": 3},
+                    {"b": 4, "count": 3},
+                    {"b": 5, "count": 2},
+                    {"b": 6, "count": 2},
+                    {"b": NULL, "count": 1}
+                ]
+            },
+            "expecting_table": {
+                "meta": {"format": "table"},
+                "header": ["b", "count"],
+                "data":[
+                    [1, 1],
+                    [2, 2],
+                    [3, 3],
+                    [4, 3],
+                    [5, 2],
+                    [6, 2],
+                    [NULL, 1]
+                ]
+            }
+        }
+
+
+
 # TODO: AGG SHALLOW FIELD WITH DEEP GROUPBY
 # {
 #     "from": "coverage.source.file.covered",
