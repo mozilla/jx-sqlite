@@ -4,7 +4,7 @@ from copy import copy
 from mo_dots import relative_field, listwrap, split_field, join_field, wrap, startswith_field, concat_field, Null, coalesce
 from mo_logs import Log
 
-from jx_sqlite import quote_table, typed_column, GUID, quoted_UID, sql_types, quoted_PARENT, ORDER
+from jx_sqlite import quote_table, typed_column, GUID, quoted_UID, sql_types, quoted_PARENT, ORDER, quoted_ORDER
 from jx_sqlite import untyped_column
 from pyLibrary.queries.meta import Column
 from pyLibrary.sql.sqlite import quote_column
@@ -130,17 +130,15 @@ class Snowflake(object):
         self.add_column_to_schema(column)
 
     def _nest_column(self, column, new_path):
-        destination_table = join_field([self.fact] + split_field(new_path))
+        destination_table = concat_field(self.fact, new_path)
         existing_table = concat_field(self.fact, column.nested_path[0])
 
         # FIND THE INNER COLUMNS WE WILL BE MOVING
-        new_columns = {}
-        for cname, cols in self.tables["."].schema.items():
-            if startswith_field(cname, column.names["."]):
-                new_columns[cname] = set()
-                for col in cols:
-                    new_columns[cname].add(col)
-                    col.nested_path = [new_path] + col.nested_path
+        moving_columns = []
+        for c in self.columns:
+            if startswith_field(c.names["."], destination_table):
+                moving_columns.append(c)
+                c.nested_path = [destination_table]
 
         # TODO: IF THERE ARE CHILD TABLES, WE MUST UPDATE THEIR RELATIONS TOO?
 
@@ -150,43 +148,47 @@ class Snowflake(object):
         details = self.db.query(command)
         if details.data:
             raise Log.error("not expected, new nesting!")
-        self.tables[new_path] = sub_table = Table([new_path])
-        self.
 
-        self.db.execute(
-            "ALTER TABLE " + quote_table(sub_table.name) + " ADD COLUMN " + quoted_PARENT + " INTEGER"
+        command = (
+            "CREATE TABLE " + quote_table(destination_table) + "(" +
+            (",".join(
+                [quoted_UID + " INTEGER", quoted_PARENT + " INTEGER", quoted_ORDER+" INTEGER"]
+            )) +
+            ", PRIMARY KEY (" + quoted_UID + ")" +
+            ", FOREIGN KEY (" + quoted_PARENT + ") REFERENCES " + quote_table(existing_table) + "(" + quoted_UID + ")"
+            ")"
         )
-        self.db.execute(
-            "ALTER TABLE " + quote_table(sub_table.name) + " ADD COLUMN " + quote_table(ORDER) + " INTEGER"
-        )
-        for cname, cols in new_columns.items():
-            for c in cols:
-                sub_table.add_column(c)
+        self.db.execute(command)
+        self.add_table_to_schema([new_path])
 
         # TEST IF THERE IS ANY DATA IN THE NEW NESTED ARRAY
-        all_cols = [c for _, cols in sub_table.columns.items() for c in cols]
-        if not all_cols:
-            has_nested_data = "0"
-        elif len(all_cols) == 1:
-            has_nested_data = quote_column(all_cols[0]) + " is NOT NULL"
+        if not moving_columns:
+            return
+
+        if len(moving_columns) == 1:
+            has_nested_data = quote_column(moving_columns[0]) + " IS NOT NULL"
         else:
-            has_nested_data = "COALESCE(" + \
-                              ",".join(quote_column(c) for c in all_cols) + \
-                              ") IS NOT NULL"
+            has_nested_data = (
+                "COALESCE(" +
+                ",".join(quote_column(c) for c in moving_columns) +
+                ") IS NOT NULL"
+            )
 
         # FILL TABLE WITH EXISTING COLUMN DATA
-        command = "INSERT INTO " + quote_table(destination_table) + "(\n" + \
-                  ",\n".join(
-                      [quoted_UID, quoted_PARENT, quote_table(ORDER)] +
-                      [quote_column(c) for _, cols in sub_table.columns.items() for c in cols]
-                  ) + \
-                  "\n)\n" + \
-                  "\nSELECT\n" + ",".join(
-            [quoted_UID, quoted_UID, "0"] +
-            [quote_column(c) for _, cols in sub_table.columns.items() for c in cols]
-        ) + \
-                  "\nFROM\n" + quote_table(existing_table) + \
-                  "\nWHERE\n" + has_nested_data
+        command = (
+            "INSERT INTO " + quote_table(destination_table) + "(\n" +
+            ",\n".join(
+                [quoted_UID, quoted_PARENT, quote_table(ORDER)] +
+                [quote_column(c) for c in moving_columns]
+            ) +
+            "\n)\n" +
+            "\nSELECT " + ",".join(
+                [quoted_UID, quoted_UID, "0"] +
+                [quote_column(c) for c in moving_columns]
+            ) +
+            "\nFROM " + quote_table(existing_table) +
+            "\nWHERE " + has_nested_data
+        )
         self.db.execute(command)
 
     def add_table_to_schema(self, nested_path):
@@ -197,6 +199,7 @@ class Snowflake(object):
         for c in self.columns:
             rel_name = c.names[path] = relative_field(c.names["."], path)
             table.schema.add(rel_name, c)
+        return table
 
     def add_column_to_schema(self, column):
         self.columns.append(column)
