@@ -15,8 +15,9 @@ import itertools
 from collections import Mapping
 from decimal import Decimal
 
-from mo_dots import coalesce, wrap, set_default, literal_field, Null, split_field, startswith_field, Data, join_field, unwraplist, ROOT_PATH, relative_field, unwrap
-from mo_json import quote, json2value
+from mo_dots import coalesce, wrap, set_default, literal_field, Null, split_field, startswith_field
+from mo_dots import Data, join_field, unwraplist, ROOT_PATH, relative_field, unwrap
+from mo_json import json2value
 from mo_logs import Log
 from mo_logs.exceptions import suppress_exception
 from mo_math import Math, OR, MAX

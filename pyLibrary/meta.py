@@ -63,7 +63,7 @@ def new_instance(settings):
 
     settings['class'] = None
     try:
-        return constructor(settings=settings)  # MAYBE IT TAKES A SETTINGS OBJECT
+        return constructor(kwargs=settings)  # MAYBE IT TAKES A KWARGS OBJECT
     except Exception as e:
         pass
 
