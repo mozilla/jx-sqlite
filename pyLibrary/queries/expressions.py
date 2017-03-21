@@ -21,10 +21,12 @@ from mo_logs import Log
 from mo_logs.exceptions import suppress_exception
 from mo_math import Math, OR, MAX
 from mo_times.dates import Date
+
 from pyLibrary import convert
 from pyLibrary.queries.containers import STRUCT, OBJECT
 from pyLibrary.queries.domains import is_keyword
 from pyLibrary.queries.expression_compiler import compile_expression
+from pyLibrary.sql.sqlite import quote_column
 
 ALLOW_SCRIPTING = False
 TRUE_FILTER = True
@@ -266,7 +268,7 @@ class Variable(Expression):
         return agg+".get("+convert.value2quote(path[-1])+")"
 
     def to_sql(self, schema, not_null=False, boolean=False):
-        cols = [c for c in schema.columns if startswith_field(schema.get_column_name(c), self.var)]
+        cols = [c for cname, cs in schema.items() if startswith_field(cname, self.var) for c in cs]
         if not cols:
             # DOES NOT EXIST
             return wrap([{"name": ".", "sql": {"0": "NULL"}, "nested_path": ROOT_PATH}])
@@ -277,10 +279,10 @@ class Variable(Expression):
                 for cn, cs in schema.columns.items():
                     if cn.startswith(prefix):
                         for child_col in cs:
-                            acc[literal_field(child_col.nested_path[0])][literal_field(schema.get_column_name(child_col))][json_type_to_sql_type[child_col.type]] = schema.quote_column(child_col.es_column).sql
+                            acc[literal_field(child_col.nested_path[0])][literal_field(schema.get_column_name(child_col))][json_type_to_sql_type[child_col.type]] = quote_column(child_col.es_column).sql
             else:
                 nested_path = col.nested_path[0]
-                acc[literal_field(nested_path)][literal_field(schema.get_column_name(col))][json_type_to_sql_type[col.type]] = schema.quote_column(col.es_column).sql
+                acc[literal_field(nested_path)][literal_field(schema.get_column_name(col))][json_type_to_sql_type[col.type]] = quote_column(col.es_column).sql
 
         return wrap([
             {"name": relative_field(cname, self.var), "sql": types, "nested_path": nested_path}

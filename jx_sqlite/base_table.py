@@ -13,25 +13,20 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
-from collections import OrderedDict
-
-from mo_dots import listwrap, join_field
 from mo_kwargs import override
 
-from jx_sqlite import GUID, typed_column, quote_table, quoted_UID, _quote_column, sql_types, untyped_column
+from jx_sqlite import GUID
 from jx_sqlite.snowflake import Snowflake
-from pyLibrary.queries import jx, Index
+from pyLibrary.queries import jx
 from pyLibrary.queries.containers import Container
-from pyLibrary.queries.meta import Column
 from pyLibrary.sql.sqlite import Sqlite
-
 
 _config=None
 
 
 class BaseTable(Container):
     @override
-    def __init__(self, name, db=None, uid=GUID, exists=False, kwargs=None):
+    def __init__(self, name, db=None, uid=GUID, kwargs=None):
         """
         :param name: NAME FOR THIS TABLE
         :param db: THE DB TO USE
@@ -54,22 +49,12 @@ class BaseTable(Container):
                     "settings": {"db": db}
                 }
 
-        self.sf = Snowflake(db)
-        self.sf.read_db()
+        self.sf = Snowflake(fact=name, uid=uid, db=db)
 
-
-        self.name = name
-        self.uid = listwrap(uid)
         self._next_uid = 1
         self._make_digits_table()
+        self.uid_accessor = jx.get(self.sf.uid)
 
-        self.uid_accessor = jx.get(self.uid)
-        self.nested_tables = OrderedDict()  # MAP FROM NESTED PATH TO Table OBJECT, PARENTS PROCEED CHILDREN
-        self.nested_tables["."] = self
-        self.columns = Index(keys=[join_field(["names", self.name])])  # MAP FROM DOCUMENT ABS PROPERTY NAME TO THE SET OF SQL COLUMNS IT REPRESENTS (ONE FOR EACH REALIZED DATATYPE)
-
-        if not exists:
-            self.sf.create_table(self.name, self.uid)
 
     def _make_digits_table(self):
         existence = self.db.query("PRAGMA table_info(__digits__)")

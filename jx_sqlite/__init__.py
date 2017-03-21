@@ -23,6 +23,7 @@ from mo_math.randoms import Random
 from mo_times import Date, Duration
 
 from pyLibrary.meta import DataClass
+from pyLibrary.sql.sqlite import quote_table
 
 UID = "__id__"  # will not be quoted
 GUID = "__guid__"
@@ -32,37 +33,6 @@ COLUMN = "__column"
 
 ALL_TYPES = "bns"
 
-
-_no_need_to_quote = re.compile(r"^\w+$", re.UNICODE)
-
-
-def quote_table(column):
-    if _no_need_to_quote.match(column):
-        return column
-    return quote(column)
-
-
-def _quote_column(column):
-    return quote(column.es_column)
-
-
-def quote_value(value):
-    if isinstance(value, (Mapping, list)):
-        return "."
-    elif isinstance(value, Date):
-        return unicode(value.unix)
-    elif isinstance(value, Duration):
-        return unicode(value.seconds)
-    elif isinstance(value, basestring):
-        return "'" + value.replace("'", "''") + "'"
-    elif value == None:
-        return "NULL"
-    elif value is True:
-        return "1"
-    elif value is False:
-        return "0"
-    else:
-        return unicode(value)
 
 
 def unique_name():
@@ -141,11 +111,15 @@ def typed_column(name, type_):
 
 
 def untyped_column(column_name):
+    """
+    :param column_name:  DATABASE COLUMN NAME
+    :return: (NAME, TYPE) PAIR
+    """
     if "$" in column_name:
-        return join_field(split_field(column_name)[:-1])
+        path = split_field(column_name)
+        return join_field(path[:-1]), path[-1][1:]
     else:
-        return column_name
-        # return column_name.split(".$")[0]
+        return column_name, None
 
 
 def _make_column_name(number):

@@ -13,28 +13,31 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
-from mo_dots import listwrap, coalesce, Data, split_field, join_field, startswith_field
+from mo_dots import listwrap, coalesce, split_field, join_field, startswith_field, relative_field
 from mo_logs import Log
 from mo_math import Math
 
-from jx_sqlite import GUID, quote_table, get_column, quote_value, _make_column_name, sql_text_array_to_set, STATS, sql_aggs, PARENT, ColumnMapping
+from jx_sqlite import GUID, quote_table, get_column, _make_column_name, sql_text_array_to_set, STATS, sql_aggs, PARENT, ColumnMapping
 from jx_sqlite.setop_table import SetOpTable
 from pyLibrary.queries import jx
 from pyLibrary.queries.domains import DefaultDomain, TimeDomain, DurationDomain
 from pyLibrary.queries.expressions import Variable, sql_type_to_json_type, TupleOp
+from pyLibrary.sql.sqlite import quote_value
 
 
 class AggsTable(SetOpTable):
     def _edges_op(self, query, frum):
         index_to_column = {}  # MAP FROM INDEX TO COLUMN (OR SELECT CLAUSE)
         outer_selects = []  # EVERY SELECT CLAUSE (NOT TO BE USED ON ALL TABLES, OF COURSE)
-        tables = []
-        base_table = split_field(frum)[0]
-        path = join_field(split_field(frum)[1:])
-        nest_to_alias = {nested_path: "__" + unichr(ord('a') + i) + "__" for i, (nested_path, sub_table) in
-                         enumerate(self.nested_tables.items())}
+        frum_path = split_field(frum)
+        base_table = join_field(frum_path[0:1])
+        path = join_field(frum_path[1:])
+        nest_to_alias = {
+            nested_path: "__" + unichr(ord('a') + i) + "__"
+            for i, (nested_path, sub_table) in enumerate(self.sf.tables.items())
+        }
 
-        columns = self._get_sql_schema(frum)
+        schema = self.sf.tables[relative_field(frum, self.sf.fact)].schema
 
         tables = []
         for n, a in nest_to_alias.items():
@@ -65,17 +68,17 @@ class AggsTable(SetOpTable):
             edge_alias = "e" + unicode(edge_index)
 
             if query_edge.value:
-                edge_values = [p for c in query_edge.value.to_sql(self).sql for p in c.items()]
+                edge_values = [p for c in query_edge.value.to_sql(schema).sql for p in c.items()]
             elif not query_edge.value and any(query_edge.domain.partitions.where):
                 case = "CASE "
                 for pp, p in enumerate(query_edge.domain.partitions):
-                    w = p.where.to_sql(self)[0].sql.b
+                    w = p.where.to_sql(schema)[0].sql.b
                     t = quote_value(pp)
                     case += " WHEN " + w + " THEN " + t
                 case += " ELSE NULL END "
                 edge_values = [("n", case)]
             elif query_edge.range:
-                edge_values = query_edge.range.min.to_sql(self)[0].sql.items() + query_edge.range.max.to_sql(self)[
+                edge_values = query_edge.range.min.to_sql(schema)[0].sql.items() + query_edge.range.max.to_sql(schema)[
                     0].sql.items()
             else:
                 Log.error("Do not know how to handle")
@@ -190,7 +193,7 @@ class AggsTable(SetOpTable):
                 query_edge.allowNulls = False
                 domain = (
                     "\nSELECT " + ",\n".join(g + " AS " + n for n, g in zip(domain_names, vals)) +
-                    "\nFROM\n" + quote_table(self.name) + " " + nest_to_alias["."] +
+                    "\nFROM\n" + quote_table(self.sf.fact) + " " + nest_to_alias["."] +
                     "\nGROUP BY\n" + ",\n".join(vals)
                 )
                 limit = Math.min(query.limit, query_edge.domain.limit)
@@ -211,7 +214,7 @@ class AggsTable(SetOpTable):
                     "\nSELECT " + ",".join(domain_names) + " FROM ("
                                                            "\nSELECT " + ",\n".join(
                         g + " AS " + n for n, g in zip(domain_names, vals)) +
-                    "\nFROM\n" + quote_table(self.name) + " " + nest_to_alias["."] +
+                    "\nFROM\n" + quote_table(self.sf.fact) + " " + nest_to_alias["."] +
                     "\nWHERE\n" + " AND ".join(g + " IS NOT NULL" for g in vals) +
                     "\nGROUP BY\n" + ",\n".join(g for g in vals)
                 )
@@ -315,7 +318,7 @@ class AggsTable(SetOpTable):
 
                 Log.error("not implemented")
             elif s.aggregate == "cardinality":
-                for details in s.value.to_sql(self):
+                for details in s.value.to_sql(schema):
                     for json_type, sql in details.sql.items():
                         column_number = len(outer_selects)
                         count_sql = "COUNT(DISTINCT(" + sql + ")) AS " + _make_column_name(column_number)
@@ -329,7 +332,7 @@ class AggsTable(SetOpTable):
                             type=sql_type_to_json_type[json_type]
                         )
             elif s.aggregate == "union":
-                for details in s.value.to_sql(self):
+                for details in s.value.to_sql(schema):
                     concat_sql = []
                     column_number = len(outer_selects)
 
@@ -352,7 +355,7 @@ class AggsTable(SetOpTable):
                     )
 
             elif s.aggregate == "stats":  # THE STATS OBJECT
-                for details in s.value.to_sql(self):
+                for details in s.value.to_sql(schema):
                     sql = details.sql["n"]
                     for name, code in STATS.items():
                         full_sql = code.replace("{{value}}", sql)
@@ -367,7 +370,7 @@ class AggsTable(SetOpTable):
                             type="number"
                         )
             else:  # STANDARD AGGREGATES
-                for details in s.value.to_sql(self):
+                for details in s.value.to_sql(schema):
                     for sql_type, sql in details.sql.items():
                         column_number = len(outer_selects)
                         sql = sql_aggs[s.aggregate] + "(" + sql + ")"
@@ -386,7 +389,7 @@ class AggsTable(SetOpTable):
         for w in query.window:
             outer_selects.append(self._window_op(self, query, w))
 
-        main_filter = query.where.to_sql(self)[0].sql.b
+        main_filter = query.where.to_sql(schema)[0].sql.b
 
         all_parts = []
 
@@ -460,16 +463,18 @@ class AggsTable(SetOpTable):
         return domain
 
     def _groupby_op(self, query, frum):
-        columns = self._get_sql_schema(frum)
+        schema = self.sf.tables[join_field(split_field(frum)[1:])].schema
         index_to_column = {}
-        nest_to_alias = {nested_path: "__" + unichr(ord('a') + i) + "__" for i, (nested_path, sub_table) in
-                         enumerate(self.nested_tables.items())}
+        nest_to_alias = {
+            nested_path: "__" + unichr(ord('a') + i) + "__"
+            for i, (nested_path, sub_table) in enumerate(self.sf.tables.items())
+            }
 
         selects = []
         groupby = []
         for i, e in enumerate(query.groupby):
             column_number = len(selects)
-            sql_type, sql = e.value.to_sql(self)[0].sql.items()[0]
+            sql_type, sql = e.value.to_sql(schema)[0].sql.items()[0]
             groupby.append(sql)
             selects.append(sql + " AS " + e.name)
 
@@ -485,7 +490,7 @@ class AggsTable(SetOpTable):
 
         for s in listwrap(query.select):
             column_number = len(selects)
-            sql_type, sql = s.value.to_sql(self)[0].sql.items()[0]
+            sql_type, sql = s.value.to_sql(schema)[0].sql.items()[0]
 
             if s.value == "." and s.aggregate == "count":
                 selects.append("COUNT(1) AS " + quote_table(s.name))
@@ -504,10 +509,10 @@ class AggsTable(SetOpTable):
         for w in query.window:
             selects.append(self._window_op(self, query, w))
 
-        where = query.where.to_sql(self)[0].sql.b
+        where = query.where.to_sql(schema)[0].sql.b
 
         command = "SELECT\n" + (",\n".join(selects)) + \
-                  "\nFROM\n" + quote_table(self.name) + " " + nest_to_alias["."] + \
+                  "\nFROM\n" + quote_table(self.sf.fact) + " " + nest_to_alias["."] + \
                   "\nWHERE\n" + where + \
                   "\nGROUP BY\n" + ",\n".join(groupby)
 

@@ -22,10 +22,12 @@ from mo_dots import Data, coalesce
 from mo_files import File
 from mo_logs import Log
 from mo_logs.exceptions import Except, extract_stack, ERROR
+from mo_logs.strings import quote
 from mo_math.stats import percentile
 from mo_threads import Queue, Signal, Thread
-from mo_times import Date
+from mo_times import Date, Duration
 from mo_times.timer import Timer
+
 from pyLibrary import convert
 from pyLibrary.sql import DB, SQL
 
@@ -200,23 +202,46 @@ class Sqlite(DB):
             self.db.close()
 
     def quote_column(self, column_name, table=None):
-        if table != None:
-            return SQL(convert.value2quote(table) + "." + convert.value2quote(column_name))
-        else:
-            return SQL(convert.value2quote(column_name))
+        return quote_column(column_name, table)
 
     def quote_value(self, value):
-        if isinstance(value, (Mapping, list)):
-            return "."
-        elif isinstance(value, basestring):
-            return "'" + value.replace("'", "''") + "'"
-        elif isinstance(value, Date):
-            return unicode(value.unix)
-        elif value == None:
-            return "NULL"
-        elif value is True:
-            return "1"
-        elif value is False:
-            return "0"
-        else:
-            return unicode(value)
+        return quote_value(value)
+
+
+_no_need_to_quote = re.compile(r"^\w+$", re.UNICODE)
+
+
+def quote_column(column_name, table=None):
+    if not isinstance(column_name, unicode):
+        Log.error("expecting a name")
+    if table != None:
+        return SQL(quote(table) + "." + quote(column_name))
+    else:
+        if _no_need_to_quote.match(column_name):
+            return SQL(column_name)
+        return SQL(quote(column_name))
+
+
+def quote_table(column):
+    if _no_need_to_quote.match(column):
+        return column
+    return quote(column)
+
+
+def quote_value(value):
+    if isinstance(value, (Mapping, list)):
+        return "."
+    elif isinstance(value, Date):
+        return unicode(value.unix)
+    elif isinstance(value, Duration):
+        return unicode(value.seconds)
+    elif isinstance(value, basestring):
+        return "'" + value.replace("'", "''") + "'"
+    elif value == None:
+        return "NULL"
+    elif value is True:
+        return "1"
+    elif value is False:
+        return "0"
+    else:
+        return unicode(value)
