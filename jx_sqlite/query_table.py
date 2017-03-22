@@ -115,7 +115,8 @@ class QueryTable(AggsTable):
         if not startswith_field(query['from'], self.sf.fact):
             Log.error("Expecting table, or some nested table")
         frum, query['from'] = query['from'], self
-        query = QueryOp.wrap(query, self.sf.tables["."].schema)
+        schema = self.sf.tables["."].schema
+        query = QueryOp.wrap(query, schema)
 
         # TYPE CONFLICTS MUST NOW BE RESOLVED DURING
         # TYPE-SPECIFIC QUERY NORMALIZATION
