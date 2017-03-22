@@ -39,35 +39,6 @@ class QueryTable(AggsTable):
         counter = self.db.query("SELECT COUNT(*) FROM " + quote_table(self.sf.fact))[0][0]
         return bool(counter)
 
-    # THESE BELONG TO A SCHEMA
-    # def __getattr__(self, item):
-    #     return self.__getitem__(item)
-    #
-    # def __getitem__(self, item):
-    #     cs = self.columns.get(item, None)
-    #     if not cs:
-    #         return [Null]
-    #
-    #     command = " UNION ALL ".join(
-    #         "SELECT " + quote_column(c) + " FROM " + quote_table(c.es_index)
-    #         for c in cs
-    #     )
-    #
-    #     output = self.db.query(command)
-    #     return [o[0] for o in output]
-    #
-    # def __iter__(self):
-    #     columns = [c for c, cs in self.columns.items() for c in cs if c.type not in STRUCT]
-    #     command = "SELECT " + \
-    #               ",\n".join(quote_column(c) for c in columns) + \
-    #               " FROM " + quote_table(self.sf.fact)
-    #     rows = self.db.query(command)
-    #     for r in rows:
-    #         output = Data()
-    #         for (k, t), v in zip(columns, r):
-    #             output[k] = v
-    #         yield output
-
     def delete(self, where):
         filter = where.to_sql()
         self.db.execute("DELETE FROM " + quote_table(self.sf.fact) + " WHERE " + filter)

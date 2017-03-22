@@ -15,13 +15,17 @@ class Snowflake(object):
     MANAGE SQLITE DATABASE
     """
     def __init__(self, fact, uid, db):
-        self.fact = fact
+        self.fact = fact  # THE CENTRAL FACT TABLE
         self.uid = uid
         self.db = db
         self.columns = []  # EVERY COLUMN IS ACCESSIBLE BY EVERY TABLE IN THE SNOWFLAKE
         self.tables = OrderedDict()  # MAP FROM NESTED PATH TO Table OBJECT, PARENTS PROCEED CHILDREN
         if not self.read_db():
             self.create_fact(uid)
+
+    def __del__(self):
+        for nested_path, table in self.tables.items():
+            self.db.execute("DROP TABLE " + quote_table(concat_field(self.sf.fact, nested_path)))
 
     def read_db(self):
         """
@@ -218,6 +222,9 @@ class Table(object):
 
     @property
     def name(self):
+        """
+        :return: THE TABLE NAME RELATIVE TO THE FACT TABLE
+        """
         return self.nested_path[0]
 
 

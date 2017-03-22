@@ -24,7 +24,7 @@ from mo_logs import Log
 from mo_logs.exceptions import Except, extract_stack, ERROR
 from mo_logs.strings import quote
 from mo_math.stats import percentile
-from mo_threads import Queue, Signal, Thread
+from mo_threads import Queue, Signal, Thread, Till
 from mo_times import Date, Duration
 from mo_times.timer import Timer
 
@@ -122,7 +122,8 @@ class Sqlite(DB):
         signal = Signal()
         result = Data()
         self.queue.add((command, result, signal, None))
-        signal.wait()
+        (Till(seconds=60) | signal).wait()
+        # signal.wait()
         if result.exception:
             Log.error("Problem with Sqlite call", cause=result.exception)
         return result

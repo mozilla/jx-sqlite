@@ -20,14 +20,14 @@ from mo_dots import listwrap, Data, wrap, Null, unwraplist, startswith_field, un
 from mo_logs import Log
 
 from jx_sqlite import typed_column, quote_table, get_type, ORDER, UID, PARENT, get_if_type
-from jx_sqlite.alter_table import AlterTable
+from jx_sqlite.base_table import BaseTable
 from pyLibrary.queries.containers import STRUCT
 from pyLibrary.queries.expressions import jx_expression
 from pyLibrary.queries.meta import Column
 from pyLibrary.sql.sqlite import quote_value
 
 
-class InsertTable(AlterTable):
+class InsertTable(BaseTable):
 
     def add(self, doc):
         self.insert([doc])
