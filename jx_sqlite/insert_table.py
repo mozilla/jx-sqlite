@@ -235,122 +235,67 @@ class InsertTable(AlterTable):
                 row = {UID: uid, PARENT: parent_id, ORDER: order}
                 insertion.rows.append(row)
 
-            if isinstance(data, Mapping):
-                for k, v in data.items():
-                    cname = concat_field(full_path, k)
-                    value_type = get_type(v)
-                    if value_type is None:
-                        continue
-
-                    if value_type in STRUCT:
-                        c = unwraplist(
-                            [cc for cc in abs_schema[cname] if cc.type in STRUCT]
-                        )
-                    else:
-                        c = unwraplist(
-                            [cc for cc in abs_schema[cname] if cc.type == value_type]
-                        )
-
-                    if not c:
-                        # WHAT IS THE NESTING LEVEL FOR THIS PATH?
-                        deeper_nested_path = "."
-                        for path, _ in nested_tables.items():
-                            if startswith_field(cname, path) and len(deeper_nested_path) < len(path):
-                                deeper_nested_path = path
-                        if deeper_nested_path != nested_path[0]:
-                            # I HIGHLY SUSPECT, THROUGH CALLING _flatten() AGAIN THE REST OF THIS BLOCK IS NOT NEEDED
-                            nested_column = unwraplist(
-                                [cc for cc in abs_schema.get(deeper_nested_path, Null) if cc.type in STRUCT]
-                            )
-                            insertion.active_columns.add(nested_column)
-                            row[nested_column.es_column] = "."
-
-                            nested_path = [deeper_nested_path] + nested_path
-                            insertion = doc_collection.get(nested_path[0], None)
-                            if not insertion:
-                                insertion = doc_collection[nested_path[0]] = Data(
-                                    active_columns=set(),
-                                    rows=[]
-                                )
-                            uid, parent_id, order = self.next_uid(), uid, 0
-                            row = {UID: uid, PARENT: parent_id, ORDER: order}
-                            insertion.rows.append(row)
-
-                        c = Column(
-                            names={".": cname},
-                            type=value_type,
-                            es_column=typed_column(cname, value_type),
-                            es_index=self.sf.fact,  # THIS MAY BE THE WRONG TABLE, IF THIS PATH IS A NESTED DOC
-                            nested_path=nested_path
-                        )
-                        abs_schema.add(cname, c)
-                        if value_type == "nested":
-                            nested_tables[cname] = "fake table"
-
-                        required_changes.append({"add": c})
-
-                        # INSIDE IF BLOCK BECAUSE WE DO NOT WANT IT TO ADD WHAT WE columns.get() ALREADY
-                        insertion.active_columns.add(c)
-
-                    # BE SURE TO NEST VALUES, IF NEEDED
-                    if value_type == "nested":
-                        row[c.es_column] = "."
-                        deeper_nested_path = [cname] + nested_path
-                        insertion = doc_collection.get(cname, None)
-                        if not insertion:
-                            insertion = doc_collection[cname] = Data(
-                                active_columns=set(),
-                                rows=[]
-                            )
-                        for i, r in enumerate(v):
-                            child_uid = self.next_uid()
-                            _flatten(r, child_uid, uid, i, cname, deeper_nested_path)
-                    elif value_type == "object":
-                        row[c.es_column] = "."
-                        _flatten(v, uid, parent_id, order, cname, nested_path, row=row)
-                    elif c.type:
-                        row[c.es_column] = v
-            else:
-                k = "."
-                v = data
+            if not isinstance(data, Mapping):
+                data = {".": data}
+            for k, v in data.items():
                 cname = concat_field(full_path, k)
                 value_type = get_type(v)
                 if value_type is None:
-                    return
+                    continue
 
                 if value_type in STRUCT:
-                    c = unwraplist([c for c in self.columns if c.type in STRUCT])
+                    c = unwraplist([cc for cc in abs_schema[cname] if cc.type in STRUCT])
                 else:
-                    try:
-                        c = unwraplist([c for c in self.columns if c.type == value_type])
-                    except Exception, e:
-                        Log.error("not expected", cause=e)
+                    c = unwraplist([cc for cc in abs_schema[cname] if cc.type == value_type])
 
                 if not c:
+                    # WHAT IS THE NESTING LEVEL FOR THIS PATH?
+                    deeper_nested_path = "."
+                    for path, _ in nested_tables.items():
+                        if startswith_field(cname, path) and len(deeper_nested_path) < len(path):
+                            deeper_nested_path = path
+                    if deeper_nested_path != nested_path[0]:
+                        # I HIGHLY SUSPECT, THROUGH CALLING _flatten() AGAIN THE REST OF THIS BLOCK IS NOT NEEDED
+                        nested_column = unwraplist(
+                            [cc for cc in abs_schema.get(deeper_nested_path, Null) if cc.type in STRUCT]
+                        )
+                        insertion.active_columns.add(nested_column)
+                        row[nested_column.es_column] = "."
+
+                        nested_path = [deeper_nested_path] + nested_path
+                        insertion = doc_collection.get(nested_path[0], None)
+                        if not insertion:
+                            insertion = doc_collection[nested_path[0]] = Data(
+                                active_columns=set(),
+                                rows=[]
+                            )
+                        uid, parent_id, order = self.next_uid(), uid, 0
+                        row = {UID: uid, PARENT: parent_id, ORDER: order}
+                        insertion.rows.append(row)
+
                     c = Column(
                         names={".": cname},
                         type=value_type,
                         es_column=typed_column(cname, value_type),
-                        es_index=self.sf.fact,
+                        es_index=self.sf.fact,  # THIS MAY BE THE WRONG TABLE, IF THIS PATH IS A NESTED DOC
                         nested_path=nested_path
                     )
-                    self.add_column_to_schema(abs_schema, c)
+                    abs_schema.add(cname, c)
                     if value_type == "nested":
                         nested_tables[cname] = "fake table"
+
                     required_changes.append({"add": c})
 
-                insertion.active_columns.add(c)
+                    # INSIDE IF BLOCK BECAUSE WE DO NOT WANT IT TO ADD WHAT WE columns.get() ALREADY
+                    insertion.active_columns.add(c)
 
+                # BE SURE TO NEST VALUES, IF NEEDED
                 if value_type == "nested":
-                    if c.type == "object":
-                        # WE CAN FIX THIS,
-                        Log.error("fix this")
-
                     row[c.es_column] = "."
                     deeper_nested_path = [cname] + nested_path
                     insertion = doc_collection.get(cname, None)
                     if not insertion:
-                        doc_collection[cname] = Data(
+                        insertion = doc_collection[cname] = Data(
                             active_columns=set(),
                             rows=[]
                         )
@@ -358,15 +303,8 @@ class InsertTable(AlterTable):
                         child_uid = self.next_uid()
                         _flatten(r, child_uid, uid, i, cname, deeper_nested_path)
                 elif value_type == "object":
-                    if c.type == "nested":
-                        # MOVE TO SINGLE-VALUED LIST
-                        child_uid = self.next_uid()
-                        row[c.es_column] = "."
-                        deeper_nested_path = [cname] + nested_path
-                        _flatten(v, child_uid, uid, 0, cname, deeper_nested_path)
-                    else:
-                        row[c.es_column] = "."
-                        _flatten(v, uid, parent_id, order, nested_path, row=row)
+                    row[c.es_column] = "."
+                    _flatten(v, uid, parent_id, order, cname, nested_path, row=row)
                 elif c.type:
                     row[c.es_column] = v
 
