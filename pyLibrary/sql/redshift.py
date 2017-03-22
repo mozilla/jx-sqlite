@@ -71,7 +71,7 @@ class Redshift(object):
                         output = curs.fetchall()
                 self.connection.commit()
                 done = True
-            except Exception, e:
+            except Exception as e:
                 with suppress_exception:
                     self.connection.rollback()
                     # TODO: FIGURE OUT WHY rollback() DOES NOT HELP
@@ -93,7 +93,7 @@ class Redshift(object):
                       ")"
 
             self.execute(command)
-        except Exception, e:
+        except Exception as e:
             Log.error("problem with record: {{record}}",  record= record, cause=e)
 
 
@@ -120,7 +120,7 @@ class Redshift(object):
                     for r in records
                 ])
             self.execute(command)
-        except Exception, e:
+        except Exception as e:
             Log.error("problem with insert", e)
 
 

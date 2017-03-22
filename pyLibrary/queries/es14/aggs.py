@@ -102,7 +102,7 @@ def get_decoders_by_depth(query):
             max_depth = MAX(depths)
             while len(output) <= max_depth:
                 output.append([])
-        except Exception, edge:
+        except Exception as edge:
             # USUALLY THE SCHEMA IS EMPTY, SO WE ASSUME THIS IS A SIMPLE QUERY
             max_depth = 0
             output.append([])
@@ -349,7 +349,7 @@ def es_aggsop(es, frum, query):
         output.meta.content_type = mime_type
         output.meta.es_query = es_query
         return output
-    except Exception, e:
+    except Exception as e:
         if query.format not in format_dispatch:
             Log.error("Format {{format|quote}} not supported yet", format=query.format, cause=e)
         Log.error("Some problem", e)

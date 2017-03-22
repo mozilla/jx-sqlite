@@ -108,7 +108,7 @@ class Index(Features):
                 if len(candidate_types) != 1:
                     Log.error("Expecting `type` parameter")
                 self.settings.type = type = candidate_types[0]
-        except Exception, e:
+        except Exception as e:
             # EXPLORING (get_metadata()) IS NOT ALLOWED ON THE PUBLIC CLUSTER
             Log.error("not expected", cause=e)
 
@@ -220,7 +220,7 @@ class Index(Features):
     def flush(self):
         try:
             self.cluster.post("/" + self.settings.index + "/_flush", data={"wait_if_ongoing": True, "forced": False})
-        except Exception, e:
+        except Exception as e:
             if "FlushNotAllowedEngineException" in e:
                 Log.note("Flush is ignored")
             else:
@@ -302,7 +302,7 @@ class Index(Features):
             with Timer("Add {{num}} documents to {{index}}", {"num": len(lines) / 2, "index":self.settings.index}, debug=self.debug):
                 try:
                     data_bytes = b"\n".join(l for l in lines) + b"\n"
-                except Exception, e:
+                except Exception as e:
                     Log.error("can not make request body from\n{{lines|indent}}", lines=lines, cause=e)
 
                 response = self.cluster.post(
@@ -354,7 +354,7 @@ class Index(Features):
                         )
                     Log.error("Problems with insert", cause=cause)
 
-        except Exception, e:
+        except Exception as e:
             if e.message.startswith("sequence item "):
                 Log.error("problem with {{data}}", data=repr(lines[int(e.message[14:16].strip())]), cause=e)
             Log.error("problem sending to ES", e)
@@ -425,7 +425,7 @@ class Index(Features):
                 timeout=coalesce(timeout, self.settings.timeout),
                 retry=retry
             )
-        except Exception, e:
+        except Exception as e:
             Log.error(
                 "Problem with search (path={{path}}):\n{{query|indent}}",
                 path=self.path + "/_search",
@@ -661,7 +661,7 @@ class Cluster(object):
                 if index in state.metadata.indices:
                     break
                 Log.note("Waiting for index {{index}} to appear", index=index)
-            except Exception, e:
+            except Exception as e:
                 Log.warning("Problem while waiting for index {{index}} to appear", index=index, cause=e)
             Till(seconds=1).wait()
         Log.alert("Made new index {{index|quote}}", index=index)
@@ -693,7 +693,7 @@ class Cluster(object):
             if self.debug:
                 Log.note("delete response {{response}}", response=details)
             return response
-        except Exception, e:
+        except Exception as e:
             Log.error("Problem with call to {{url}}", url=url, cause=e)
 
     def get_aliases(self):
@@ -765,7 +765,7 @@ class Cluster(object):
                     failures="---\n".join(r.replace(";", ";\n") for r in details._shards.failures.reason)
                 )
             return details
-        except Exception, e:
+        except Exception as e:
             if url[0:4] != "http":
                 suggestion = " (did you forget \"http://\" prefix on the host name?)"
             else:
@@ -793,7 +793,7 @@ class Cluster(object):
             if details.error:
                 Log.error(details.error)
             return details
-        except Exception, e:
+        except Exception as e:
             Log.error("Problem with call to {{url}}", url=url, cause=e)
 
     def get(self, path, **kwargs):
@@ -810,7 +810,7 @@ class Cluster(object):
             if details.error:
                 Log.error(details.error)
             return details
-        except Exception, e:
+        except Exception as e:
             Log.error("Problem with call to {{url}}", url=url, cause=e)
 
     def head(self, path, **kwargs):
@@ -828,7 +828,7 @@ class Cluster(object):
                 return details
             else:
                 return None  # WE DO NOT EXPECT content WITH HEAD REQUEST
-        except Exception, e:
+        except Exception as e:
             Log.error("Problem with call to {{url}}",  url= url, cause=e)
 
     def put(self, path, **kwargs):
@@ -844,7 +844,7 @@ class Cluster(object):
             if self.debug:
                 Log.note("response: {{response}}",  response= utf82unicode(response.all_content)[0:300:])
             return response
-        except Exception, e:
+        except Exception as e:
             Log.error("Problem with call to {{url}}",  url= url, cause=e)
 
 
@@ -906,7 +906,7 @@ def _scrub(r):
                 return output
         else:
             return r
-    except Exception, e:
+    except Exception as e:
         Log.warning("Can not scrub: {{json}}", json=r, cause=e)
 
 
@@ -1064,7 +1064,7 @@ class Alias(Features):
                 data=query,
                 timeout=coalesce(timeout, self.settings.timeout)
             )
-        except Exception, e:
+        except Exception as e:
             Log.error(
                 "Problem with search (path={{path}}):\n{{query|indent}}",
                 path=self.path + "/_search",

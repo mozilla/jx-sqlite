@@ -62,7 +62,7 @@ class FileString(object):
             self.file.seek(i)
             output = self.file.read(j - i).decode(self.encoding)
             return output
-        except Exception, e:
+        except Exception as e:
             Log.error(
                 "Can not read file slice at {{index}}, with encoding {{encoding}}",
                 index=i,
@@ -137,7 +137,7 @@ def safe_size(source):
                 Log.note("Using file of size {{length}} instead of str()",  length= total_bytes)
 
                 return data
-            except Exception, e:
+            except Exception as e:
                 Log.error("Could not write file > {{num}} bytes",  num= total_bytes, cause=e)
         b = source.read(MIN_READ_SIZE)
 
@@ -191,7 +191,7 @@ class LazyLines(object):
                 return self._last
             else:
                 Log.error("can not index out-of-order too much")
-        except Exception, e:
+        except Exception as e:
             Log.error("Problem indexing", e)
 
 
@@ -239,7 +239,7 @@ class CompressedLines(LazyLines):
                 return self._last
             else:
                 Log.error("can not index out-of-order too much")
-        except Exception, e:
+        except Exception as e:
             Log.error("Problem indexing", e)
 
 
@@ -266,7 +266,7 @@ def compressed_bytes2ibytes(compressed, size):
         try:
             block = compressed[i: i + size]
             yield decompressor.decompress(block)
-        except Exception, e:
+        except Exception as e:
             Log.error("Not expected", e)
 
 
@@ -367,7 +367,7 @@ def scompressed2ibytes(stream):
                 if not bytes_:
                     return
                 yield bytes_
-        except Exception, e:
+        except Exception as e:
             Log.error("Problem iterating through stream", cause=e)
         finally:
             with suppress_exception:
@@ -388,7 +388,7 @@ def sbytes2ilines(stream, encoding="utf8", closer=None):
                 if not bytes_:
                     return
                 yield bytes_
-        except Exception, e:
+        except Exception as e:
             Log.error("Problem iterating through stream", cause=e)
         finally:
             try:

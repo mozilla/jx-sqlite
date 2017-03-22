@@ -56,7 +56,7 @@ def str2datetime(value, format=None):
 def datetime2string(value, format="%Y-%m-%d %H:%M:%S"):
     try:
         return value.strftime(format)
-    except Exception, e:
+    except Exception as e:
         from mo_logs import Log
 
         Log.error("Can not format {{value}} with {{format}}", value=value, format=format, cause=e)
@@ -79,7 +79,7 @@ def datetime2unix(d):
 
         diff = d - epoch
         return Decimal(long(diff.total_seconds() * 1000000)) / 1000000
-    except Exception, e:
+    except Exception as e:
         Log.error("Can not convert {{value}}",  value= d, cause=e)
 
 
@@ -98,7 +98,7 @@ def unix2datetime(u):
         if u == 9999999999: # PYPY BUG https://bugs.pypy.org/issue1697
             return datetime.datetime(2286, 11, 20, 17, 46, 39)
         return datetime.datetime.utcfromtimestamp(u)
-    except Exception, e:
+    except Exception as e:
         Log.error("Can not convert {{value}} to datetime",  value= u, cause=e)
 
 
@@ -416,7 +416,7 @@ def value2number(v):
     except Exception:
         try:
             return float(v)
-        except Exception, e:
+        except Exception as e:
             Log.error("Not a number ({{value}})",  value= v, cause=e)
 
 
@@ -433,7 +433,7 @@ def latin12unicode(value):
         Log.error("can not convert unicode from latin1")
     try:
         return unicode(value.decode('iso-8859-1'))
-    except Exception, e:
+    except Exception as e:
         Log.error("Can not convert {{value|quote}} to unicode", value=value)
 
 

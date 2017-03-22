@@ -106,7 +106,7 @@ def wrap_from(frum, schema=None):
 
 class Schema(object):
     """
-    A Schema MAPS ALL COLUMNS IN DE-NORMALIZED DATABASE (DATA CUBE) TO
+    A Schema MAPS ALL COLUMNS IN SNOWFLAKE FROM NAME TO COLUMN INSTANCE
     """
 
     def __init__(self, table_name, columns):

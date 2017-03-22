@@ -195,7 +195,7 @@ class ListContainer(Container):
                     yield (group, wrap(list(v)))
 
             return _output()
-        except Exception, e:
+        except Exception as e:
             Log.error("Problem grouping", e)
 
     def insert(self, documents):
@@ -425,5 +425,5 @@ def _exec(code):
         temp = None
         exec "temp = " + code
         return temp
-    except Exception, e:
+    except Exception as e:
         Log.error("Could not execute {{code|quote}}", code=code, cause=e)

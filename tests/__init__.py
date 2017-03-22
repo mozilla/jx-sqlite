@@ -82,7 +82,7 @@ class SQLiteUtils(object):
 
         frum = subtest.query['from']
         if isinstance(frum, basestring):
-            subtest.query["from"] = frum.replace(test_jx.TEST_TABLE, self._index.name)
+            subtest.query["from"] = frum.replace(test_jx.TEST_TABLE, self._index.sf.fact)
         else:
             Log.error("Do not know how to handle")
 

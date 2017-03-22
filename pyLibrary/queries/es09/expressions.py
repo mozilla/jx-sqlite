@@ -18,9 +18,9 @@ import re
 from pyLibrary import convert
 from mo_collections import reverse
 from mo_logs import Log
+from mo_logs.strings import quote
 from mo_math import Math
-from mo_dots import split_field, Data, Null, join_field, coalesce
-from mo_dots import listwrap
+from mo_dots import split_field, Data, Null, join_field, coalesce, listwrap
 from mo_times.durations import Duration
 
 
@@ -181,7 +181,7 @@ class _MVEL(object):
 
                 return Data(
                     head="",
-                    body='getDocValue('+convert.string2quote(domain.dimension.fields[0])+')'
+                    body='getDocValue('+quote(domain.dimension.fields[0])+')'
                 ), fromTerm
             else:
                 def fromTerm(term):
@@ -202,7 +202,7 @@ class _MVEL(object):
                         return Null
 
                 for f in es_fields:
-                    term.append('Value2Pipe(getDocValue('+convert.string2quote(f)+'))')
+                    term.append('Value2Pipe(getDocValue('+quote(f)+'))')
 
                 return Data(
                     head="",
@@ -479,7 +479,7 @@ def _where(esFilter, _translate):
     elif op == "prefix":
         pair = esFilter[op]
         variableName, value = pair.items()[0]
-        return _translate(variableName) + ".startsWith(" + convert.string2quote(value) + ")"
+        return _translate(variableName) + ".startsWith(" + quote(value) + ")"
     elif op == "match_all":
         return "true"
     else:
@@ -515,7 +515,7 @@ def value2MVEL(value):
 
     if Math.is_number(value):
         return str(value)
-    return convert.string2quote(value)
+    return quote(value)
 
 # FROM PYTHON VALUE TO ES QUERY EQUIVALENT
 def value2query(value):
@@ -526,7 +526,7 @@ def value2query(value):
 
     if Math.is_number(value):
         return value
-    return convert.string2quote(value)
+    return quote(value)
 
 
 def value2value(value):
@@ -734,5 +734,5 @@ def replacePrefix(value, prefix, new_prefix):
         if value.startswith(prefix):
             return new_prefix+value[len(prefix)::]
         return value
-    except Exception, e:
+    except Exception as e:
         Log.error("can not replace prefix", e)

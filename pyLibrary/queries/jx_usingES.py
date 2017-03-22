@@ -162,7 +162,7 @@ class FromES(Container):
             if es09_aggop.is_aggop(query):
                 return es09_aggop.es_aggop(self._es, None, query)
             Log.error("Can not handle")
-        except Exception, e:
+        except Exception as e:
             e = Except.wrap(e)
             if "Data too large, data for" in e:
                 http.post(self._es.cluster.path+"/_cache/clear")

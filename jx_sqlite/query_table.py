@@ -18,7 +18,7 @@ from mo_collections.matrix import Matrix, index_to_coordinate
 from mo_dots import listwrap, coalesce, Data, wrap, Null, startswith_field, unwrap
 from mo_logs import Log
 
-from jx_sqlite import quote_table, _quote_column, sql_aggs, unique_name
+from jx_sqlite import quote_table, sql_aggs, unique_name
 from jx_sqlite.aggs_table import AggsTable
 from pyLibrary.queries import jx
 from pyLibrary.queries.containers import STRUCT
@@ -29,47 +29,48 @@ from pyLibrary.queries.query import QueryOp
 
 class QueryTable(AggsTable):
     def get_column_name(self, column):
-        return column.names[self.name]
+        return column.names[self.sf.fact]
 
     def __len__(self):
-        counter = self.db.query("SELECT COUNT(*) FROM " + quote_table(self.name))[0][0]
+        counter = self.db.query("SELECT COUNT(*) FROM " + quote_table(self.sf.fact))[0][0]
         return counter
 
     def __nonzero__(self):
-        counter = self.db.query("SELECT COUNT(*) FROM " + quote_table(self.name))[0][0]
+        counter = self.db.query("SELECT COUNT(*) FROM " + quote_table(self.sf.fact))[0][0]
         return bool(counter)
 
-    def __getattr__(self, item):
-        return self.__getitem__(item)
-
-    def __getitem__(self, item):
-        cs = self.columns.get(item, None)
-        if not cs:
-            return [Null]
-
-        command = " UNION ALL ".join(
-            "SELECT " + _quote_column(c) + " FROM " + quote_table(c.es_index)
-            for c in cs
-        )
-
-        output = self.db.query(command)
-        return [o[0] for o in output]
-
-    def __iter__(self):
-        columns = [c for c, cs in self.columns.items() for c in cs if c.type not in STRUCT]
-        command = "SELECT " + \
-                  ",\n".join(_quote_column(c) for c in columns) + \
-                  " FROM " + quote_table(self.name)
-        rows = self.db.query(command)
-        for r in rows:
-            output = Data()
-            for (k, t), v in zip(columns, r):
-                output[k] = v
-            yield output
+    # THESE BELONG TO A SCHEMA
+    # def __getattr__(self, item):
+    #     return self.__getitem__(item)
+    #
+    # def __getitem__(self, item):
+    #     cs = self.columns.get(item, None)
+    #     if not cs:
+    #         return [Null]
+    #
+    #     command = " UNION ALL ".join(
+    #         "SELECT " + quote_column(c) + " FROM " + quote_table(c.es_index)
+    #         for c in cs
+    #     )
+    #
+    #     output = self.db.query(command)
+    #     return [o[0] for o in output]
+    #
+    # def __iter__(self):
+    #     columns = [c for c, cs in self.columns.items() for c in cs if c.type not in STRUCT]
+    #     command = "SELECT " + \
+    #               ",\n".join(quote_column(c) for c in columns) + \
+    #               " FROM " + quote_table(self.sf.fact)
+    #     rows = self.db.query(command)
+    #     for r in rows:
+    #         output = Data()
+    #         for (k, t), v in zip(columns, r):
+    #             output[k] = v
+    #         yield output
 
     def delete(self, where):
         filter = where.to_sql()
-        self.db.execute("DELETE FROM " + quote_table(self.name) + " WHERE " + filter)
+        self.db.execute("DELETE FROM " + quote_table(self.sf.fact) + " WHERE " + filter)
 
     def vars(self):
         return set(self.columns.keys())
@@ -101,7 +102,7 @@ class QueryTable(AggsTable):
 
         result = self.db.query(
             " SELECT " + "\n,".join(select) +
-            " FROM " + quote_table(self.name) +
+            " FROM " + quote_table(self.sf.fact) +
             " WHERE " + jx_expression(filter).to_sql()
         )
         return wrap([{c: v for c, v in zip(column_names, r)} for r in result.data])
@@ -111,10 +112,11 @@ class QueryTable(AggsTable):
         :param query:  JSON Query Expression, SET `format="container"` TO MAKE NEW TABLE OF RESULT
         :return:
         """
-        if not startswith_field(query['from'], self.name):
+        if not startswith_field(query['from'], self.sf.fact):
             Log.error("Expecting table, or some nested table")
         frum, query['from'] = query['from'], self
-        query = QueryOp.wrap(query, self.columns)
+        schema = self.sf.tables["."].schema
+        query = QueryOp.wrap(query, schema)
 
         # TYPE CONFLICTS MUST NOW BE RESOLVED DURING
         # TYPE-SPECIFIC QUERY NORMALIZATION
@@ -151,7 +153,7 @@ class QueryTable(AggsTable):
             command += "\nORDER BY " + ",\n".join(
                 "(" + sql[t] + ") IS NULL" + (" DESC" if s.sort == -1 else "") + ",\n" +
                 sql[t] + (" DESC" if s.sort == -1 else "")
-                for s, sql in [(s, s.value.to_sql(self)[0].sql) for s in query.sort]
+                for s, sql in [(s, s.value.to_sql(schema)[0].sql) for s in query.sort]
                 for t in "bns" if sql[t]
             )
 

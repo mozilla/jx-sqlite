@@ -148,7 +148,7 @@ def unique_index(data, keys=None, fail_on_dup=True):
     for d in data:
         try:
             o.add(d)
-        except Exception, e:
+        except Exception as e:
             o.add(d)
             Log.error("index {{index}} is not unique {{key}} maps to both {{value1}} and {{value2}}",
                 index= keys,
@@ -180,7 +180,7 @@ def map2set(data, relation):
                 for cod in relation.get(d, []):
                     output.add(cod)
             return output
-        except Exception, e:
+        except Exception as e:
             Log.error("Expecting a dict with lists in codomain", e)
     else:
         try:
@@ -193,7 +193,7 @@ def map2set(data, relation):
                     continue
                 output.add(cod)
             return output
-        except Exception, e:
+        except Exception as e:
             Log.error("Expecting a dict with lists in codomain", e)
     return Null
 
@@ -360,7 +360,7 @@ def _select_deep(v, field, depth, record):
     if hasattr(field.value, '__call__'):
         try:
             record[field.name] = field.value(wrap(v))
-        except Exception, e:
+        except Exception as e:
             record[field.name] = None
         return 0, None
 
@@ -377,7 +377,7 @@ def _select_deep(v, field, depth, record):
             record[field.name] = v
         else:
             record[field.name] = v.get(f)
-    except Exception, e:
+    except Exception as e:
         Log.error("{{value}} does not have {{field}} property",  value= v, field=f, cause=e)
     return 0, None
 
@@ -395,7 +395,7 @@ def _select_deep_meta(field, depth):
                 destination[name] = field.value(wrap(source))
                 return 0, None
             return assign
-        except Exception, e:
+        except Exception as e:
             def assign(source, destination):
                 destination[name] = None
                 return 0, None
@@ -417,7 +417,7 @@ def _select_deep_meta(field, depth):
                     destination[name] = source
                 else:
                     destination[name] = source.get(f)
-            except Exception, e:
+            except Exception as e:
                 Log.error("{{value}} does not have {{field}} property",  value= source, field=f, cause=e)
             return 0, None
         return assign
@@ -432,7 +432,7 @@ def _select_deep_meta(field, depth):
             def assign(source, destination):
                 try:
                     destination[name] = source.get(f)
-                except Exception, e:
+                except Exception as e:
                     Log.error("{{value}} does not have {{field}} property",  value= source, field=f, cause=e)
                 return 0, None
             return assign
@@ -534,7 +534,7 @@ def sort(data, fieldnames=None, already_normalized=False):
                     result = value_compare(func(left), func(right), sort_)
                     if result != 0:
                         return result
-                except Exception, e:
+                except Exception as e:
                     Log.error("problem with compare", e)
             return 0
 
@@ -547,7 +547,7 @@ def sort(data, fieldnames=None, already_normalized=False):
             output = None
 
         return output
-    except Exception, e:
+    except Exception as e:
         Log.error("Problem sorting\n{{data}}",  data=data, cause=e)
 
 
@@ -660,7 +660,7 @@ def drill_filter(esfilter, data):
         for i, c in enumerate(col):
             try:
                 d = d[c]
-            except Exception, e:
+            except Exception as e:
                 Log.error("{{name}} does not exist", name=fieldname)
             if isinstance(d, list) and len(col) > 1:
                 if len(primary_column) <= depth+i:

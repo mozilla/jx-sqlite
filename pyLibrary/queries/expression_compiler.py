@@ -46,7 +46,7 @@ def compile_expression(source):
 def output(row, rownum=None, rows=None):
     try:
         return """ + source + """
-    except Exception, e:
+    except Exception as e:
         Log.error("Problem with dynamic function {{func|quote}}",  func= """ + convert.value2quote(source) + """, cause=e)
 """
     return output

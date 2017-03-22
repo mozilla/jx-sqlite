@@ -9,7 +9,10 @@
 from __future__ import unicode_literals
 
 import mo_json
+from activedata_etl import etl2path
+from activedata_etl import key2etl
 from mo_dots import coalesce, wrap, Null
+from mo_kwargs import override
 from mo_logs import Log, strings
 from mo_logs.exceptions import suppress_exception
 from mo_math.randoms import Random
@@ -20,7 +23,6 @@ from mo_times.timer import Timer
 from pyLibrary import convert
 from pyLibrary.aws.s3 import strip_extension
 from pyLibrary.env import elasticsearch
-from mo_kwargs import override
 from pyLibrary.queries import jx
 
 MAX_RECORD_LENGTH = 400000
@@ -84,7 +86,7 @@ class RolloverIndex(object):
                     try:
                         es = self.cluster.create_index(create_timestamp=rounded_timestamp, kwargs=self.settings)
                         es.add_alias(self.settings.index)
-                    except Exception, e:
+                    except Exception as e:
                         if "IndexAlreadyExistsException" not in e:
                             Log.error("Problem creating index", cause=e)
                         return self._get_queue(row)  # TRY AGAIN
@@ -107,7 +109,7 @@ class RolloverIndex(object):
                 # Log.warning("Will delete {{index}}", index=c.index)
                 try:
                     self.cluster.delete_index(c.index)
-                except Exception, e:
+                except Exception as e:
                     Log.warning("could not delete index {{index}}", index=c.index, cause=e)
         for t, q in list(self.known_queues.items()):
             if unix2Date(t) + self.rollover_interval < Date.today() - self.rollover_max:
@@ -173,7 +175,7 @@ class RolloverIndex(object):
         queue = None
         pending = []  # FOR WHEN WE DO NOT HAVE QUEUE YET
         for key in keys:
-            timer = Timer("key")
+            timer = Timer("Process {{key}}", param={"key": key})
             try:
                 with timer:
                     for rownum, line in enumerate(source.read_lines(strip_extension(key))):
@@ -199,7 +201,7 @@ class RolloverIndex(object):
 
                         if please_stop:
                             break
-            except Exception, e:
+            except Exception as e:
                 done_copy = None
                 Log.warning("Could not process {{key}} after {{duration|round(places=2)}}seconds", key=key, duration=timer.duration.seconds, cause=e)
 
@@ -209,7 +211,7 @@ class RolloverIndex(object):
             else:
                 queue.add(done_copy)
 
-        Log.note("{{num}} keys from {{keys|json}} added", num=num_keys, key=keys)
+        Log.note("{{num}} keys from {{key|json}} added", num=num_keys, key=keys)
         return num_keys
 
 
@@ -260,11 +262,18 @@ def _shorten(value, source):
     value.result.subtests = [s for s in value.result.subtests if s.ok is False]
     value.result.missing_subtests = True
     if source.name.startswith("active-data-test-result"):
-        value.repo.changeset.files=None
+        value.repo.changeset.files = None
 
     shorter_length = len(convert.value2json(value))
     if shorter_length > MAX_RECORD_LENGTH:
-        Log.warning("Monstrous {{name}} record {{id}} of length {{length}}", id=value._id, name=source.name, length=shorter_length)
+        result_size = len(convert.value2json(value.result))
+        if source.name == "active-data-test-result":
+            if result_size > MAX_RECORD_LENGTH:
+                Log.warning("Epic test failure in {{name}} results in big record for {{id}} of length {{length}}", id=value._id, name=source.name, length=shorter_length)
+            else:
+                pass  # NOT A PROBLEM
+        else:
+            Log.warning("Monstrous {{name}} record {{id}} of length {{length}}", id=value._id, name=source.name, length=shorter_length)
 
 
 def _fix(value):

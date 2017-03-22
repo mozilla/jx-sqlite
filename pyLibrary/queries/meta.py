@@ -252,7 +252,7 @@ class FromESMetadata(Schema):
                         Log.note("waiting for columns to update {{columns|json}}", columns=[c.table+"."+c.es_column for c in columns if not c.last_updated])
                     Till(seconds=1).wait()
                 return columns
-        except Exception, e:
+        except Exception as e:
             Log.error("Not expected", cause=e)
 
         if column_name:
@@ -363,7 +363,7 @@ class FromESMetadata(Schema):
                     },
                     "where": {"eq": {"es_index": c.es_index, "es_column": c.es_column}}
                 })
-        except Exception, e:
+        except Exception as e:
             if "IndexMissingException" in e and c.table.startswith(TEST_TABLE_PREFIX):
                 with self.meta.columns.locker:
                     self.meta.columns.update({
@@ -428,9 +428,9 @@ class FromESMetadata(Schema):
                         self._update_cardinality(column)
                         if DEBUG and not column.table.startswith(TEST_TABLE_PREFIX):
                             Log.note("updated {{column.name}}", column=column)
-                    except Exception, e:
+                    except Exception as e:
                         Log.warning("problem getting cardinality for {{column.name}}", column=column, cause=e)
-            except Exception, e:
+            except Exception as e:
                 Log.warning("problem in cardinality monitor", cause=e)
 
     def not_monitor(self, please_stop):
@@ -647,7 +647,7 @@ class ColumnList(Container):
 
                 for k, v in command.set.items():
                     col[k] = v
-        except Exception, e:
+        except Exception as e:
             Log.error("sould not happen", cause=e)
 
     def query(self, query):

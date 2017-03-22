@@ -99,7 +99,7 @@ class MySQL(object):
                 ssl=coalesce(self.settings.ssl, None),
                 cursorclass=cursors.SSCursor
             )
-        except Exception, e:
+        except Exception as e:
             if self.settings.host.find("://") == -1:
                 Log.error(u"Failure to connect to {{host}}:{{port}}",
                     host= self.settings.host,
@@ -129,7 +129,7 @@ class MySQL(object):
                 if self.cursor: self.cursor.close()
                 self.cursor = None
                 self.rollback()
-            except Exception, e:
+            except Exception as e:
                 Log.warning(u"can not rollback()", cause=[value, e])
             finally:
                 self.close()
@@ -137,7 +137,7 @@ class MySQL(object):
 
         try:
             self.commit()
-        except Exception, e:
+        except Exception as e:
             Log.warning(u"can not commit()", e)
         finally:
             self.close()
@@ -162,7 +162,7 @@ class MySQL(object):
         self.cursor = None  # NOT NEEDED
         try:
             self.db.close()
-        except Exception, e:
+        except Exception as e:
             if e.message.find("Already closed") >= 0:
                 return
 
@@ -173,7 +173,7 @@ class MySQL(object):
     def commit(self):
         try:
             self._execute_backlog()
-        except Exception, e:
+        except Exception as e:
             with suppress_exception:
                 self.rollback()
             Log.error("Error while processing backlog", e)
@@ -196,12 +196,12 @@ class MySQL(object):
     def flush(self):
         try:
             self.commit()
-        except Exception, e:
+        except Exception as e:
             Log.error("Can not flush", e)
 
         try:
             self.begin()
-        except Exception, e:
+        except Exception as e:
             Log.error("Can not flush", e)
 
 
@@ -228,7 +228,7 @@ class MySQL(object):
             self.cursor.callproc(proc_name, params)
             self.cursor.close()
             self.cursor = self.db.cursor()
-        except Exception, e:
+        except Exception as e:
             Log.error("Problem calling procedure " + proc_name, e)
 
 
@@ -261,7 +261,7 @@ class MySQL(object):
                 self.cursor = None
 
             return result
-        except Exception, e:
+        except Exception as e:
             if isinstance(e, InterfaceError) or e.message.find("InterfaceError") >= 0:
                 Log.error("Did you close the db connection?", e)
             Log.error("Problem executing SQL:\n{{sql|indent}}",  sql= sql, cause=e, stack_depth=1)
@@ -295,7 +295,7 @@ class MySQL(object):
                 self.cursor = None
 
             return result
-        except Exception, e:
+        except Exception as e:
             if isinstance(e, InterfaceError) or e.message.find("InterfaceError") >= 0:
                 Log.error("Did you close the db connection?", e)
             Log.error("Problem executing SQL:\n{{sql|indent}}",  sql= sql, cause=e,stack_depth=1)
@@ -330,7 +330,7 @@ class MySQL(object):
                 self.cursor.close()
                 self.cursor = None
 
-        except Exception, e:
+        except Exception as e:
             Log.error("Problem executing SQL:\n{{sql|indent}}",  sql= sql, cause=e, stack_depth=1)
 
         return num
@@ -392,7 +392,7 @@ class MySQL(object):
             if isinstance(sql, unicode):
                 sql = sql.encode("utf8")
             (output, _) = proc.communicate(sql)
-        except Exception, e:
+        except Exception as e:
             raise Log.error("Can not call \"mysql\"", e)
 
         if proc.returncode:
@@ -438,7 +438,7 @@ class MySQL(object):
                     if self.debug:
                         Log.note("Execute SQL:\n{{sql|indent}}",  sql= sql)
                     self.cursor.execute(b)
-                except Exception, e:
+                except Exception as e:
                     Log.error("Can not execute sql:\n{{sql}}",  sql= sql, cause=e)
 
             self.cursor.close()
@@ -452,7 +452,7 @@ class MySQL(object):
                     self.cursor.execute(sql)
                     self.cursor.close()
                     self.cursor = self.db.cursor()
-                except Exception, e:
+                except Exception as e:
                     Log.error("Problem executing SQL:\n{{sql|indent}}",  sql= sql, cause=e, stack_depth=1)
 
 
@@ -468,7 +468,7 @@ class MySQL(object):
                       ")"
 
             self.execute(command)
-        except Exception, e:
+        except Exception as e:
             Log.error("problem with record: {{record}}",  record= record, cause=e)
 
     # candidate_key IS LIST OF COLUMNS THAT CAN BE USED AS UID (USUALLY PRIMARY KEY)
@@ -510,7 +510,7 @@ class MySQL(object):
                     for r in records
                 ])
             self.execute(command)
-        except Exception, e:
+        except Exception as e:
             Log.error("problem with record: {{record}}",  record= records, cause=e)
 
 
@@ -559,14 +559,14 @@ class MySQL(object):
             elif Math.is_number(value):
                 return SQL(unicode(value))
             elif isinstance(value, datetime):
-                return SQL("str_to_date('" + value.strftime("%Y%m%d%H%M%S") + "', '%Y%m%d%H%i%s')")
+                return SQL("str_to_date('" + value.strftime("%Y%m%d%H%M%S.%f") + "', '%Y%m%d%H%i%s.%f')")
             elif isinstance(value, Date):
-                return SQL("str_to_date('"+value.format("%Y%m%d%H%M%S")+"', '%Y%m%d%H%i%s')")
+                return SQL("str_to_date('"+value.format("%Y%m%d%H%M%S.%f")+"', '%Y%m%d%H%i%s.%f')")
             elif hasattr(value, '__iter__'):
                 return SQL(self.db.literal(json_encode(value)))
             else:
                 return self.db.literal(value)
-        except Exception, e:
+        except Exception as e:
             Log.error("problem quoting SQL", e)
 
 
@@ -588,7 +588,7 @@ class MySQL(object):
                 return "(" + ",".join([self.quote_sql(vv) for vv in value]) + ")"
             else:
                 return unicode(value)
-        except Exception, e:
+        except Exception as e:
             Log.error("problem quoting SQL", e)
 
     def quote_column(self, column_name, table=None):
@@ -617,7 +617,7 @@ def utf8_to_unicode(v):
             return v.decode("utf8")
         else:
             return v
-    except Exception, e:
+    except Exception as e:
         Log.error("not expected", e)
 
 

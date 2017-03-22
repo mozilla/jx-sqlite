@@ -190,7 +190,7 @@ def extract_rows(es, es_query, query):
         output.meta.content_type = mime_type
         output.meta.es_query = es_query
         return output
-    except Exception, e:
+    except Exception as e:
         Log.error("problem formatting", e)
 
 

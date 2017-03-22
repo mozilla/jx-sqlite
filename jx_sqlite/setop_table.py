@@ -13,29 +13,32 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
-from mo_dots import listwrap, Data, unwraplist, split_field, join_field, startswith_field, unwrap, relative_field, concat_field, literal_field
+from mo_dots import listwrap, Data, unwraplist, split_field, join_field, startswith_field, unwrap, relative_field, concat_field
 from mo_math import UNION, MAX
 
-from jx_sqlite import quote_table, quoted_UID, get_column, quote_value, _make_column_name, ORDER, COLUMN, set_column, quoted_PARENT, ColumnMapping
+from jx_sqlite import quote_table, quoted_UID, get_column, _make_column_name, ORDER, COLUMN, set_column, quoted_PARENT, ColumnMapping
 from jx_sqlite.insert_table import InsertTable
 from pyLibrary.queries.containers import STRUCT
 from pyLibrary.queries.expressions import sql_type_to_json_type, LeavesOp
 from pyLibrary.queries.meta import Column
+from pyLibrary.sql.sqlite import quote_value
 
 
 class SetOpTable(InsertTable):
     def _set_op(self, query, frum):
         # GET LIST OF COLUMNS
-        primary_nested_path = join_field(split_field(frum)[1:])
+        frum_path = split_field(frum)
+        primary_nested_path = join_field(frum_path[1:])
         vars_ = UNION([s.value.vars() for s in listwrap(query.select)])
+        schema = self.sf.tables[primary_nested_path].schema
 
         nest_to_alias = {
             nested_path: "__" + unichr(ord('a') + i) + "__"
-            for i, (nested_path, sub_table) in enumerate(self.nested_tables.items())
+            for i, (nested_path, sub_table) in enumerate(self.sf.tables.items())
         }
 
         active_columns = {".": []}
-        for cname, cols in self.columns.items():
+        for cname, cols in schema.items():
             if any(startswith_field(cname, v) for v in vars_):
                 for c in cols:
                     if c.type in STRUCT:
@@ -47,9 +50,9 @@ class SetOpTable(InsertTable):
                     active.append(c)
         # ANY VARS MENTIONED WITH NO COLUMNS?
         for v in vars_:
-            if not any(startswith_field(cname, v) for cname in self.columns.keys()):
+            if not any(startswith_field(cname, v) for cname in schema.keys()):
                 active_columns["."].append(Column(
-                    names={self.name: v},
+                    names={".": v},
                     type="null",
                     es_column=".",
                     es_index=".",
@@ -62,13 +65,13 @@ class SetOpTable(InsertTable):
         sql_selects = []  # EVERY SELECT CLAUSE (NOT TO BE USED ON ALL TABLES, OF COURSE)
         nest_to_alias = {
             nested_path: "__" + unichr(ord('a') + i) + "__"
-            for i, (nested_path, sub_table) in enumerate(self.nested_tables.items())
+            for i, (nested_path, sub_table) in enumerate(self.sf.tables.items())
             }
 
         sorts = []
         if query.sort:
             for s in query.sort:
-                col = s.value.to_sql(self)[0]
+                col = s.value.to_sql(schema)[0]
                 for t, sql in col.sql.items():
                     json_type = sql_type_to_json_type[t]
                     if json_type in STRUCT:
@@ -87,7 +90,7 @@ class SetOpTable(InsertTable):
         primary_doc_details = Data()
         # EVERY SELECT STATEMENT THAT WILL BE REQUIRED, NO MATTER THE DEPTH
         # WE WILL CREATE THEM ACCORDING TO THE DEPTH REQUIRED
-        for nested_path, sub_table in self.nested_tables.items():
+        for nested_path, sub_table in self.sf.tables.items():
             nested_doc_details = {
                 "sub_table": sub_table,
                 "children": [],
@@ -129,7 +132,7 @@ class SetOpTable(InsertTable):
                     try:
                         column_number = len(sql_selects)
                         s.pull = get_column(column_number)
-                        db_columns = s.value.to_sql(self)
+                        db_columns = s.value.to_sql(schema)
 
                         if isinstance(s.value, LeavesOp):
                             for column in db_columns:
@@ -195,7 +198,7 @@ class SetOpTable(InsertTable):
                         nested_path=nested_path
                     )
 
-        where_clause = query.where.to_sql(self, boolean=True)[0].sql.b
+        where_clause = query.where.to_sql(schema, boolean=True)[0].sql.b
 
         unsorted_sql = self._make_sql_for_one_nest_in_set_op(
             ".",
@@ -205,7 +208,7 @@ class SetOpTable(InsertTable):
             index_to_column
         )
 
-        for n, _ in self.nested_tables.items():
+        for n, _ in self.sf.tables.items():
             sorts.append(COLUMN + unicode(index_to_uid[n]))
 
         ordered_sql = (
@@ -371,7 +374,7 @@ class SetOpTable(InsertTable):
         done = []
 
         # STATEMENT FOR EACH NESTED PATH
-        for i, (nested_path, sub_table) in enumerate(self.nested_tables.items()):
+        for i, (nested_path, sub_table) in enumerate(self.sf.tables.items()):
             if any(startswith_field(nested_path, d) for d in done):
                 continue
 
@@ -393,7 +396,7 @@ class SetOpTable(InsertTable):
                         select_clause.append("NULL AS " + _make_column_name(select_index))
 
                 if nested_path == ".":
-                    from_clause += "\nFROM " + quote_table(self.name) + " " + alias + "\n"
+                    from_clause += "\nFROM " + quote_table(self.sf.fact) + " " + alias + "\n"
                 else:
                     from_clause += "\nLEFT JOIN " + quote_table(sub_table.name) + " " + alias + "\n" \
                                                                                                 " ON " + alias + "." + quoted_PARENT + " = " + parent_alias + "." + quoted_UID + "\n"
@@ -403,7 +406,7 @@ class SetOpTable(InsertTable):
                 # PARENT TABLE
                 # NO NEED TO INCLUDE COLUMNS, BUT WILL INCLUDE ID AND ORDER
                 if nested_path == ".":
-                    from_clause += "\nFROM " + quote_table(self.name) + " " + alias + "\n"
+                    from_clause += "\nFROM " + quote_table(self.sf.fact) + " " + alias + "\n"
                 else:
                     parent_alias = alias = unichr(ord('a') + i - 1)
                     from_clause += "\nLEFT JOIN " + quote_table(sub_table.name) + " " + alias + \
