@@ -277,7 +277,7 @@ class Variable(Expression):
         for col in cols:
             if col.type == OBJECT:
                 prefix = self.var + "."
-                for cn, cs in schema.columns.items():
+                for cn, cs in schema.items():
                     if cn.startswith(prefix):
                         for child_col in cs:
                             acc[literal_field(child_col.nested_path[0])][literal_field(schema.get_column_name(child_col))][json_type_to_sql_type[child_col.type]] = quote_column(child_col.es_column).sql
@@ -839,7 +839,7 @@ class LeavesOp(Expression):
                 "name": join_field(split_field(schema.get_column_name(c))[prefix_length:]),
                 "sql": Variable(schema.get_column_name(c)).to_sql(schema)[0].sql
             }
-            for n, cols in schema.columns.items()
+            for n, cols in schema.items()
             if startswith_field(n, term)
             for c in cols
             if c.type not in STRUCT
