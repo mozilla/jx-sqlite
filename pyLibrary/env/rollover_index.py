@@ -259,9 +259,9 @@ def fix(rownum, line, source, sample_only_filter, sample_size):
 
 
 def _shorten(value, source):
-    value.result.subtests = [s for s in value.result.subtests if s.ok is False]
-    value.result.missing_subtests = True
     if source.name.startswith("active-data-test-result"):
+        value.result.subtests = [s for s in value.result.subtests if s.ok is False]
+        value.result.missing_subtests = True
         value.repo.changeset.files = None
 
     shorter_length = len(convert.value2json(value))
