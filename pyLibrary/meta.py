@@ -15,14 +15,17 @@ from types import FunctionType
 
 import mo_json
 from mo_dots import set_default, wrap, _get_attr, Null, coalesce
-from mo_logs import Log
+from mo_logs import Log, strings
 from mo_logs.exceptions import Except
-from mo_logs.strings import expand_template
+from mo_logs.strings import expand_template, quote
 from mo_math.randoms import Random
 from mo_threads import Lock
 from mo_times.dates import Date
 from mo_times.durations import DAY
 from pyLibrary import convert
+from pyLibrary.queries.expressions import jx_expression_to_function, jx_expression
+
+_ = jx_expression_to_function
 
 
 def get_class(path):
@@ -31,7 +34,7 @@ def get_class(path):
         output = __import__(".".join(path[0:-1]), globals(), locals(), [path[-1]], 0)
         return _get_attr(output, path[-1:])
         # return output
-    except Exception, e:
+    except Exception as e:
         from mo_logs import Log
 
         Log.error("Could not find module {{module|quote}}",  module= ".".join(path))
@@ -55,18 +58,18 @@ def new_instance(settings):
     try:
         temp = __import__(path, globals(), locals(), [class_name], -1)
         constructor = object.__getattribute__(temp, class_name)
-    except Exception, e:
+    except Exception as e:
         Log.error("Can not find class {{class}}", {"class": path}, cause=e)
 
     settings['class'] = None
     try:
-        return constructor(settings=settings)  # MAYBE IT TAKES A SETTINGS OBJECT
-    except Exception, e:
+        return constructor(kwargs=settings)  # MAYBE IT TAKES A KWARGS OBJECT
+    except Exception as e:
         pass
 
     try:
         return constructor(**settings)
-    except Exception, e:
+    except Exception as e:
         Log.error("Can not create instance of {{name}}", name=".".join(path), cause=e)
 
 
@@ -84,7 +87,7 @@ def get_function_by_name(full_name):
         temp = __import__(path, globals(), locals(), [function_name], -1)
         output = object.__getattribute__(temp, function_name)
         return output
-    except Exception, e:
+    except Exception as e:
         Log.error("Can not find function {{name}}",  name= full_name, cause=e)
 
 
@@ -170,7 +173,7 @@ def wrap_function(cache_store, func_):
                     with cache_store.locker:
                         _cache[args] = (now + cache_store.timeout, args, value, None)
                     return value
-                except Exception, e:
+                except Exception as e:
                     e = Except.wrap(e)
                     with cache_store.locker:
                         _cache[args] = (now + cache_store.timeout, args, None, e)
@@ -194,9 +197,6 @@ def repr(obj):
     return _repr.repr(obj)
 
 
-
-
-
 class _FakeLock():
 
 
@@ -207,32 +207,58 @@ class _FakeLock():
         pass
 
 
-def DataClass(name, columns):
+def DataClass(name, columns, constraint=True):
     """
-    Each column has {"name", "required", "nulls", "default", "type"} properties
+    Use the DataClass to define a class, but with some extra features:
+    1. restrict the datatype of property
+    2. restrict if `required`, or if `nulls` are allowed
+    3. generic constraints on object properties
+
+    It is expected that this class become a real class (or be removed) in the
+    long term because it is expensive to use and should only be good for
+    verifying program correctness, not user input.
+
+    :param name: Name of the class we are creating
+    :param columns: Each columns[i] has properties {
+            "name",     - (required) name of the property
+            "required", - False if it must be defined (even if None)
+            "nulls",    - True if property can be None, or missing
+            "default",  - A default value, if none is provided
+            "type"      - a Python datatype
+        }
+    :param constraint: a JSON query Expression for extra constraints
+    :return: The class that has been created
     """
+
     columns = wrap([{"name": c, "required": True, "nulls": False, "type": object} if isinstance(c, basestring) else c for c in columns])
     slots = columns.name
     required = wrap(filter(lambda c: c.required and not c.nulls and not c.default, columns)).name
     nulls = wrap(filter(lambda c: c.nulls, columns)).name
+    defaults = {c.name: coalesce(c.default, None) for c in columns}
     types = {c.name: coalesce(c.type, object) for c in columns}
 
-    code = expand_template("""
+    code = expand_template(
+"""
 from __future__ import unicode_literals
 from collections import Mapping
 
 meta = None
 types_ = {{types}}
+defaults_ = {{defaults}}
 
-class {{name}}(Mapping):
+class {{class_name}}(Mapping):
     __slots__ = {{slots}}
+
+
+    def _constraint(row, rownum, rows):
+        return {{constraint_expr}}
 
     def __init__(self, **kwargs):
         if not kwargs:
             return
 
         for s in {{slots}}:
-            setattr(self, s, kwargs.get(s, kwargs.get('default', Null)))
+            object.__setattr__(self, s, kwargs.get(s, {{defaults}}.get(s, None)))
 
         missed = {{required}}-set(kwargs.keys())
         if missed:
@@ -241,6 +267,9 @@ class {{name}}(Mapping):
         illegal = set(kwargs.keys())-set({{slots}})
         if illegal:
             Log.error("{"+"{names}} are not a valid properties", names=illegal)
+
+        if not self._constraint(0, [self]):
+            Log.error("constraint not satisfied {"+"{expect}}\\n{"+"{value|indent}}", expect={{constraint}}, value=self)
 
     def __getitem__(self, item):
         return getattr(self, item)
@@ -252,11 +281,9 @@ class {{name}}(Mapping):
     def __setattr__(self, item, value):
         if item not in {{slots}}:
             Log.error("{"+"{item|quote}} not valid attribute", item=item)
-        #if not isinstance(value, types_[item]):
-        #   Log.error("{"+"{item|quote}} not of type "+"{"+"{type}}", item=item, type=types_[item])
-        if item=="nested_path" and (not isinstance(value, list) or len(value)==0):
-            Log.error("expecting list for nested path")
         object.__setattr__(self, item, value)
+        if not self._constraint(0, [self]):
+            Log.error("constraint not satisfied {"+"{expect}}\\n{"+"{value|indent}}", expect={{constraint}}, value=self)
 
     def __getattr__(self, item):
         Log.error("{"+"{item|quote}} not valid attribute", item=item)
@@ -265,7 +292,7 @@ class {{name}}(Mapping):
         return object.__hash__(self)
 
     def __eq__(self, other):
-        if isinstance(other, {{name}}) and dict(self)==dict(other) and self is not other:
+        if isinstance(other, {{class_name}}) and dict(self)==dict(other) and self is not other:
             Log.error("expecting to be same object")
         return self is other
 
@@ -277,7 +304,7 @@ class {{name}}(Mapping):
 
     def __copy__(self):
         _set = object.__setattr__
-        output = object.__new__({{name}})
+        output = object.__new__({{class_name}})
         {{assign}}
         return output
 
@@ -290,17 +317,20 @@ class {{name}}(Mapping):
     def __str__(self):
         return str({{dict}})
 
-temp = {{name}}
+temp = {{class_name}}
 """,
         {
-            "name": name,
+            "class_name": name,
             "slots": "(" + (", ".join(convert.value2quote(s) for s in slots)) + ")",
             "required": "{" + (", ".join(convert.value2quote(s) for s in required)) + "}",
             "nulls": "{" + (", ".join(convert.value2quote(s) for s in nulls)) + "}",
+            "defaults": jx_expression({"literal": defaults}).to_python(),
             "len_slots": len(slots),
             "dict": "{" + (", ".join(convert.value2quote(s) + ": self." + s for s in slots)) + "}",
             "assign": "; ".join("_set(output, "+convert.value2quote(s)+", self."+s+")" for s in slots),
-            "types": "{" + (",".join(convert.string2quote(k) + ": " + v.__name__ for k, v in types.items())) + "}"
+            "types": "{" + (",".join(convert.string2quote(k) + ": " + v.__name__ for k, v in types.items())) + "}",
+            "constraint_expr": jx_expression(constraint).to_python(),
+            "constraint": convert.value2json(constraint)
         }
     )
 
@@ -309,9 +339,12 @@ temp = {{name}}
 
 def _exec(code, name):
     temp = None
-    exec (code)
-    globals()[name] = temp
-    return temp
+    try:
+        exec (code)
+        globals()[name] = temp
+        return temp
+    except Exception as e:
+        Log.error("Can not make class\n{{code}}", code=code, cause=e)
 
 
 def value2quote(value):

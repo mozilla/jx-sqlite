@@ -86,7 +86,7 @@ def request(method, url, zip=None, retry=None, **kwargs):
                     return response
                 if not remaining:
                     return response
-            except Exception, e:
+            except Exception as e:
                 e = Except.wrap(e)
                 failures.append(e)
         Log.error("Tried {{num}} urls", num=len(url), cause=failures)
@@ -134,7 +134,7 @@ def request(method, url, zip=None, retry=None, **kwargs):
             _to_ascii_dict(headers)
         else:
             _to_ascii_dict(headers)
-    except Exception, e:
+    except Exception as e:
         Log.error("Request setup failure on {{url}}", url=url, cause=e)
 
     errors = []
@@ -146,7 +146,7 @@ def request(method, url, zip=None, retry=None, **kwargs):
             if DEBUG:
                 Log.note("http {{method}} to {{url}}", method=method, url=url)
             return session.request(method=method, url=url, **kwargs)
-        except Exception, e:
+        except Exception as e:
             errors.append(Except.wrap(e))
 
     if " Read timed out." in errors[0]:
@@ -219,7 +219,7 @@ def post_json(url, **kwargs):
     c = response.content
     try:
         details = mo_json.json2value(convert.utf82unicode(c))
-    except Exception, e:
+    except Exception as e:
         Log.error("Unexpected return value {{content}}", content=c, cause=e)
 
     if response.status_code not in [200, 201]:
@@ -288,7 +288,7 @@ class HttpResponse(Response):
                 return ibytes2ilines(icompressed2ibytes(iterator), encoding=encoding, flexible=flexible)
             else:
                 return ibytes2ilines(iterator, encoding=encoding, flexible=flexible, closer=self.close)
-        except Exception, e:
+        except Exception as e:
             Log.error("Can not read content", cause=e)
 
 

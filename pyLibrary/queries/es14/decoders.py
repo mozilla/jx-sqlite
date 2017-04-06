@@ -197,7 +197,7 @@ class SetDecoder(AggsDecoder):
         try:
             part = row[self.start]
             return self.domain.getIndexByKey(part["key"])
-        except Exception, e:
+        except Exception as e:
             Log.error("problem", cause=e)
 
     @property
@@ -512,7 +512,7 @@ class DefaultDecoder(SetDecoder):
             try:
                 part = row[self.start]
                 return self.domain.getIndexByKey(part["key"])
-            except Exception, e:
+            except Exception as e:
                 Log.error("problem", cause=e)
         else:
             try:
@@ -525,7 +525,7 @@ class DefaultDecoder(SetDecoder):
                     self.parts.append({"key": key, "dataIndex": i})
                     self.key2index[i] = part
                 return i
-            except Exception, e:
+            except Exception as e:
                 Log.error("problem", cause=e)
 
     @property

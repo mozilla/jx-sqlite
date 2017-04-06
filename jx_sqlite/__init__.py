@@ -18,10 +18,12 @@ from collections import Mapping
 from copy import copy
 
 from mo_dots import Data, split_field, join_field, concat_field
+from mo_logs.strings import quote
 from mo_math.randoms import Random
 from mo_times import Date, Duration
 
-from pyLibrary import convert
+from pyLibrary.meta import DataClass
+from pyLibrary.sql.sqlite import quote_table
 
 UID = "__id__"  # will not be quoted
 GUID = "__guid__"
@@ -31,37 +33,6 @@ COLUMN = "__column"
 
 ALL_TYPES = "bns"
 
-
-_do_not_quote = re.compile(r"^\w+$", re.UNICODE)
-
-
-def quote_table(column):
-    if _do_not_quote.match(column):
-        return column
-    return convert.string2quote(column)
-
-
-def _quote_column(column):
-    return convert.string2quote(column.es_column)
-
-
-def quote_value(value):
-    if isinstance(value, (Mapping, list)):
-        return "."
-    elif isinstance(value, Date):
-        return unicode(value.unix)
-    elif isinstance(value, Duration):
-        return unicode(value.seconds)
-    elif isinstance(value, basestring):
-        return "'" + value.replace("'", "''") + "'"
-    elif value == None:
-        return "NULL"
-    elif value is True:
-        return "1"
-    elif value is False:
-        return "0"
-    else:
-        return unicode(value)
 
 
 def unique_name():
@@ -140,11 +111,15 @@ def typed_column(name, type_):
 
 
 def untyped_column(column_name):
+    """
+    :param column_name:  DATABASE COLUMN NAME
+    :return: (NAME, TYPE) PAIR
+    """
     if "$" in column_name:
-        return join_field(split_field(column_name)[:-1])
+        path = split_field(column_name)
+        return join_field(path[:-1]), path[-1][1:]
     else:
-        return column_name
-        # return column_name.split(".$")[0]
+        return column_name, None
 
 
 def _make_column_name(number):
@@ -211,15 +186,20 @@ def get_column(column):
     return _get
 
 
-def set_column(row, col, name, child, value, header):
+def set_column(row, col, child, value):
+    """
+    EXECUTE `row[col][child]=value` KNOWING THAT row[col] MIGHT BE None
+    :param row:
+    :param col:
+    :param child:
+    :param value:
+    :return:
+    """
     if child == ".":
         row[col] = value
     else:
         column = row[col]
 
-        if column is None and child in header[col]:
-            column = {}
-            row[col] = value        
         if column is None:
             column = row[col] = {}
         Data(column)[child] = value
@@ -240,4 +220,34 @@ def copy_cols(cols, nest_to_alias):
     return output
 
 
-
+ColumnMapping = DataClass(
+    "ColumnMapping",
+    [
+        {               # EDGES ARE AUTOMATICALLY INCLUDED IN THE OUTPUT, USE THIS TO INDICATE EDGES SO WE DO NOT DOUBLE-PRINT
+            "name":"is_edge",
+            "default": False
+        },
+        {               # TRACK NUMBER OF TABLE COLUMNS THIS column REPRESENTS
+            "name":"num_push_columns",
+            "nulls": True
+        },
+        "push_name",    # LITERAL NAME OF THE COLUMN (WITH NO ESCAPING DOTS, NOT IN LEAF FORM)
+        "push_child",   # PATH INTO COLUMN WHERE VALUE IS STORED ("." MEANS COLUMN HOLDS PRIMITIVE VALUE)
+        "push_column",  # THE COLUMN NUMBER
+        "pull",         # A FUNCTION THAT WILL RETURN A VALUE
+        {               # A LIST OF MULTI-SQL REQUIRED TO GET THE VALUE FROM THE DATABASE
+            "name": "sql",
+            "type": list
+        },
+        "type",         # THE NAME OF THE JSON DATA TYPE EXPECTED
+        {               # A LIST OF PATHS EACH INDICATING AN ARRAY
+            "name": "nested_path",
+            "type": list,
+            "default": ["."]
+        }
+    ],
+    constraint={"and": [
+        {"in": {"type": ["null", "boolean", "number", "string", "object"]}},
+        {"gte": [{"length": "nested_path"}, 1]}
+    ]}
+)
