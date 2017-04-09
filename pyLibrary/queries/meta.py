@@ -76,7 +76,7 @@ class FromESMetadata(Schema):
         self.meta=Data()
         table_columns = metadata_tables()
         column_columns = metadata_columns()
-        self.meta.tables = ListContainer("meta.tables", [], wrap({c.name: c for c in table_columns}))
+        self.meta.tables = ListContainer("meta.tables", [], wrap({c.names["meta.tables"]: c for c in table_columns}))
         self.meta.columns = ColumnList()
         self.meta.columns.insert(column_columns)
         self.meta.columns.insert(table_columns)
@@ -387,7 +387,7 @@ class FromESMetadata(Schema):
                         "cardinality",
                         "partitions",
                     ],
-                    "where": {"eq": {"table": c.table, "es_column": c.es_column}}
+                    "where": {"eq": {"names.meta\.columns": c.table, "es_column": c.es_column}}
                 })
                 Log.warning("Could not get {{col.table}}.{{col.es_column}} info", col=c, cause=e)
 
@@ -483,9 +483,8 @@ def metadata_columns():
     return wrap(
         [
             Column(
-                table="meta.columns",
+                names={"meta.columns":c},
                 es_index=None,
-                name=c,
                 es_column=c,
                 type="string",
                 nested_path=ROOT_PATH
@@ -500,9 +499,8 @@ def metadata_columns():
             ]
         ] + [
             Column(
-                table="meta.columns",
                 es_index=None,
-                name=c,
+                names={"meta.columns":c},
                 es_column=c,
                 type="object",
                 nested_path=ROOT_PATH
@@ -513,9 +511,8 @@ def metadata_columns():
             ]
         ] + [
             Column(
-                table="meta.columns",
+                names={"meta.columns": c},
                 es_index=None,
-                name=c,
                 es_column=c,
                 type="long",
                 nested_path=ROOT_PATH
@@ -526,9 +523,8 @@ def metadata_columns():
             ]
         ] + [
             Column(
-                table="meta.columns",
+                names={"meta.columns": "last_updated"},
                 es_index=None,
-                name="last_updated",
                 es_column="last_updated",
                 type="time",
                 nested_path=ROOT_PATH
@@ -540,8 +536,7 @@ def metadata_tables():
     return wrap(
         [
             Column(
-                table="meta.tables",
-                name=c,
+                names={"meta.tables": c},
                 es_index=None,
                 es_column=c,
                 type="string",
@@ -554,8 +549,7 @@ def metadata_tables():
             ]
         ]+[
             Column(
-                table="meta.tables",
-                name="timestamp",
+                names={"meta.tables": "timestamp"},
                 es_index=None,
                 es_column="timestamp",
                 type="integer",
@@ -616,10 +610,14 @@ class ColumnList(Container):
             self.add(column)
 
     def add(self, column):
-        columns_for_table = self.data.setdefault(column.table, {})
-        _columns = columns_for_table.setdefault(column.name, [])
+        if len(column.names)!=1:
+            Log.error("not expected")
+        table, cname = column.names.items()[0]
+
+        columns_for_table = self.data.setdefault(table, {})
+        _columns = columns_for_table.setdefault(cname, [])
         _columns.append(column)
-        self.count+=1
+        self.count += 1
 
     def __iter__(self):
         for t, cs in self.data.items():

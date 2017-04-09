@@ -962,8 +962,13 @@ def window(data, param):
             r[name] = calc_value(r, rownum, data)
         return
 
+    try:
+        edge_values = [e.value.var for e in edges]
+    except Exception as e:
+        raise Log.error("can only support simple variable edges", cause=e)
+
     if not aggregate or aggregate == "none":
-        for _, values in groupby(data, edges.value):
+        for _, values in groupby(data, edge_values):
             if not values:
                 continue     # CAN DO NOTHING WITH THIS ZERO-SAMPLE
 
@@ -976,7 +981,7 @@ def window(data, param):
                 r[name] = calc_value(r, rownum, sequence)
         return
 
-    for keys, values in groupby(data, edges.value):
+    for keys, values in groupby(data, edge_values):
         if not values:
             continue     # CAN DO NOTHING WITH THIS ZERO-SAMPLE
 

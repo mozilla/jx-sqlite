@@ -115,7 +115,7 @@ class Namespace(BaseTestCase):
         }
 
         self.utils.fill_container({"query":query, "data": deep_test_data})
-        db = FromES(settings=base_test_case.settings.backend_es)
+        db = FromES(kwargs=base_test_case.settings.backend_es)
         db.namespaces += [Rename(dimensions={"name": "w", "fields": {"a": "a.v", "b": "a.b"}}), Typed()]
         result = db.query(query)
         self.compare_to_expected(query, result, {
@@ -157,7 +157,7 @@ class Namespace(BaseTestCase):
 
     def _run_test(self, data, query, expect, dimensions):
         new_settings = self.utils.fill_container({"query": query, "data": data}, tjson=True)
-        db = FromES(settings=new_settings)
+        db = FromES(kwargs=new_settings)
         db.namespaces += [Rename(dimensions=dimensions, source=db)]
         result = db.query(query)
         self.compare_to_expected(query, result, expect)
