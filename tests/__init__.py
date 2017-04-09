@@ -200,7 +200,7 @@ def cube2list(cube):
     for r in zip(*[[(k, v) for v in a] for k, a in cube.items()]):
         row = Data()
         for k, v in r:
-           row[k]=v
+            row[k]=v
         rows.append(unwrap(row))
     return rows, header
 
