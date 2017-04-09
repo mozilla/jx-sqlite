@@ -25,7 +25,7 @@ class TestQueryNormalization(FuzzyTestCase):
     def test_complex_edge_value(self):
         edge = {"name": "n", "value": ["a", "c"]}
 
-        result = _normalize_edge(edge)
+        result = _normalize_edge(edge)[0]
         expected = {"name": "n", "domain": {"dimension": {"fields": ["a", "c"]}}}
         self.assertEqual(result, expected)
         self.assertEqual(result.value, NULL)

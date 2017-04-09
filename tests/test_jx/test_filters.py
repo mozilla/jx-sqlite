@@ -34,8 +34,8 @@ class TestFilters(BaseTestCase):
             },
             "expecting_list": {
                 "meta": {"format": "list"}, "data": [
-                {"a": {"b": 0, "c": 0}},
-                {"a": {"b": 1, "c": 1}},
+                {"a.b": 0, "a.c": 0},
+                {"a.b": 1, "a.c": 1},
             ]},
             "expecting_table": {
                 "meta": {"format": "table"},
@@ -61,10 +61,10 @@ class TestFilters(BaseTestCase):
     def test_add_expression(self):
         test = {
             "data": [  # PROPERTIES STARTING WITH _ ARE NESTED AUTOMATICALLY
-                       {"a": {"b": 0, "c": 0}},
-                       {"a": {"b": 0, "c": 1}},
-                       {"a": {"b": 1, "c": 0}},
-                       {"a": {"b": 1, "c": 1}},
+                {"a": {"b": 0, "c": 0}},
+                {"a": {"b": 0, "c": 1}},
+                {"a": {"b": 1, "c": 0}},
+                {"a": {"b": 1, "c": 1}},
             ],
             "query": {
                 "select": "*",
@@ -91,8 +91,8 @@ class TestFilters(BaseTestCase):
                     }
                 ],
                 "data": {
-                    "a\.b": [0],
-                    "a\.c": [1]
+                    "a.b": [0],
+                    "a.c": [1]
                 }
             }
         }

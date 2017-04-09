@@ -802,16 +802,25 @@ class TestEdge1(BaseTestCase):
                 "edges": [
                     {
                         "name": "a",
-                        "allowNulls": False,  # MUST BE FALSE, cube FORMAT CAN NOT CHANGE WHAT'S AVAILABLE
+                        "allowNulls": True,  # MUST BE FALSE, cube FORMAT CAN NOT CHANGE WHAT'S AVAILABLE
                         "domain": {
                             "type": "set",
                             "key": "value",
-                            "partitions": []
+                            "partitions": [
+                                {
+                                    "dataIndex": 0,
+                                    "value": "b"
+                                },
+                                {
+                                    "dataIndex": 1,
+                                    "value": "c"
+                                }
+                            ]
                         }
                     }
                 ],
                 "data": {
-                    "v": []
+                    "v": [NULL, NULL, NULL]
                 }
             }
         }
