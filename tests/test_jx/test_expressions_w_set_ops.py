@@ -699,6 +699,7 @@ class TestSetOps(BaseTestCase):
             "data": [
                 {"url": NULL},
                 {"url": "/"},
+                #        012345678901234567890123456789
                 {"url": "https://hg.mozilla.org/"},
                 {"url": "https://hg.mozilla.org/a/"},
                 {"url": "https://hg.mozilla.org/b/"},
@@ -732,9 +733,9 @@ class TestSetOps(BaseTestCase):
                     {"f": NULL, "count": 1},
                     {"f": "/", "count": 1},
                     {"f": "https://hg.mozilla.org/", "count": 1},
-                    {"f": "https://hg.mozilla.org/a/", "count": 1},
-                    {"f": "https://hg.mozilla.org/b/", "count": 4},
-                    {"f": "https://hg.mozilla.org/c/", "count": 1},
+                    {"f": "https://hg.mozilla.org/a", "count": 1},
+                    {"f": "https://hg.mozilla.org/b", "count": 4},
+                    {"f": "https://hg.mozilla.org/c", "count": 1},
                     {"f": "https://hg.mozilla.org/d", "count": 1},
                     {"f": "https://hg.mozilla.org/e", "count": 1}
                 ]

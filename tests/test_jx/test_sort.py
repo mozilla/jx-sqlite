@@ -162,6 +162,7 @@ class TestSorting(BaseTestCase):
         subtest.name = extract_stack()[0]['method']
         self.utils.fill_container(test)
 
+        test = wrap(test)
         self.utils.send_queries({"query": test.query, "expecting_list": test.expecting_list})
         self.utils.send_queries({"query": test.query, "expecting_table": test.expecting_table})
         try:
@@ -316,12 +317,12 @@ class TestSorting(BaseTestCase):
                 "meta": {"format": "cube"},
                 "edges": [
                     {"name": "b", "domain": {"type": "set", "partitions": [
-                        {"value": 0},
-                        {"value": 1}
+                        {"value": 1},
+                        {"value": 0}
                     ]}},
                     {"name": "a", "domain": {"type": "set", "partitions": [
-                        {"value": "a"},
-                        {"value": "c"}
+                        {"value": "c"},
+                        {"value": "a"}
                     ]}}
                 ],
                 "data": {

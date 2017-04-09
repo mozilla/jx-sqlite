@@ -151,13 +151,14 @@ class TestMetadata(BaseTestCase):
 
     def test_assign(self):
         class TestClass(object):
-            pass
+            def __init__(self, value):
+                self.value=value
 
-        a = TestClass()
+        a = TestClass("test_value")
 
         @extenstion_method(TestClass)
         def my_func(self, print_me):
             print(print_me)
-            return print_me
+            return print_me, self.value
 
-        self.assertEqual(a.my_func("testing"), "testing", "Expecting method to be run")
+        self.assertEqual(a.my_func("testing"), ("testing", "test_value"), "Expecting method to be run")
