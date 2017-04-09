@@ -884,9 +884,9 @@ class TestSetOps(BaseTestCase):
             "expecting_list": {
                 "meta": {"format": "list"},
                 "data": [
-                    {"a": {"b": "x", "v": 2,}},
-                    {"a": {"b": "x", "v": 5}},
-                    {"a": {"b": "x", "v": 7}},
+                    {"a.b": "x", "a.v": 2,},
+                    {"a.b": "x", "a.v": 5},
+                    {"a.b": "x", "a.v": 7},
                     NULL
                 ]
             },
