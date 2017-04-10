@@ -11,7 +11,7 @@
 from __future__ import division
 from __future__ import unicode_literals
 
-from pyLibrary.queries.domains import is_variable_name
+from library.queries import is_variable_name
 from pyLibrary.queries.expressions import simplify_esfilter, jx_expression, USE_BOOL_MUST
 from mo_testing.fuzzytestcase import FuzzyTestCase
 from mo_times.dates import Date
