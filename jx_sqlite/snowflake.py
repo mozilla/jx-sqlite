@@ -23,9 +23,9 @@ class Snowflake(object):
         if not self.read_db():
             self.create_fact(uid)
 
-    def __del__(self):
-        for nested_path, table in self.tables.items():
-            self.db.execute("DROP TABLE " + quote_table(concat_field(self.fact, nested_path)))
+    # def __del__(self):
+    #     for nested_path, table in self.tables.items():
+    #         self.db.execute("DROP TABLE " + quote_table(concat_field(self.fact, nested_path)))
 
     def read_db(self):
         """
