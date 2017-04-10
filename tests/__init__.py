@@ -62,9 +62,6 @@ class SQLiteUtils(object):
         if subtest.disable:
             return
 
-        if "sqlite" in subtest["not"]:
-            return
-
         self.fill_container(subtest, tjson=tjson)
         self.send_queries(subtest)
 
