@@ -28,7 +28,7 @@ ETL. You only need this module if you are creating and retiring indexes. You
 do not need this module for simply searching; for that I suggest using the
 rest API directly.
 
-### Settings###
+### Settings ###
 
 Both ```Cluster``` and ```Index``` objects accept the same settings dict,
 selecting only the properties it requires.

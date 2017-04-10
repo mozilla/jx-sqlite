@@ -21,7 +21,7 @@ from mo_logs.exceptions import Except
 from mo_logs.strings import utf82unicode
 from mo_threads import Lock
 from mo_dots import coalesce, Null, Data, set_default, join_field, split_field, listwrap, literal_field, \
-    ROOT_PATH
+    ROOT_PATH, concat_field
 from mo_dots import wrap
 from mo_dots.lists import FlatList
 from pyLibrary import convert
@@ -537,8 +537,8 @@ class Cluster(object):
         index = kwargs.index
         meta = self.get_metadata()
         columns = parse_properties(index, ".", meta.indices[index].mappings.values()[0].properties)
-        if len(columns)!=0:
-            kwargs.tjson = tjson or any(c.names[best.index].endswith("$value") for c in columns)
+        if len(columns) != 0:
+            kwargs.tjson = tjson or any(c.names["."].endswith("$value") for c in columns)
 
         return Index(kwargs)
 
@@ -701,9 +701,9 @@ class Cluster(object):
         RETURN LIST OF {"alias":a, "index":i} PAIRS
         ALL INDEXES INCLUDED, EVEN IF NO ALIAS {"alias":Null}
         """
-        data = self.get("/_cluster/state", retry={"times": 5}, timeout=3)
+        data = self.get("/_aliases", retry={"times": 5}, timeout=3)
         output = []
-        for index, desc in data.metadata.indices.items():
+        for index, desc in data.items():
             if not desc["aliases"]:
                 output.append({"index": index, "alias": None})
             else:
@@ -1082,7 +1082,7 @@ def parse_properties(parent_index_name, parent_name, esProperties):
     columns = FlatList()
     for name, property in esProperties.items():
         index_name = parent_index_name
-        column_name = join_field(split_field(parent_name) + [name])
+        column_name = concat_field(parent_name, name)
 
         if property.type == "nested" and property.properties:
             # NESTED TYPE IS A NEW TYPE DEFINITION
@@ -1093,8 +1093,8 @@ def parse_properties(parent_index_name, parent_name, esProperties):
             columns.extend(self_columns)
             columns.append(Column(
                 es_index=index_name,
-                names={index_name: column_name},
                 es_column=column_name,
+                names={".": column_name},
                 type="nested",
                 nested_path=ROOT_PATH
             ))
@@ -1105,7 +1105,7 @@ def parse_properties(parent_index_name, parent_name, esProperties):
             child_columns = parse_properties(index_name, column_name, property.properties)
             columns.extend(child_columns)
             columns.append(Column(
-                names={index_name: column_name},
+                names={".": column_name},
                 es_index=index_name,
                 es_column=column_name,
                 nested_path=ROOT_PATH,
@@ -1124,8 +1124,8 @@ def parse_properties(parent_index_name, parent_name, esProperties):
                     columns.append(Column(
                         table=index_name,
                         es_index=index_name,
-                        name=column_name,
                         es_column=column_name,
+                        name=column_name,
                         nested_path=ROOT_PATH,
                         type=p.type
                     ))
@@ -1133,8 +1133,8 @@ def parse_properties(parent_index_name, parent_name, esProperties):
                     columns.append(Column(
                         table=index_name,
                         es_index=index_name,
-                        name=column_name + "\\." + n,
                         es_column=column_name + "\\." + n,
+                        name=column_name + "\\." + n,
                         nested_path=ROOT_PATH,
                         type=p.type
                     ))
@@ -1143,24 +1143,23 @@ def parse_properties(parent_index_name, parent_name, esProperties):
         if property.type in ["string", "boolean", "integer", "date", "long", "double"]:
             columns.append(Column(
                 es_index=index_name,
-                names={index_name: column_name},
+                names={".": column_name},
                 es_column=column_name,
                 nested_path=ROOT_PATH,
                 type=property.type
             ))
             if property.index_name and name != property.index_name:
                 columns.append(Column(
-                    table=index_name,
                     es_index=index_name,
                     es_column=column_name,
-                    name=column_name,
+                    names={".":column_name},
                     nested_path=ROOT_PATH,
                     type=property.type
                 ))
         elif property.enabled == None or property.enabled == False:
             columns.append(Column(
                 es_index=index_name,
-                names={index_name: column_name},
+                names={".": column_name},
                 es_column=column_name,
                 nested_path=ROOT_PATH,
                 type="source" if property.enabled==False else "object"

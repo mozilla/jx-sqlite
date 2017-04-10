@@ -81,12 +81,12 @@ class FromES(Container):
         self.edges = Data()
         self.worker = None
 
-        columns = self.get_columns(table_name=name)
-        self._schema = Schema(columns)
+        columns = self.meta.get_columns(table_name=coalesce(name, alias, index))
+        self._schema = Schema(coalesce(name, alias, index), columns)
 
         if typed == None:
             # SWITCH ON TYPED MODE
-            self.typed = any(c.name in ("$value", "$object") for c in columns)
+            self.typed = any(c.names["."] in ("$value", "$object") for c in columns)
         else:
             self.typed = typed
 
@@ -169,19 +169,19 @@ class FromES(Container):
                 Log.error("Problem (Tried to clear Elasticsearch cache)", e)
             Log.error("problem", e)
 
-    def get_columns(self, table_name=None, column_name=None):
-        # CONFIRM WE CAN USE NAME OF index
-        if table_name == None or table_name == self.settings.index or table_name == self.settings.alias:
-            table_name = self.settings.index
-        elif table_name.startswith(self.settings.index + ".") or table_name.startswith(self.settings.alias):
-            pass
-        else:
-            Log.error("expecting `table` to be same as, or deeper, than index name")
-
-        try:
-            return self.meta.get_columns(table_name=table_name, column_name=column_name)
-        except Exception:
-            return FlatList.EMPTY
+    # def get_columns(self, table_name=None, column_name=None):
+    #     # CONFIRM WE CAN USE NAME OF index
+    #     if table_name == None or table_name == self.settings.index or table_name == self.settings.alias:
+    #         table_name = self.settings.index
+    #     elif table_name.startswith(self.settings.index + ".") or table_name.startswith(self.settings.alias):
+    #         pass
+    #     else:
+    #         Log.error("expecting `table` to be same as, or deeper, than index name")
+    #
+    #     try:
+    #         return self.meta.get_columns(table_name=table_name, column_name=column_name)
+    #     except Exception:
+    #         return FlatList.EMPTY
 
     def addDimension(self, dim):
         if isinstance(dim, list):

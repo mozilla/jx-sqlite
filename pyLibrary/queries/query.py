@@ -100,6 +100,8 @@ class QueryOp(Expression):
             output = set()
             if isinstance(e.value, basestring):
                 output.add(e.value)
+            if isinstance(e.value, Expression):
+                output |= e.value.vars()
             if e.domain.key:
                 output.add(e.domain.key)
             if e.domain.where:
