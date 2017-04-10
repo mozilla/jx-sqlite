@@ -17,7 +17,7 @@ from decimal import Decimal
 
 from mo_dots import coalesce, wrap, set_default, literal_field, Null, split_field, startswith_field
 from mo_dots import Data, join_field, unwraplist, ROOT_PATH, relative_field, unwrap
-from mo_json import json2value
+from mo_json import json2value, quote
 from mo_logs import Log
 from mo_logs.exceptions import suppress_exception
 from mo_math import Math, OR, MAX
@@ -2927,19 +2927,29 @@ def _normalize(esfilter):
     return esfilter
 
 
-def split_expression_by_depth(where, schema, map_, output=None, var_to_depth=None):
+def split_expression_by_depth(where, schema, map_=None, output=None, var_to_depth=None):
+    """
+    :param where: EXPRESSION TO INSPECT
+    :param schema: THE SCHEMA
+    :param map_: THE VARIABLE NAME MAPPING TO PERFORM ON where
+    :param output:
+    :param var_to_depth: MAP FROM EACH VARIABLE NAME TO THE DEPTH
+    :return:
+    """
     """
     It is unfortunate that ES can not handle expressions that
     span nested indexes.  This will split your where clause
     returning {"and": [filter_depth0, filter_depth1, ...]}
     """
     vars_ = where.vars()
+    if not map_:
+        map_ = {v: schema[v][0].es_column for v in vars_}
 
     if var_to_depth is None:
         if not vars_:
             return Null
         # MAP VARIABLE NAMES TO HOW DEEP THEY ARE
-        var_to_depth = {v: len(c.nested_path)-1 for v in vars_ for c in schema.lookup[v]}
+        var_to_depth = {v: len(c.nested_path)-1 for v in vars_ for c in schema[v]}
         all_depths = set(var_to_depth.values())
         if -1 in all_depths:
             Log.error(

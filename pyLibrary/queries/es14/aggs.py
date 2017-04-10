@@ -65,7 +65,7 @@ def get_decoders_by_depth(query):
                 if not schema[v]:
                     Log.error("{{var}} does not exist in schema", var=v)
 
-            edge.value = edge.value.map({c.name: c.es_column for v in vars_ for c in schema.lookup[v]})
+            edge.value = edge.value.map({v: c.es_column for v in vars_ for c in schema[v]})
         elif edge.range:
             edge = edge.copy()
             min_ = edge.range.min
@@ -114,7 +114,8 @@ def get_decoders_by_depth(query):
 
 def es_aggsop(es, frum, query):
     select = wrap([s.copy() for s in listwrap(query.select)])
-    es_column_map = {c.name: unwraplist(c.es_column) for c in frum.schema.columns}
+    # [0] is a cheat; each es_column should be a dict of columns keyed on type, like in sqlite
+    es_column_map = {v: frum.schema[v][0].es_column for v in query.vars()}
 
     es_query = Data()
     new_select = Data()  #MAP FROM canonical_name (USED FOR NAMES IN QUERY) TO SELECT MAPPING
@@ -279,7 +280,7 @@ def es_aggsop(es, frum, query):
     vars_ = query.where.vars()
 
     #<TERRIBLE SECTION> THIS IS WHERE WE WEAVE THE where CLAUSE WITH nested
-    split_where = split_expression_by_depth(query.where, schema=frum.schema, map_=es_column_map)
+    split_where = split_expression_by_depth(query.where, schema=frum.schema)
 
     if len(split_field(frum.name)) > 1:
         if any(split_where[2::]):

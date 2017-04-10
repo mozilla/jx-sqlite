@@ -11,7 +11,8 @@ from __future__ import unicode_literals
 
 from collections import Mapping
 
-from mo_dots import Data
+from mo_collections import UniqueIndex
+from mo_dots import Data, literal_field, Null
 from mo_dots import wrap, set_default, split_field, join_field
 from mo_logs import Log
 from mo_collections.index import Index
@@ -78,7 +79,7 @@ def wrap_from(frum, schema=None):
                 Log.error("{{name}} not a recognized table", name=frum)
         else:
             type_ = _containers.config.default.type
-            index = join_field(split_field(frum)[:1:])
+            index = split_field(frum)[0]
 
         settings = set_default(
             {
@@ -110,11 +111,23 @@ class Schema(object):
     """
 
     def __init__(self, table_name, columns):
-        self.table = table_name  # USED AS AN EXPLICIT STATEMENT OF PERSPECTIVE IN THE DATABASE
-        self.lookup = Index(keys=[join_field(["names", self.table])], data=columns)
+        """
+        :param table_name: THE FACT TABLE
+        :param query_path: PATH TO ARM OF SNOWFLAKE
+        :param columns: ALL COLUMNS IN SNOWFLAKE
+        """
+        table_path = split_field(table_name)
+        self.table = table_path[0]  # USED AS AN EXPLICIT STATEMENT OF PERSPECTIVE IN THE DATABASE
+        self.query_path = join_field(table_path[1:])
+
+        lookup = self.lookup = _index(columns, self.query_path)
+        if self.query_path != ".":
+            alternate = _index(columns, ".")
+            for k,v in alternate.items():
+                lookup.setdefault(k, v)
 
     def __getitem__(self, column_name):
-        return self.lookup[column_name]
+        return self.lookup.get(column_name, Null)
 
     def get_column(self, name, table=None):
         return self.lookup[name]
@@ -129,8 +142,16 @@ class Schema(object):
 
     @property
     def columns(self):
-        return list(self.lookup)
+        return [c for cs in self.lookup.values() for c in cs]
 
     def keys(self):
         return set(k[0] for k in self.lookup._data.keys())
 
+
+def _index(columns, query_path):
+    lookup = {}
+    for c in columns:
+        cname = c.names[query_path]
+        cs = lookup.setdefault(cname, [])
+        cs.append(c)
+    return lookup
