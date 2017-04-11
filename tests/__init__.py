@@ -74,7 +74,7 @@ class SQLiteUtils(object):
         try:
             # INSERT DATA
             self._index.insert(subtest.data)
-        except Exception, e:
+        except Exception as  e:
             Log.error("can not load {{data}} into container", {"data":subtest.data}, e)
 
         frum = subtest.query['from']
@@ -118,7 +118,7 @@ class SQLiteUtils(object):
     def execute_query(self, query):
         try:
             return self._index.query(deepcopy(query))
-        except Exception, e:
+        except Exception as e:
             Log.error("Failed query", e)
 
     def try_till_response(self, *args, **kwargs):
@@ -164,13 +164,13 @@ def compare_to_expected(query, result, expect):
             if isinstance(expect.data, list):
                 try:
                     expect.data = jx.sort(expect.data, sort_order.name)
-                except Exception, _:
+                except Exception:
                     pass
 
             if isinstance(result.data, list):
                 try:
                     result.data = jx.sort(result.data, sort_order.name)
-                except Exception, _:
+                except Exception:
                     pass
 
     elif result.meta.format == "cube" and len(result.edges) == 1 and result.edges[0].name == "rownum" and not query.sort:

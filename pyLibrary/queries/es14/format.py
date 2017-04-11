@@ -105,7 +105,7 @@ def format_table(decoders, aggs, start, query, select):
 
 
 def format_table_from_groupby(decoders, aggs, start, query, select):
-    header = [d.edge.name for d in decoders] + select.name
+    header = [d.edge.name.replace("\\.", ".") for d in decoders] + select.name
 
     def data():
         for row, coord, agg in aggs_iterator(aggs, decoders):

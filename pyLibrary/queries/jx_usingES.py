@@ -25,7 +25,7 @@ from mo_kwargs import override
 from pyLibrary.queries import jx, containers, Schema
 from pyLibrary.queries.containers import Container
 from pyLibrary.queries.dimensions import Dimension
-from pyLibrary.queries.domains import is_keyword
+from jx_base.queries import is_variable_name
 from pyLibrary.queries.es09 import aggop as es09_aggop
 from pyLibrary.queries.es09 import setop as es09_setop
 from pyLibrary.queries.es14.aggs import es_aggsop, is_aggsop
@@ -169,20 +169,6 @@ class FromES(Container):
                 Log.error("Problem (Tried to clear Elasticsearch cache)", e)
             Log.error("problem", e)
 
-    # def get_columns(self, table_name=None, column_name=None):
-    #     # CONFIRM WE CAN USE NAME OF index
-    #     if table_name == None or table_name == self.settings.index or table_name == self.settings.alias:
-    #         table_name = self.settings.index
-    #     elif table_name.startswith(self.settings.index + ".") or table_name.startswith(self.settings.alias):
-    #         pass
-    #     else:
-    #         Log.error("expecting `table` to be same as, or deeper, than index name")
-    #
-    #     try:
-    #         return self.meta.get_columns(table_name=table_name, column_name=column_name)
-    #     except Exception:
-    #         return FlatList.EMPTY
-
     def addDimension(self, dim):
         if isinstance(dim, list):
             Log.error("Expecting dimension to be a object, not a list:\n{{dim}}",  dim= dim)
@@ -231,7 +217,7 @@ class FromES(Container):
         # SCRIPT IS SAME FOR ALL (CAN ONLY HANDLE ASSIGNMENT TO CONSTANT)
         scripts = FlatList()
         for k, v in command.set.items():
-            if not is_keyword(k):
+            if not is_variable_name(k):
                 Log.error("Only support simple paths for now")
             if isinstance(v, Mapping) and v.doc:
                 scripts.append({"doc": v.doc})

@@ -13,22 +13,17 @@ from __future__ import unicode_literals
 
 import itertools
 from collections import Mapping
-from datetime import date
-from datetime import datetime
-from types import NoneType
 
-from mo_collections import UniqueIndex
-from mo_dots import Data, wrap, listwrap, unwraplist, FlatList, unwrap, join_field, split_field, NullType, Null
+from mo_dots import Data, wrap, listwrap, unwraplist, unwrap, Null
 from mo_logs import Log
 from mo_threads import Lock
-from mo_times.dates import Date
 from pyLibrary import convert
-from pyLibrary.queries import jx, Schema
+from pyLibrary.queries import jx
 from pyLibrary.queries.containers import Container
 from pyLibrary.queries.expression_compiler import compile_expression
 from pyLibrary.queries.expressions import TRUE_FILTER, jx_expression, Expression, TrueOp, jx_expression_to_function, Variable
 from pyLibrary.queries.lists.aggs import is_aggs, list_aggs
-from pyLibrary.queries.meta import Column, ROOT_PATH
+from pyLibrary.queries.meta import get_schema_from_list
 
 _get = object.__getattribute__
 
@@ -172,9 +167,9 @@ class ListContainer(Container):
 
     def format(self, format):
         if format == "table":
-            frum = convert.list2table(self.data, self.schema.keys())
+            frum = convert.list2table(self.data, self._schema.lookup.keys())
         elif format == "cube":
-            frum = convert.list2cube(self.data, self.schema.keys())
+            frum = convert.list2cube(self.data, self.schema.lookup.keys())
         else:
             frum = self.__data__()
 
@@ -226,198 +221,6 @@ class ListContainer(Container):
 
     def __len__(self):
         return len(self.data)
-
-
-def get_schema_from_list(table_name, frum):
-    """
-    SCAN THE LIST FOR COLUMN TYPES
-    """
-    columns = UniqueIndex(keys=(join_field(["names", table_name]),))
-    _get_schema_from_list(frum, table_name, prefix_path=[], nested_path=ROOT_PATH, columns=columns)
-    return Schema(table_name=table_name, columns=columns)
-
-
-def _get_schema_from_list(frum, table_name, prefix_path, nested_path, columns):
-    """
-    :param frum:  The list
-    :param table_name: Name of the table this list holds records for
-    :param prefix_path: parent path
-    :param nested_path: each nested array, in reverse order
-    :param columns: map from full name to column definition
-    :return:
-    """
-
-    for d in frum:
-        row_type = _type_to_name[d.__class__]
-        if row_type != "object":
-            full_name = join_field(prefix_path)
-            column = columns[full_name]
-            if not column:
-                column = Column(
-                    names={table_name: full_name},
-                    es_column=full_name,
-                    es_index=".",
-                    type="undefined",
-                    nested_path=nested_path
-                )
-                columns.add(column)
-            column.type = _merge_type[column.type][row_type]
-        else:
-            for name, value in d.items():
-                full_name = join_field(prefix_path + [name])
-                column = columns[full_name]
-                if not column:
-                    column = Column(
-                        names={table_name: full_name},
-                        es_column=full_name,
-                        es_index=".",
-                        type="undefined",
-                        nested_path=nested_path
-                    )
-                    columns.add(column)
-                if isinstance(value, list):
-                    if len(value) == 0:
-                        this_type = "undefined"
-                    elif len(value) == 1:
-                        this_type = _type_to_name[value[0].__class__]
-                    else:
-                        this_type = _type_to_name[value[0].__class__]
-                        if this_type == "object":
-                            this_type = "nested"
-                else:
-                    this_type = _type_to_name[value.__class__]
-                new_type = _merge_type[column.type][this_type]
-                column.type = new_type
-
-                if this_type == "object":
-                    _get_schema_from_list([value], table_name, prefix_path + [name], nested_path, columns)
-                elif this_type == "nested":
-                    np = listwrap(nested_path)
-                    newpath = unwraplist([join_field(split_field(np[0])+[name])]+np)
-                    _get_schema_from_list(value, table_name, prefix_path + [name], newpath, columns)
-
-
-_type_to_name = {
-    NoneType: "undefined",
-    NullType: "undefined",
-    bool: "boolean",
-    str: "string",
-    unicode: "string",
-    int: "integer",
-    long: "long",
-    float: "double",
-    Data: "object",
-    dict: "object",
-    set: "nested",
-    list: "nested",
-    FlatList: "nested",
-    Date: "double",
-    datetime: "double",
-    date: "double"
-}
-
-_merge_type = {
-    "undefined": {
-        "undefined": "undefined",
-        "boolean": "boolean",
-        "integer": "integer",
-        "long": "long",
-        "float": "float",
-        "double": "double",
-        "string": "string",
-        "object": "object",
-        "nested": "nested"
-    },
-    "boolean": {
-        "undefined": "boolean",
-        "boolean": "boolean",
-        "integer": "integer",
-        "long": "long",
-        "float": "float",
-        "double": "double",
-        "string": "string",
-        "object": None,
-        "nested": None
-    },
-    "integer": {
-        "undefined": "integer",
-        "boolean": "integer",
-        "integer": "integer",
-        "long": "long",
-        "float": "float",
-        "double": "double",
-        "string": "string",
-        "object": None,
-        "nested": None
-    },
-    "long": {
-        "undefined": "long",
-        "boolean": "long",
-        "integer": "long",
-        "long": "long",
-        "float": "double",
-        "double": "double",
-        "string": "string",
-        "object": None,
-        "nested": None
-    },
-    "float": {
-        "undefined": "float",
-        "boolean": "float",
-        "integer": "float",
-        "long": "double",
-        "float": "float",
-        "double": "double",
-        "string": "string",
-        "object": None,
-        "nested": None
-    },
-    "double": {
-        "undefined": "double",
-        "boolean": "double",
-        "integer": "double",
-        "long": "double",
-        "float": "double",
-        "double": "double",
-        "string": "string",
-        "object": None,
-        "nested": None
-    },
-    "string": {
-        "undefined": "string",
-        "boolean": "string",
-        "integer": "string",
-        "long": "string",
-        "float": "string",
-        "double": "string",
-        "string": "string",
-        "object": None,
-        "nested": None
-    },
-    "object": {
-        "undefined": "object",
-        "boolean": None,
-        "integer": None,
-        "long": None,
-        "float": None,
-        "double": None,
-        "string": None,
-        "object": "object",
-        "nested": "nested"
-    },
-    "nested": {
-        "undefined": "nested",
-        "boolean": None,
-        "integer": None,
-        "long": None,
-        "float": None,
-        "double": None,
-        "string": None,
-        "object": "nested",
-        "nested": "nested"
-    }
-}
-
 
 
 def _exec(code):
