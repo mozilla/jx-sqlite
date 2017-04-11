@@ -16,7 +16,7 @@ from collections import Mapping
 from mo_logs import Log
 from mo_dots import set_default, wrap, split_field, join_field, concat_field
 from mo_math import Math
-from pyLibrary.queries.domains import is_keyword
+from jx_base.queries import is_variable_name
 from pyLibrary.queries.expressions import Expression
 from pyLibrary.queries.namespace import convert_list, Namespace
 from pyLibrary.queries.query import QueryOp
@@ -54,7 +54,7 @@ class Typed(Namespace):
             return expr
         elif expr == ".":
             return "."
-        elif is_keyword(expr):
+        elif is_variable_name(expr):
             #TODO: LOOKUP SCHEMA AND ADD ALL COLUMNS WITH THIS PREFIX
             return expr + ".$value"
         elif isinstance(expr, basestring):

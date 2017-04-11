@@ -235,71 +235,54 @@ def string2url(value):
         Log.error("Expecting a string")
 
 
-def value2url(value):
-    if value == None:
-        Log.error("")
-
-    if isinstance(value, Mapping):
-        output = "&".join([value2url(k) + "=" + (value2url(v) if isinstance(v, basestring) else value2url(value2json(v))) for k,v in value.items()])
-    elif isinstance(value, unicode):
-        output = "".join([_map2url[c] for c in unicode2latin1(value)])
-    elif isinstance(value, str):
-        output = "".join([_map2url[c] for c in value])
-    elif hasattr(value, "__iter__"):
-        output = ",".join(value2url(v) for v in value)
-    else:
-        output = unicode(value)
-    return output
-
-
-def url_param2value(param):
-    """
-    CONVERT URL QUERY PARAMETERS INTO DICT
-    """
-    if isinstance(param, unicode):
-        param = param.encode("ascii")
-
-    def _decode(v):
-        output = []
-        i = 0
-        while i < len(v):
-            c = v[i]
-            if c == "%":
-                d = hex2bytes(v[i + 1:i + 3])
-                output.append(d)
-                i += 3
-            else:
-                output.append(c)
-                i += 1
-
-        output = (b"".join(output)).decode("latin1")
-        try:
-            return json2value(output)
-        except Exception:
-            pass
-        return output
-
-
-    query = {}
-    for p in param.split(b'&'):
-        if not p:
-            continue
-        if p.find(b"=") == -1:
-            k = p
-            v = True
-        else:
-            k, v = p.split(b"=")
-            v = _decode(v)
-
-        u = query.get(k)
-        if u is None:
-            query[k] = v
-        elif isinstance(u, list):
-            u += [v]
-        else:
-            query[k] = [u, v]
-
-    return query
+# def url_param2value(param):
+#     """
+#     CONVERT URL QUERY PARAMETERS INTO DICT
+#     """
+#     if isinstance(param, unicode):
+#         param = param.encode("ascii")
+#
+#     def _decode(v):
+#         output = []
+#         i = 0
+#         while i < len(v):
+#             c = v[i]
+#             if c == "%":
+#                 d = hex2bytes(v[i + 1:i + 3])
+#                 output.append(d)
+#                 i += 3
+#             else:
+#                 output.append(c)
+#                 i += 1
+#
+#         output = (b"".join(output)).decode("latin1")
+#         try:
+#             return json2value(output)
+#         except Exception:
+#             pass
+#         return output
+#
+#
+#     query = {}
+#     for p in param.split(b'&'):
+#         if not p:
+#             continue
+#         if p.find(b"=") == -1:
+#             k = p
+#             v = True
+#         else:
+#             k, v = p.split(b"=")
+#             v = _decode(v)
+#
+#         u = query.get(k)
+#         if u is None:
+#             query[k] = v
+#         elif isinstance(u, list):
+#             u += [v]
+#         else:
+#             query[k] = [u, v]
+#
+#     return query
 
 
 def html2unicode(value):

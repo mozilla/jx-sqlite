@@ -12,7 +12,8 @@ from __future__ import division
 from __future__ import unicode_literals
 
 from mo_collections.matrix import Matrix
-from mo_dots import coalesce, split_field, set_default, Data, unwraplist, literal_field, join_field, unwrap, wrap
+from mo_dots import coalesce, split_field, set_default, Data, unwraplist, literal_field, join_field, unwrap, wrap, \
+    concat_field
 from mo_dots import listwrap
 from mo_dots.lists import FlatList
 from mo_logs import Log
@@ -66,7 +67,8 @@ def extract_rows(es, es_query, query):
     is_list = isinstance(query.select, list)
     selects = wrap([s.copy() for s in listwrap(query.select)])
     new_select = FlatList()
-    columns = query.frum.schema.columns
+    schema = query.frum.schema
+    columns = schema.columns
     leaf_columns = set(c.names["."] for c in columns if c.type not in STRUCT and (c.nested_path[0] == "." or c.es_column == c.nested_path[0]))
     nested_columns = set(c.names["."] for c in columns if c.nested_path[0] != ".")
 
@@ -75,35 +77,40 @@ def extract_rows(es, es_query, query):
     for select in selects:
         # IF THERE IS A *, THEN INSERT THE EXTRA COLUMNS
         if isinstance(select.value, LeavesOp):
+            new_name_prefix = select.name + "\\." if select.name != "." else ""
             term = select.value.term
             if isinstance(term, Variable):
 
                 if term.var == ".":
                     es_query.fields = None
                     source = "_source"
-
-                    net_columns = leaf_columns - set(selects.name) - {"_id"}
-                    for n in net_columns:
-                        new_select.append({
-                            "name": n,
-                            "value": Variable(n),
-                            "put": {"name": n, "index": i, "child": "."}
-                        })
-                        i += 1
+                    for cname, cs in schema.lookup.items():
+                        for c in cs:
+                            if c.type not in STRUCT and c.es_column != "_id":
+                                new_name = new_name_prefix + literal_field(cname)
+                                new_select.append({
+                                    "name": new_name,
+                                    "value": Variable(c.es_column),
+                                    "put": {"name": new_name, "index": i, "child": "."}
+                                })
+                                i += 1
                 else:
-                    parent = term.var + "."
-                    prefix = len(parent)
-                    for c in leaf_columns:
-                        if c.startswith(parent):
-                            if es_query.fields is not None:
-                                es_query.fields.append(c)
-
-                            new_select.append({
-                                "name": select.name + "." + c[prefix:],
-                                "value": Variable(c),
-                                "put": {"name": select.name + "." + c[prefix:], "index": i, "child": "."}
-                            })
-                            i += 1
+                    prefix = term.var + "."
+                    prefix_length = len(prefix)
+                    for cname, cs in schema.lookup.items():
+                        if cname.startswith(prefix):
+                            suffix = cname[prefix_length:]
+                            for c in cs:
+                                if c.type not in STRUCT:
+                                    if es_query.fields is not None:
+                                        es_query.fields.append(c.es_column)
+                                    new_name = new_name_prefix + literal_field(suffix)
+                                    new_select.append({
+                                        "name": new_name,
+                                        "value": Variable(c.es_column),
+                                        "put": {"name": new_name, "index": i, "child": "."}
+                                    })
+                                    i += 1
 
         elif isinstance(select.value, Variable):
             if select.value.var == ".":
@@ -135,9 +142,9 @@ def extract_rows(es, es_query, query):
                 })
                 i += 1
             else:
-                parent = select.value.var + "."
-                prefix = len(parent)
-                net_columns = [c for c in leaf_columns if c.startswith(parent)]
+                prefix = select.value.var + "."
+                prefix_length = len(prefix)
+                net_columns = [c for c in leaf_columns if c.startswith(prefix)]
                 if not net_columns:
                     # LEAF
                     if es_query.fields is not None:
@@ -147,17 +154,21 @@ def extract_rows(es, es_query, query):
                         "value": select.value,
                         "put": {"name": select.name, "index": i, "child": "."}
                     })
+                    i += 1
                 else:
                     # LEAVES OF OBJECT
-                    for n in net_columns:
-                        if es_query.fields is not None:
-                            es_query.fields.append(n)
-                        new_select.append({
-                            "name": select.name,
-                            "value": Variable(n),
-                            "put": {"name": select.name, "index": i, "child": n[prefix:]}
-                        })
-                i += 1
+                    for cname, cs in schema.lookup.items():
+                        if cname.startswith(prefix):
+                            for c in cs:
+                                if c.type not in STRUCT:
+                                    if es_query.fields is not None:
+                                        es_query.fields.append(c.es_column)
+                                    new_select.append({
+                                        "name": select.name,
+                                        "value": Variable(c.es_column),
+                                        "put": {"name": select.name, "index": i, "child": cname[prefix_length:]}
+                                    })
+                    i += 1
         else:
             es_query.script_fields[literal_field(select.name)] = {"script": select.value.to_ruby()}
             new_select.append({
@@ -171,7 +182,7 @@ def extract_rows(es, es_query, query):
         if n.pull:
             continue
         if source == "_source":
-            n.pull = join_field(["_source"] + split_field(n.value.var))
+            n.pull = concat_field("_source", n.value.var)
         elif isinstance(n.value, Variable):
             n.pull = "fields." + literal_field(n.value.var)
         else:
@@ -210,10 +221,16 @@ def format_list(T, select, query=None):
             data.append(r if r else None)
     else:
         for row in T:
-            r = Data()
+            r = None
             for s in select:
-                r[s.put.child] = unwraplist(row[s.pull])
-            data.append(r if r else None)
+                if s.put.child == ".":
+                    r = unwraplist(row[s.pull])
+                else:
+                    if r is None:
+                        r = Data()
+                    r[s.put.child] = unwraplist(row[s.pull])
+
+            data.append(r)
 
     return Data(
         meta={"format": "list"},
@@ -246,7 +263,7 @@ def format_table(T, select, query=None):
     for s in select:
         if header[s.put.index]:
             continue
-        header[s.put.index] = s.name
+        header[s.put.index] = s.name.replace("\\.", ".")
 
     return Data(
         meta={"format": "table"},

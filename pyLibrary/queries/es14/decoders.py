@@ -19,10 +19,11 @@ from mo_dots import wrap
 from mo_math import MAX, UNION
 from mo_math import Math
 from pyLibrary.queries import jx
+from pyLibrary.queries.containers import STRUCT
 from pyLibrary.queries.dimensions import Dimension
 from pyLibrary.queries.domains import SimpleSetDomain, DefaultDomain, PARTITION
 from pyLibrary.queries.expressions import simplify_esfilter, Variable, NotOp, InOp, Literal, OrOp, AndOp, \
-    InequalityOp, TupleOp
+    InequalityOp, TupleOp, LeavesOp
 from pyLibrary.queries.query import MAX_LIMIT, DEFAULT_LIMIT
 
 
@@ -31,13 +32,15 @@ class AggsDecoder(object):
         e.allowNulls = coalesce(e.allowNulls, True)
 
         if e.value and e.domain.type == "default":
-            if query.groupby:
-                return object.__new__(DefaultDecoder, e)
+            # if query.groupby:
+            #     return object.__new__(DefaultDecoder, e)
 
             if isinstance(e.value, basestring):
                 Log.error("Expecting Variable or Expression, not plain string")
 
-            if isinstance(e.value, TupleOp):
+            if isinstance(e.value, LeavesOp):
+                return object.__new__(ObjectDecoder, e)
+            elif isinstance(e.value, TupleOp):
                 # THIS domain IS FROM A dimension THAT IS A SIMPLE LIST OF fields
                 # JUST PULL THE FIELDS
                 if not all(isinstance(t, Variable) for t in e.value.terms):
@@ -48,8 +51,11 @@ class AggsDecoder(object):
                 )
                 return object.__new__(DimFieldListDecoder, e)
             elif isinstance(e.value, Variable):
-                cols = query.frum.get_columns()
-                col = cols.filter(lambda c: c.name == e.value.var)[0]
+                schema = query.frum.schema
+                col = schema[e.value.var][0]
+
+                if col.type in STRUCT:
+                    return object.__new__(ObjectDecoder, e)
                 if not col:
                     return object.__new__(DefaultDecoder, e)
                 limit = coalesce(e.domain.limit, query.limit, DEFAULT_LIMIT)
@@ -126,6 +132,17 @@ class SetDecoder(AggsDecoder):
         AggsDecoder.__init__(self, edge, query, limit)
         self.domain = edge.domain
 
+        # WE ASSUME IF THE VARIABLES MATCH, THEN THE SORT TERM AND EDGE TERM MATCH, AND WE SORT BY TERM
+        self.sorted = None
+        edge_var = edge.value.vars()
+        for s in query.sort:
+            if not edge_var - s.value.vars():
+                self.sorted = {1: "asc", -1: "desc"}[s.sort]
+                domain = self.domain
+                key = self.domain.key
+                domain.partitions = parts = jx.sort(domain.partitions, {"value": key, "sort": s.sort})
+                domain.map = {i: p for i, p in enumerate(parts)}
+
     def append_query(self, es_query, start):
         self.start = start
         domain = self.domain
@@ -136,13 +153,15 @@ class SetDecoder(AggsDecoder):
             if isinstance(key, (tuple, list)) and len(key)==1:
                 key = key[0]
             include = [p[key] for p in domain.partitions]
+
             if self.edge.allowNulls:
 
                 return wrap({"aggs": {
                     "_match": set_default({"terms": {
                         "field": field.var,
                         "size": self.limit,
-                        "include": include
+                        "include": include,
+                        "order": {"_term": self.sorted} if self.sorted else None
                     }}, es_query),
                     "_missing": set_default(
                         {"filter": {"or": [
@@ -157,7 +176,8 @@ class SetDecoder(AggsDecoder):
                     "_match": set_default({"terms": {
                         "field": field.var,
                         "size": self.limit,
-                        "include": include
+                        "include": include,
+                        "order": {"_term": self.sorted} if self.sorted else None
                     }}, es_query)
                 }})
         else:
@@ -466,7 +486,7 @@ class DefaultDecoder(SetDecoder):
                 "_missing": set_default({"filter": missing.to_esfilter()}, es_query) if missing else None
             }})
             return output
-        elif self.edge.value.var in self.query.sort.value.var:
+        elif self.edge.value.var in [s.value.var for s in self.query.sort]:
             sort_dir = [s.sort for s in self.query.sort if s.value.var==self.edge.value.var][0]
             output = wrap({"aggs": {
                 "_match": set_default(
@@ -582,6 +602,92 @@ class DimFieldListDecoder(SetDecoder):
     def get_index(self, row):
         find = tuple(p["key"] for p in row[self.start:self.start + self.num_columns:])
         return self.domain.getIndexByKey(find)
+
+    @property
+    def num_columns(self):
+        return len(self.fields)
+
+
+class ObjectDecoder(SetDecoder):
+    def __init__(self, edge, query, limit):
+        AggsDecoder.__init__(self, edge, query, limit)
+        if isinstance(edge.value, LeavesOp):
+            flatter = literal_field
+            prefix = edge.value.term.var+"."
+        else:
+            prefix = edge.value.var + "."
+            prefix_length = len(prefix)
+            flatter = (lambda k: k[prefix_length:])
+
+        self.put, self.fields = zip(*[
+            (flatter(k), c.es_column)
+            for k, cs in query.frum.schema.lookup.items()
+            if k.startswith(prefix)
+            for c in cs
+            if c.type not in STRUCT
+        ])
+
+        self.domain = self.edge.domain = wrap({"dimension": {"fields": self.fields}})
+        self.domain.limit =Math.min(coalesce(self.domain.limit, query.limit, 10), MAX_LIMIT)
+        self.parts = list()
+        self.key2index = {}
+        self.computed_domain = False
+
+    def append_query(self, es_query, start):
+        self.start = start
+        for i, v in enumerate(self.fields):
+            # output = wrap({"aggs": {
+            #     "_match": set_default(
+            #         {"terms": {
+            #             "script_field": script_field,
+            #             "size": self.domain.limit,
+            #             "order": {"_term": self.sorted} if self.sorted else None
+            #         }},
+            #         es_query
+            #     ),
+            #     "_missing": set_default({"filter": missing.to_esfilter()}, es_query) if missing else None
+            # }})
+
+            nest = wrap({"aggs": {
+                "_match": set_default({"terms": {
+                    "field": v,
+                    "size": self.domain.limit
+                }}, es_query),
+                "_missing": set_default({"missing": {"field": v}}, es_query)
+            }})
+            es_query = nest
+        return es_query
+
+    def count(self, row):
+        value = self.get_value_from_row(row)
+        i = self.key2index.get(value)
+        if i is None:
+            i = self.key2index[value] = len(self.parts)
+            self.parts.append(value)
+
+    def done_count(self):
+        self.computed_domain = True
+        self.edge.domain = self.domain = SimpleSetDomain(
+            key="value",
+            partitions=[{"value": p, "dataIndex": i} for i, p in enumerate(self.parts)]
+        )
+
+    def get_index(self, row):
+        value=self.get_value_from_row(row)
+        if self.computed_domain:
+            return self.domain.getIndexByKey(value)
+
+        i = self.key2index.get(value)
+        if i is None:
+            i = self.key2index[value] = len(self.parts)
+            self.parts.append(value)
+        return i
+
+    def get_value_from_row(self, row):
+        output = Data()
+        for k, v in zip(self.put, row[self.start:self.start + self.num_columns:]):
+            output[k] = v["key"]
+        return output
 
     @property
     def num_columns(self):
