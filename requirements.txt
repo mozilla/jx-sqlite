@@ -9,4 +9,3 @@ mo-collections
 mo-testing
 mo-json
 mo-json-config
-pyLibrary
