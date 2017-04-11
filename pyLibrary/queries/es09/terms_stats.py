@@ -15,7 +15,7 @@ from mo_collections.matrix import Matrix
 from mo_math import COUNT, PRODUCT
 from pyLibrary.queries import domains
 from pyLibrary.queries.containers.cube import Cube
-from pyLibrary.queries.domains import is_variable_name
+from jx_base.queries import is_variable_name
 from pyLibrary.queries.es09.util import aggregates, build_es_query, compileEdges2Term
 from mo_logs import Log
 from pyLibrary.queries.es09.expressions import UID

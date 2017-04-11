@@ -25,7 +25,7 @@ from mo_times.dates import Date
 
 from pyLibrary import convert
 from pyLibrary.queries.containers import STRUCT, OBJECT
-from pyLibrary.queries.domains import is_variable_name
+from jx_base.queries import is_variable_name
 from pyLibrary.queries.expression_compiler import compile_expression
 from pyLibrary.sql.sqlite import quote_column
 

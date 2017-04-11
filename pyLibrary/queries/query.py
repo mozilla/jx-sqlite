@@ -14,17 +14,19 @@ from __future__ import unicode_literals
 from collections import Mapping
 from copy import copy
 
-from mo_logs import Log
-from mo_math import AND, UNION
-from mo_math import Math
 from mo_dots import Data
 from mo_dots import coalesce, Null, set_default, unwraplist, literal_field
 from mo_dots import wrap, unwrap, listwrap
 from mo_dots.lists import FlatList
+from mo_logs import Log
+from mo_math import AND, UNION
+from mo_math import Math
+
+from jx_base.queries import is_variable_name
 from pyLibrary.queries import Schema, wrap_from
 from pyLibrary.queries.containers import Container, STRUCT
 from pyLibrary.queries.dimensions import Dimension
-from pyLibrary.queries.domains import Domain, is_variable_name, SetDomain
+from pyLibrary.queries.domains import Domain, SetDomain
 from pyLibrary.queries.expressions import jx_expression, TrueOp, Expression, FalseOp, Variable, LeavesOp, ScriptOp, OffsetOp
 
 DEFAULT_LIMIT = 10

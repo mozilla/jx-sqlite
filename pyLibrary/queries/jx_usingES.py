@@ -25,7 +25,7 @@ from mo_kwargs import override
 from pyLibrary.queries import jx, containers, Schema
 from pyLibrary.queries.containers import Container
 from pyLibrary.queries.dimensions import Dimension
-from pyLibrary.queries.domains import is_variable_name
+from jx_base.queries import is_variable_name
 from pyLibrary.queries.es09 import aggop as es09_aggop
 from pyLibrary.queries.es09 import setop as es09_setop
 from pyLibrary.queries.es14.aggs import es_aggsop, is_aggsop

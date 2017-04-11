@@ -17,7 +17,7 @@ from mo_math import AND, SUM, OR
 from mo_dots import coalesce, split_field, Data, wrap
 from mo_dots.lists import FlatList
 from mo_dots import listwrap, unwrap
-from pyLibrary.queries.domains import is_variable_name
+from jx_base.queries import is_variable_name
 from pyLibrary.queries.es09.expressions import unpack_terms
 from pyLibrary.queries.es09.util import aggregates
 from pyLibrary.queries import domains, es09
