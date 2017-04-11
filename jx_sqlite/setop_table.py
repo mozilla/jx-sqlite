@@ -191,7 +191,7 @@ class SetOpTable(InsertTable):
                     index_to_column[column_number] = nested_doc_details['index_to_column'][column_number] = ColumnMapping(
                         push_name=s.name,
                         push_column=si,
-                        push_child=relative_field(c.name, s.name),
+                        push_child=relative_field(c.names, s.name),
                         pull=get_column(column_number),
                         sql=unsorted_sql,
                         type=c.type,
