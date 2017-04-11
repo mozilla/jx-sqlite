@@ -712,7 +712,7 @@ def value_compare(a, b):
 keyword_pattern = re.compile(r"(\$|\w|\\\.)+(?:\.(\$|\w|\\\.)+)*")
 
 
-def is_keyword(value):
+def is_variable_name(value):
     if value.__class__.__name__ == "Variable":
         Log.warning("not expected")
         return True

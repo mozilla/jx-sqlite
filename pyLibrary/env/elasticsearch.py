@@ -434,6 +434,7 @@ class Index(Features):
             )
 
     def threaded_queue(self, batch_size=None, max_size=None, period=None, silent=False):
+
         def errors(e, _buffer):  # HANDLE ERRORS FROM extend()
             if e.cause.cause:
                 not_possible = [f for f in listwrap(e.cause.cause) if any(h in f for h in HOPELESS)]
@@ -934,18 +935,20 @@ class Alias(Features):
             if not explore_metadata:
                 Log.error("Alias() was given no `type` (aka schema) and not allowed to explore metadata.  Do not know what to do now.")
 
-            indices = self.cluster.get_metadata().indices
             if not self.settings.alias or self.settings.alias==self.settings.index:
-                alias_list = self.cluster.get("/_alias/"+self.settings.index)
-                candidates = [(name, i) for name, i in alias_list.items() if self.settings.index in i.aliases.keys()]
+                alias_list = self.cluster.get("/_alias")
+                candidates = (
+                    [(name, i) for name, i in alias_list.items() if self.settings.index in i.aliases.keys()] +
+                    [(name, Null) for name, i in alias_list.items() if self.settings.index==name]
+                )
                 full_name = jx.sort(candidates, 0).last()[0]
-                index = self.cluster.get("/" + full_name + "/_mapping")[full_name]
+                mappings = self.cluster.get("/" + full_name + "/_mapping")[full_name]
             else:
-                index = self.cluster.get("/"+self.settings.index+"/_mapping")[self.settings.index]
+                mappings = self.cluster.get("/"+self.settings.index+"/_mapping")[self.settings.index]
 
             # FIND MAPPING WITH MOST PROPERTIES (AND ASSUME THAT IS THE CANONICAL TYPE)
             max_prop = -1
-            for _type, mapping in index.mappings.items():
+            for _type, mapping in mappings.mappings.items():
                 if _type == "_default_":
                     continue
                 num_prop = len(mapping.properties.keys())

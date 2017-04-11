@@ -17,7 +17,7 @@ from mo_math import AND, SUM, OR
 from mo_dots import coalesce, split_field, Data, wrap
 from mo_dots.lists import FlatList
 from mo_dots import listwrap, unwrap
-from pyLibrary.queries.domains import is_keyword
+from pyLibrary.queries.domains import is_variable_name
 from pyLibrary.queries.es09.expressions import unpack_terms
 from pyLibrary.queries.es09.util import aggregates
 from pyLibrary.queries import domains, es09
@@ -32,7 +32,7 @@ def is_fieldop(query):
     select = listwrap(query.select)
     if not query.edges:
         isDeep = len(split_field(query.frum.name)) > 1  # LOOKING INTO NESTED WILL REQUIRE A SCRIPT
-        isSimple = AND(s.value != None and (s.value == "*" or is_keyword(s.value)) for s in select)
+        isSimple = AND(s.value != None and (s.value == "*" or is_variable_name(s.value)) for s in select)
         noAgg = AND(s.aggregate == "none" for s in select)
 
         if not isDeep and isSimple and noAgg:

@@ -306,7 +306,7 @@ class Cube(Container):
             values ALL VALUES THAT BELONG TO THE SLICE
 
         """
-        edges = FlatList([_normalize_edge(e) for e in edges])
+        edges = FlatList([n for e in edges for n in _normalize_edge(e)])
 
         stacked = [e for e in self.edges if e.name in edges.name]
         remainder = [e for e in self.edges if e.name not in edges.name]
@@ -357,7 +357,7 @@ class Cube(Container):
         SLICE THIS CUBE IN TO ONES WITH LESS DIMENSIONALITY
         simple==True WILL HAVE GROUPS BASED ON PARTITION VALUE, NOT PARTITION OBJECTS
         """
-        edges = FlatList([_normalize_edge(e) for e in edges])
+        edges = FlatList([n for e in edges for n in _normalize_edge(e) ])
 
         stacked = [e for e in self.edges if e.name in edges.name]
         remainder = [e for e in self.edges if e.name not in edges.name]

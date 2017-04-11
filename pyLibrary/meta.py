@@ -361,7 +361,7 @@ class extenstion_method(object):
         self.name = name
 
     def __call__(self, func):
-        if self.name is None:
+        if self.name is not None:
             setattr(self.value, self.name, func)
             return func
         else:

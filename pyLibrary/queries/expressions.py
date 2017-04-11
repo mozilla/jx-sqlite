@@ -25,7 +25,7 @@ from mo_times.dates import Date
 
 from pyLibrary import convert
 from pyLibrary.queries.containers import STRUCT, OBJECT
-from pyLibrary.queries.domains import is_keyword
+from pyLibrary.queries.domains import is_variable_name
 from pyLibrary.queries.expression_compiler import compile_expression
 from pyLibrary.sql.sqlite import quote_column
 
@@ -55,7 +55,7 @@ def jx_expression(expr):
     if expr in (True, False, None) or expr == None or isinstance(expr, (float, int, Decimal, Date)):
         return Literal(None, expr)
     elif isinstance(expr, unicode):
-        if is_keyword(expr):
+        if is_variable_name(expr):
             return Variable(expr)
         elif not expr.strip():
             Log.error("expression is empty")
@@ -219,8 +219,8 @@ class Variable(Expression):
 
     def __init__(self, var):
         Expression.__init__(self, "", None)
-        if not is_keyword(var):
-            Log.error("Expecting a variable")
+        if not is_variable_name(var):
+            Log.error("Expecting a variable name")
         self.var = var
 
     def to_ruby(self, not_null=False, boolean=False):

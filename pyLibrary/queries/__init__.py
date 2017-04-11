@@ -10,12 +10,11 @@
 from __future__ import unicode_literals
 
 from collections import Mapping
+from copy import copy
 
-from mo_collections import UniqueIndex
-from mo_dots import Data, literal_field, Null
+from mo_dots import Data, Null
 from mo_dots import wrap, set_default, split_field, join_field
 from mo_logs import Log
-from mo_collections.index import Index
 
 config = Data()   # config.default IS EXPECTED TO BE SET BEFORE CALLS ARE MADE
 _ListContainer = None
@@ -72,7 +71,7 @@ def wrap_from(frum, schema=None):
         index = frum
         if frum.startswith("meta."):
             if frum == "meta.columns":
-                return _meta.singlton.meta.columns
+                return _meta.singlton.meta.columns.denormalized()
             elif frum == "meta.tables":
                 return _meta.singlton.meta.tables
             else:
@@ -119,6 +118,7 @@ class Schema(object):
         table_path = split_field(table_name)
         self.table = table_path[0]  # USED AS AN EXPLICIT STATEMENT OF PERSPECTIVE IN THE DATABASE
         self.query_path = join_field(table_path[1:])
+        self._columns = copy(columns)
 
         lookup = self.lookup = _index(columns, self.query_path)
         if self.query_path != ".":
@@ -138,20 +138,20 @@ class Schema(object):
         :param column:
         :return: NAME OF column
         """
-        return column.names[self.table]
+        return column.names[self.query_path]
 
     @property
     def columns(self):
-        return [c for cs in self.lookup.values() for c in cs]
-
-    def keys(self):
-        return set(k[0] for k in self.lookup._data.keys())
+        return copy(self._columns)
 
 
 def _index(columns, query_path):
     lookup = {}
     for c in columns:
-        cname = c.names[query_path]
-        cs = lookup.setdefault(cname, [])
-        cs.append(c)
+        try:
+            cname = c.names[query_path]
+            cs = lookup.setdefault(cname, [])
+            cs.append(c)
+        except Exception as e:
+            Log.error("Sould not happen", cause=e)
     return lookup
