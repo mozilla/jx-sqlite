@@ -701,12 +701,12 @@ class TestSetOps(BaseTestCase):
                 {"url": "/"},
                 #        012345678901234567890123456789
                 {"url": "https://hg.mozilla.org/"},
-                {"url": "https://hg.mozilla.org/a/"},
-                {"url": "https://hg.mozilla.org/b/"},
+                {"url": "https://hg.mozilla.org/a"},
+                {"url": "https://hg.mozilla.org/b"},
                 {"url": "https://hg.mozilla.org/b/1"},
                 {"url": "https://hg.mozilla.org/b/2"},
                 {"url": "https://hg.mozilla.org/b/3"},
-                {"url": "https://hg.mozilla.org/c/"},
+                {"url": "https://hg.mozilla.org/c"},
                 {"url": "https://hg.mozilla.org/d"},
                 {"url": "https://hg.mozilla.org/e"}
             ],
