@@ -25,10 +25,10 @@ class TestQueryNormalization(FuzzyTestCase):
     def test_complex_edge_value(self):
         edge = {"name": "n", "value": ["a", "c"]}
 
-        result = _normalize_edge(edge)[0]
-        expected = {"name": "n", "domain": {"dimension": {"fields": ["a", "c"]}}}
+        result = _normalize_edge(edge)
+        expected = {"name": "n", "value":NULL, "domain": {"dimension": {"fields": ["a", "c"]}}}
         self.assertEqual(result, expected)
-        self.assertEqual(result.value, NULL)
+        #self.assertEqual(result.value, NULL)
 
     def test_naming_select(self):
         select = {"value": "result.duration", "aggregate": "avg"}
