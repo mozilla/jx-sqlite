@@ -24,7 +24,7 @@ lots_of_data = wrap([{"a": i} for i in range(30)])
 class TestSetOps(BaseTestCase):
 
     def test_star(self):
-       test = {
+        test = {
            "data": [{"a": 1}],
            "query": {
                "select": "*",
@@ -34,7 +34,7 @@ class TestSetOps(BaseTestCase):
                "meta": {"format": "list"}, "data": [{"a": 1}]
            }
        }
-       self.utils.execute_es_tests(test)
+        self.utils.execute_es_tests(test)
 
     def test_simplest(self):
         test = {
