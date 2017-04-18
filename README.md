@@ -21,8 +21,6 @@ The tests fail because what I have written does not handle the most interesting,
 
 ## Design
 
-
-
 ### Nomenclature
 
 * **Nested Object** - An object in an array
