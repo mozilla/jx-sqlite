@@ -28,14 +28,16 @@ The tests fail because what I have written does not handle the most interesting,
 * **Nested Object** - An object in an array
 * **Inner Object** - A child object, no arrays
 
+This nomenclature is different than most documentation that talks about JSON documents: Other documentation will use the word *nested* to refer to either sub-structure ambiguously.
+
 ### Overloading property types
 
-A distinction between databases and document stores is the ability to store different primitive types at the same property value. To overcome this, we markup the columns of the database to mimic type. Let's put two objects into the `example` table:
+A distinction between databases and document stores is the ability to store different primitive types at the same property. To overcome this, we markup the columns of the database with the type. Let's put two objects into the `example` table:
 
     {"a": 1}
     {"a": "hello"}
 
-We markup the datatypes with `$` with the hope we avoid namespace collisions.
+We markup the columns with `$`+typename, with the hope we avoid namespace collisions.
 
 ### `example`
 
@@ -44,7 +46,9 @@ We markup the datatypes with `$` with the hope we avoid namespace collisions.
 |  0  |      1     |    null   |
 |  1  |    null    |  "hello"  |
 
-The good thing about adding  the type to the name is we can store primitive values:
+We add an `_id` column as a UID, so we can distinguish documents.
+
+The good thing about adding the type to the name is we can store primitive values:
 
     "hello world"
 
@@ -105,8 +109,13 @@ Our nested documents are stored in a new table, called `example.a`
 |  6  |    0   |    5    |     4     | 
 |  7  |    1   |    5    |     5     | 
 
-Finally we have the toughest question: Do we copy the `a.*` columns from the `example` table to our new child table? As I see it, there are two possible answers:
+Child tables have an `_id` column, plus two others: `_order` so we can reconstruct the original JSON, and `_parent` which is used to refer to the immediate parent of the array.
+
+## Open problems
+
+**Do we copy the `a.*` columns from the `example` table to our new child table?** As I see it, there are two possible answers:
 
 1. **Do not copy** - If there is just one nested document, or it is an inner object, then it will fit in a single row of the parent, and reduce the number of rows returned when querying. The query complexity increases because we must consider the case of inner objects and the case of nested objects.
 2. **Copy** - Effectively move the columns to the new child table: This will simplify the queries because each path is realized in only one table, but may be more expensive because every inner object will demand a sql-join, it may be expensive to perform the alter table.
 
+**How to handle arrays of arrays?** I have not seen many examples in the wild yet. Usually, arrays of arrays represent a multidimensional array, where the number of elements in every array is the same. Maybe we can  reject JSON that does not conform to a multidimensional interpretation. 
