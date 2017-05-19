@@ -2,6 +2,8 @@
 
 # Column Perspectives in a Snowflake Schema
 
+This document is incomplete, with mistakes.
+
 ## Justification
 
 The assumption is we have a primary snowflake schema that covers a relational database. The snowflake concept is an attempt to model the intersection between JSON documents and relational databases. Hopefully, this model will be useful for conceptualizing a document-relational map (DRM) while we program.
