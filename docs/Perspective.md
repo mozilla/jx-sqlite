@@ -15,10 +15,10 @@ This JSON document will be used for demonstration throughout.
     {
         "a": {
             "b": [
-				{"d": [{"x": 2}]}
-			]
+                {"d": [{"x": 2}]}
+            ]
         }, 
-        "c": {"x": 2},	
+        "c": {"x": 2},    
         "e": {"x": 3}
     }
 
@@ -59,12 +59,12 @@ Our example has four tables, so four perspectives. The fact table perspective is
     [
     {
         "..":{
-			"a": {
-	            "b": [
-					{"d": [{"x": 2}]}
-				]
-	        }, 
-	        "c": {"x": 2},	
+            "a": {
+                "b": [
+                    {"d": [{"x": 2}]}
+                ]
+            }, 
+            "c": {"x": 2},    
         "x": 3
     }
     ]
@@ -83,9 +83,9 @@ Notes
 This is the most common form of nested perspective; rarely are queries deeper. I
 
     {
-		"d": [{"x": 2}]
+        "d": [{"x": 2}]
         "..": {
-            "c": {"x": 2},	
+            "c": {"x": 2},    
             "e": {"x": 3}
         }
     }
@@ -95,13 +95,13 @@ This is the most common form of nested perspective; rarely are queries deeper. I
 This is the perspective from `nested_path = ["a.b.d", "a.b", "."]`
 
     {
-		"x": 2,
+        "x": 2,
         "..": {
-	        "..": {
-	            "c": {"x": 2},	
-	            "e": {"x": 3}
-	        }
-		}
+            "..": {
+                "c": {"x": 2},    
+                "e": {"x": 3}
+            }
+        }
     }
 
 
