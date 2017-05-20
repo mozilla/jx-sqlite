@@ -112,6 +112,7 @@ A normalized relational database can have foreign keys from the fact table to a 
 
 
 **Table `.`**
+
 | `_id` |  `x`  |  `_e` |
 |-------|-------|-------|
 |   1   |   3   |   3   |
