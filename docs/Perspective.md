@@ -6,33 +6,7 @@ This document is incomplete, with mistakes.
 
 ## Justification
 
-The assumption is we have a primary snowflake schema that covers a relational database. The snowflake concept is an attempt to model the intersection between JSON documents and relational databases. Hopefully, this model will be useful for conceptualizing a document-relational map (DRM) while we program.
-
-## Working example
-
-This JSON document will be used for demonstration throughout.
-
-    {
-        "a": {
-            "b": [
-                {"d": [{"x": 2}]}
-            ]
-        }, 
-        "c": {"x": 2},    
-        "e": {"x": 3}
-    }
-
-And here is the schema it came from:
-
-![schema](schema1.png)
-
-There are points I should make here.
-
-* The tables are all given relative names: The fact table is named dot (`.`).
-* Arrows indicate foreign key relations: The table at the tail of the arrow is assumed to have a property that refers to the table at the head
-* The foreign keys are not shown in the document: If the relational database uses foreign keys to only indicate relations, then it is good remove those properties that have no other meaning. Sometimes the foreign key is used for business logic, and must be exposed.
-* The arrays in the document have only one object: In the context of JSON Query Expressions we could argue that these arrays are just single documents and no arrays exist; please allow these single objects stand in for multiple for the sake of brevity. * Mapping from a relational database to a document, and back to a relational database, may not result in the same schema: This is seen in the `e` property. The database is not using the foreign key for relations, but also for redundancy reduction, which is in opposition the the snowflake concept
-
+The snowflake concept is an attempt to model the intersection between JSON documents and relational databases. Hopefully, this model will be useful for conceptualizing a document-relational map (DRM) while we program.
 
 ## Definitions
 
@@ -40,78 +14,165 @@ A snowflake is a set of tables, and the hierarchical foreign relations between t
 
 ### Path taken to row is important
 
-The snowflake assumes the database is denormalized; every fact in the fact table and all its related rows found in the other tables, is not shared with any other fact. This assumption is only a conceptual model, an not seriously expected in practice. A database might be denormalized and have minimized redundancy; in this case it is important not to talk about any row in a table, but rather the path taken along the foreign relations; starting from the fact to the row in question. 
+The snowflake assumes the database is denormalized; every fact in the fact table and all its foreign rows, are not shared with any other fact. This assumption is only a conceptual model, an not seriously expected in practice. A database is expected to be normalized for minimal redundancy. It is important not to talk about any row in a table, but rather the path taken along the foreign relations; starting from the fact to the row in question. 
 
 ### Paths to tables
 
-the path from the fact table to any other is important. Tables can not be referred to by name, they must be refered to by path.   The snowflake model calls this the `nested_path` of a table.  "nested" refers to nested JSON documents
+The path along the foreign keys, from the fact table to any other table, is important. Tables can not be referred to by name, they must be referred to by path. The snowflake model calls this the `nested_path` of a table. "nested" refers to nested JSON documents
 
 ### Perspectives inside a snowflake
 
-A snowflake maps to a set of database tables, and it also provides a way to talk about querying those tables in a denormalized perspective. We can query any of the tables in the snowflake as if it was the fact table, for clarity we will called this the "focus table": Any table in the snowflake can act as a basis for a perspective; the tables in the snowflake have names relative to that focus.
+A snowflake is a set of database tables, and it also provides a way to talk about querying those tables in a denormalized perspective. We can query any of the tables in the snowflake as if it was a fact table, for clarity we will called this the "focus table": Any table in the snowflake can act as a basis for a perspective; the tables in the snowflake have names relative to that focus.
 
-Our example has four tables, so four perspectives. The fact table perspective is already known. Let us look at the same document from those other three:
+----------
 
-![schema](schema2.png) 
+**Example: Nested Objects (one to many)**
 
-`e` is many-to-one with the fact table. This is the least common perspective, because as I said earlier, `e` has no representation in a document, this is purely an artifact of relational databases, and modeled by snowflakes, and shown here for completness.
+The simplest example of perspective is a document with nested objects: 
 
-    [
-    {
-        "..":{
-            "a": {
-                "b": [
-                    {"d": [{"x": 2}]}
-                ]
-            }, 
-            "c": {"x": 2},    
-        "x": 3
-    }
-    ]
+	[
+	    {
+	        "a": {
+	            "b": [
+					{"x": 1},
+					{"x": 2}
+				],
+				"x": 3
+			},
+			"x": 4
+		}
+	]
 
-Notes
+...and here is the schema the document came from
 
-* The result is an array: For each row in `e` there can be multiple fact rows. Our example is only just one, so we do not get the full effect.
-* The fact table is a parent of `e`.  JSON documents have no such concept, but we can simulate it with the `..` property
-* `"x": 3` is local to `e`
+![schema](nested1.png)
+
+**Table `.`**
+| `_id` |  `x`  |  `a.x`  |
+|-------|-------|---------|
+|   1   |   4   |    1    |
+
+**Table `a.b`**
+
+| `_id` | `_parent` | `_order` |  `x`  |
+|-------|-----------|----------|-------|
+|   2   |     1     |     0    |   1   |
+|   3   |     1     |     1    |   2   |
+
+There are points I should make here.
+
+* The tables are all given relative names: The fact table is named dot (`.`).
+* Arrows indicate foreign key relations: The table at the tail of the arrow is assumed to have a property that refers to the table at the head
+* The foreign keys are not shown in the document: If the relational database uses foreign keys to only indicate relations, then it is good remove those properties that have no other meaning. Sometimes the foreign key is used for business logic, and must be exposed.
+
+Let us focus on `nested_path=["a.b", "."]`
+
+![schema](nested2.png)
 
 
-![schema](schema3.png)
+
+	[
+		{
+			"x": 1
+			"..": {
+		    	"a": {
+		            "b": [
+						{"x": 1},
+						{"x": 2}
+					],
+					"x": 3
+				},
+				"x": 4
+			}
+		},
+		{
+			"x": 2
+			"..": {
+		    	"a": {
+		            "b": [
+						{"x": 1},
+						{"x": 2}
+					],
+					"x": 3
+				},
+				"x": 4
+			}
+		}
+	]
+
+Some liberty was taken here: The `..` property does not exist, it is shown to demonstrate the Snowflake schema uses "`..`" in the namespace to refer to the parent document.
+
+----------
+
+**Example: Reference (many to one)**
+
+A normalized relational database can have foreign keys from the fact table to a lookup table; a many-to-one relation. No JSON document will can create such a relation because documents are denormalized entities, but a snowflake schema must be able to interpret all records in its schema as documents anyway.
+
+![schema](ref1.png)
+
+
+**Table `.`**
+| `_id` |  `x`  |  `_e` |
+|-------|-------|-------|
+|   1   |   3   |   3   |
+|   2   |   4   |   3   |
+
+**Table `e`**
+
+| `_id` |  `x`  |
+|-------|-------|
+|   3   |   1   |
+
+
+We assume there is only one record in `e`, and let us focus on `nested_path=["e", "."]` 
+
+![schema](ref2.png)
+
+and show that record as JSON:
+
+
+	{
+		"x": 1,
+		"..":[
+			{"x": 3},
+			{"x": 4}
+		]
+	}
+
+More liberties:
+
+* The "`..`" property does not exist, it is used to demonstrate that you can access the fact table from the perspective of `e` using the snowflake schema.  
  
-`nested_path = ["a.b", "."]`
+![schema](ref3.png)
 
-This is the most common form of nested perspective; rarely are queries deeper. I
+`nested_path=["."]`
 
-    {
-        "d": [{"x": 2}]
-        "..": {
-            "c": {"x": 2},    
-            "e": {"x": 3}
-        }
-    }
+With a focus on our fact table (`.`), we see each of our fact records, along with the `e` property duplicated (denormalized).
 
-![schema](schema4.png)
- 
-This is the perspective from `nested_path = ["a.b.d", "a.b", "."]`
+	[
+	    {
+	        "e": {"x": 1},
+			"x": 3
+		},
+	    {
+	        "e": {"x": 1},
+			"x": 4
+		}
+	]
+  
 
-    {
-        "x": 2,
-        "..": {
-            "..": {
-                "c": {"x": 2},    
-                "e": {"x": 3}
-            }
-        }
-    }
+Mapping from a relational database to a document, and back to a relational database, may not result in the same schema: These two documents will map easily to a single table:
 
+| `_id` |  `x`  |  `e.x`  |
+|-------|-------|---------|
+|   1   |   3   |    1    |
+|   1   |   4   |    1    |
 
 
-
-### Relationship to the unix filesystem
+### Filesystem Metaphor
 
 It may help to use the unix filesystem as a metaphor: The tables are directories in that filesystem, The fact table is root (`/`), while the focus table is your current directory (`cwd`). You can refer to any file either in the absolute sense, from root, or in a relative sense, from `cwd`.  Each file has as many names as there are directories.
 
-Wi
 
 ### Referring to columns
 
