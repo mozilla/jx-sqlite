@@ -445,6 +445,7 @@ class TestgroupBy1(BaseTestCase):
                 ]
             },
             "expecting_table": {
+                "meta": {"format": "table"},                
                 "header": ["g", "count"],
                 "data": [
                     [{"a": "b", "v": 1}, 2],
