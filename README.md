@@ -71,36 +71,36 @@ there are only two leaves in this tree of documents:
 |  3  |       1      |    "test"   |
 
 
-When we encounter objects with different structures, they will not conflict
+When we encounter objects with different structures, we can perform schema expansion
 
     {"a": {"b": {"d": 3}}}
 
-we will add a column to the table so we can store the leaf value
+we do this by adding columns to the table so we can store the new leaf values
 
 ### `example`
 
-| _id | a.b.$integer | a.c.$string | a.d.$integer |
-|-----|--------------|-------------|--------------|
-|  4  |     null     |     null    |       3      |
+| _id | a.b.$integer | a.c.$string | a.b.d.$integer |
+|-----|--------------|-------------|----------------|
+|  4  |     null     |     null    |        3       |
 
 
 ### Nested Objects
 
-When it comes to nested objects (arrays of objects), a new table will be required 
+When it comes to nested objects, a new table will be required 
 
     {"a": [{"b": 4}, {"b":5}]}
 
 Our fact table has no primitive values
 
-### example
+### `example`
 
-| _id | a.b.$integer | a.c.$string | a.d.$integer |
-|-----|--------------|-------------|--------------|
-|  5  |     null     |     null    |     null     |
+| _id | a.b.$integer | a.c.$string | a.b.d.$integer |
+|-----|--------------|-------------|----------------|
+|  5  |     null     |     null    |      null      |
 
 Our nested documents are stored in a new table, called `example.a`
 
-### example.a
+### `example.a`
 
 | _id | _order | _parent | b.integer |
 | --- | ------ | ------- | --------- |
