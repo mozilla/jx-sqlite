@@ -416,15 +416,16 @@ class AggsTable(SetOpTable):
             part += "\nGROUP BY\n" + ",\n".join(groupby)
         all_parts.append(part)
 
-        # ALL COORINATES MISSED BY primary DATA
-        part = "SELECT " + (",\n".join(outer_selects)) + "\nFROM\n" + sources[0]
-        for s in sources[1:]:
-            part += "\nLEFT JOIN\n" + s + "\nON 1=1\n"
-        part += "\nLEFT JOIN\n" + primary + "\nON (" + ") AND (".join(ons) + ")"
-        part += "\nWHERE " + " AND ".join("(" + w + ")" for w in not_ons if w)
-        if groupby:
-            part += "\nGROUP BY\n" + ",\n".join(groupby)
-        all_parts.append(part)
+        if sources:
+            # ALL COORINATES MISSED BY primary DATA
+            part = "SELECT " + (",\n".join(outer_selects)) + "\nFROM\n" + sources[0]
+            for s in sources[1:]:
+                part += "\nLEFT JOIN\n" + s + "\nON 1=1\n"
+            part += "\nLEFT JOIN\n" + primary + "\nON (" + ") AND (".join(ons) + ")"
+            part += "\nWHERE " + " AND ".join("(" + w + ")" for w in not_ons if w)
+            if groupby:
+                part += "\nGROUP BY\n" + ",\n".join(groupby)
+            all_parts.append(part)
 
         command = "SELECT * FROM (\n" + "\nUNION ALL\n".join(all_parts) + "\n)"
 

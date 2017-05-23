@@ -445,6 +445,8 @@ class TestgroupBy1(BaseTestCase):
                 ]
             },
             "expecting_table": {
+              #  "meta": {"format": "table"}, this meta property is not included as
+              #  test is ensuring the default format is table when given a groupby clause               
                 "header": ["g", "count"],
                 "data": [
                     [{"a": "b", "v": 1}, 2],
