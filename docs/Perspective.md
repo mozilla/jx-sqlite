@@ -1,6 +1,6 @@
 
 
-# Column Perspectives in a Snowflake Schema
+# Perspectives from inside a Snowflake Schema
 
 ## Justification
 
@@ -12,11 +12,11 @@ A snowflake is a set of tables, plus the set of hierarchical foreign relations b
 
 **Path taken to row is important**
 
-The snowflake assumes the data is denormalized in document form; every fact in the fact table and all its foreign rows, are not shared with any other fact. This assumption is only a conceptual model, an not seriously expected in practice; A database is to be normalized for minimal redundancy. It is important not to talk about any row in a table, but rather the path taken along the foreign relations; starting from the fact to the row in question. 
+The snowflake assumes the data is denormalized in document form; every fact in the fact table and all its foreign rows, are not shared with any other fact. This assumption is only a conceptual model, an not seriously expected in practice; A database is often normalized to minimize  redundancy. Therefore, it is important not to talk about any row in a table (which might be shared), but rather the path taken along the foreign relations; starting from the fact to the row in question. 
 
 **Paths to tables**
 
-The path along the foreign keys, from the fact table to any other table, is important. We can not refer to tables by name, rather by path. The snowflake model calls this the `nested_path` of a table. "nested" refers to nested objects found in JSON arrays.
+The path along the foreign keys, from the fact table to any other table, is important. We can not refer to tables by name; we must refer to tables by path. The snowflake model calls this the `nested_path` of a table. "nested" alluding to nested objects found in JSON arrays.
 
 ## Perspectives inside a snowflake
 
