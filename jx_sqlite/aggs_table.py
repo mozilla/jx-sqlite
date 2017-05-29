@@ -66,9 +66,10 @@ class AggsTable(SetOpTable):
 
         for edge_index, query_edge in enumerate(query.edges):
             edge_alias = "e" + unicode(edge_index)
-
+                      
             if query_edge.value:
                 edge_values = [p for c in query_edge.value.to_sql(schema).sql for p in c.items()]
+
             elif not query_edge.value and any(query_edge.domain.partitions.where):
                 case = "CASE "
                 for pp, p in enumerate(query_edge.domain.partitions):
@@ -77,9 +78,22 @@ class AggsTable(SetOpTable):
                     case += " WHEN " + w + " THEN " + t
                 case += " ELSE NULL END "
                 edge_values = [("n", case)]
+                
+#            elif query_edge.value and (query_edge.domain.partitions.value):
+#                case = "CASE "
+#                v = query_edge.value
+#                for pp, p in enumerate(query_edge.domain.partitions.value):
+#                    w = [d for c in v.to_sql(schema).sql for d in c.items()][0][1]
+#                    w += ") = (" + quote_value(p) + ") OR ((" + w + ") IS NULL AND (" + quote_value(p) + ") IS NULL"
+#                    t = quote_value(pp)
+#                    case += " WHEN ((" + w + ")) THEN " + t                    
+#                case += " ELSE NULL END "
+#                edge_values = [("n", case)]
+
             elif query_edge.range:
                 edge_values = query_edge.range.min.to_sql(schema)[0].sql.items() + query_edge.range.max.to_sql(schema)[
                     0].sql.items()
+                
             else:
                 Log.error("Do not know how to handle")
 
