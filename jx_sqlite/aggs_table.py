@@ -66,7 +66,7 @@ class AggsTable(SetOpTable):
 
         for edge_index, query_edge in enumerate(query.edges):
             edge_alias = "e" + unicode(edge_index)
-                      
+ 
             if query_edge.value:
                 edge_values = [p for c in query_edge.value.to_sql(schema).sql for p in c.items()]
 
@@ -76,19 +76,10 @@ class AggsTable(SetOpTable):
                     w = p.where.to_sql(schema)[0].sql.b
                     t = quote_value(pp)
                     case += " WHEN " + w + " THEN " + t
-                case += " ELSE NULL END "
+                case += " ELSE NULL END "   # quote value with length of partitions
                 edge_values = [("n", case)]
                 
-#            elif query_edge.value and (query_edge.domain.partitions.value):
-#                case = "CASE "
-#                v = query_edge.value
-#                for pp, p in enumerate(query_edge.domain.partitions.value):
-#                    w = [d for c in v.to_sql(schema).sql for d in c.items()][0][1]
-#                    w += ") = (" + quote_value(p) + ") OR ((" + w + ") IS NULL AND (" + quote_value(p) + ") IS NULL"
-#                    t = quote_value(pp)
-#                    case += " WHEN ((" + w + ")) THEN " + t                    
-#                case += " ELSE NULL END "
-#                edge_values = [("n", case)]
+            
 
             elif query_edge.range:
                 edge_values = query_edge.range.min.to_sql(schema)[0].sql.items() + query_edge.range.max.to_sql(schema)[
@@ -228,10 +219,13 @@ class AggsTable(SetOpTable):
                     "\nSELECT " + ",".join(domain_names) + " FROM ("
                                                            "\nSELECT " + ",\n".join(
                         g + " AS " + n for n, g in zip(domain_names, vals)) +
-                    "\nFROM\n" + quote_table(self.sf.fact) + " " + nest_to_alias["."] +
-                    "\nWHERE\n" + " AND ".join(g + " IS NOT NULL" for g in vals) +
-                    "\nGROUP BY\n" + ",\n".join(g for g in vals)
+                    "\nFROM\n" + quote_table(self.sf.fact) + " " + nest_to_alias["."]
                 )
+                if not query_edge.allowNulls:
+                    domain +=  "\nWHERE\n" + " AND ".join(g + " IS NOT NULL" for g in vals)
+                    
+                domain += "\nGROUP BY\n" + ",\n".join(g for g in vals)
+                    
                 limit = Math.min(query.limit, query_edge.domain.limit)
                 domain += (
                     "\nORDER BY \n" + ",\n".join("COUNT(1) DESC" for g in vals) +
