@@ -67,22 +67,6 @@ class AggsTable(SetOpTable):
         for edge_index, query_edge in enumerate(query.edges):
             edge_alias = "e" + unicode(edge_index)
           
-#            if query_edge.value and (query_edge.domain.partitions.value):
- #               case = "CASE "
-  #              v = query_edge.value
-   #             for pp, p in enumerate(query_edge.domain.partitions.value):
-    #                tmp = v.to_sql(schema)[0].sql
-     #               acc_e = []
-      #              for t, e in tmp.items():                                            
-       #                 w = "(" + e +  ") = (" + quote_value(p) + " )"
-        #                acc_e.append(w)
-         #   
-          #          t = quote_value(pp)
-           #         case += " WHEN (" + " OR ".join(acc_e) + ") THEN " + t                    
-            #    case += " ELSE " + quote_value(len(query_edge.domain.partitions)) + " END "
-             #   edge_values = [("n", case)]   
-           #
-            
             if query_edge.value:
                 edge_values = [p for c in query_edge.value.to_sql(schema).sql for p in c.items()]
 
@@ -93,9 +77,7 @@ class AggsTable(SetOpTable):
                     t = quote_value(pp)
                     case += " WHEN " + w + " THEN " + t
                 case += " ELSE NULL END "   # quote value with length of partitions
-                edge_values = [("n", case)]
-                
-            
+                edge_values = [("n", case)]                          
 
             elif query_edge.range:
                 edge_values = query_edge.range.min.to_sql(schema)[0].sql.items() + query_edge.range.max.to_sql(schema)[
