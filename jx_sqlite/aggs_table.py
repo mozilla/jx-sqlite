@@ -67,23 +67,7 @@ class AggsTable(SetOpTable):
         for edge_index, query_edge in enumerate(query.edges):
             edge_alias = "e" + unicode(edge_index)
           
-            if query_edge.value and (query_edge.domain.partitions.value):
-                case = "CASE "
-                v = query_edge.value
-                for pp, p in enumerate(query_edge.domain.partitions.value):
-                    tmp = v.to_sql(schema)[0].sql
-                    acc_e = []
-                    for t, e in tmp.items():                                            
-                        w = "(" + e +  ") = (" + quote_value(p) + " )"
-                        acc_e.append(w)
-            
-                    t = quote_value(pp)
-                    case += " WHEN (" + " OR ".join(acc_e) + ") THEN " + t                    
-                case += " ELSE " + quote_value(len(query_edge.domain.partitions)) + " END "
-                edge_values = [("n", case)]   
-           
-            
-            elif query_edge.value:
+            if query_edge.value:
                 edge_values = [p for c in query_edge.value.to_sql(schema).sql for p in c.items()]
 
             elif not query_edge.value and any(query_edge.domain.partitions.where):
@@ -93,9 +77,7 @@ class AggsTable(SetOpTable):
                     t = quote_value(pp)
                     case += " WHEN " + w + " THEN " + t
                 case += " ELSE NULL END "   # quote value with length of partitions
-                edge_values = [("n", case)]
-                
-            
+                edge_values = [("n", case)]                          
 
             elif query_edge.range:
                 edge_values = query_edge.range.min.to_sql(schema)[0].sql.items() + query_edge.range.max.to_sql(schema)[
@@ -157,9 +139,15 @@ class AggsTable(SetOpTable):
                             len(query_edge.domain.partitions)) + " AS rownum, NULL AS " + domain_name
                     where = None
                     join_type = "LEFT JOIN" if query_edge.allowNulls else "JOIN"
-                    on_clause = " OR ".join(
+                    on_clause = (
+                    " OR ".join(
                         edge_alias + "." + k + " = " + v
-                        for k, (t, v) in zip(domain_names, edge_values)
+                        for k, v in zip(domain_names, vals)
+                        ) +
+                    " OR (" +
+                    edge_alias + "." + domain_names[0] + " IS NULL AND " +
+                    " AND ".join(v + " IS NULL" for v in vals) +
+                    ")"
                     )
                     not_on_clause = None
                 else:
