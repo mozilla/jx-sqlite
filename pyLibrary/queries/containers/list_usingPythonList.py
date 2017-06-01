@@ -18,7 +18,8 @@ from mo_dots import Data, wrap, listwrap, unwraplist, unwrap, Null
 from mo_logs import Log
 from mo_threads import Lock
 from pyLibrary import convert
-from pyLibrary.queries import jx
+
+from mo_collections import UniqueIndex
 from pyLibrary.queries.containers import Container
 from pyLibrary.queries.expression_compiler import compile_expression
 from pyLibrary.queries.expressions import TRUE_FILTER, jx_expression, Expression, TrueOp, jx_expression_to_function, Variable
@@ -132,8 +133,6 @@ class ListContainer(Container):
     def select(self, select):
         selects = listwrap(select)
 
-        if not all(isinstance(s.value, Variable) for s in selects):
-            Log.error("selecting on structure, or expressions, not supported yet")
         if len(selects) == 1 and isinstance(selects[0].value, Variable) and selects[0].value.var == ".":
             new_schema = self.schema
             if selects[0].name == ".":
@@ -146,7 +145,7 @@ class ListContainer(Container):
             def selector(d):
                 output = Data()
                 for n, p in push_and_pull:
-                    output[n] = p(wrap(d))
+                    output[n] = unwraplist(p(wrap(d)))
                 return unwrap(output)
 
             new_data = map(selector, self.data)
@@ -230,3 +229,14 @@ def _exec(code):
         return temp
     except Exception as e:
         Log.error("Could not execute {{code|quote}}", code=code, cause=e)
+
+
+
+from pyLibrary.queries import Schema, jx
+
+DUAL = ListContainer(
+    name="dual",
+    data=[{}],
+    schema=Schema(table_name="dual", columns=UniqueIndex(keys=("names.\\.",)))
+)
+
