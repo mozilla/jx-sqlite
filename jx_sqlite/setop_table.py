@@ -234,7 +234,7 @@ class SetOpTable(InsertTable):
             :return: the nested property (usually an array)
             """
             previous_doc_id = None
-            doc = Data()
+            doc = None
             output = []
             id_coord = nested_doc_details['id_coord']
 
@@ -248,7 +248,7 @@ class SetOpTable(InsertTable):
 
                 if doc_id != previous_doc_id:
                     previous_doc_id = doc_id
-                    doc = Data()
+                    doc = None
                     curr_nested_path = nested_doc_details['nested_path'][0]
                     if isinstance(query.select, list) or isinstance(query.select.value, LeavesOp):
                         # ASSIGN INNER PROPERTIES
@@ -262,6 +262,9 @@ class SetOpTable(InsertTable):
                             relative_path = relative_field(join_field([c.push_name]+split_field(c.push_child)), curr_nested_path)
                             if relative_path == ".":
                                 doc = value
+                            elif doc is None:
+                                doc = Data()
+                                doc[relative_path] = value
                             else:
                                 doc[relative_path] = value
                     else:
@@ -272,6 +275,9 @@ class SetOpTable(InsertTable):
                                 relative_path = relative_field(c.push_child, curr_nested_path)
                                 if relative_path == ".":
                                     doc = value
+                                elif doc is None:
+                                    doc = Data()
+                                    doc[relative_path] = value
                                 else:
                                     doc[relative_path] = value
                     output.append(doc)
