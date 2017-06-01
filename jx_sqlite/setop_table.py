@@ -416,7 +416,7 @@ class SetOpTable(InsertTable):
             elif startswith_field(nested_path, primary_nested_path):
                 # CHILD TABLE
                 # GET FIRST ROW FOR EACH NESTED TABLE
-                from_clause += "\nLEFT JOIN " + quote_table(sub_table.name) + " " + alias + \
+                from_clause += "\nLEFT JOIN " + quote_table(concat_field(self.sf.fact,sub_table.name)) + " " + alias + \
                                " ON " + alias + "." + quoted_PARENT + " = " + parent_alias + "." + quoted_UID + \
                                " AND " + alias + "." + quote_table(ORDER) + " = 0\n"
 
