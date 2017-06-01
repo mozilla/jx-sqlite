@@ -139,9 +139,15 @@ class AggsTable(SetOpTable):
                             len(query_edge.domain.partitions)) + " AS rownum, NULL AS " + domain_name
                     where = None
                     join_type = "LEFT JOIN" if query_edge.allowNulls else "JOIN"
-                    on_clause = " OR ".join(
+                    on_clause = (
+                    " OR ".join(
                         edge_alias + "." + k + " = " + v
-                        for k, (t, v) in zip(domain_names, edge_values)
+                        for k, v in zip(domain_names, vals)
+                        ) +
+                    " OR (" +
+                    edge_alias + "." + domain_names[0] + " IS NULL AND " +
+                    " AND ".join(v + " IS NULL" for v in vals) +
+                    ")"
                     )
                     not_on_clause = None
                 else:
