@@ -939,7 +939,7 @@ class TestSetOps(BaseTestCase):
                     {"b": "x", "v": 2},
                     {"b": "x", "v": 5},
                     {"b": "x", "v": 7},
-                    NULL
+                    {}
                 ]
             },
             "expecting_table": {
@@ -949,7 +949,7 @@ class TestSetOps(BaseTestCase):
                     [{"b": "x", "v": 2}],
                     [{"b": "x", "v": 5}],
                     [{"b": "x", "v": 7}],
-                    [NULL]
+                    [{}]
                 ]
             },
             "expecting_cube": {
@@ -965,7 +965,7 @@ class TestSetOps(BaseTestCase):
                         {"b": "x", "v": 2},
                         {"b": "x", "v": 5},
                         {"b": "x", "v": 7},
-                        NULL
+                        {}
                     ]
                 }
             }
@@ -1005,7 +1005,7 @@ class TestSetOps(BaseTestCase):
                     [3, {"b": "x", "v": 2}],
                     [1, {"b": "x", "v": 5}],
                     [2, {"b": "x", "v": 7}],
-                    [4, NULL]
+                    [4, {}]
                 ]
             },
             "expecting_cube": {
@@ -1021,7 +1021,7 @@ class TestSetOps(BaseTestCase):
                         {"b": "x", "v": 2},
                         {"b": "x", "v": 5},
                         {"b": "x", "v": 7},
-                        NULL
+                        {}
                     ],
                     "o": [3, 1, 2, 4]
                 }
