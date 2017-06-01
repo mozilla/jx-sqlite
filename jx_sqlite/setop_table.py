@@ -372,7 +372,8 @@ class SetOpTable(InsertTable):
         select_clause = []
         children_sql = []
         done = []
-
+        if not where_clause:
+            where_clause = "1"
         # STATEMENT FOR EACH NESTED PATH
         for i, (nested_path, sub_table) in enumerate(self.sf.tables.items()):
             if any(startswith_field(nested_path, d) for d in done):
