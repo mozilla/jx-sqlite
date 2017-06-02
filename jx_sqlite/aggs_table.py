@@ -66,20 +66,23 @@ class AggsTable(SetOpTable):
 
         for edge_index, query_edge in enumerate(query.edges):
             edge_alias = "e" + unicode(edge_index)
-
+          
             if query_edge.value:
                 edge_values = [p for c in query_edge.value.to_sql(schema).sql for p in c.items()]
+
             elif not query_edge.value and any(query_edge.domain.partitions.where):
                 case = "CASE "
                 for pp, p in enumerate(query_edge.domain.partitions):
                     w = p.where.to_sql(schema)[0].sql.b
                     t = quote_value(pp)
                     case += " WHEN " + w + " THEN " + t
-                case += " ELSE NULL END "
-                edge_values = [("n", case)]
+                case += " ELSE NULL END "   # quote value with length of partitions
+                edge_values = [("n", case)]                          
+
             elif query_edge.range:
                 edge_values = query_edge.range.min.to_sql(schema)[0].sql.items() + query_edge.range.max.to_sql(schema)[
                     0].sql.items()
+                
             else:
                 Log.error("Do not know how to handle")
 
@@ -136,9 +139,15 @@ class AggsTable(SetOpTable):
                             len(query_edge.domain.partitions)) + " AS rownum, NULL AS " + domain_name
                     where = None
                     join_type = "LEFT JOIN" if query_edge.allowNulls else "JOIN"
-                    on_clause = " OR ".join(
+                    on_clause = (
+                    " OR ".join(
                         edge_alias + "." + k + " = " + v
-                        for k, (t, v) in zip(domain_names, edge_values)
+                        for k, v in zip(domain_names, vals)
+                        ) +
+                    " OR (" +
+                    edge_alias + "." + domain_names[0] + " IS NULL AND " +
+                    " AND ".join(v + " IS NULL" for v in vals) +
+                    ")"
                     )
                     not_on_clause = None
                 else:
@@ -214,10 +223,13 @@ class AggsTable(SetOpTable):
                     "\nSELECT " + ",".join(domain_names) + " FROM ("
                                                            "\nSELECT " + ",\n".join(
                         g + " AS " + n for n, g in zip(domain_names, vals)) +
-                    "\nFROM\n" + quote_table(self.sf.fact) + " " + nest_to_alias["."] +
-                    "\nWHERE\n" + " AND ".join(g + " IS NOT NULL" for g in vals) +
-                    "\nGROUP BY\n" + ",\n".join(g for g in vals)
+                    "\nFROM\n" + quote_table(self.sf.fact) + " " + nest_to_alias["."]
                 )
+                if not query_edge.allowNulls:
+                    domain +=  "\nWHERE\n" + " AND ".join(g + " IS NOT NULL" for g in vals)
+                    
+                domain += "\nGROUP BY\n" + ",\n".join(g for g in vals)
+                    
                 limit = Math.min(query.limit, query_edge.domain.limit)
                 domain += (
                     "\nORDER BY \n" + ",\n".join("COUNT(1) DESC" for g in vals) +

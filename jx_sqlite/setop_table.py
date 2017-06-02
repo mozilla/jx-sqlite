@@ -191,7 +191,7 @@ class SetOpTable(InsertTable):
                     index_to_column[column_number] = nested_doc_details['index_to_column'][column_number] = ColumnMapping(
                         push_name=s.name,
                         push_column=si,
-                        push_child=relative_field(c.names, s.name),
+                        push_child=relative_field(c.names["."], s.name),
                         pull=get_column(column_number),
                         sql=unsorted_sql,
                         type=c.type,
@@ -234,7 +234,7 @@ class SetOpTable(InsertTable):
             :return: the nested property (usually an array)
             """
             previous_doc_id = None
-            doc = Data()
+            doc = None
             output = []
             id_coord = nested_doc_details['id_coord']
 
@@ -248,7 +248,7 @@ class SetOpTable(InsertTable):
 
                 if doc_id != previous_doc_id:
                     previous_doc_id = doc_id
-                    doc = Data()
+                    doc = None
                     curr_nested_path = nested_doc_details['nested_path'][0]
                     if isinstance(query.select, list) or isinstance(query.select.value, LeavesOp):
                         # ASSIGN INNER PROPERTIES
@@ -262,6 +262,9 @@ class SetOpTable(InsertTable):
                             relative_path = relative_field(join_field([c.push_name]+split_field(c.push_child)), curr_nested_path)
                             if relative_path == ".":
                                 doc = value
+                            elif doc is None:
+                                doc = Data()
+                                doc[relative_path] = value
                             else:
                                 doc[relative_path] = value
                     else:
@@ -272,6 +275,9 @@ class SetOpTable(InsertTable):
                                 relative_path = relative_field(c.push_child, curr_nested_path)
                                 if relative_path == ".":
                                     doc = value
+                                elif doc is None:
+                                    doc = Data()
+                                    doc[relative_path] = value
                                 else:
                                     doc[relative_path] = value
                     output.append(doc)
@@ -372,7 +378,8 @@ class SetOpTable(InsertTable):
         select_clause = []
         children_sql = []
         done = []
-
+        if not where_clause:
+            where_clause = "1"
         # STATEMENT FOR EACH NESTED PATH
         for i, (nested_path, sub_table) in enumerate(self.sf.tables.items()):
             if any(startswith_field(nested_path, d) for d in done):
@@ -398,7 +405,7 @@ class SetOpTable(InsertTable):
                 if nested_path == ".":
                     from_clause += "\nFROM " + quote_table(self.sf.fact) + " " + alias + "\n"
                 else:
-                    from_clause += "\nLEFT JOIN " + quote_table(sub_table.name) + " " + alias + "\n" \
+                    from_clause += "\nLEFT JOIN " + quote_table(concat_field(self.sf.fact,sub_table.name)) + " " + alias + "\n" \
                                                                                                 " ON " + alias + "." + quoted_PARENT + " = " + parent_alias + "." + quoted_UID + "\n"
                     where_clause = "(" + where_clause + ") AND " + alias + "." + quote_table(ORDER) + " > 0\n"
 
@@ -409,14 +416,14 @@ class SetOpTable(InsertTable):
                     from_clause += "\nFROM " + quote_table(self.sf.fact) + " " + alias + "\n"
                 else:
                     parent_alias = alias = unichr(ord('a') + i - 1)
-                    from_clause += "\nLEFT JOIN " + quote_table(sub_table.name) + " " + alias + \
+                    from_clause += "\nLEFT JOIN " + quote_table(concat_field(self.sf.fact,sub_table.name)) + " " + alias + \
                                    " ON " + alias + "." + quoted_PARENT + " = " + parent_alias + "." + quoted_UID
                     where_clause = "(" + where_clause + ") AND " + parent_alias + "." + quote_table(ORDER) + " > 0\n"
 
             elif startswith_field(nested_path, primary_nested_path):
                 # CHILD TABLE
                 # GET FIRST ROW FOR EACH NESTED TABLE
-                from_clause += "\nLEFT JOIN " + quote_table(sub_table.name) + " " + alias + \
+                from_clause += "\nLEFT JOIN " + quote_table(concat_field(self.sf.fact,sub_table.name)) + " " + alias + \
                                " ON " + alias + "." + quoted_PARENT + " = " + parent_alias + "." + quoted_UID + \
                                " AND " + alias + "." + quote_table(ORDER) + " = 0\n"
 

@@ -807,14 +807,6 @@ class TestEdge1(BaseTestCase):
                             "type": "set",
                             "key": "value",
                             "partitions": [
-                                {
-                                    "dataIndex": 0,
-                                    "value": "b"
-                                },
-                                {
-                                    "dataIndex": 1,
-                                    "value": "c"
-                                }
                             ]
                         }
                     }
