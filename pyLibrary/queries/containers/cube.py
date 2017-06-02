@@ -135,7 +135,7 @@ class Cube(Container):
         for c in matrix._all_combos():
             try:
                 output = {n: parts[i][c[i]] for i, n in enumerate(e_names)}
-            except Exception, e:
+            except Exception as e:
                 Log.error("problem", cause=e)
             for s in s_names:
                 output[s] = self.data[s][c]

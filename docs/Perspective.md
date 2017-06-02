@@ -27,7 +27,7 @@ We can query any table in the snowflake as if it was a fact table, for clarity w
 
 **Example 1: Nested Objects (one to many)**
 
-The simplest example of perspective is a document with nested objects: 
+The simplest example of perspective can be done using a document with nested objects: 
 
     [
         {
@@ -45,6 +45,8 @@ The simplest example of perspective is a document with nested objects:
 ...and here is the schema the document came from
 
 ![schema](nested1.png)
+
+...and here are the table contents
 
 **Table `.`**
 
@@ -100,7 +102,7 @@ Here are the records from that perspective:
         }
     ]
 
-Some liberty was taken here: The `..` property does not actually exist; it is shown to demonstrate the Snowflake schema uses "`..`" in the namespace to refer to the parent document: In other words, you may refer to `..a.x` from the `a.b` origin. 
+Some liberty was taken here: The `..` property does not actually exist; it is shown to demonstrate the Snowflake schema uses "`..`" in the namespace to refer to the parent document: In other words, you may refer to ` ..a.x` from the `a.b` origin. 
 
 ----------
 
