@@ -266,6 +266,72 @@ class TestSetOps(BaseTestCase):
         }
         self.utils.execute_es_tests(test)
 
+    def test_select_when_on_multivalue(self):
+        test = {
+            "data": [
+                {"a": "e"},
+                {"a": "c"},
+                {"a": ["e"]},
+                {"a": ["c"]},
+                {"a": ["e", "c"]},
+                {}
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "select": [
+                    "a",
+                    {"name": "is_e", "value": {"when": {"eq": {"a": "e"}}, "then": 1, "else": 0}},
+                    {"name": "not_e", "value": {"when": {"not": {"eq": {"a": "e"}}}, "then": 1, "else": 0}},
+                    {"name": "is_c", "value": {"when": {"eq": {"a": "c"}}, "then": 1, "else": 0}}
+                ]
+            },
+            "expecting_list": {
+                "meta": {"format": "list"},
+                "data": [
+                    {"a": "e", "is_e": 1, "not_e": 0, "is_c": 0},
+                    {"a": "c", "is_e": 0, "not_e": 1, "is_c": 1},
+                    {"a": "e", "is_e": 1, "not_e": 0, "is_c": 0},
+                    {"a": "c", "is_e": 0, "not_e": 1, "is_c": 1},
+                    {"a": ["e", "c"], "is_e": 1, "not_e": 0, "is_c": 1},
+                    {"a": NULL, "is_e": 0, "not_e": 1, "is_c": 0}
+                ]
+            }
+        }
+        self.utils.execute_es_tests(test)
+
+    def test_select_in_w_multivalue(self):
+        test = {
+            "data": [
+                {"a": "e"},
+                {"a": "c"},
+                {"a": ["e"]},
+                {"a": ["c"]},
+                {"a": ["e", "c"]},
+                {}
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "select": [
+                    "a",
+                    {"name": "is_e", "value": {"in": [{"literal": "e"}, "a"]}},
+                    {"name": "not_e", "value": {"not": {"in": [{"literal": "e"}, "a"]}}},
+                    {"name": "is_c", "value": {"in": [{"literal": "c"}, "a"]}},
+                ]
+            },
+            "expecting_list": {
+                "meta": {"format": "list"},
+                "data": [
+                    {"a": "e", "is_e": True, "not_e": False, "is_c": False},
+                    {"a": "c", "is_e": False, "not_e": True, "is_c": True},
+                    {"a": "e", "is_e": True, "not_e": False, "is_c": False},
+                    {"a": "c", "is_e": False, "not_e": True, "is_c": True},
+                    {"a": ["e", "c"], "is_e": True, "not_e": False, "is_c": True},
+                    {"a": NULL, "is_e": False, "not_e": True, "is_c": False}
+                ]
+            }
+        }
+        self.utils.execute_es_tests(test)
+
     def test_select_mult_w_when(self):
         test = {
             "data": [
