@@ -887,7 +887,7 @@ class TestSetOps(BaseTestCase):
                     {"a.b": "x", "a.v": 2},
                     {"a.b": "x", "a.v": 5},
                     {"a.b": "x", "a.v": 7},
-                    NULL
+                    {}
                 ]
             },
             "expecting_table": {

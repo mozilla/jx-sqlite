@@ -1290,8 +1290,14 @@ class TestDeepOps(BaseTestCase):
         self.utils.execute_es_tests(test)
 
 
-
-
+# TODO: using "find" as a filter should be legitimate:
+todo = {
+    "from": "task.task.artifacts",
+    "where": {"and": [
+        {"gt": {"action.start_time": {"date": "today-3day"}}},
+        {"find": {"name": "gcda"}}
+    ]}
+}
 
 # TODO: WHAT DOES * MEAN IN THE CONTEXT OF A DEEP QUERY?
 # THIS SHOULD RETURN SOMETHING, NOT FAIL
