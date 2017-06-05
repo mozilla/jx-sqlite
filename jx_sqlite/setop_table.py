@@ -234,7 +234,7 @@ class SetOpTable(InsertTable):
             :return: the nested property (usually an array)
             """
             previous_doc_id = None
-            doc = Data()
+            doc = None
             output = []
             id_coord = nested_doc_details['id_coord']
 
@@ -242,13 +242,13 @@ class SetOpTable(InsertTable):
                 doc_id = row[id_coord]
 
                 if doc_id == None or (parent_id_coord is not None and row[parent_id_coord] != parent_doc_id):
-                    rows.append(row)  # UNDO
+                    rows.append(row)  # UNDO PREVIOUS POP (RECORD IS NOT A NESTED RECORD OF parent_doc)
                     output = unwraplist(output)
                     return output if output else None
 
                 if doc_id != previous_doc_id:
                     previous_doc_id = doc_id
-                    doc = Data()
+                    doc = None
                     curr_nested_path = nested_doc_details['nested_path'][0]
                     if isinstance(query.select, list) or isinstance(query.select.value, LeavesOp):
                         # ASSIGN INNER PROPERTIES
@@ -259,25 +259,34 @@ class SetOpTable(InsertTable):
                             if value == '':
                                 continue
 
-                            relative_path = relative_field(join_field([c.push_name]+split_field(c.push_child)), curr_nested_path)
+                            relative_path = relative_field(concat_field(c.push_name, c.push_child), curr_nested_path)
                             if relative_path == ".":
                                 doc = value
+                            elif doc is None:
+                                doc = Data()
+                                doc[relative_path] = value
                             else:
                                 doc[relative_path] = value
                     else:
-                        # ASSIGN INNER PROPERTIES
+                        # FACT IS EXPECTED TO BE A SINGLE VALUE, NOT AN OBJECT
                         for i, c in nested_doc_details['index_to_column'].items():
                             value = row[i]
-                            if value is not None:
-                                relative_path = relative_field(c.push_child, curr_nested_path)
-                                if relative_path == ".":
-                                    doc = value
-                                else:
-                                    doc[relative_path] = value
+                            if value == None:
+                                continue
+
+                            relative_path = relative_field(c.push_child, curr_nested_path)
+                            if relative_path == ".":
+                                doc = value
+                            elif doc is None:
+                                doc = Data()
+                                doc[relative_path] = value
+                            else:
+                                doc[relative_path] = value
                     output.append(doc)
 
                 # ASSIGN NESTED ARRAYS
                 for child_details in nested_doc_details['children']:
+                    # EACH NESTED TABLE MUST BE ASSEMBLED INTO A LIST OF OBJECTS
                     child_id = row[child_details['id_coord']]
                     if child_id is not None:
                         nested_value = _accumulate_nested(rows, row, child_details, doc_id, id_coord)

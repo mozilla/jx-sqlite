@@ -45,8 +45,9 @@ ENABLE_META_SCAN = False
 DEBUG = False
 TOO_OLD = 2*HOUR
 OLD_METADATA = MINUTE
-singlton = None
 TEST_TABLE_PREFIX = "testing"  # USED TO TURN OFF COMPLAINING ABOUT TEST INDEXES
+
+singlton = None
 
 
 class FromESMetadata(Schema):
@@ -694,7 +695,7 @@ def get_schema_from_list(table_name, frum):
 
 def _get_schema_from_list(frum, table_name, prefix_path, nested_path, columns):
     """
-    :param frum:  The list
+    :param frum: The list
     :param table_name: Name of the table this list holds records for
     :param prefix_path: parent path
     :param nested_path: each nested array, in reverse order
