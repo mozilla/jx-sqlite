@@ -322,10 +322,7 @@ class SetOpTable(InsertTable):
             else:                                   #means accumulated nested objects
                 for rownum, d in enumerate(data):#
                     for colnum, c in enumerate(cols):#
-                        column = temp_data[c.push_column][rownum]#
-                        if column is None:#
-                            column = temp_data[c.push_column][rownum] = {}#
-                        column[c.push_child] = c.pull(d.push_column.push_child)#
+                        pass    #passing for now
                         
             output = Data(
                 meta={"format": "cube"},
