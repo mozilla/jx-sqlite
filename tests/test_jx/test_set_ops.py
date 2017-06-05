@@ -167,7 +167,8 @@ class TestSetOps(BaseTestCase):
                 "sort": "a.b.c"  # SO THE CUBE COMPARISON WILL PASS
             },
             "expecting_list": {
-                "meta": {"format": "list"}, "data": [1, 2, 3, 4, 5]
+                "meta": {"format": "list"},
+                "data": [{"a.b.c":1}, {"a.b.c":2}, {"a.b.c":3}, {"a.b.c":4}, {"a.b.c":5}]
             },
             "expecting_table": {
                 "meta": {"format": "table"},
@@ -200,7 +201,7 @@ class TestSetOps(BaseTestCase):
                 "select": "a"
             },
             "expecting_list": {
-                "meta": {"format": "list"}, "data": ["b"]},
+                "meta": {"format": "list"}, "data": [{"a": "b"}]},
             "expecting_table": {
                 "meta": {"format": "table"},
                 "header": ["a"],
@@ -233,7 +234,7 @@ class TestSetOps(BaseTestCase):
                 "select": {"name": "value", "value": "a"}
             },
             "expecting_list": {
-                "meta": {"format": "list"}, "data": ["b"]},
+                "meta": {"format": "list"}, "data": [{"value": "b"}]},
             "expecting_table": {
                 "meta": {"format": "table"},
                 "header": ["value"],
@@ -389,7 +390,7 @@ class TestSetOps(BaseTestCase):
             },
             "expecting_list": {
                 "meta": {"format": "list"},
-                "data": [{"a": "b"}]
+                "data": [{"value": {"a": "b"}}]
             },
             "expecting_table": {
                 "meta": {"format": "table"},
@@ -936,9 +937,9 @@ class TestSetOps(BaseTestCase):
             "expecting_list": {
                 "meta": {"format": "list"},
                 "data": [
-                    {"b": "x", "v": 2},
-                    {"b": "x", "v": 5},
-                    {"b": "x", "v": 7},
+                    {"a":{"b": "x", "v": 2}},
+                    {"a":{"b": "x", "v": 5}},
+                    {"a":{"b": "x", "v": 7}},
                     {}
                 ]
             },
