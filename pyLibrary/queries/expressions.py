@@ -1768,7 +1768,7 @@ class RegExpOp(Expression):
         return "re.match(" + quote(json2value(self.pattern.json) + "$") + ", " + self.var.to_python() + ")"
 
     def to_sql(self, schema, not_null=False, boolean=False):
-        pattern = schema.db.quote_value(convert.json2value(self.pattern.json))
+        pattern = quote(convert.json2value(self.pattern.json))
         value = self.var.to_sql(schema)[0].sql.s
         return wrap([
             {"name": ".", "sql": {"s": value + " REGEXP " + pattern}}
@@ -1981,7 +1981,7 @@ class PrefixOp(Expression):
         return "(" + self.field.to_python() + ").startswith(" + self.prefix.to_python() + ")"
 
     def to_sql(self, schema, not_null=False, boolean=False):
-        return {"b": "INSTR(" + self.field.to_sql(schema).s + ", " + self.prefix.to_sql().s + ")==1"}
+        return wrap([{"name":".","sql":{"b": "INSTR(" + self.field.to_sql(schema)[0].sql.s + ", " + self.prefix.to_sql(schema)[0].sql.s + ")==1"}}])
 
     def to_esfilter(self):
         if isinstance(self.field, Variable) and isinstance(self.prefix, Literal):
@@ -2529,7 +2529,7 @@ class BetweenOp(Expression):
             prefix = "max(0, " + self.prefix.to_sql(schema)[0].sql.n + ")"
             suffix = self.suffix.to_sql(schema)[0].sql.n
             start_index = self.start.to_sql(schema)[0].sql.n
-            default = self.default.to_sql(schema, not_null=True).sql.s if self.default else "NULL"
+            default = self.default.to_sql(schema, not_null=True)[0].sql.s if self.default else "NULL"
 
             if start_index:
                 start = prefix + "+" + start_index + "+1"
@@ -2633,9 +2633,11 @@ class InOp(Expression):
     def to_sql(self, schema, not_null=False, boolean=False):
         if not isinstance(self.superset, Literal):
             Log.error("Not supported")
-        var = self.value.to_sql(schema)
-        return " OR ".join("(" + var + "==" + sql_quote(v) + ")" for v in json2value(self.superset))
-
+        var = self.value.to_sql(schema,boolean=boolean)
+        if json2value(self.superset):
+            return " OR ".join("(" + var + "==" + sql_quote(v) + ")" for v in json2value(self.superset))
+        else:
+            return wrap([{"name": ".", "sql": {"b": "0"}}])
     def to_esfilter(self):
         if isinstance(self.value, Variable):
             return {"terms": {self.value.var: json2value(self.superset.json)}}
