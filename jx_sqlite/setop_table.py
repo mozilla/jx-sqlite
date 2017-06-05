@@ -199,7 +199,6 @@ class SetOpTable(InsertTable):
                     )
 
         where_clause = query.where.to_sql(schema, boolean=True)[0].sql.b
-
         unsorted_sql = self._make_sql_for_one_nest_in_set_op(
             ".",
             sql_selects,
@@ -298,22 +297,36 @@ class SetOpTable(InsertTable):
                     return output if output else None
 
         cols = tuple(index_to_column.values())
-
-        if query.format == "cube":
-            num_rows = len(result.data)
+        rows = list(reversed(unwrap(result.data)))#
+        if rows:
+            row = rows.pop()           #
+            data=listwrap(_accumulate_nested(rows, row, primary_doc_details, None, None))   #                   
+        else: 
+            data = result.data
+        
+        if query.format == "cube":      
+            num_rows = len(data)#
             num_cols = MAX([c.push_column for c in cols]) + 1 if len(cols) else 0
             map_index_to_name = {c.push_column: c.push_name for c in cols}
             temp_data = [[None]*num_rows for _ in range(num_cols)]
-            for rownum, d in enumerate(result.data):
-                for c in cols:
-                    if c.push_child == ".":
-                        temp_data[c.push_column][rownum] = c.pull(d)
-                    else:
-                        column = temp_data[c.push_column][rownum]
-                        if column is None:
-                            column = temp_data[c.push_column][rownum] = {}
-                        column[c.push_child] = c.pull(d)
-
+            if len(data) == len(result.data):       # means no accumulated nested objects 
+                for rownum, d in enumerate(result.data):
+                    for c in cols:
+                        if c.push_child == ".":
+                            temp_data[c.push_column][rownum] = c.pull(d)
+                        else:
+                            column = temp_data[c.push_column][rownum]
+                            if column is None:
+                                column = temp_data[c.push_column][rownum] = {}
+                            column[c.push_child] = c.pull(d)
+            else:                                   #means accumulated nested objects
+                for rownum, d in enumerate(data):#
+                    for colnum, c in enumerate(cols):#
+                        column = temp_data[c.push_column][rownum]#
+                        if column is None:#
+                            column = temp_data[c.push_column][rownum] = {}#
+                        column[c.push_child] = c.pull(d.push_column.push_child)#
+                        
             output = Data(
                 meta={"format": "cube"},
                 data={n: temp_data[c] for c, n in map_index_to_name.items()},
@@ -346,11 +359,9 @@ class SetOpTable(InsertTable):
                 data=output_data
             )
         else:
-            rows = list(reversed(unwrap(result.data)))
-            row = rows.pop()
             output = Data(
                 meta={"format": "list"},
-                data=listwrap(_accumulate_nested(rows, row, primary_doc_details, None, None))
+                data=data
             )
             return output
 
