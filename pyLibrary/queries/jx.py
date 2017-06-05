@@ -12,20 +12,21 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
-import __builtin__
 from collections import Mapping
-from types import GeneratorType
 
-import mo_dots
+import __builtin__
 from mo_dots import listwrap, wrap, unwrap, FlatList
 from mo_dots import set_default, Null, Data, split_field, coalesce, join_field
-from mo_dots.objects import DataObject
 from mo_logs import Log
 from mo_math import Math
 from mo_math import UNION, MIN
 from pyLibrary import convert
+from types import GeneratorType
+
+import mo_dots
 from mo_collections.index import Index
 from mo_collections.unique_index import UniqueIndex
+from mo_dots.objects import DataObject
 from pyLibrary.queries import flat_list, query, group_by
 from pyLibrary.queries.containers import Container
 from pyLibrary.queries.containers.cube import Cube
@@ -63,14 +64,16 @@ def run(query, frum=Null):
     else:
         query_op = QueryOp.wrap(query, frum.schema)
 
-    if isinstance(frum, Container):
+    if frum == None:
+        from pyLibrary.queries.containers.list_usingPythonList import DUAL
+        return DUAL.query(query_op)
+    elif isinstance(frum, Container):
         return frum.query(query_op)
     elif isinstance(frum, (list, set, GeneratorType)):
         frum = wrap(list(frum))
     elif isinstance(frum, Cube):
         if is_aggs(query_op):
             return cube_aggs(frum, query_op)
-
     elif isinstance(frum, QueryOp):
         frum = run(frum)
     else:

@@ -6,6 +6,7 @@ from mo_logs import Log
 
 from jx_sqlite import quote_table, typed_column, GUID, quoted_UID, sql_types, quoted_PARENT, ORDER, quoted_ORDER
 from jx_sqlite import untyped_column
+from pyLibrary.queries import jx
 from pyLibrary.queries.meta import Column
 from pyLibrary.sql.sqlite import quote_column
 
@@ -34,14 +35,14 @@ class Snowflake(object):
         """
 
         # FIND ALL TABLES
-        result = self.db.query("SELECT * FROM sqlite_master WHERE type='table'")
+        result = self.db.query("SELECT * FROM sqlite_master WHERE type='table' ORDER BY name")
         tables = wrap([{k: d[i] for i, k in enumerate(result.header)} for d in result.data])
         tables_found = False
         for table in tables:
             if table.name.startswith("__"):
                 continue
             tables_found = True
-            nested_path = [join_field(split_field(table.name)[1:])]
+            nested_path = [join_field(split_field(tab.name)[1:]) for tab in jx.reverse(tables) if startswith_field(table.name, tab.name)]
             self.add_table_to_schema(nested_path)
 
             # LOAD THE COLUMNS
@@ -53,7 +54,7 @@ class Snowflake(object):
                     continue
                 cname, ctype = untyped_column(name)
                 column = Column(
-                    names={nested_path[0]: cname},
+                    names={np: relative_field(cname, np) for np in nested_path},
                     type=coalesce(ctype, {"TEXT": "string", "REAL": "number", "INTEGER": "integer"}.get(dtype)),
                     nested_path=nested_path,
                     es_column=name,

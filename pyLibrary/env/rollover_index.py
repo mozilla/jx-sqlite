@@ -11,7 +11,7 @@ from __future__ import unicode_literals
 import mo_json
 from activedata_etl import etl2path
 from activedata_etl import key2etl
-from mo_dots import coalesce, wrap, Null
+from mo_dots import coalesce, wrap, Null, Data
 from mo_kwargs import override
 from mo_logs import Log, strings
 from mo_logs.exceptions import suppress_exception
@@ -26,6 +26,7 @@ from pyLibrary.env import elasticsearch
 from pyLibrary.queries import jx
 
 MAX_RECORD_LENGTH = 400000
+DATA_TOO_OLD = "data is too old to be indexed"
 
 
 class RolloverIndex(object):
@@ -61,8 +62,10 @@ class RolloverIndex(object):
         if row.json:
             row.value, row.json = mo_json.json2value(row.json), None
         timestamp = Date(self.rollover_field(wrap(row).value))
-        if timestamp == None or timestamp < Date.today() - self.rollover_max:
+        if timestamp == None:
             return Null
+        elif timestamp < Date.today() - self.rollover_max:
+            return DATA_TOO_OLD
 
         rounded_timestamp = timestamp.floor(self.rollover_interval)
         with self.locker:
@@ -192,7 +195,12 @@ class RolloverIndex(object):
                             queue = self._get_queue(row)
                             if queue == None:
                                 pending.append(row)
+                                if len(pending) > 1000:
+                                    self._get_queue(row)
+                                    Log.error("first 1000 (key={{key}}) records have no indication what index to put data", key=tuple(keys)[0])
                                 continue
+                            elif queue is DATA_TOO_OLD:
+                                break
                             if pending:
                                 queue.extend(pending)
                                 pending = []
@@ -210,6 +218,9 @@ class RolloverIndex(object):
                 done_copy()
             else:
                 queue.add(done_copy)
+
+        if pending:
+            Log.error("Did not find an index to place the data for key={{key}}", key=tuple(keys)[0])
 
         Log.note("{{num}} keys from {{key|json}} added", num=num_keys, key=keys)
         return num_keys

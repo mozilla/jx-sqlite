@@ -346,7 +346,10 @@ def icompressed2ibytes(source):
     last_bytes_count = 0  # Track the last byte count, so we do not show too many debug lines
     bytes_count = 0
     for bytes_ in source:
-        data = decompressor.decompress(bytes_)
+        try:
+            data = decompressor.decompress(bytes_)
+        except Exception as e:
+            Log.error("problem", cause=e)
         bytes_count += len(data)
         if Math.floor(last_bytes_count, 1000000) != Math.floor(bytes_count, 1000000):
             last_bytes_count = bytes_count

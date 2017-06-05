@@ -942,6 +942,8 @@ class Alias(Features):
                     [(name, Null) for name, i in alias_list.items() if self.settings.index==name]
                 )
                 full_name = jx.sort(candidates, 0).last()[0]
+                if not full_name:
+                    Log.error("No index by name of {{name}}", name=self.settings.index)
                 mappings = self.cluster.get("/" + full_name + "/_mapping")[full_name]
             else:
                 mappings = self.cluster.get("/"+self.settings.index+"/_mapping")[self.settings.index]

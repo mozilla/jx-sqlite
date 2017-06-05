@@ -20,7 +20,7 @@ from pyLibrary.queries import es09
 from pyLibrary.queries.es14.decoders import DefaultDecoder, AggsDecoder, ObjectDecoder
 from pyLibrary.queries.es14.decoders import DimFieldListDecoder
 from pyLibrary.queries.es14.util import aggregates1_4, NON_STATISTICAL_AGGS
-from pyLibrary.queries.expressions import simplify_esfilter, split_expression_by_depth, AndOp, Variable, NullOp
+from pyLibrary.queries.expressions import simplify_esfilter, split_expression_by_depth, AndOp, Variable, NullOp, TupleOp
 from pyLibrary.queries.query import MAX_LIMIT
 
 
@@ -218,7 +218,13 @@ def es_aggsop(es, frum, query):
         canonical_name = literal_field(s.name)
         abs_value = s.value.map(es_column_map)
 
-        if s.aggregate == "count":
+        if isinstance(abs_value, TupleOp):
+            if s.aggregate == "count":
+                # TUPLES ALWAYS EXIST, SO COUNTING THEM IS EASY
+                s.pull = "doc_count"
+            else:
+                Log.error("{{agg}} is not a supported aggregate over a tuple", agg=s.aggregate)
+        elif s.aggregate == "count":
             es_query.aggs[literal_field(canonical_name)].value_count.script = abs_value.to_ruby()
             s.pull = literal_field(canonical_name) + ".value"
         elif s.aggregate == "median":
