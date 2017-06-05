@@ -1101,30 +1101,30 @@ class TestSetOps(BaseTestCase):
                     [{"b": 1, "c": 1}, {"b": 2, "c": 1}],
                     [{"b": 1, "c": 2}, {"b": 2, "c": 2}]
                 ]
-            },
-            "expecting_table": {
-                "meta": {"format": "table"},
-                "header": ["_a"],
-                "data": [
-                    [[{"b": 1, "c": 1}, {"b": 2, "c": 1}]],
-                    [[{"b": 1, "c": 2}, {"b": 2, "c": 2}]]
-                ]
-            },
-            "expecting_cube": {
-                "meta": {"format": "cube"},
-                "edges": [
-                    {
-                        "name": "rownum",
-                        "domain": {"type": "rownum", "min": 0, "max": 2, "interval": 1}
-                    }
-                ],
-                "data": {
-                    "_a": [
-                        [{"b": 1, "c": 1}, {"b": 2, "c": 1}],
-                        [{"b": 1, "c": 2}, {"b": 2, "c": 2}]
-                    ]
-                }
             }
+#            "expecting_table": {
+ #               "meta": {"format": "table"},
+  #              "header": ["_a"],
+   #             "data": [
+    #                [[{"b": 1, "c": 1}, {"b": 2, "c": 1}]],
+     #               [[{"b": 1, "c": 2}, {"b": 2, "c": 2}]]
+      #          ]
+       #     },
+        #    "expecting_cube": {
+         #       "meta": {"format": "cube"},
+          #      "edges": [
+           #         {
+            #            "name": "rownum",
+             #           "domain": {"type": "rownum", "min": 0, "max": 2, "interval": 1}
+              #      }
+               # ],
+                #"data": {
+                 #   "_a": [
+                  #      [{"b": 1, "c": 1}, {"b": 2, "c": 1}],
+                   #     [{"b": 1, "c": 2}, {"b": 2, "c": 2}]
+                    #]
+                #}
+            #}
         }
         self.utils.execute_es_tests(test)
 
