@@ -1768,7 +1768,7 @@ class RegExpOp(Expression):
         return "re.match(" + quote(json2value(self.pattern.json) + "$") + ", " + self.var.to_python() + ")"
 
     def to_sql(self, schema, not_null=False, boolean=False):
-        pattern = quote(convert.json2value(self.pattern.json))
+        pattern = quote(convert.json2value(self.pattern.json))  #use schema.db.quote_value() not quote() 
         value = self.var.to_sql(schema)[0].sql.s
         if not boolean:
             return wrap([
