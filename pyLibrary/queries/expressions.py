@@ -1984,7 +1984,7 @@ class PrefixOp(Expression):
         return "(" + self.field.to_python() + ").startswith(" + self.prefix.to_python() + ")"
 
     def to_sql(self, schema, not_null=False, boolean=False):
-        return {"b": "INSTR(" + self.field.to_sql(schema).s + ", " + self.prefix.to_sql().s + ")==1"}
+        return wrap([{"name":".","sql":{"b": "INSTR(" + self.field.to_sql(schema)[0].sql.s + ", " + self.prefix.to_sql(schema)[0].sql.s + ")==1"}}])
 
     def to_esfilter(self):
         if isinstance(self.field, Variable) and isinstance(self.prefix, Literal):
@@ -2532,7 +2532,7 @@ class BetweenOp(Expression):
             prefix = "max(0, " + self.prefix.to_sql(schema)[0].sql.n + ")"
             suffix = self.suffix.to_sql(schema)[0].sql.n
             start_index = self.start.to_sql(schema)[0].sql.n
-            default = self.default.to_sql(schema, not_null=True).sql.s if self.default else "NULL"
+            default = self.default.to_sql(schema, not_null=True)[0].sql.s if self.default else "NULL"
 
             if start_index:
                 start = prefix + "+" + start_index + "+1"
