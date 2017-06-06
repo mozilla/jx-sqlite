@@ -128,6 +128,10 @@ class TestFilters(BaseTestCase):
             ]}
         }
         self.utils.execute_es_tests(test)
+        # No regexp() user function is defined by default and so use of the 
+        #REGEXP operator will normally result in an error message. 
+        #If an application-defined SQL function named "regexp" is added at run-time, 
+        #then the "X REGEXP Y" operator will be implemented
 
     def test_empty_or(self):
         test = {

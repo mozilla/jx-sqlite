@@ -46,7 +46,7 @@ class TestSetOps(BaseTestCase):
                 "select": "a"
             },
             "expecting_list": {
-                "meta": {"format": "list"}, "data": [{"a":"b"}]},
+                "meta": {"format": "list"}, "data": ["b"]},
             "expecting_table": {
                 "meta": {"format": "table"},
                 "header": ["a"],
@@ -168,7 +168,7 @@ class TestSetOps(BaseTestCase):
             },
             "expecting_list": {
                 "meta": {"format": "list"},
-                "data": [{"a.b.c":1}, {"a.b.c":2}, {"a.b.c":3}, {"a.b.c":4}, {"a.b.c":5}]
+                "data": [1, 2, 3, 4, 5]
             },
             "expecting_table": {
                 "meta": {"format": "table"},
@@ -201,7 +201,7 @@ class TestSetOps(BaseTestCase):
                 "select": "a"
             },
             "expecting_list": {
-                "meta": {"format": "list"}, "data": [{"a": "b"}]},
+                "meta": {"format": "list"}, "data": ["b"]},
             "expecting_table": {
                 "meta": {"format": "table"},
                 "header": ["a"],
@@ -234,7 +234,7 @@ class TestSetOps(BaseTestCase):
                 "select": {"name": "value", "value": "a"}
             },
             "expecting_list": {
-                "meta": {"format": "list"}, "data": [{"value": "b"}]},
+                "meta": {"format": "list"}, "data": ["b"]},
             "expecting_table": {
                 "meta": {"format": "table"},
                 "header": ["value"],
@@ -390,7 +390,7 @@ class TestSetOps(BaseTestCase):
             },
             "expecting_list": {
                 "meta": {"format": "list"},
-                "data": [{"value": {"a": "b"}}]
+                "data": [{"a": "b"}]
             },
             "expecting_table": {
                 "meta": {"format": "table"},
@@ -677,7 +677,7 @@ class TestSetOps(BaseTestCase):
                 {"a": {"b": 0, "c": 0}, "d": 7},
                 {"a": {"b": 0, "c": 1}},
                 {"a": {"b": 1, "c": 0}},
-                {"a": {"b": 1, "c": 1}},
+                {"a": {"b": 1, "c": 1}}
             ],
             "query": {
                 "from": TEST_TABLE,
@@ -686,10 +686,10 @@ class TestSetOps(BaseTestCase):
             },
             "expecting_list": {
                 "meta": {"format": "list"}, "data": [
-                    {"a.b": 0, "a.c": 0, "d": 7},
-                    {"a.b": 0, "a.c": 1},
-                    {"a.b": 1, "a.c": 0},
-                    {"a.b": 1, "a.c": 1}
+                {"a.b": 0, "a.c": 0, "d": 7},
+                {"a.b": 0, "a.c": 1},
+                {"a.b": 1, "a.c": 0},
+                {"a.b": 1, "a.c": 1}
                 ]
             },
             "expecting_table": {
@@ -937,9 +937,9 @@ class TestSetOps(BaseTestCase):
             "expecting_list": {
                 "meta": {"format": "list"},
                 "data": [
-                    {"a":{"b": "x", "v": 2}},
-                    {"a":{"b": "x", "v": 5}},
-                    {"a":{"b": "x", "v": 7}},
+                    {"b": "x", "v": 2},
+                    {"b": "x", "v": 5},
+                    {"b": "x", "v": 7},
                     {}
                 ]
             },
@@ -1099,8 +1099,8 @@ class TestSetOps(BaseTestCase):
             "expecting_list": {
                 "meta": {"format": "list"},
                 "data": [
-                {"_a": [{"b": 1, "c": 1}, {"b": 2, "c": 1}]},
-                {"_a": [{"b": 1, "c": 2}, {"b": 2, "c": 2}]}
+                [{"b": 1, "c": 1}, {"b": 2, "c": 1}],
+                [{"b": 1, "c": 2}, {"b": 2, "c": 2}]
             ]
             },
             "expecting_table": {

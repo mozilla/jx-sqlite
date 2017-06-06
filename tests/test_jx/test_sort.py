@@ -320,15 +320,16 @@ class TestSorting(BaseTestCase):
             "expecting_cube": {
                 "meta": {"format": "cube"},
                 "edges": [
-                    {"name": "b", "domain": {"type": "set", "partitions": [
-                        {"value": 1},
-                        {"value": 0}
-                    ]}},
                     {"name": "a", "domain": {"type": "set", "partitions": [
                         {"value": "c"},
                         {"value": "a"}
+                    ]}},                    
+                    {"name": "b", "domain": {"type": "set", "partitions": [
+                        {"value": 1},
+                        {"value": 0}
                     ]}}
-                ],
+                   
+                 ],
                 "data": {
                     "count": [[2, 2, 0], [3, 2, 1], [1, 0, 1]]
                 }

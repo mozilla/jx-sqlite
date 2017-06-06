@@ -120,13 +120,7 @@ class QueryTable(AggsTable):
             op = self._set_op(query, frum)
             return op
 
-        if query.sort:
-            command += "\nORDER BY " + ",\n".join(
-                "(" + sql[t] + ") IS NULL" + (" DESC" if s.sort == -1 else "") + ",\n" +
-                sql[t] + (" DESC" if s.sort == -1 else "")
-                for s, sql in [(s, s.value.to_sql(schema)[0].sql) for s in query.sort]
-                for t in "bns" if sql[t]
-            )
+        
 
         result = self.db.query(command)
 

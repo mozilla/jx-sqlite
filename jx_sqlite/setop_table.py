@@ -249,38 +249,29 @@ class SetOpTable(InsertTable):
                     previous_doc_id = doc_id
                     doc = None
                     curr_nested_path = nested_doc_details['nested_path'][0]
-                    if isinstance(query.select, list) or isinstance(query.select.value, LeavesOp):
-                        # ASSIGN INNER PROPERTIES
-                        for i, c in nested_doc_details['index_to_column'].items():
-                            value = row[i]
-                            if value == None:
-                                continue
-                            if value == '':
-                                continue
-
-                            relative_path = relative_field(join_field([c.push_name]+split_field(c.push_child)), curr_nested_path)
-                            if relative_path == ".":
-                                doc = value
-                            elif doc is None:
-                                doc = Data()
-                                doc[relative_path] = value
-                            else:
-                                doc[relative_path] = value
-                    else:
-                        # FACT IS EXPECTED TO BE A SINGLE VALUE, NOT AN OBJECT
-                        for i, c in nested_doc_details['index_to_column'].items():
-                            value = row[i]
-                            if value == None:
-                                continue
-
-                            relative_path = relative_field(join_field([c.push_name]+split_field(c.push_child)), curr_nested_path)
-                            if relative_path == ".":
-                                doc = value
-                            elif doc is None:
-                                doc = Data()
-                                doc[relative_path] = value
-                            else:
-                                doc[relative_path] = value
+                    
+                    for i, c in nested_doc_details['index_to_column'].items():
+                        value = row[i]
+                        if value == None:
+                            continue
+                        if value == '':
+                            continue
+                        
+                        if isinstance(query.select, list) or isinstance(query.select.value, LeavesOp):
+                            # FACT IS EXPECTED TO BE A SINGLE VALUE, NOT AN OBJECT           
+                                relative_path=relative_field(join_field([c.push_name]+split_field(c.push_child)), curr_nested_path)
+                        else:  
+                            # ASSIGN INNER PROPERTIES                            
+                            relative_path = relative_field(c.push_child, curr_nested_path)
+                        
+                        if relative_path == ".":
+                            doc = value
+                        elif doc is None:
+                            doc = Data()
+                            doc[relative_path] = value
+                        else:
+                            doc[relative_path] = value
+                    
                     output.append(doc)
 
                 # ASSIGN NESTED ARRAYS
@@ -291,6 +282,8 @@ class SetOpTable(InsertTable):
                         nested_value = _accumulate_nested(rows, row, child_details, doc_id, id_coord)
                         if nested_value is not None:
                             path = child_details['nested_path'][0]
+                            if doc is None:
+                                doc = Data()                            
                             doc[path] = nested_value
 
                 try:
