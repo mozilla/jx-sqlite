@@ -167,7 +167,8 @@ class TestSetOps(BaseTestCase):
                 "sort": "a.b.c"  # SO THE CUBE COMPARISON WILL PASS
             },
             "expecting_list": {
-                "meta": {"format": "list"}, "data": [1, 2, 3, 4, 5]
+                "meta": {"format": "list"},
+                "data": [1, 2, 3, 4, 5]
             },
             "expecting_table": {
                 "meta": {"format": "table"},
@@ -676,7 +677,7 @@ class TestSetOps(BaseTestCase):
                 {"a": {"b": 0, "c": 0}, "d": 7},
                 {"a": {"b": 0, "c": 1}},
                 {"a": {"b": 1, "c": 0}},
-                {"a": {"b": 1, "c": 1}},
+                {"a": {"b": 1, "c": 1}}
             ],
             "query": {
                 "from": TEST_TABLE,
@@ -685,10 +686,10 @@ class TestSetOps(BaseTestCase):
             },
             "expecting_list": {
                 "meta": {"format": "list"}, "data": [
-                    {"a.b": 0, "a.c": 0, "d": 7},
-                    {"a.b": 0, "a.c": 1},
-                    {"a.b": 1, "a.c": 0},
-                    {"a.b": 1, "a.c": 1}
+                {"a.b": 0, "a.c": 0, "d": 7},
+                {"a.b": 0, "a.c": 1},
+                {"a.b": 1, "a.c": 0},
+                {"a.b": 1, "a.c": 1}
                 ]
             },
             "expecting_table": {
@@ -887,7 +888,7 @@ class TestSetOps(BaseTestCase):
                     {"a.b": "x", "a.v": 2},
                     {"a.b": "x", "a.v": 5},
                     {"a.b": "x", "a.v": 7},
-                    NULL
+                    {}
                 ]
             },
             "expecting_table": {
@@ -1098,16 +1099,16 @@ class TestSetOps(BaseTestCase):
             "expecting_list": {
                 "meta": {"format": "list"},
                 "data": [
-                    [{"b": 1, "c": 1}, {"b": 2, "c": 1}],
-                    [{"b": 1, "c": 2}, {"b": 2, "c": 2}]
-                ]
+                [{"b": 1, "c": 1}, {"b": 2, "c": 1}],
+                [{"b": 1, "c": 2}, {"b": 2, "c": 2}]
+            ]
             },
             "expecting_table": {
                 "meta": {"format": "table"},
                 "header": ["_a"],
                 "data": [
-                    [[{"b": 1, "c": 1}, {"b": 2, "c": 1}]],
-                    [[{"b": 1, "c": 2}, {"b": 2, "c": 2}]]
+                   [{"b": 1, "c": 1}, {"b": 2, "c": 1}],
+                   [{"b": 1, "c": 2}, {"b": 2, "c": 2}]
                 ]
             },
             "expecting_cube": {
