@@ -118,10 +118,12 @@ class TestSorting(BaseTestCase):
                 "data": [
                     {"a": "c", "b": 1, "count": 2},
                     {"a": "c", "b": 0, "count": 2},
+                    {"a": "c", "count": 0},
                     {"a": "a", "b": 1, "count": 3},
                     {"a": "a", "b": 0, "count": 2},
                     {"a": "a", "count": 1},
                     {"b": 1, "count": 1},
+                    {"b":0, "count": 0},
                     {"count": 1}
                 ]
             },
@@ -131,10 +133,12 @@ class TestSorting(BaseTestCase):
                 "data": [
                     ["c", 1, 2],
                     ["c", 0, 2],
+                    ['c', NULL, 0],
                     ["a", 1, 3],
                     ["a", 0, 2],
                     ["a", NULL, 1],
                     [NULL, 1, 1],
+                    [NULL, 0, 0],
                     [NULL, NULL, 1]
                 ]
             },
@@ -166,7 +170,7 @@ class TestSorting(BaseTestCase):
         try:
             self.utils.send_queries({"query": test.query, "expecting_cube": test.expecting_cube})
             Log.error("expecting error regarding sorting edges")
-        except Exception, e:
+        except Exception as e:
             pass
 
     def test_groupby_and_sort(self):
@@ -387,7 +391,8 @@ class TestSorting(BaseTestCase):
                         {"value": 1},
                         {"value": 0}
                     ]}}
-                ],
+
+                 ],
                 "data": {
                     "count": [[2, 2, 0], [3, 2, 1], [1, 0, 1]]
                 }
