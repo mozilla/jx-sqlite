@@ -301,11 +301,14 @@ class AggsTable(SetOpTable):
             groupby.append(",\n".join(edge_alias + "." + d for d in domain_names))
             not_groupby.append(",\n".join(edge_alias + "." + d for d in domain_names))
 
-            for k in domain_names:
+            for n, k in enumerate(domain_names):
                 outer_selects.append(edge_alias + "." + k + " AS " + k)
 
                 orderby.append(k + " IS NULL")
-                orderby.append(k)
+                if query.sort[n].sort == -1:
+                    orderby.append(k + " DESC ")
+                else:
+                    orderby.append(k)                    
 
         offset = len(query.edges)
         for ssi, s in enumerate(listwrap(query.select)):
@@ -487,19 +490,20 @@ class AggsTable(SetOpTable):
         groupby = []
         for i, e in enumerate(query.groupby):
             column_number = len(selects)
-            sql_type, sql = e.value.to_sql(schema)[0].sql.items()[0]
-            groupby.append(sql)
-            selects.append(sql + " AS " + e.name)
-
-            index_to_column[column_number] = ColumnMapping(
-                is_edge=True,
-                push_name=e.name,
-                push_column=column_number,
-                push_child=".",
-                pull=get_column(column_number),
-                sql=sql,
-                type=sql_type_to_json_type[sql_type]
-            )
+            for s in e.value.to_sql(schema):
+                sql_type, sql = s.sql.items()[0]
+                groupby.append(sql)
+                selects.append(sql + " AS " + e.name)
+    
+                index_to_column[column_number] = ColumnMapping(
+                    is_edge=True,
+                    push_name=e.name,
+                    push_column=column_number,
+                    push_child=".",
+                    pull=get_column(column_number),
+                    sql=sql,
+                    type=sql_type_to_json_type[sql_type]
+                )
 
         for s in listwrap(query.select):
             column_number = len(selects)
@@ -528,6 +532,14 @@ class AggsTable(SetOpTable):
                   "\nFROM\n" + quote_table(self.sf.fact) + " " + nest_to_alias["."] + \
                   "\nWHERE\n" + where + \
                   "\nGROUP BY\n" + ",\n".join(groupby)
+        
+        if query.sort:
+            command += "\nORDER BY " + ",\n".join(
+                "(" + sql[t] + ") IS NULL"  + ",\n" +
+                sql[t] + (" DESC" if s.sort == -1 else "")
+                for s, sql in [(s, s.value.to_sql(schema)[0].sql) for s in query.sort]
+                for t in "bns" if sql[t]
+            )        
 
         return command, index_to_column
 
