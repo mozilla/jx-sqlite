@@ -209,7 +209,11 @@ class QueryTable(AggsTable):
                     if e.is_groupby and None in parts:
                         allowNulls = True
                     parts -= {None}
-                    domain = SimpleSetDomain(partitions=jx.sort(parts))
+                    
+                    if query.sort[i].sort==-1:
+                        domain = SimpleSetDomain(partitions=jx.sort(parts, reverse=True))
+                    else: 
+                        domain = SimpleSetDomain(partitions=jx.sort(parts))
 
                 dims.append(len(domain.partitions) + (1 if allowNulls else 0))
                 edges.append(Data(
