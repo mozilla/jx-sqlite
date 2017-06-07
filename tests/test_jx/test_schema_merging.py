@@ -70,6 +70,92 @@ class TestSchemaMerging(BaseTestCase):
         }
         self.utils.execute_es_tests(test)
 
+    def test_mixed_primitives(self):
+        test = {
+            "data": [
+                {"a": "b"},
+                {"a": 3}
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "select": "a"
+            },
+            "expecting_list": {
+                "meta": {"format": "list"},
+                "data": [
+                    "b",
+                    3
+                ]
+            },
+            "expecting_table": {
+                "meta": {"format": "table"},
+                "header": ["a"],
+                "data": [
+                    [
+                        ["b"],
+                        [3]
+                    ]
+                ]
+            },
+            "expecting_cube": {
+                "meta": {"format": "cube"},
+                "edges": [
+                    {
+                        "name": "rownum",
+                        "domain": {"type": "rownum", "min": 0, "max": 2, "interval": 1}
+                    }
+                ],
+                "data": {
+                    "a": [
+                        ["b"],
+                        [3]
+                    ]
+                }
+            }
+        }
+        self.utils.execute_es_tests(test)
+
+    def test_dots_in_property_names(self):
+        test = {
+            "data": [
+                {"a.html": "hello world"}
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "select": "a\\.html"
+            },
+            "expecting_list": {
+                "meta": {"format": "list"},
+                "data": [
+                    "hello world"
+                ]
+            },
+            "expecting_table": {
+                "meta": {"format": "table"},
+                "header": ["a.html"],
+                "data": [
+                    [
+                        ["hello world"]
+                    ]
+                ]
+            },
+            "expecting_cube": {
+                "meta": {"format": "cube"},
+                "edges": [
+                    {
+                        "name": "rownum",
+                        "domain": {"type": "rownum", "min": 0, "max": 1, "interval": 1}
+                    }
+                ],
+                "data": {
+                    "a.html": [
+                        ["hello world"]
+                    ]
+                }
+            }
+        }
+        self.utils.execute_es_tests(test)
+
 
 
 
