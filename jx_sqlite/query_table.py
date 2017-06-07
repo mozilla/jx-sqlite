@@ -210,10 +210,7 @@ class QueryTable(AggsTable):
                         allowNulls = True
                     parts -= {None}
                     
-                    if query.sort[i].sort==-1:
-                        domain = SimpleSetDomain(partitions=jx.sort(parts, reverse=True))
-                    else: 
-                        domain = SimpleSetDomain(partitions=jx.sort(parts))
+                    domain = SimpleSetDomain(partitions=jx.sort(parts))
 
                 dims.append(len(domain.partitions) + (1 if allowNulls else 0))
                 edges.append(Data(

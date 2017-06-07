@@ -513,7 +513,7 @@ def _deeper_iterator(columns, nested_path, path, data):
             yield output
 """
 
-def sort(data, reverse=False, fieldnames=None, already_normalized=False):
+def sort(data, fieldnames=None, already_normalized=False):
     """
     PASS A FIELD NAME, OR LIST OF FIELD NAMES, OR LIST OF STRUCTS WITH {"field":field_name, "sort":direction}
     """
@@ -522,7 +522,7 @@ def sort(data, reverse=False, fieldnames=None, already_normalized=False):
             return Null
 
         if not fieldnames:
-            return wrap(sorted(data, value_compare, reverse=reverse))
+            return wrap(sorted(data, value_compare))
 
         if already_normalized:
             formal = fieldnames
