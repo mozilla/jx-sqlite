@@ -258,12 +258,11 @@ class SetOpTable(InsertTable):
                             continue
                         
                         if isinstance(query.select, list) or isinstance(query.select.value, LeavesOp):
-                            # FACT IS EXPECTED TO BE A SINGLE VALUE, NOT AN OBJECT           
-                                relative_path=relative_field(join_field([c.push_name]+split_field(c.push_child)), curr_nested_path)
-                        else:  
-                            # ASSIGN INNER PROPERTIES                            
+                            # ASSIGN INNER PROPERTIES                                                       
+                            relative_path=relative_field(join_field([c.push_name]+split_field(c.push_child)), curr_nested_path)
+                        else:           # FACT IS EXPECTED TO BE A SINGLE VALUE, NOT AN OBJECT           
                             relative_path = relative_field(c.push_child, curr_nested_path)
-                        
+                           
                         if relative_path == ".":
                             doc = value
                         elif doc is None:
