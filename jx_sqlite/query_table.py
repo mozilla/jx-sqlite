@@ -87,8 +87,8 @@ class QueryTable(AggsTable):
             Log.error("Expecting table, or some nested table")
         frum, query['from'] = query['from'], self
         schema = self.sf.tables["."].schema
-        query = QueryOp.wrap(query, schema)
-
+        if not query.groupby:
+            query = QueryOp.wrap(query, schema)                        
         # TYPE CONFLICTS MUST NOW BE RESOLVED DURING
         # TYPE-SPECIFIC QUERY NORMALIZATION
         # vars_ = query.vars(exclude_select=True)
@@ -110,9 +110,16 @@ class QueryTable(AggsTable):
         else:
             create_table = ""
 
-        if query.groupby:
+        if query.groupby and query.format != "cube":
+            query = QueryOp.wrap(query, schema)            
             op, index_to_columns = self._groupby_op(query, frum)
             command = create_table + op
+        elif query.groupby:
+            query.edges, query.groupby = query.groupby, query.edges
+            query = QueryOp.wrap(query, schema)            
+            op, index_to_columns = self._edges_op(query, frum)
+            command = create_table + op 
+            query.edges, query.groupby = query.groupby, query.edges
         elif query.edges or any(a != "none" for a in listwrap(query.select).aggregate):
             op, index_to_columns = self._edges_op(query, frum)
             command = create_table + op
@@ -209,7 +216,11 @@ class QueryTable(AggsTable):
                     if e.is_groupby and None in parts:
                         allowNulls = True
                     parts -= {None}
-                    domain = SimpleSetDomain(partitions=jx.sort(parts))
+                    
+                    if query.sort[i].sort==-1:
+                        domain = SimpleSetDomain(partitions=wrap(sorted(parts,reverse=True)))
+                    else:    
+                        domain = SimpleSetDomain(partitions=jx.sort(parts))
 
                 dims.append(len(domain.partitions) + (1 if allowNulls else 0))
                 edges.append(Data(
