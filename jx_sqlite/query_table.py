@@ -131,7 +131,7 @@ class QueryTable(AggsTable):
 
         result = self.db.query(command)
 
-        column_names = listwrap(query.edges).name + listwrap(query.groupby).name + listwrap(query.select).name
+        column_names = query.edges.name + query.groupby.name + listwrap(query.select).name
         if query.format == "container":
             output = QueryTable(new_table, db=self.db, uid=self.uid, exists=True)
         elif query.format == "cube" or (not query.format and query.edges):
