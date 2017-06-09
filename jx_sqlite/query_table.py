@@ -115,14 +115,11 @@ class QueryTable(AggsTable):
             op, index_to_columns = self._groupby_op(query, frum)
             command = create_table + op
         elif query.groupby:
-            tmp = query.edges
-            query.edges = query.groupby
-            query.groupby = tmp
+            query.edges, query.groupby = query.groupby, query.edges
             query = QueryOp.wrap(query, schema)            
             op, index_to_columns = self._edges_op(query, frum)
             command = create_table + op 
-            query.groupby = query.edges
-            query.edges = tmp
+            query.edges, query.groupby = query.groupby, query.edges
         elif query.edges or any(a != "none" for a in listwrap(query.select).aggregate):
             op, index_to_columns = self._edges_op(query, frum)
             command = create_table + op
