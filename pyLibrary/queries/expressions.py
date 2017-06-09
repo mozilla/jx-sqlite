@@ -1768,12 +1768,12 @@ class RegExpOp(Expression):
         return "re.match(" + quote(json2value(self.pattern.json) + "$") + ", " + self.var.to_python() + ")"
 
     def to_sql(self, schema, not_null=False, boolean=False):
-        pattern = quote(convert.json2value(self.pattern.json))
+        pattern = schema.db.quote_value(convert.json2value(self.pattern.json)) 
         value = self.var.to_sql(schema)[0].sql.s
         return wrap([
-            {"name": ".", "sql": {"s": value + " REGEXP " + pattern}}
+            {"name": ".", "sql": {"b": value + " REGEXP " + pattern}}
         ])
-
+        
     def to_esfilter(self):
         return {"regexp": {self.var.var: json2value(self.pattern.json)}}
 
@@ -2633,11 +2633,13 @@ class InOp(Expression):
     def to_sql(self, schema, not_null=False, boolean=False):
         if not isinstance(self.superset, Literal):
             Log.error("Not supported")
-        var = self.value.to_sql(schema,boolean=boolean)
-        if json2value(self.superset):
-            return " OR ".join("(" + var + "==" + sql_quote(v) + ")" for v in json2value(self.superset))
-        else:
+        j_value = json2value(self.superset.json)
+        if j_value:
+            var = self.value.to_sql(schema)
+            return " OR ".join("(" + var + "==" + sql_quote(v) + ")" for v in j_value)
+        else: 
             return wrap([{"name": ".", "sql": {"b": "0"}}])
+            
     def to_esfilter(self):
         if isinstance(self.value, Variable):
             return {"terms": {self.value.var: json2value(self.superset.json)}}

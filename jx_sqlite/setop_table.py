@@ -249,38 +249,28 @@ class SetOpTable(InsertTable):
                     previous_doc_id = doc_id
                     doc = None
                     curr_nested_path = nested_doc_details['nested_path'][0]
-                    if isinstance(query.select, list) or isinstance(query.select.value, LeavesOp):
-                        # ASSIGN INNER PROPERTIES
-                        for i, c in nested_doc_details['index_to_column'].items():
-                            value = row[i]
-                            if value == None:
-                                continue
-                            if value == '':
-                                continue
-
-                            relative_path = relative_field(concat_field(c.push_name, c.push_child), curr_nested_path)
-                            if relative_path == ".":
-                                doc = value
-                            elif doc is None:
-                                doc = Data()
-                                doc[relative_path] = value
-                            else:
-                                doc[relative_path] = value
-                    else:
-                        # FACT IS EXPECTED TO BE A SINGLE VALUE, NOT AN OBJECT
-                        for i, c in nested_doc_details['index_to_column'].items():
-                            value = row[i]
-                            if value == None:
-                                continue
-
+                    
+                    for i, c in nested_doc_details['index_to_column'].items():
+                        value = row[i]
+                        if value == None:
+                            continue
+                        if value == '':
+                            continue
+                        
+                        if isinstance(query.select, list) or isinstance(query.select.value, LeavesOp):
+                            # ASSIGN INNER PROPERTIES                                                       
+                            relative_path=relative_field(join_field([c.push_name]+split_field(c.push_child)), curr_nested_path)
+                        else:           # FACT IS EXPECTED TO BE A SINGLE VALUE, NOT AN OBJECT           
                             relative_path = relative_field(c.push_child, curr_nested_path)
-                            if relative_path == ".":
-                                doc = value
-                            elif doc is None:
-                                doc = Data()
-                                doc[relative_path] = value
-                            else:
-                                doc[relative_path] = value
+                           
+                        if relative_path == ".":
+                            doc = value
+                        elif doc is None:
+                            doc = Data()
+                            doc[relative_path] = value
+                        else:
+                            doc[relative_path] = value
+                    
                     output.append(doc)
 
                 # ASSIGN NESTED ARRAYS
@@ -291,6 +281,8 @@ class SetOpTable(InsertTable):
                         nested_value = _accumulate_nested(rows, row, child_details, doc_id, id_coord)
                         if nested_value is not None:
                             path = child_details['nested_path'][0]
+                            if doc is None:
+                                doc = Data()                            
                             doc[path] = nested_value
 
                 try:
@@ -300,19 +292,19 @@ class SetOpTable(InsertTable):
                     return output if output else None
 
         cols = tuple(index_to_column.values())
-        rows = list(reversed(unwrap(result.data)))#
+        rows = list(reversed(unwrap(result.data)))
         if rows:
-            row = rows.pop()           #
-            data=listwrap(_accumulate_nested(rows, row, primary_doc_details, None, None))   #                   
+            row = rows.pop()           
+            data=listwrap(_accumulate_nested(rows, row, primary_doc_details, None, None))               
         else: 
             data = result.data
         
         if query.format == "cube":      
-            num_rows = len(data)#
-            num_cols = MAX([c.push_column for c in cols]) + 1 if len(cols) else 0
-            map_index_to_name = {c.push_column: c.push_name for c in cols}
-            temp_data = [[None]*num_rows for _ in range(num_cols)]
-            if len(data) == len(result.data):       # means no accumulated nested objects 
+            if len(data) == len(result.data):       # means no accumulated nested object 
+                num_rows = len(data)
+                num_cols = MAX([c.push_column for c in cols]) + 1 if len(cols) else 0
+                map_index_to_name = {c.push_column: c.push_name for c in cols}
+                temp_data = [[None]*num_rows for _ in range(num_cols)]                
                 for rownum, d in enumerate(result.data):
                     for c in cols:
                         if c.push_child == ".":
@@ -322,37 +314,73 @@ class SetOpTable(InsertTable):
                             if column is None:
                                 column = temp_data[c.push_column][rownum] = {}
                             column[c.push_child] = c.pull(d)
+                output = Data(
+                    meta={"format": "cube"},
+                    data={n: temp_data[c] for c, n in map_index_to_name.items()},
+                    edges=[{
+                        "name": "rownum",
+                        "domain": {
+                            "type": "rownum",
+                            "min": 0,
+                            "max": num_rows,
+                            "interval": 1
+                        }
+                    }]
+                )
+                return output                
             else:                                   #means accumulated nested objects
-                for rownum, d in enumerate(data):#
-                    for colnum, c in enumerate(cols):#
-                        pass    #passing for now
+                num_rows = len(data)
+                col_names = listwrap(query.select).name
+                output_data = []
+                for rownum, d in enumerate(data):
+                    row = list()                  
+                    for c in col_names:
+                        row_data = d[c]
+                        for r in row_data:
+                            row.append(unwrap(r))
+                    
+                    output_data.append(row) 
+                temp_data = [output_data]                      
                         
-            output = Data(
-                meta={"format": "cube"},
-                data={n: temp_data[c] for c, n in map_index_to_name.items()},
-                edges=[{
-                    "name": "rownum",
-                    "domain": {
-                        "type": "rownum",
-                        "min": 0,
-                        "max": num_rows,
-                        "interval": 1
-                    }
-                }]
-            )
-            return output
+                output = Data(
+                    meta={"format": "cube"},
+                    data={n: temp_data[c] for c, n in enumerate(col_names)},
+                    edges=[{
+                        "name": "rownum",
+                        "domain": {
+                            "type": "rownum",
+                            "min": 0,
+                            "max": num_rows,
+                            "interval": 1
+                        }
+                    }]
+                )
+                return output
         elif query.format == "table":
-            num_column = MAX([c.push_column for c in cols])+1
-            header = [None]*num_column
-            for c in cols:
-                header[c.push_column] = c.push_name
-
-            output_data = []
-            for d in result.data:
-                row = [None] * num_column
+            if len(data)==len(result.data):
+                num_column = MAX([c.push_column for c in cols])+1
+                header = [None]*num_column
                 for c in cols:
-                    set_column(row, c.push_column, c.push_child, c.pull(d))
-                output_data.append(row)
+                    header[c.push_column] = c.push_name
+    
+                output_data = []
+                for d in result.data:
+                    row = [None] * num_column
+                    for c in cols:
+                        set_column(row, c.push_column, c.push_child, c.pull(d))
+                    output_data.append(row)
+            else:
+                col_names = listwrap(query.select).name
+                output_data = []
+                for d in data:
+                    row = []
+                    for c in col_names:
+                        row_data = d[c]
+                        for r in row_data:
+                            row.append(unwrap(r))
+                    
+                    output_data.append(row)  
+                header = col_names
             return Data(
                 meta={"format": "table"},
                 header=header,

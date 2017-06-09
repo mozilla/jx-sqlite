@@ -87,8 +87,8 @@ class QueryTable(AggsTable):
             Log.error("Expecting table, or some nested table")
         frum, query['from'] = query['from'], self
         schema = self.sf.tables["."].schema
-        query = QueryOp.wrap(query, schema)
-
+        if not query.groupby:
+            query = QueryOp.wrap(query, schema)                        
         # TYPE CONFLICTS MUST NOW BE RESOLVED DURING
         # TYPE-SPECIFIC QUERY NORMALIZATION
         # vars_ = query.vars(exclude_select=True)
@@ -110,9 +110,19 @@ class QueryTable(AggsTable):
         else:
             create_table = ""
 
-        if query.groupby:
+        if query.groupby and query.format != "cube":
+            query = QueryOp.wrap(query, schema)            
             op, index_to_columns = self._groupby_op(query, frum)
             command = create_table + op
+        elif query.groupby:
+            tmp = query.edges
+            query.edges = query.groupby
+            query.groupby = tmp
+            query = QueryOp.wrap(query, schema)            
+            op, index_to_columns = self._edges_op(query, frum)
+            command = create_table + op 
+            query.groupby = query.edges
+            query.edges = tmp
         elif query.edges or any(a != "none" for a in listwrap(query.select).aggregate):
             op, index_to_columns = self._edges_op(query, frum)
             command = create_table + op
@@ -120,17 +130,11 @@ class QueryTable(AggsTable):
             op = self._set_op(query, frum)
             return op
 
-        if query.sort:
-            command += "\nORDER BY " + ",\n".join(
-                "(" + sql[t] + ") IS NULL" + (" DESC" if s.sort == -1 else "") + ",\n" +
-                sql[t] + (" DESC" if s.sort == -1 else "")
-                for s, sql in [(s, s.value.to_sql(schema)[0].sql) for s in query.sort]
-                for t in "bns" if sql[t]
-            )
+        
 
         result = self.db.query(command)
 
-        column_names = query.edges.name + query.groupby.name + listwrap(query.select).name
+        column_names = listwrap(query.edges).name + listwrap(query.groupby).name + listwrap(query.select).name
         if query.format == "container":
             output = QueryTable(new_table, db=self.db, uid=self.uid, exists=True)
         elif query.format == "cube" or (not query.format and query.edges):
@@ -215,7 +219,11 @@ class QueryTable(AggsTable):
                     if e.is_groupby and None in parts:
                         allowNulls = True
                     parts -= {None}
-                    domain = SimpleSetDomain(partitions=jx.sort(parts))
+                    
+                    if query.sort[i].sort==-1:
+                        domain = SimpleSetDomain(partitions=wrap(sorted(parts,reverse=True)))
+                    else:    
+                        domain = SimpleSetDomain(partitions=jx.sort(parts))
 
                 dims.append(len(domain.partitions) + (1 if allowNulls else 0))
                 edges.append(Data(
