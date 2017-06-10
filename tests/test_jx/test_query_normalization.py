@@ -25,7 +25,7 @@ class TestQueryNormalization(FuzzyTestCase):
     def test_complex_edge_value(self):
         edge = {"name": "n", "value": ["a", "c"]}
 
-        result = json2value(value2json(_normalize_edge(edge)[0]))
+        result = json2value(value2json(_normalize_edge(edge, 0)[0]))
         expected = {
             "name": "n",
             "value": {"tuple": ["a", "c"]},

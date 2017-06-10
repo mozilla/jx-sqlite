@@ -1084,7 +1084,6 @@ class TestSetOps(BaseTestCase):
         }
         self.utils.execute_es_tests(test)
 
-
     @skipIf(global_settings.is_travis, "not expected to pass yet")
     def test_select_nested_column(self):
         test = {
@@ -1099,16 +1098,16 @@ class TestSetOps(BaseTestCase):
             "expecting_list": {
                 "meta": {"format": "list"},
                 "data": [
-                [{"b": 1, "c": 1}, {"b": 2, "c": 1}],
-                [{"b": 1, "c": 2}, {"b": 2, "c": 2}]
-            ]
+                    [{"b": 1, "c": 1}, {"b": 2, "c": 1}],
+                    [{"b": 1, "c": 2}, {"b": 2, "c": 2}]
+                ]
             },
             "expecting_table": {
                 "meta": {"format": "table"},
                 "header": ["_a"],
                 "data": [
-                   [{"b": 1, "c": 1}, {"b": 2, "c": 1}],
-                   [{"b": 1, "c": 2}, {"b": 2, "c": 2}]
+                    [[{"b": 1, "c": 1}, {"b": 2, "c": 1}]],
+                    [[{"b": 1, "c": 2}, {"b": 2, "c": 2}]]
                 ]
             },
             "expecting_cube": {

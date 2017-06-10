@@ -74,7 +74,8 @@ class TestSchemaMerging(BaseTestCase):
         test = {
             "data": [
                 {"a": "b"},
-                {"a": 3}
+                {"a": 3},
+                {"a": "c"}
             ],
             "query": {
                 "from": TEST_TABLE,
@@ -84,17 +85,17 @@ class TestSchemaMerging(BaseTestCase):
                 "meta": {"format": "list"},
                 "data": [
                     "b",
-                    3
+                    3,
+                    "c"
                 ]
             },
             "expecting_table": {
                 "meta": {"format": "table"},
                 "header": ["a"],
                 "data": [
-                    [
-                        ["b"],
-                        [3]
-                    ]
+                    ["b"],
+                    [3],
+                    ["c"]
                 ]
             },
             "expecting_cube": {
@@ -102,14 +103,11 @@ class TestSchemaMerging(BaseTestCase):
                 "edges": [
                     {
                         "name": "rownum",
-                        "domain": {"type": "rownum", "min": 0, "max": 2, "interval": 1}
+                        "domain": {"type": "rownum", "min": 0, "max": 3, "interval": 1}
                     }
                 ],
                 "data": {
-                    "a": [
-                        ["b"],
-                        [3]
-                    ]
+                    "a": ["b", 3, "c"]
                 }
             }
         }
@@ -134,9 +132,7 @@ class TestSchemaMerging(BaseTestCase):
                 "meta": {"format": "table"},
                 "header": ["a.html"],
                 "data": [
-                    [
                         ["hello world"]
-                    ]
                 ]
             },
             "expecting_cube": {
@@ -148,9 +144,7 @@ class TestSchemaMerging(BaseTestCase):
                     }
                 ],
                 "data": {
-                    "a.html": [
-                        ["hello world"]
-                    ]
+                    "a.html": ["hello world"]
                 }
             }
         }

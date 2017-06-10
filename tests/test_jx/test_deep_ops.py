@@ -788,7 +788,6 @@ class TestDeepOps(BaseTestCase):
         }
         self.utils.execute_es_tests(test)
 
-
     def test_aggs_on_parent_and_child(self):
         test = {
             "data": [
@@ -1245,7 +1244,6 @@ class TestDeepOps(BaseTestCase):
         }
         self.utils.execute_es_tests(test)
 
-    @skipIf(global_settings.is_travis, "not expected to pass yet")
     def test_from_shallow_select_deep_column(self):
         test = {
             "data": [
