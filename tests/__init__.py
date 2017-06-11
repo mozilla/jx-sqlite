@@ -55,7 +55,7 @@ class SQLiteUtils(object):
     def not_real_service(self):
         return True
 
-    def execute_es_tests(self, subtest, tjson=False):
+    def execute_tests(self, subtest, tjson=False):
         subtest = wrap(subtest)
         subtest.name = extract_stack()[1]['method']
 

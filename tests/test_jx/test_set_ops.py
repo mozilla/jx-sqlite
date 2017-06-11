@@ -34,7 +34,7 @@ class TestSetOps(BaseTestCase):
                "meta": {"format": "list"}, "data": [{"a": 1}]
            }
        }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_simplest(self):
         test = {
@@ -65,7 +65,7 @@ class TestSetOps(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_select_on_missing_field(self):
         test = {
@@ -106,7 +106,7 @@ class TestSetOps(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
 
     def test_select_on_shallow_missing_field(self):
@@ -148,7 +148,7 @@ class TestSetOps(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
 
     def test_single_deep_select(self):
@@ -188,7 +188,7 @@ class TestSetOps(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
 
     def test_single_select_alpha(self):
@@ -220,7 +220,7 @@ class TestSetOps(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
 
     def test_single_rename(self):
@@ -253,7 +253,7 @@ class TestSetOps(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_single_no_select(self):
         test = {
@@ -285,7 +285,7 @@ class TestSetOps(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     @skipIf(global_settings.use=="sqlite", "not implemented yet, is not needed for small data")
     def test_id_select(self):
@@ -322,7 +322,7 @@ class TestSetOps(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_id_value_select(self):
         """
@@ -343,7 +343,7 @@ class TestSetOps(BaseTestCase):
                 ]
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
 
     def test_single_star_select(self):
@@ -377,7 +377,7 @@ class TestSetOps(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_dot_select(self):
         test = {
@@ -410,7 +410,7 @@ class TestSetOps(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     @skipIf(global_settings.use == "elasticsearch", "ES only accepts objects, not values")
     def test_list_of_values(self):
@@ -443,7 +443,7 @@ class TestSetOps(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_select_all_from_list_of_objects(self):
         test = {
@@ -483,7 +483,7 @@ class TestSetOps(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     @skipIf(True, "Too complicated")
     def test_select_into_children(self):
@@ -595,7 +595,7 @@ class TestSetOps(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     @skipIf(global_settings.use=="sqlite", "no need for limit when using own resources")
     def test_max_limit(self):
@@ -717,7 +717,7 @@ class TestSetOps(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_select_w_deep_star(self):
         test = {
@@ -763,7 +763,7 @@ class TestSetOps(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_select_expression(self):
         test = {
@@ -807,7 +807,7 @@ class TestSetOps(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_select_object(self):
         """
@@ -863,7 +863,7 @@ class TestSetOps(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_select_leaves(self):
         """
@@ -915,7 +915,7 @@ class TestSetOps(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_select_value_object(self):
         """
@@ -971,7 +971,7 @@ class TestSetOps(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_select2_object(self):
         """
@@ -1028,7 +1028,7 @@ class TestSetOps(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
 
     def test_select3_object(self):
@@ -1082,7 +1082,7 @@ class TestSetOps(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     @skipIf(global_settings.is_travis, "not expected to pass yet")
     def test_select_nested_column(self):
@@ -1126,5 +1126,5 @@ class TestSetOps(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 

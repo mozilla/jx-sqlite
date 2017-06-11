@@ -20,6 +20,7 @@ class TestSchemaMerging(BaseTestCase):
     """
     TESTS THAT DEMONSTRATE DIFFERENT SCHEMAS
     """
+
     @skipIf(global_settings.use == "elasticsearch", "require dynamic typing before overloading objects and primitives")
     def test_select(self):
         test = {
@@ -68,7 +69,7 @@ class TestSchemaMerging(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_mixed_primitives(self):
         test = {
@@ -111,7 +112,7 @@ class TestSchemaMerging(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_dots_in_property_names(self):
         test = {
@@ -132,7 +133,7 @@ class TestSchemaMerging(BaseTestCase):
                 "meta": {"format": "table"},
                 "header": ["a.html"],
                 "data": [
-                        ["hello world"]
+                    ["hello world"]
                 ]
             },
             "expecting_cube": {
@@ -148,8 +149,4 @@ class TestSchemaMerging(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
-
-
-
-
+        self.utils.execute_tests(test)
