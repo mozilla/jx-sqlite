@@ -384,23 +384,10 @@ class SetOpTable(InsertTable):
                 )
             else:
                 column_names = listwrap(query.select).name
-                num_rows = len(data)
-                output_data = []
-                for d in data:
-                    row = [None for _ in column_names]
-                    for c in cols:
-                        if c.push_child == ".":
-                            row[c.push_column] = c.pull(d)
-                        elif row[c.push_column] == None:
-                            row[c.push_column] = Data()
-                            row[c.push_column][c.push_child] = c.pull(d)
-                        else:
-                            row[c.push_column][c.push_child] = c.pull(d)
-                    output_data.append(list(unwrap(r) for r in row))                
                 return Data(
                     meta={"format": "table"},
                     header=column_names,
-                    data=output_data
+                    data=data
                 )                
         else:
             output = Data(
