@@ -44,11 +44,9 @@ class TestSchemaMerging(BaseTestCase):
                 "meta": {"format": "table"},
                 "header": ["a"],
                 "data": [
-                    [
                         ["b"],
                         [[{"b": 1}, {"b": 2}]],
                         [3]
-                    ]
                 ]
             },
             "expecting_cube": {
