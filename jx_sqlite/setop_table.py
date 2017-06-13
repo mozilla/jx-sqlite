@@ -381,12 +381,21 @@ class SetOpTable(InsertTable):
                     data=output_data
                 )
             else:
-                column_names = listwrap(query.select).name
-                return Data(
-                    meta={"format": "table"},
-                    header=column_names,
-                    data=data
-                )                
+                if isinstance(query.select, list):
+                    column_names = listwrap(query.select).name
+                    return Data(
+                        meta={"format": "table"},
+                        header=column_names,
+                        data=data
+                    )       
+                else:
+                    column_names = listwrap(query.select).name
+                    return Data(
+                        meta={"format": "table"},
+                        header=column_names,
+                        data=[[d] for d in data]
+                    )                     
+                    
         else:
             output = Data(
                 meta={"format": "list"},
