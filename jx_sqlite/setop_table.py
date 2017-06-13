@@ -271,9 +271,7 @@ class SetOpTable(InsertTable):
                                 doc[relative_path] = value
                             else:
                                 doc[relative_path] = value
-                        
-                        output.append(doc)
-                
+           
                 for child_details in nested_doc_details['children']:
                     # EACH NESTED TABLE MUST BE ASSEMBLED INTO A LIST OF OBJECTS
                     child_id = row[child_details['id_coord']]
@@ -295,7 +293,7 @@ class SetOpTable(InsertTable):
                             else:
                                 doc[relative_path] = nested_value                             
 
-                    output.append(doc)
+                output.append(doc)
                 
                 try:
                     row = rows.pop()

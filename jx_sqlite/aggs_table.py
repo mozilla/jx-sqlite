@@ -489,8 +489,8 @@ class AggsTable(SetOpTable):
         selects = []
         groupby = []
         for i, e in enumerate(query.groupby):
-            column_number = len(selects)
             for s in e.value.to_sql(schema):
+                column_number = len(selects)                
                 sql_type, sql = s.sql.items()[0]
                 groupby.append(sql)
                 selects.append(sql + " AS " + e.name)

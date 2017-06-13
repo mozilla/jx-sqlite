@@ -61,9 +61,9 @@ class TestSchemaMerging(BaseTestCase):
                 ],
                 "data": {
                     "a": [
-                        ["b"],
-                        [[{"b": 1}, {"b": 2}]],
-                        [3]
+                        "b",
+                        [{"b": 1}, {"b": 2}],
+                        3
                     ]
                 }
             }
