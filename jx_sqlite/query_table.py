@@ -278,7 +278,7 @@ class QueryTable(AggsTable):
 
             output = Data(
                 meta={"format": "table"},
-                header=[split_field(h)[0] if "\\" else h for h in column_names],
+                header=[split_field(h)[0] if "\\" in h else h for h in column_names],
                 data=data
             )
         elif query.format == "list" or (not query.edges and not query.groupby):
