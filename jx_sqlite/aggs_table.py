@@ -492,20 +492,21 @@ class AggsTable(SetOpTable):
             for s in e.value.to_sql(schema):
                 column_number = len(selects)                
                 sql_type, sql = s.sql.items()[0]
+                column_alias = _make_column_name(column_number)                
                 groupby.append(sql)
-                selects.append(sql + " AS " + e.name)
+                selects.append(sql + " AS " + column_alias)
     
                 index_to_column[column_number] = ColumnMapping(
                     is_edge=True,
                     push_name=e.name,
-                    push_column=column_number,
-                    push_child=".",
+                    push_column=i,
+                    push_child=s.name,
                     pull=get_column(column_number),
                     sql=sql,
                     type=sql_type_to_json_type[sql_type]
                 )
 
-        for s in listwrap(query.select):
+        for i, s in enumerate(listwrap(query.select)):
             column_number = len(selects)
             sql_type, sql = s.value.to_sql(schema)[0].sql.items()[0]
 
@@ -516,7 +517,7 @@ class AggsTable(SetOpTable):
 
             index_to_column[column_number] = ColumnMapping(
                 push_name=s.name,
-                push_column=column_number,
+                push_column=i+len(query.groupby),
                 push_child=".",
                 pull=get_column(column_number),
                 sql=sql,
