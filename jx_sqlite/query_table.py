@@ -288,7 +288,12 @@ class QueryTable(AggsTable):
                     data = Data()
                     for c in index_to_columns.values():
                         if c.push_child == ".":
-                            data[c.push_name] = c.pull(result.data[0])
+                            if not data[c.push_name]:
+                                data[c.push_name] = c.pull(result.data[0])
+                            elif isinstance(data[c.push_name], list):
+                                data[c.push_name].append(c.pull(result.data[0]))
+                            else:
+                                data[c.push_name] = [data[c.push_name], c.pull(result.data[0])]
                         else:
                             data[c.push_name][c.push_child] = c.pull(result.data[0])
 
