@@ -431,16 +431,10 @@ def _normalize_select_no_context(select, schema=None):
 
 
 def _normalize_edges(edges, schema=None):
-    return wrap([n for ie, e in enumerate(listwrap(edges)) for n in _normalize_edge(e, ie, schema=schema)])
+    return wrap([n for e in listwrap(edges) for n in _normalize_edge(e, schema=schema)])
 
 
-def _normalize_edge(edge, dim_index, schema=None):
-    """
-    :param edge: Not normalized edge 
-    :param dim_index: Dimensions are ordered; this is this edge's index into that order
-    :param schema: for context
-    :return: a normalized edge
-    """
+def _normalize_edge(edge, schema=None):
     if not _Column:
         _late_import()
 
@@ -459,7 +453,6 @@ def _normalize_edge(edge, dim_index, schema=None):
                         name=edge,
                         value=jx_expression(edge),
                         allowNulls=True,
-                        dim=dim_index,
                         domain=_normalize_domain(domain=e, schema=schema)
                     )]
                 elif isinstance(e.fields, list) and len(e.fields) == 1:
@@ -467,21 +460,18 @@ def _normalize_edge(edge, dim_index, schema=None):
                         name=e.name,
                         value=jx_expression(e.fields[0]),
                         allowNulls=True,
-                        dim=dim_index,
                         domain=e.getDomain()
                     )]
                 else:
                     return [Data(
                         name=e.name,
                         allowNulls=True,
-                        dim=dim_index,
                         domain=e.getDomain()
                     )]
         return [Data(
             name=edge,
             value=jx_expression(edge),
             allowNulls=True,
-            dim=dim_index,
             domain=_normalize_domain(schema=schema)
         )]
     else:
@@ -498,7 +488,6 @@ def _normalize_edge(edge, dim_index, schema=None):
                 name=edge.name,
                 value=jx_expression(edge.value),
                 allowNulls=bool(coalesce(edge.allowNulls, True)),
-                dim=dim_index,
                 domain=domain
             )]
 
@@ -509,7 +498,6 @@ def _normalize_edge(edge, dim_index, schema=None):
             value=jx_expression(edge.value),
             range=_normalize_range(edge.range),
             allowNulls=bool(coalesce(edge.allowNulls, True)),
-            dim=dim_index,
             domain=domain
         )]
 
@@ -517,19 +505,13 @@ def _normalize_edge(edge, dim_index, schema=None):
 def _normalize_groupby(groupby, schema=None):
     if groupby == None:
         return None
-    output = wrap([n for ie, e in enumerate(listwrap(groupby)) for n in _normalize_group(e, ie, schema=schema) ])
+    output = wrap([n for e in listwrap(groupby) for n in _normalize_group(e, schema=schema) ])
     if any(o==None for o in output):
         Log.error("not expected")
     return output
 
 
-def _normalize_group(edge, dim_index, schema=None):
-    """
-    :param edge: Not normalized groupby 
-    :param dim_index: Dimensions are ordered; this is this groupby's index into that order
-    :param schema: for context
-    :return: a normalized groupby
-    """
+def _normalize_group(edge, schema=None):
     if isinstance(edge, basestring):
         if edge.endswith(".*"):
             prefix = edge[:-1]
@@ -538,7 +520,6 @@ def _normalize_group(edge, dim_index, schema=None):
                     "name": literal_field(k),
                     "value": jx_expression(c.es_column),
                     "allowNulls": True,
-                    "dim":dim_index,
                     "domain": {"type": "default"}
                 }
                 for k, cs in schema.lookup.items()
@@ -552,7 +533,6 @@ def _normalize_group(edge, dim_index, schema=None):
             "name": edge,
             "value": jx_expression(edge),
             "allowNulls": True,
-            "dim":dim_index,
             "domain": {"type": "default"}
         }])
     else:
@@ -567,7 +547,6 @@ def _normalize_group(edge, dim_index, schema=None):
             "name": coalesce(edge.name, edge.value),
             "value": jx_expression(edge.value),
             "allowNulls": True,
-            "dim":dim_index,
             "domain": {"type": "default"}
         }])
 

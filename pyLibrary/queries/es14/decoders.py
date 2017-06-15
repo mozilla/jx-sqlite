@@ -61,12 +61,7 @@ class AggsDecoder(object):
                 limit = coalesce(e.domain.limit, query.limit, DEFAULT_LIMIT)
 
                 if col.partitions != None:
-                    partitions = col.partitions[:limit:]
-                    if e.domain.sort==-1:
-                        partitions = list(reversed(sorted(partitions)))
-                    else:
-                        partitions = sorted(partitions)
-                    e.domain = SimpleSetDomain(partitions=partitions)
+                    e.domain = SimpleSetDomain(partitions=col.partitions[:limit:])
                 else:
                     e.domain = set_default(DefaultDomain(limit=limit), e.domain.__data__())
                     return object.__new__(DefaultDecoder, e)
@@ -135,19 +130,18 @@ class SetDecoder(AggsDecoder):
 
     def __init__(self, edge, query, limit):
         AggsDecoder.__init__(self, edge, query, limit)
-        domain = self.domain = edge.domain
+        self.domain = edge.domain
 
         # WE ASSUME IF THE VARIABLES MATCH, THEN THE SORT TERM AND EDGE TERM MATCH, AND WE SORT BY TERM
-        # self.sorted = {1: "asc", -1: "desc", None: None}[getattr(edge.domain, 'sort', None)]
+        self.sorted = None
         edge_var = edge.value.vars()
-        if query.sort:
-            for s in query.sort:
-                if not edge_var - s.value.vars():
-                    self.sorted = {1: "asc", -1: "desc"}[s.sort]
-                    domain.partitions = parts = jx.sort(domain.partitions, {"value": domain.key, "sort": s.sort})
-                    domain.map = {i: p for i, p in enumerate(parts)}
-        else:
-            self.sorted = None
+        for s in query.sort:
+            if not edge_var - s.value.vars():
+                self.sorted = {1: "asc", -1: "desc"}[s.sort]
+                domain = self.domain
+                key = self.domain.key
+                domain.partitions = parts = jx.sort(domain.partitions, {"value": key, "sort": s.sort})
+                domain.map = {i: p for i, p in enumerate(parts)}
 
     def append_query(self, es_query, start):
         self.start = start

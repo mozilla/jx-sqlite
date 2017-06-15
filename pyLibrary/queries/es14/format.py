@@ -13,8 +13,6 @@ from __future__ import unicode_literals
 
 from collections import Mapping
 
-from pyLibrary.queries import jx
-
 from mo_collections.matrix import Matrix
 from mo_dots import Data, set_default, wrap, split_field
 from mo_logs import Log
@@ -27,7 +25,6 @@ from pyLibrary.queries.expressions import TupleOp
 
 
 def format_cube(decoders, aggs, start, query, select):
-    # decoders = sorted(decoders, key=lambda d: -d.edge.dim)  # REVERSE DECODER ORDER, BECAUSE ES QUERY WAS BUILT IN REVERSE ORDER
     new_edges = count_dim(aggs, decoders)
 
     dims = []
@@ -35,8 +32,11 @@ def format_cube(decoders, aggs, start, query, select):
         if isinstance(e.value, TupleOp):
             e.allowNulls = False
 
-        extra = 0 if e.allowNulls is False else 1
-        dims.append(len(e.domain.partitions) + extra)
+        if e.allowNulls is False:
+            extra = 0
+        else:
+            extra = 1
+        dims.append(len(e.domain.partitions)+extra)
 
     dims = tuple(dims)
     matricies = [(s, Matrix(dims=dims, zeros=s.default)) for s in select]
@@ -48,13 +48,16 @@ def format_cube(decoders, aggs, start, query, select):
             except Exception as e:
                 Log.error("", e)
 
-    cube = Cube(
-        query.select,
-        sorted(new_edges, key=lambda e: e.dim),  # ENSURE EDGES ARE IN SAME ORDER AS QUERY
-        {s.name: m for s, m in matricies}
-    )
+    cube = Cube(query.select, new_edges, {s.name: m for s, m in matricies})
     cube.frum = query
     return cube
+
+
+
+
+
+
+
 
 
 def format_cube_from_aggop(decoders, aggs, start, query, select):

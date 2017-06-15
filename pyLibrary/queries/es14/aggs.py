@@ -16,7 +16,7 @@ from mo_dots import listwrap, Data, wrap, literal_field, set_default, coalesce, 
 from mo_logs import Log
 from mo_math import Math, MAX
 from mo_times.timer import Timer
-from pyLibrary.queries import es09, jx
+from pyLibrary.queries import es09
 from pyLibrary.queries.es14.decoders import DefaultDecoder, AggsDecoder, ObjectDecoder
 from pyLibrary.queries.es14.decoders import DimFieldListDecoder
 from pyLibrary.queries.es14.util import aggregates1_4, NON_STATISTICAL_AGGS
@@ -38,13 +38,23 @@ def get_decoders_by_depth(query):
     schema = query.frum.schema
     output = FlatList()
 
-    if query.edges:
-        if query.sort and query.format != "cube":
-            # REORDER EDGES/GROUPBY TO MATCH THE SORT
-            query.edges = sort_edges(query, "edges")
-    elif query.groupby:
-        if query.sort and query.format != "cube":
-            query.groupby = sort_edges(query, "groupby")
+    if query.sort:
+        # REORDER EDGES/GROUPBY TO MATCH THE SORT
+        if len(query.edges)>1 and query.format == "cube":
+            Log.error("can not use sort clause with edges: add sort clause to each edge")
+        ordered_edges = []
+        remaining_edges = query.edges+query.groupby
+        for s in query.sort:
+            if not isinstance(s.value, Variable):
+                Log.error("can only sort by terms")
+            for e in remaining_edges:
+                if e.value.var == s.value.var:
+                    ordered_edges.append(e)
+                    remaining_edges.remove(e)
+                    break
+        ordered_edges.extend(remaining_edges)
+        query.groupby = wrap(list(reversed(ordered_edges)))
+        query.edges = Null
 
     for edge in wrap(coalesce(query.edges, query.groupby, [])):
         if edge.value != None and not isinstance(edge.value, NullOp):
@@ -99,22 +109,6 @@ def get_decoders_by_depth(query):
         limit = 0
         output[max_depth].append(AggsDecoder(edge, query, limit))
     return output
-
-
-def sort_edges(query, prop):
-    ordered_edges = []
-    remaining_edges = getattr(query, prop)
-    for s in query.sort:
-        if not isinstance(s.value, Variable):
-            Log.error("can only sort by terms")
-        for e in remaining_edges:
-            if e.value.var == s.value.var:
-                e.domain.sort = s.sort
-                ordered_edges.append(e)
-                remaining_edges.remove(e)
-                break
-    ordered_edges.extend(remaining_edges)
-    return ordered_edges
 
 
 def es_aggsop(es, frum, query):
@@ -322,10 +316,9 @@ def es_aggsop(es, frum, query):
         if any(split_where[1::]):
             Log.error("Where clause is too deep")
 
-    if decoders:
-        for d in jx.reverse(decoders[0]):
-            es_query = d.append_query(es_query, start)
-            start += d.num_columns
+    for d in decoders[0]:
+        es_query = d.append_query(es_query, start)
+        start += d.num_columns
 
     if split_where[0]:
         #TODO: INCLUDE FILTERS ON EDGES

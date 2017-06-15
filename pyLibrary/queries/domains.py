@@ -123,7 +123,7 @@ class DefaultDomain(Domain):
     DOMAIN IS A LIST OF OBJECTS, EACH WITH A value PROPERTY
     """
 
-    __slots__ = ["NULL", "partitions", "map", "limit", "sort"]
+    __slots__ = ["NULL", "partitions", "map", "limit"]
 
     def __init__(self, **desc):
         Domain.__init__(self, **desc)
@@ -133,7 +133,6 @@ class DefaultDomain(Domain):
         self.map = dict()
         self.map[None] = self.NULL
         self.limit = desc.get('limit')
-        self.sort = 1
 
     def compare(self, a, b):
         return value_compare(a.value, b.value)

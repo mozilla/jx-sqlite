@@ -19,8 +19,6 @@ from mo_dots.lists import FlatList
 from mo_logs import Log
 from mo_math import AND
 from mo_math import MAX
-
-from mo_json.typed_encoder import encode_property
 from mo_times.timer import Timer
 from pyLibrary import queries
 from pyLibrary.queries import es14, es09
@@ -150,7 +148,7 @@ def extract_rows(es, es_query, query):
                 if not net_columns:
                     # LEAF
                     if es_query.fields is not None:
-                        es_query.fields.append(encode_property(select.value.var))
+                        es_query.fields.append(select.value.var)
                     new_select.append({
                         "name": select.name,
                         "value": select.value,
@@ -186,7 +184,7 @@ def extract_rows(es, es_query, query):
         if source == "_source":
             n.pull = concat_field("_source", n.value.var)
         elif isinstance(n.value, Variable):
-            n.pull = concat_field("fields", literal_field(encode_property(n.value.var)))
+            n.pull = "fields." + literal_field(n.value.var)
         else:
             Log.error("Do not know what to do")
 
