@@ -18,7 +18,7 @@ from mo_collections.matrix import Matrix, index_to_coordinate
 from mo_dots import listwrap, coalesce, Data, wrap, Null, startswith_field, unwrap
 from mo_logs import Log
 
-from jx_sqlite import quote_table, sql_aggs, unique_name
+from jx_sqlite import quote_table, sql_aggs, unique_name, split_field
 from jx_sqlite.aggs_table import AggsTable
 from pyLibrary.queries import jx
 from pyLibrary.queries.containers import STRUCT
@@ -278,7 +278,7 @@ class QueryTable(AggsTable):
 
             output = Data(
                 meta={"format": "table"},
-                header=column_names,
+                header=[split_field(h)[0] if "\\" in h else h for h in column_names],
                 data=data
             )
         elif query.format == "list" or (not query.edges and not query.groupby):

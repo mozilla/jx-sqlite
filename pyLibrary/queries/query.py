@@ -515,19 +515,27 @@ def _normalize_group(edge, schema=None):
     if isinstance(edge, basestring):
         if edge.endswith(".*"):
             prefix = edge[:-1]
-            output = wrap([
-                {
-                    "name": literal_field(k),
-                    "value": jx_expression(c.es_column),
+            if schema:
+                output = wrap([
+                    {
+                        "name": literal_field(k),
+                        "value": jx_expression(k),
+                        "allowNulls": True,
+                        "domain": {"type": "default"}
+                    }
+                    for k, cs in schema.items()
+                    if k.startswith(prefix)
+                    for c in cs
+                    if c.type not in STRUCT
+                ])
+                return output
+            else:
+                return wrap([{
+                    "name": edge[:-2],
+                    "value": jx_expression(edge[:-2]),
                     "allowNulls": True,
                     "domain": {"type": "default"}
-                }
-                for k, cs in schema.lookup.items()
-                if k.startswith(prefix)
-                for c in cs
-                if c.type not in STRUCT
-            ])
-            return output
+                }])
 
         return wrap([{
             "name": edge,
