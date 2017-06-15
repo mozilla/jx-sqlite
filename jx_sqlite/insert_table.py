@@ -196,7 +196,7 @@ class InsertTable(BaseTable):
 
     def flatten_many(self, docs, path="."):
         """
-        :param doc: THE JSON DOCUMENT
+        :param docs: THE JSON DOCUMENT
         :param path: FULL PATH TO THIS (INNER/NESTED) DOCUMENT
         :return: TUPLE (success, command, doc_collection) WHERE
                  success: BOOLEAN INDICATING PROPER PARSING
@@ -254,25 +254,7 @@ class InsertTable(BaseTable):
                     for path, _ in nested_tables.items():
                         if startswith_field(cname, path) and len(deeper_nested_path) < len(path):
                             deeper_nested_path = path
-                    if deeper_nested_path != nested_path[0]:
-                        # I HIGHLY SUSPECT, THROUGH CALLING _flatten() AGAIN THE REST OF THIS BLOCK IS NOT NEEDED
-                        nested_column = unwraplist(
-                            [cc for cc in abs_schema.get(deeper_nested_path, Null) if cc.type in STRUCT]
-                        )
-                        insertion.active_columns.add(nested_column)
-                        row[nested_column.es_column] = "."
-
-                        nested_path = [deeper_nested_path] + nested_path
-                        insertion = doc_collection.get(nested_path[0], None)
-                        if not insertion:
-                            insertion = doc_collection[nested_path[0]] = Data(
-                                active_columns=set(),
-                                rows=[]
-                            )
-                        uid, parent_id, order = self.next_uid(), uid, 0
-                        row = {UID: uid, PARENT: parent_id, ORDER: order}
-                        insertion.rows.append(row)
-
+                            
                     c = Column(
                         names={".": cname},
                         type=value_type,
@@ -301,7 +283,7 @@ class InsertTable(BaseTable):
                         )
                     for i, r in enumerate(v):
                         child_uid = self.next_uid()
-                        _flatten(r, child_uid, uid, i, cname, deeper_nested_path)
+                        _flatten(r, child_uid, uid, i, cname, deeper_nested_path)                   
                 elif value_type == "object":
                     row[c.es_column] = "."
                     _flatten(v, uid, parent_id, order, cname, nested_path, row=row)
