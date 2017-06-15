@@ -20,6 +20,7 @@ class TestSchemaMerging(BaseTestCase):
     """
     TESTS THAT DEMONSTRATE DIFFERENT SCHEMAS
     """
+
     @skipIf(global_settings.use == "elasticsearch", "require dynamic typing before overloading objects and primitives")
     def test_select(self):
         test = {
@@ -66,8 +67,84 @@ class TestSchemaMerging(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
+    def test_mixed_primitives(self):
+        test = {
+            "data": [
+                {"a": "b"},
+                {"a": 3},
+                {"a": "c"}
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "select": "a"
+            },
+            "expecting_list": {
+                "meta": {"format": "list"},
+                "data": [
+                    "b",
+                    3,
+                    "c"
+                ]
+            },
+            "expecting_table": {
+                "meta": {"format": "table"},
+                "header": ["a"],
+                "data": [
+                    ["b"],
+                    [3],
+                    ["c"]
+                ]
+            },
+            "expecting_cube": {
+                "meta": {"format": "cube"},
+                "edges": [
+                    {
+                        "name": "rownum",
+                        "domain": {"type": "rownum", "min": 0, "max": 3, "interval": 1}
+                    }
+                ],
+                "data": {
+                    "a": ["b", 3, "c"]
+                }
+            }
+        }
+        self.utils.execute_tests(test)
 
-
-
+    def test_dots_in_property_names(self):
+        test = {
+            "data": [
+                {"a.html": "hello world"}
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "select": "a\\.html"
+            },
+            "expecting_list": {
+                "meta": {"format": "list"},
+                "data": [
+                    "hello world"
+                ]
+            },
+            "expecting_table": {
+                "meta": {"format": "table"},
+                "header": ["a.html"],
+                "data": [
+                    ["hello world"]
+                ]
+            },
+            "expecting_cube": {
+                "meta": {"format": "cube"},
+                "edges": [
+                    {
+                        "name": "rownum",
+                        "domain": {"type": "rownum", "min": 0, "max": 1, "interval": 1}
+                    }
+                ],
+                "data": {
+                    "a.html": ["hello world"]
+                }
+            }
+        }
+        self.utils.execute_tests(test)
