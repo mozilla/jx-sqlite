@@ -62,7 +62,7 @@ class TestSetOps(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_length_w_inequality(self):
         test = {
@@ -91,7 +91,7 @@ class TestSetOps(BaseTestCase):
                 "data": ["333", "4444", "55555"]
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_left(self):
         test = {
@@ -111,7 +111,7 @@ class TestSetOps(BaseTestCase):
                 "data": [NULL, "1", "22", "33", "44"]
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_eq(self):
         test = {
@@ -140,7 +140,7 @@ class TestSetOps(BaseTestCase):
                 ]
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_ne(self):
         test = {
@@ -168,7 +168,7 @@ class TestSetOps(BaseTestCase):
                 ]
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_concat(self):
         test = {
@@ -230,7 +230,7 @@ class TestSetOps(BaseTestCase):
                 ]
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_select_when(self):
         test = {
@@ -264,7 +264,7 @@ class TestSetOps(BaseTestCase):
                 ]
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_select_when_on_multivalue(self):
         test = {
@@ -297,7 +297,7 @@ class TestSetOps(BaseTestCase):
                 ]
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_select_in_w_multivalue(self):
         test = {
@@ -330,7 +330,7 @@ class TestSetOps(BaseTestCase):
                 ]
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_select_mult_w_when(self):
         test = {
@@ -369,7 +369,7 @@ class TestSetOps(BaseTestCase):
                 "data": 17
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_select_add(self):
         test = {
@@ -403,7 +403,7 @@ class TestSetOps(BaseTestCase):
                 ]
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_select_add_w_default(self):
         test = {
@@ -423,7 +423,7 @@ class TestSetOps(BaseTestCase):
                 ]
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_select_count(self):
         test = {
@@ -457,7 +457,7 @@ class TestSetOps(BaseTestCase):
                 ]
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_select_average(self):
         test = {
@@ -495,7 +495,7 @@ class TestSetOps(BaseTestCase):
                 ]
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_select_average_on_none(self):
         test = {
@@ -518,7 +518,7 @@ class TestSetOps(BaseTestCase):
                 ]
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_select_gt_on_sub(self):
         test = {
@@ -549,7 +549,7 @@ class TestSetOps(BaseTestCase):
                 ]
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_find(self):
         test = {
@@ -572,7 +572,7 @@ class TestSetOps(BaseTestCase):
                 ]
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_left_in_edge(self):
         test = {
@@ -599,7 +599,7 @@ class TestSetOps(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_left_and_right(self):
         test = {
@@ -653,7 +653,7 @@ class TestSetOps(BaseTestCase):
                 ]
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_string(self):
         test = {
@@ -674,7 +674,7 @@ class TestSetOps(BaseTestCase):
                 "data": ["1", "2", "3", "4", "100", NULL]
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_number(self):
         test = {
@@ -694,7 +694,7 @@ class TestSetOps(BaseTestCase):
                 "data": [1, 2, 3, 4, NULL]
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_div_with_default(self):
         test = {
@@ -713,7 +713,7 @@ class TestSetOps(BaseTestCase):
                 "data": [0, 0.5, 1, 10]
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_div_wo_default(self):
         test = {
@@ -732,7 +732,7 @@ class TestSetOps(BaseTestCase):
                 "data": [0, 0.5, 1, NULL]
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_between(self):
         test = {
@@ -758,7 +758,7 @@ class TestSetOps(BaseTestCase):
                 ]
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_param_left(self):
         test = {
@@ -808,7 +808,7 @@ class TestSetOps(BaseTestCase):
             }
         }
 
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
 
 

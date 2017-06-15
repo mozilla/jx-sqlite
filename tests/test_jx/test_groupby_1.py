@@ -42,7 +42,7 @@ class TestgroupBy1(BaseTestCase):
                 ]
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_count_rows(self):
         test = {
@@ -71,7 +71,7 @@ class TestgroupBy1(BaseTestCase):
                 ]
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_count_self(self):
         test = {
@@ -100,7 +100,7 @@ class TestgroupBy1(BaseTestCase):
                 ]
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_count_other(self):
         test = {
@@ -128,7 +128,7 @@ class TestgroupBy1(BaseTestCase):
                 ]
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_select_2(self):
         test = {
@@ -160,7 +160,7 @@ class TestgroupBy1(BaseTestCase):
                 ]
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_sum_column(self):
         test = {
@@ -189,7 +189,7 @@ class TestgroupBy1(BaseTestCase):
                 ]
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
 
     def test_where(self):
@@ -214,7 +214,7 @@ class TestgroupBy1(BaseTestCase):
                 ]
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_where_w_dimension(self):
         test = {
@@ -238,7 +238,7 @@ class TestgroupBy1(BaseTestCase):
                 ]
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_bad_groupby(self):
         test = {
@@ -255,7 +255,7 @@ class TestgroupBy1(BaseTestCase):
                 "data": []
             }
         }
-        self.assertRaises(Exception, self.utils.execute_es_tests, test)
+        self.assertRaises(Exception, self.utils.execute_tests, test)
 
     def test_empty_default_domain(self):
         test = {
@@ -278,7 +278,7 @@ class TestgroupBy1(BaseTestCase):
                 "data": []
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
 
     def test_many_aggs_on_one_column(self):
@@ -318,7 +318,7 @@ class TestgroupBy1(BaseTestCase):
                 ]
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
 
     def test_error_on_same_column_name(self):
@@ -337,7 +337,7 @@ class TestgroupBy1(BaseTestCase):
                 "data": []
             }
         }
-        self.assertRaises(Exception, self.utils.execute_es_tests, test)
+        self.assertRaises(Exception, self.utils.execute_tests, test)
 
     def test_groupby_is_table(self):
         test = {
@@ -359,7 +359,7 @@ class TestgroupBy1(BaseTestCase):
                 ]
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_groupby_left_id(self):
         test = {
@@ -376,7 +376,7 @@ class TestgroupBy1(BaseTestCase):
                 ]
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_groupby_value(self):
         test = {
@@ -446,7 +446,7 @@ class TestgroupBy1(BaseTestCase):
             },
             "expecting_table": {
               #  "meta": {"format": "table"}, this meta property is not included as
-              #  test is ensuring the default format is table when given a groupby clause               
+              #  test is ensuring the default format is table when given a groupby clause
                 "header": ["g", "count"],
                 "data": [
                     [{"a": "b", "v": 1}, 2],
@@ -457,7 +457,7 @@ class TestgroupBy1(BaseTestCase):
                 ]
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_groupby_object_star(self):
         test = {
@@ -495,7 +495,7 @@ class TestgroupBy1(BaseTestCase):
                 ]
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
 # TODO: AGG SHALLOW FIELD WITH DEEP GROUPBY
 # {

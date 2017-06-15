@@ -59,7 +59,7 @@ class TestEdge1(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_count_rows(self):
         test = {
@@ -104,7 +104,7 @@ class TestEdge1(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_count_self(self):
         test = {
@@ -150,7 +150,7 @@ class TestEdge1(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_count_other(self):
         test = {
@@ -196,7 +196,7 @@ class TestEdge1(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
 
     def test_sum_default(self):
@@ -250,7 +250,7 @@ class TestEdge1(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_select_2(self):
         test = {
@@ -300,7 +300,7 @@ class TestEdge1(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_select_3(self):
         test = {
@@ -354,7 +354,7 @@ class TestEdge1(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
 
     def test_select_4(self):
@@ -409,7 +409,7 @@ class TestEdge1(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
 
     def test_sum_column(self):
@@ -456,7 +456,7 @@ class TestEdge1(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_where(self):
         # THE CONTAINER SHOULD RETURN THE FULL CUBE, DESPITE IT NOT BEING EXPLICIT
@@ -502,7 +502,7 @@ class TestEdge1(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_where_w_dimension(self):
         test = {
@@ -549,7 +549,7 @@ class TestEdge1(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_select_empty_list(self):
         test = {
@@ -605,7 +605,7 @@ class TestEdge1(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_empty_select(self):
         test = {
@@ -662,7 +662,7 @@ class TestEdge1(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_empty_select_w_dot_edge(self):
         test = {
@@ -719,7 +719,7 @@ class TestEdge1(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_empty_default_domain(self):
         test = {
@@ -776,7 +776,7 @@ class TestEdge1(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_empty_default_domain_w_groupby(self):
         test = {
@@ -816,7 +816,7 @@ class TestEdge1(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_default_limit(self):
         """
@@ -892,7 +892,7 @@ class TestEdge1(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_edge_limit_big(self):
         test = {
@@ -972,7 +972,7 @@ class TestEdge1(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_edge_limit_small(self):
         test = {
@@ -1019,7 +1019,7 @@ class TestEdge1(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_general_limit(self):
         test = {
@@ -1079,7 +1079,7 @@ class TestEdge1(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_expression_on_edge(self):
         data = [
@@ -1151,7 +1151,7 @@ class TestEdge1(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_float_range(self):
         data = [
@@ -1225,7 +1225,7 @@ class TestEdge1(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_edge_using_expression(self):
         data = [
@@ -1299,7 +1299,7 @@ class TestEdge1(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_edge_using_between(self):
         test = {
@@ -1340,7 +1340,7 @@ class TestEdge1(BaseTestCase):
                 ]}
 
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_edge_using_tuple(self):
         data = [
@@ -1418,7 +1418,7 @@ class TestEdge1(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     @skipIf(global_settings.use == "sqlite", "no median support")
     def test_percentile(self):
@@ -1469,7 +1469,7 @@ class TestEdge1(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_count_constant(self):
         test = {
@@ -1522,7 +1522,7 @@ class TestEdge1(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_bad_edge_name(self):
         test = {
@@ -1544,7 +1544,7 @@ class TestEdge1(BaseTestCase):
             },
         }
 
-        self.assertRaises("expression is empty", self.utils.execute_es_tests, test)
+        self.assertRaises("expression is empty", self.utils.execute_tests, test)
 
     def test_range(self):
         test = {
@@ -1620,7 +1620,7 @@ class TestEdge1(BaseTestCase):
                 "data": {"count": [1, 1, 2, 3, 3, 3, 3, 3, 3, 2]}  # NOT SURE HOW WE ARE COUNTING NULLS
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_edge_w_partition_filters(self):
         test = {
@@ -1676,7 +1676,7 @@ class TestEdge1(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
 # TODO: ALLOW USE OF EDGE VARIABLES IN QUERY
 # IN THIS CASE "timestamp.min" REFERS TO A PART OF THE EDGE

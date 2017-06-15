@@ -72,7 +72,7 @@ class TestDeepOps(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_deep_select_column_w_groupby(self):
         test = {
@@ -107,7 +107,7 @@ class TestDeepOps(BaseTestCase):
                 ]
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_bad_deep_select_column_w_groupby(self):
         test = {
@@ -124,7 +124,7 @@ class TestDeepOps(BaseTestCase):
                 "data": []
             }
         }
-        self.assertRaises(Exception, self.utils.execute_es_tests, test)
+        self.assertRaises(Exception, self.utils.execute_tests, test)
 
     def test_abs_shallow_select(self):
         # TEST THAT ABSOLUTE COLUMN NAMES WORK (WHEN THEY DO NOT CONFLICT WITH RELATIVE PROPERTY NAME)
@@ -201,7 +201,7 @@ class TestDeepOps(BaseTestCase):
             # }
         }
 
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
 
     def test_select_whole_document(self):
@@ -327,7 +327,7 @@ class TestDeepOps(BaseTestCase):
             }
         }
 
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_deep_names_w_star(self):
         test = {
@@ -382,7 +382,7 @@ class TestDeepOps(BaseTestCase):
             }
         }
 
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
 
     def test_deep_names_select_value(self):
@@ -441,7 +441,7 @@ class TestDeepOps(BaseTestCase):
             }
         }
 
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_deep_names(self):
         test = {
@@ -474,7 +474,7 @@ class TestDeepOps(BaseTestCase):
                 ]}
         }
 
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_deep_agg_on_expression(self):
         # TEST WE CAN PERFORM AGGREGATES ON EXPRESSIONS OF DEEP VARIABLES
@@ -522,7 +522,7 @@ class TestDeepOps(BaseTestCase):
             }
         }
 
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_deep_agg_on_expression_w_shallow_where(self):
         # TEST WE CAN PERFORM AGGREGATES ON EXPRESSIONS OF DEEP VARIABLES
@@ -558,7 +558,7 @@ class TestDeepOps(BaseTestCase):
             }
         }
 
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_agg_w_complicated_where(self):
         # TEST WE CAN PERFORM AGGREGATES ON EXPRESSIONS OF DEEP VARIABLES
@@ -596,7 +596,7 @@ class TestDeepOps(BaseTestCase):
             }
         }
 
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_setop_w_complicated_where(self):
         # TEST WE CAN PERFORM AGGREGATES ON EXPRESSIONS OF DEEP VARIABLES
@@ -632,7 +632,7 @@ class TestDeepOps(BaseTestCase):
             }
         }
 
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_id_select(self):
         """
@@ -691,7 +691,7 @@ class TestDeepOps(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_id_value_select(self):
         """
@@ -728,7 +728,7 @@ class TestDeepOps(BaseTestCase):
                 ]
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
 
     def test_aggs_on_parent(self):
@@ -786,8 +786,7 @@ class TestDeepOps(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
-
+        self.utils.execute_tests(test)
 
     def test_aggs_on_parent_and_child(self):
         test = {
@@ -858,7 +857,7 @@ class TestDeepOps(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_deep_edge_using_list(self):
         data = [{"a": {"_b": [
@@ -936,7 +935,7 @@ class TestDeepOps(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_deep_agg_w_deeper_select_relative_name(self):
         data = [{"a": {"_b": [
@@ -989,7 +988,7 @@ class TestDeepOps(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_setop_w_deep_select_value(self):
         data = [{"a": {"_b": [
@@ -1043,7 +1042,7 @@ class TestDeepOps(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_select_average_on_none(self):
         test = {
@@ -1066,7 +1065,7 @@ class TestDeepOps(BaseTestCase):
                 ]
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_missing(self):
         test = {
@@ -1098,7 +1097,7 @@ class TestDeepOps(BaseTestCase):
                 ]
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_missing_on_not_exists(self):
         # CHECKING FOR A MISSING COLUMN THAT DOES NOT EXIST SHOULD NOT THROW AN ERROR, RATHER RETURN true
@@ -1124,7 +1123,7 @@ class TestDeepOps(BaseTestCase):
                 ]
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_exists(self):
         test = {
@@ -1159,7 +1158,7 @@ class TestDeepOps(BaseTestCase):
                 ]
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_deep_or(self):
         test = {
@@ -1199,7 +1198,7 @@ class TestDeepOps(BaseTestCase):
                 ]
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_sibling_nested_column(self):
         test = {
@@ -1220,7 +1219,7 @@ class TestDeepOps(BaseTestCase):
                 ]
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_deep_star(self):
         test = {
@@ -1243,9 +1242,8 @@ class TestDeepOps(BaseTestCase):
                 ]
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
-    @skipIf(global_settings.is_travis, "not expected to pass yet")
     def test_from_shallow_select_deep_column(self):
         test = {
             "data": [
@@ -1287,7 +1285,7 @@ class TestDeepOps(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
 
 # TODO: using "find" as a filter should be legitimate:

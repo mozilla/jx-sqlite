@@ -41,7 +41,7 @@ class TestSorting(BaseTestCase):
                 "data": [6, 4, 3, 2, 1]
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_edge_and_sort(self):
         test = {
@@ -90,7 +90,7 @@ class TestSorting(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_2edge_and_sort(self):
         test = {
@@ -220,7 +220,7 @@ class TestSorting(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_groupby2_and_sort(self):
         test = {
@@ -267,7 +267,7 @@ class TestSorting(BaseTestCase):
                 ]
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_groupby2b_and_sort(self):
         test = {
@@ -332,7 +332,7 @@ class TestSorting(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_groupby2c_and_sort(self):
         test = {
@@ -391,11 +391,10 @@ class TestSorting(BaseTestCase):
                         {"value": 1},
                         {"value": 0}
                     ]}}
-
                  ],
                 "data": {
                     "count": [[2, 2, 0], [3, 2, 1], [1, 0, 1]]
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
