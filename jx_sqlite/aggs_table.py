@@ -66,7 +66,7 @@ class AggsTable(SetOpTable):
 
         for edge_index, query_edge in enumerate(query.edges):
             edge_alias = "e" + unicode(edge_index)
-          
+
             if query_edge.value:
                 edge_values = [p for c in query_edge.value.to_sql(schema).sql for p in c.items()]
 
@@ -77,12 +77,12 @@ class AggsTable(SetOpTable):
                     t = quote_value(pp)
                     case += " WHEN " + w + " THEN " + t
                 case += " ELSE NULL END "   # quote value with length of partitions
-                edge_values = [("n", case)]                          
+                edge_values = [("n", case)]
 
             elif query_edge.range:
                 edge_values = query_edge.range.min.to_sql(schema)[0].sql.items() + query_edge.range.max.to_sql(schema)[
                     0].sql.items()
-                
+
             else:
                 Log.error("Do not know how to handle")
 
@@ -114,6 +114,7 @@ class AggsTable(SetOpTable):
                 index_to_column[num_sql_columns] = ColumnMapping(
                     is_edge=True,
                     push_name=query_edge.name,
+                    push_column_name=query_edge.name,
                     push_column=edge_index,
                     num_push_columns=num_push_columns,
                     push_child=push_child,  # CAN NOT HANDLE TUPLES IN COLUMN
@@ -227,9 +228,9 @@ class AggsTable(SetOpTable):
                 )
                 if not query_edge.allowNulls:
                     domain +=  "\nWHERE\n" + " AND ".join(g + " IS NOT NULL" for g in vals)
-                    
+
                 domain += "\nGROUP BY\n" + ",\n".join(g for g in vals)
-                    
+
                 limit = Math.min(query.limit, query_edge.domain.limit)
                 domain += (
                     "\nORDER BY \n" + ",\n".join("COUNT(1) DESC" for g in vals) +
@@ -308,7 +309,7 @@ class AggsTable(SetOpTable):
                 if query.sort[n].sort == -1:
                     orderby.append(k + " DESC ")
                 else:
-                    orderby.append(k)                    
+                    orderby.append(k)
 
         offset = len(query.edges)
         for ssi, s in enumerate(listwrap(query.select)):
@@ -321,6 +322,7 @@ class AggsTable(SetOpTable):
                 outer_selects.append(sql)
                 index_to_column[column_number] = ColumnMapping(
                     push_name=s.name,
+                    push_column_name=s.name,
                     push_column=si,
                     push_child=".",
                     pull=get_column(column_number),
@@ -340,6 +342,7 @@ class AggsTable(SetOpTable):
                         outer_selects.append(count_sql)
                         index_to_column[column_number] = ColumnMapping(
                             push_name=s.name,
+                            push_column_name=s.name,
                             push_column=si,
                             push_child=".",
                             pull=get_column(column_number),
@@ -362,6 +365,7 @@ class AggsTable(SetOpTable):
                     outer_selects.append(concat_sql)
                     index_to_column[column_number] = ColumnMapping(
                         push_name=s.name,
+                        push_column_name=s.name,
                         push_column=si,
                         push_child=".",
                         pull=sql_text_array_to_set(column_number),
@@ -378,6 +382,7 @@ class AggsTable(SetOpTable):
                         outer_selects.append(full_sql + " AS " + _make_column_name(column_number))
                         index_to_column[column_number] = ColumnMapping(
                             push_name=s.name,
+                            push_column_name=s.name,
                             push_column=si,
                             push_child=name,
                             pull=get_column(column_number),
@@ -394,6 +399,7 @@ class AggsTable(SetOpTable):
                         outer_selects.append(sql + " AS " + _make_column_name(column_number))
                         index_to_column[column_number] = ColumnMapping(
                             push_name=s.name,
+                            push_column_name=s.name,
                             push_column=si,
                             push_child=".",  # join_field(split_field(details.name)[1::]),
                             pull=get_column(column_number),
@@ -490,14 +496,15 @@ class AggsTable(SetOpTable):
         groupby = []
         for i, e in enumerate(query.groupby):
             for s in e.value.to_sql(schema):
-                column_number = len(selects)                
+                column_number = len(selects)
                 sql_type, sql = s.sql.items()[0]
                 groupby.append(sql)
                 selects.append(sql + " AS " + e.name)
-    
+
                 index_to_column[column_number] = ColumnMapping(
                     is_edge=True,
                     push_name=e.name,
+                    push_column_name=s.name,
                     push_column=column_number,
                     push_child=".",
                     pull=get_column(column_number),
@@ -516,6 +523,7 @@ class AggsTable(SetOpTable):
 
             index_to_column[column_number] = ColumnMapping(
                 push_name=s.name,
+                push_column_name=s.name,
                 push_column=column_number,
                 push_child=".",
                 pull=get_column(column_number),
@@ -532,14 +540,14 @@ class AggsTable(SetOpTable):
                   "\nFROM\n" + quote_table(self.sf.fact) + " " + nest_to_alias["."] + \
                   "\nWHERE\n" + where + \
                   "\nGROUP BY\n" + ",\n".join(groupby)
-        
+
         if query.sort:
             command += "\nORDER BY " + ",\n".join(
                 "(" + sql[t] + ") IS NULL"  + ",\n" +
                 sql[t] + (" DESC" if s.sort == -1 else "")
                 for s, sql in [(s, s.value.to_sql(schema)[0].sql) for s in query.sort]
                 for t in "bns" if sql[t]
-            )        
+            )
 
         return command, index_to_column
 

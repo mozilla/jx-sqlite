@@ -231,9 +231,10 @@ ColumnMapping = DataClass(
             "name":"num_push_columns",
             "nulls": True
         },
-        "push_name",    # LITERAL NAME OF THE COLUMN (WITH NO ESCAPING DOTS, NOT IN LEAF FORM)
+        "push_name",    # NAME OF THE PROPERTY (USED BY LIST FORMAT ONLY)
         "push_child",   # PATH INTO COLUMN WHERE VALUE IS STORED ("." MEANS COLUMN HOLDS PRIMITIVE VALUE)
         "push_column",  # THE COLUMN NUMBER
+        "push_column_name",  # THE COLUMN NAME FOR TABLES AND CUBES (WITH NO ESCAPING DOTS, NOT IN LEAF FORM)
         "pull",         # A FUNCTION THAT WILL RETURN A VALUE
         {               # A LIST OF MULTI-SQL REQUIRED TO GET THE VALUE FROM THE DATABASE
             "name": "sql",
