@@ -146,6 +146,7 @@ class SetOpTable(InsertTable):
                                     sql_selects.append(unsorted_sql + " AS " + column_alias)
                                     index_to_column[column_number] = nested_doc_details['index_to_column'][column_number] = ColumnMapping(
                                         push_name=concat_field(s.name, column.name),
+                                        push_column_name=concat_field(s.name, column.name),
                                         push_column=si,
                                         push_child=".",
                                         pull=get_column(column_number),
@@ -167,6 +168,7 @@ class SetOpTable(InsertTable):
                                     sql_selects.append(unsorted_sql + " AS " + column_alias)
                                     index_to_column[column_number] = nested_doc_details['index_to_column'][column_number] = ColumnMapping(
                                         push_name=s.name,
+                                        push_column_name=s.name,
                                         push_column=si,
                                         push_child=column.name,
                                         pull=get_column(column_number),
@@ -190,6 +192,7 @@ class SetOpTable(InsertTable):
                     sql_selects.append(unsorted_sql + " AS " + column_alias)
                     index_to_column[column_number] = nested_doc_details['index_to_column'][column_number] = ColumnMapping(
                         push_name=s.name,
+                        push_column_name=s.name,
                         push_column=si,
                         push_child=relative_field(c.names["."], s.name),
                         pull=get_column(column_number),
@@ -257,13 +260,13 @@ class SetOpTable(InsertTable):
                                 continue
                             if value == '':
                                 continue
-                            
+
                             if isinstance(query.select, list) or isinstance(query.select.value, LeavesOp):
-                                # ASSIGN INNER PROPERTIES                                                       
+                                # ASSIGN INNER PROPERTIES
                                 relative_path=relative_field(join_field([c.push_name]+split_field(c.push_child)), curr_nested_path)
-                            else:           # FACT IS EXPECTED TO BE A SINGLE VALUE, NOT AN OBJECT           
+                            else:           # FACT IS EXPECTED TO BE A SINGLE VALUE, NOT AN OBJECT
                                 relative_path=c.push_child
-    
+
                             if relative_path == ".":
                                 doc = value
                             elif doc is None:
@@ -271,7 +274,7 @@ class SetOpTable(InsertTable):
                                 doc[relative_path] = value
                             else:
                                 doc[relative_path] = value
-           
+
                 for child_details in nested_doc_details['children']:
                     # EACH NESTED TABLE MUST BE ASSEMBLED INTO A LIST OF OBJECTS
                     child_id = row[child_details['id_coord']]
@@ -280,21 +283,21 @@ class SetOpTable(InsertTable):
                         if nested_value is not None:
                             push_name = child_details['nested_path'][0]
                             if isinstance(query.select, list) or isinstance(query.select.value, LeavesOp):
-                                # ASSIGN INNER PROPERTIES                                                       
+                                # ASSIGN INNER PROPERTIES
                                 relative_path=relative_field(push_name, curr_nested_path)
-                            else:           # FACT IS EXPECTED TO BE A SINGLE VALUE, NOT AN OBJECT           
+                            else:           # FACT IS EXPECTED TO BE A SINGLE VALUE, NOT AN OBJECT
                                 relative_path="."
-                
+
                             if relative_path == ".":
                                 doc = nested_value
                             elif doc is None:
                                 doc = Data()
                                 doc[relative_path] = nested_value
                             else:
-                                doc[relative_path] = nested_value                             
+                                doc[relative_path] = nested_value
 
                 output.append(doc)
-                
+
                 try:
                     row = rows.pop()
                 except IndexError:
@@ -304,19 +307,19 @@ class SetOpTable(InsertTable):
         cols = tuple(index_to_column.values())
         rows = list(reversed(unwrap(result.data)))
         if rows:
-            row = rows.pop()           
+            row = rows.pop()
             data=listwrap(_accumulate_nested(rows, row, primary_doc_details, None, None))
-        else: 
+        else:
             data = result.data
-        
-        if query.format == "cube":      
-            if len(data) == len(result.data):       # means no accumulated nested object    
+
+        if query.format == "cube":
+            if len(data) == len(result.data):       # means no accumulated nested object
                 data = result.data
-                
-                num_rows = len(data)     
+
+                num_rows = len(data)
                 num_cols = MAX([c.push_column for c in cols]) + 1 if len(cols) else 0
                 map_index_to_name = {c.push_column: c.push_name for c in cols}
-                temp_data = [[None]*num_rows for _ in range(num_cols)]                
+                temp_data = [[None]*num_rows for _ in range(num_cols)]
                 for rownum, d in enumerate(data):
                     for c in cols:
                         if c.push_child == ".":
@@ -339,14 +342,14 @@ class SetOpTable(InsertTable):
                         }
                     }]
                 )
-                return output    
+                return output
             else:
                 num_rows = len(data)
                 map_index_to_name = {c.push_column: c.push_name for c in cols}
                 temp_data = [data]
-                
+
                 return Data(
-                    meta={"format": "cube"},                    
+                    meta={"format": "cube"},
                     data={n: temp_data[c] for c, n in map_index_to_name.items()},
                     edges=[{
                         "name": "rownum",
@@ -356,25 +359,25 @@ class SetOpTable(InsertTable):
                             "max": num_rows,
                             "interval": 1
                         }
-                    }]                    
-                )                
-           
+                    }]
+                )
+
         elif query.format == "table":
             if len(data)==len(result.data):
                 data = result.data
-                
+
                 num_column = MAX([c.push_column for c in cols])+1
                 header = [None]*num_column
                 for c in cols:
                     header[c.push_column] = c.push_name
-    
+
                 output_data = []
                 for d in data:
                     row = [None] * num_column
                     for c in cols:
                         set_column(row, c.push_column, c.push_child, c.pull(d))
                     output_data.append(row)
-                
+
                 return Data(
                     meta={"format": "table"},
                     header=header,
@@ -387,15 +390,15 @@ class SetOpTable(InsertTable):
                         meta={"format": "table"},
                         header=column_names,
                         data=data
-                    )       
+                    )
                 else:
                     column_names = listwrap(query.select).name
                     return Data(
                         meta={"format": "table"},
                         header=column_names,
                         data=[[d] for d in data]
-                    )                     
-                    
+                    )
+
         else:
             output = Data(
                 meta={"format": "list"},
