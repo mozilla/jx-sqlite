@@ -263,7 +263,7 @@ class SetOpTable(InsertTable):
 
                             if isinstance(query.select, list) or isinstance(query.select.value, LeavesOp):
                                 # ASSIGN INNER PROPERTIES
-                                relative_path=relative_field(join_field([c.push_name]+split_field(c.push_child)), curr_nested_path)
+                                relative_path=join_field([c.push_name]+split_field(c.push_child))
                             else:           # FACT IS EXPECTED TO BE A SINGLE VALUE, NOT AN OBJECT
                                 relative_path=c.push_child
 
@@ -400,10 +400,29 @@ class SetOpTable(InsertTable):
                     )
 
         else:
+            for f, _ in self.sf.tables.items():
+                if frum.endswith(f):
+                    data = []
+                    for rownum in result.data:
+                        row = Data()
+                        for c in index_to_column.values():
+                            if c.push_child == ".":
+                                row[c.push_name] = c.pull(rownum)
+                            elif c.num_push_columns:
+                                tuple_value = row[c.push_name]
+                                if not tuple_value:
+                                    tuple_value = row[c.push_name] = [None] * c.num_push_columns
+                                tuple_value[c.push_child] = c.pull(rownum)
+                            else:
+                                row[c.push_name][c.push_child] = c.pull(rownum)
+
+                        data.append(row)
+
             output = Data(
                 meta={"format": "list"},
                 data=data
             )
+
             return output
 
     def _make_sql_for_one_nest_in_set_op(

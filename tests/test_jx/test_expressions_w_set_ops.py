@@ -11,9 +11,11 @@
 from __future__ import division
 from __future__ import unicode_literals
 
+from unittest import skipIf
+
 from mo_dots import wrap
 
-from tests.test_jx import BaseTestCase, TEST_TABLE, NULL
+from tests.test_jx import BaseTestCase, TEST_TABLE, NULL, global_settings
 
 lots_of_data = wrap([{"a": i} for i in range(30)])
 
@@ -266,6 +268,7 @@ class TestSetOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
+    @skipIf(global_settings.use=="sqlite", "Can't handle array of primitives for now")
     def test_select_when_on_multivalue(self):
         test = {
             "data": [
@@ -299,6 +302,7 @@ class TestSetOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
+    @skipIf(global_settings.use=="sqlite", "Can't handle array of premitives for now")
     def test_select_in_w_multivalue(self):
         test = {
             "data": [
