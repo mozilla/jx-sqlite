@@ -2695,12 +2695,12 @@ class WhenOp(Expression):
                 if els_[t] == None:
                     pass
                 else:
-                    output[t] = "CASE WHEN " + when.b + " THEN NULL ELSE " + els_[t] + " END"
+                    output[t] = "CASE WHEN " + unwrap(when).values()[0] + " THEN NULL ELSE " + els_[t] + " END"
             else:
                 if els_[t] == None:
-                    output[t] = "CASE WHEN " + when.b + " THEN " + then[t] + " END"
+                    output[t] = "CASE WHEN " + unwrap(when).values()[0] + " THEN " + then[t] + " END"
                 else:
-                    output[t] = "CASE WHEN " + when.b + " THEN " + then[t] + " ELSE " + els_[t] + " END"
+                    output[t] = "CASE WHEN " + unwrap(when).values()[0] + " THEN " + then[t] + " ELSE " + els_[t] + " END"
         if not output:
             return wrap([{"name": ".", "sql": {"0": "NULL"}}])
         else:
