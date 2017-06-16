@@ -2407,7 +2407,7 @@ class FindOp(Expression):
             if start_index == "0":
                 index = "INSTR(" + value + "," + find + ")-1"
             else:
-                index = "INSTR(SUBSTR(" + value + "," + start_index + "+1)," + find + ")+" + start_index
+                index = "INSTR(SUBSTR(" + value + "," + start_index + "+1)," + find + ")+" + start_index + "-1"
 
             sql = "CASE WHEN (" + test + ") THEN (" + index + ") ELSE (" + default + ") END"
             return wrap([{"name": ".", "sql": {"n": sql}}])
