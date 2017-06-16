@@ -14,11 +14,11 @@ from __future__ import division
 from __future__ import unicode_literals
 
 import mo_json
+from jx_sqlite import quote_table, sql_aggs, unique_name
 from mo_collections.matrix import Matrix, index_to_coordinate
-from mo_dots import listwrap, coalesce, Data, wrap, Null, startswith_field, unwrap
+from mo_dots import listwrap, coalesce, Data, wrap, startswith_field, unliteral_field, unwrap, split_field
 from mo_logs import Log
 
-from jx_sqlite import quote_table, sql_aggs, unique_name
 from jx_sqlite.aggs_table import AggsTable
 from pyLibrary.queries import jx
 from pyLibrary.queries.containers import STRUCT
@@ -88,7 +88,7 @@ class QueryTable(AggsTable):
         frum, query['from'] = query['from'], self
         schema = self.sf.tables["."].schema
         if not query.groupby:
-            query = QueryOp.wrap(query, schema)                        
+            query = QueryOp.wrap(query, schema)
         # TYPE CONFLICTS MUST NOW BE RESOLVED DURING
         # TYPE-SPECIFIC QUERY NORMALIZATION
         # vars_ = query.vars(exclude_select=True)
@@ -111,14 +111,14 @@ class QueryTable(AggsTable):
             create_table = ""
 
         if query.groupby and query.format != "cube":
-            query = QueryOp.wrap(query, schema)            
+            query = QueryOp.wrap(query, schema)
             op, index_to_columns = self._groupby_op(query, frum)
             command = create_table + op
         elif query.groupby:
             query.edges, query.groupby = query.groupby, query.edges
-            query = QueryOp.wrap(query, schema)            
+            query = QueryOp.wrap(query, schema)
             op, index_to_columns = self._edges_op(query, frum)
-            command = create_table + op 
+            command = create_table + op
             query.edges, query.groupby = query.groupby, query.edges
         elif query.edges or any(a != "none" for a in listwrap(query.select).aggregate):
             op, index_to_columns = self._edges_op(query, frum)
@@ -127,7 +127,7 @@ class QueryTable(AggsTable):
             op = self._set_op(query, frum)
             return op
 
-        
+
 
         result = self.db.query(command)
 
@@ -216,10 +216,10 @@ class QueryTable(AggsTable):
                     if e.is_groupby and None in parts:
                         allowNulls = True
                     parts -= {None}
-                    
+
                     if query.sort[i].sort==-1:
                         domain = SimpleSetDomain(partitions=wrap(sorted(parts,reverse=True)))
-                    else:    
+                    else:
                         domain = SimpleSetDomain(partitions=jx.sort(parts))
 
                 dims.append(len(domain.partitions) + (1 if allowNulls else 0))
@@ -307,7 +307,7 @@ class QueryTable(AggsTable):
                         if data[s.push_child] == None:
                             data[s.push_child] = s.pull(result.data[0])
                         else:
-                            data[s.push_child] += [s.pull(result.data[0])]                        
+                            data[s.push_child] += [s.pull(result.data[0])]
                     output = Data(
                         meta={"format": "value"},
                         data=unwrap(data)
