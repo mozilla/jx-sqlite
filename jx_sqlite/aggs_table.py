@@ -13,11 +13,11 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
-from mo_dots import listwrap, coalesce, split_field, join_field, startswith_field, relative_field
+from mo_dots import listwrap, coalesce, split_field, join_field, startswith_field, relative_field, concat_field
 from mo_logs import Log
 from mo_math import Math
 
-from jx_sqlite import GUID, quote_table, get_column, _make_column_name, sql_text_array_to_set, STATS, sql_aggs, PARENT, ColumnMapping
+from jx_sqlite import UID, quote_table, get_column, _make_column_name, sql_text_array_to_set, STATS, sql_aggs, PARENT, ColumnMapping
 from jx_sqlite.setop_table import SetOpTable
 from pyLibrary.queries import jx
 from pyLibrary.queries.domains import DefaultDomain, TimeDomain, DurationDomain
@@ -48,8 +48,10 @@ class AggsTable(SetOpTable):
         from_sql = join_field([base_table] + split_field(tables[0].nest)) + " " + tables[0].alias
         previous = tables[0]
         for t in tables[1::]:
-            from_sql += "\nLEFT JOIN\n" + join_field([base_table] + split_field(
-                t.nest)) + " " + t.alias + " ON " + t.alias + "." + PARENT + " = " + previous.alias + "." + GUID
+            from_sql += (
+                "\nLEFT JOIN\n" + quote_table(concat_field(base_table, t.nest)) + " " + t.alias + 
+                " ON " + t.alias + "." + PARENT + " = " + previous.alias + "." + UID
+            )
 
         # SHIFT THE COLUMN DEFINITIONS BASED ON THE NESTED QUERY DEPTH
         ons = []
@@ -224,7 +226,7 @@ class AggsTable(SetOpTable):
                     "\nSELECT " + ",".join(domain_names) + " FROM ("
                                                            "\nSELECT " + ",\n".join(
                         g + " AS " + n for n, g in zip(domain_names, vals)) +
-                    "\nFROM\n" + quote_table(self.sf.fact) + " " + nest_to_alias["."]
+                    "\nFROM\n" + quote_table(frum) + " " + nest_to_alias["."]
                 )
                 if not query_edge.allowNulls:
                     domain +=  "\nWHERE\n" + " AND ".join(g + " IS NOT NULL" for g in vals)

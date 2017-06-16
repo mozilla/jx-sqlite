@@ -130,7 +130,7 @@ class QueryTable(AggsTable):
 
 
         result = self.db.query(command)
-
+        
         column_names = query.edges.name + query.groupby.name + listwrap(query.select).name
         if query.format == "container":
             output = QueryTable(new_table, db=self.db, uid=self.uid, exists=True)
@@ -338,6 +338,9 @@ class QueryTable(AggsTable):
 
         return output
 
+    def query_metadata(self, query):        
+        Log.error("Not implemented yet")
+        
     def _window_op(self, query, window):
         # http://www2.sqlite.org/cvstrac/wiki?p=UnsupportedSqlAnalyticalFunctions
         if window.value == "rownum":

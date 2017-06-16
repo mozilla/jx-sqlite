@@ -4,7 +4,7 @@ from copy import copy
 from mo_dots import relative_field, listwrap, split_field, join_field, wrap, startswith_field, concat_field, Null, coalesce
 from mo_logs import Log
 
-from jx_sqlite import quote_table, typed_column, GUID, quoted_UID, sql_types, quoted_PARENT, ORDER, quoted_ORDER
+from jx_sqlite import quote_table, typed_column, UID, quoted_UID, sql_types, quoted_PARENT, ORDER, quoted_ORDER
 from jx_sqlite import untyped_column
 from pyLibrary.queries import jx
 from pyLibrary.queries.meta import Column
@@ -65,7 +65,7 @@ class Snowflake(object):
 
         return tables_found
 
-    def create_fact(self, uid=GUID):
+    def create_fact(self, uid=UID):
         """
         MAKE NEW TABLE WITH GIVEN guid
         :param uid: name, or list of names, for the GUID
@@ -76,7 +76,7 @@ class Snowflake(object):
         uid = listwrap(uid)
         new_columns = []
         for u in uid:
-            if u == GUID:
+            if u == UID:
                 pass
             else:
                 c = Column(
