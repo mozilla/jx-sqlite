@@ -26,7 +26,6 @@ from pyLibrary.meta import DataClass
 from pyLibrary.sql.sqlite import quote_table
 
 UID = "__id__"  # will not be quoted
-GUID = "__guid__"
 ORDER = "__order__"
 PARENT = "__parent__"
 COLUMN = "__column"
