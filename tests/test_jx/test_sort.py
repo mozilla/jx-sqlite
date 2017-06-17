@@ -41,7 +41,7 @@ class TestSorting(BaseTestCase):
                 "data": [6, 4, 3, 2, 1]
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_edge_and_sort(self):
         test = {
@@ -90,7 +90,7 @@ class TestSorting(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_2edge_and_sort(self):
         test = {
@@ -118,12 +118,10 @@ class TestSorting(BaseTestCase):
                 "data": [
                     {"a": "c", "b": 1, "count": 2},
                     {"a": "c", "b": 0, "count": 2},
-                    {"a": "c", "count": 0},
                     {"a": "a", "b": 1, "count": 3},
                     {"a": "a", "b": 0, "count": 2},
                     {"a": "a", "count": 1},
                     {"b": 1, "count": 1},
-                    {"b":0, "count": 0},
                     {"count": 1}
                 ]
             },
@@ -133,12 +131,10 @@ class TestSorting(BaseTestCase):
                 "data": [
                     ["c", 1, 2],
                     ["c", 0, 2],
-                    ['c', NULL, 0],
                     ["a", 1, 3],
                     ["a", 0, 2],
                     ["a", NULL, 1],
                     [NULL, 1, 1],
-                    [NULL, 0, 0],
                     [NULL, NULL, 1]
                 ]
             },
@@ -220,7 +216,7 @@ class TestSorting(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_groupby2_and_sort(self):
         test = {
@@ -267,7 +263,7 @@ class TestSorting(BaseTestCase):
                 ]
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_groupby2b_and_sort(self):
         test = {
@@ -332,7 +328,7 @@ class TestSorting(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_groupby2c_and_sort(self):
         test = {
@@ -391,11 +387,10 @@ class TestSorting(BaseTestCase):
                         {"value": 1},
                         {"value": 0}
                     ]}}
-
                  ],
                 "data": {
                     "count": [[2, 2, 0], [3, 2, 1], [1, 0, 1]]
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)

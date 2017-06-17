@@ -41,7 +41,7 @@ class TestAggOps(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_max(self):
         test = {
@@ -66,7 +66,7 @@ class TestAggOps(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     @skipIf(global_settings.use == "sqlite", "not expected to pass yet")
     def test_median(self):
@@ -92,7 +92,7 @@ class TestAggOps(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     @skipIf(global_settings.use == "sqlite", "not expected to pass yet")
     def test_percentile(self):
@@ -118,7 +118,7 @@ class TestAggOps(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     @skipIf(global_settings.use=="sqlite", "not expected to pass yet")
     def test_stats(self):
@@ -174,7 +174,7 @@ class TestAggOps(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_bad_percentile(self):
         test = {
@@ -188,7 +188,7 @@ class TestAggOps(BaseTestCase):
             }
         }
 
-        self.assertRaises("Expecting percentile to be a float", self.utils.execute_es_tests, test)
+        self.assertRaises("Expecting percentile to be a float", self.utils.execute_tests, test)
 
     def test_many_aggs_on_one_column(self):
         # ES WILL NOT ACCEPT TWO (NAIVE) AGGREGATES ON SAME FIELD, COMBINE THEM USING stats AGGREGATION
@@ -214,7 +214,7 @@ class TestAggOps(BaseTestCase):
                 ]
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     @skipIf(global_settings.use == "elasticsearch", "require dynamic typing before primitives are expected to pass")
     def test_simplest_on_value(self):
@@ -240,7 +240,7 @@ class TestAggOps(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test, tjson=True)
+        self.utils.execute_tests(test, tjson=True)
 
     def test_max_on_value(self):
         test = {
@@ -265,7 +265,7 @@ class TestAggOps(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test, tjson=True)
+        self.utils.execute_tests(test, tjson=True)
 
     def test_max_object_on_value(self):
         test = {
@@ -290,7 +290,7 @@ class TestAggOps(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test, tjson=True)
+        self.utils.execute_tests(test, tjson=True)
 
     @skipIf(global_settings.use in ["sqlite", "elasticsearch"], "not expected to pass yet")
     def test_median_on_value(self):
@@ -316,7 +316,7 @@ class TestAggOps(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test, tjson=True)
+        self.utils.execute_tests(test, tjson=True)
 
     @skipIf(global_settings.use == "elasticsearch", "require dynamic typing before primitives are expected to pass")
     def test_many_aggs_on_value(self):
@@ -343,7 +343,7 @@ class TestAggOps(BaseTestCase):
                 ]
             }
         }
-        self.utils.execute_es_tests(test, tjson=True)
+        self.utils.execute_tests(test, tjson=True)
 
     def test_cardinality(self):
         test = {
@@ -370,7 +370,7 @@ class TestAggOps(BaseTestCase):
                 "data": {"a": 3, "b": 1, "c": 0, "d": 1}
             }
         }
-        self.utils.execute_es_tests(test, tjson=False)
+        self.utils.execute_tests(test, tjson=False)
 
     @skipIf(global_settings.use == "elasticsearch", "requires scripted metric aggregations")  # https://www.elastic.co/guide/en/elasticsearch/reference/current/search-aggregations-metrics-scripted-metric-aggregation.html
     def test_max_on_tuple(self):
@@ -396,7 +396,7 @@ class TestAggOps(BaseTestCase):
                 "data": {"max": [3, 3], "min": [1, 1]}
             }
         }
-        self.utils.execute_es_tests(test, tjson=False)
+        self.utils.execute_tests(test, tjson=False)
 
     def test_union(self):
         test = {
@@ -430,4 +430,4 @@ class TestAggOps(BaseTestCase):
                 "data": {"b": {"x", "y", "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "z"}}
             }
         }
-        self.utils.execute_es_tests(test, tjson=False)
+        self.utils.execute_tests(test, tjson=False)

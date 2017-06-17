@@ -119,7 +119,7 @@ class TestEdge2(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_sum_rows(self):
         test = {
@@ -192,7 +192,7 @@ class TestEdge2(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_avg_rows_w_default(self):
         test = {
@@ -291,7 +291,7 @@ class TestEdge2(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_sum_rows_w_domain(self):
         test = {
@@ -391,7 +391,7 @@ class TestEdge2(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_edge_using_missing_between(self):
         test = {
@@ -437,7 +437,7 @@ class TestEdge2(BaseTestCase):
                 ]}
 
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
 
 two_dim_test_data = [

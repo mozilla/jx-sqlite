@@ -50,7 +50,7 @@ class TestGroupBy2(BaseTestCase):
                 ]
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_sum_rows(self):
         test = {
@@ -89,7 +89,7 @@ class TestGroupBy2(BaseTestCase):
                 ]
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_sum_rows_w_domain(self):
         test = {
@@ -128,7 +128,7 @@ class TestGroupBy2(BaseTestCase):
                 ]
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
 
 # TODO:  APPEARS THERE IS A COLUMN SWAP PROBLEM, NOTICE THE QUERY IS DEEP

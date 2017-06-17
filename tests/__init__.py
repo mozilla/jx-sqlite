@@ -18,7 +18,7 @@ import subprocess
 from copy import deepcopy
 
 import mo_json_config
-from mo_dots import wrap, coalesce, unwrap, listwrap, Data
+from mo_dots import wrap, coalesce, unwrap, listwrap, Data, startswith_field
 from mo_kwargs import override
 from mo_logs import Log, Except, constants
 from mo_logs.exceptions import extract_stack
@@ -55,7 +55,7 @@ class SQLiteUtils(object):
     def not_real_service(self):
         return True
 
-    def execute_es_tests(self, subtest, tjson=False):
+    def execute_tests(self, subtest, tjson=False):
         subtest = wrap(subtest)
         subtest.name = extract_stack()[1]['method']
 
@@ -84,7 +84,7 @@ class SQLiteUtils(object):
             Log.error("Do not know how to handle")
 
 
-        return Data()
+        return Data({"index": subtest.query["from"]})
 
     def send_queries(self, subtest):
         subtest = wrap(subtest)
@@ -117,7 +117,12 @@ class SQLiteUtils(object):
 
     def execute_query(self, query):
         try:
-            return self._index.query(deepcopy(query))
+            if startswith_field(query["from"], self._index.sf.fact):
+                return self._index.query(deepcopy(query))
+            elif query["from"] == "meta.columns":
+                return self._index.query_metadata(deepcopy(query))
+            else:
+                Log.error("Do not know how to handle")
         except Exception as e:
             Log.error("Failed query", e)
 

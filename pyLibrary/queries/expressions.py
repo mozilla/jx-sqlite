@@ -279,22 +279,30 @@ class Variable(Expression):
             # DOES NOT EXIST
             return wrap([{"name": ".", "sql": {"0": "NULL"}, "nested_path": ROOT_PATH}])
         acc = Data()
-        for col in cols:
-            if col.type == OBJECT:
-                prefix = self.var + "."
-                for cn, cs in schema.items():
-                    if cn.startswith(prefix):
-                        for child_col in cs:
-                            acc[literal_field(child_col.nested_path[0])][literal_field(schema.get_column_name(child_col))][json_type_to_sql_type[child_col.type]] = quote_column(child_col.es_column).sql
-            else:
-                nested_path = col.nested_path[0]
-                acc[literal_field(nested_path)][literal_field(schema.get_column_name(col))][json_type_to_sql_type[col.type]] = quote_column(col.es_column).sql
+        if boolean:
+            c = cols[0]
+            nested_path = c.nested_path
+            sql = {"b": quote_column(c.es_column).sql}
+            return wrap([
+                    {"name": ".", "nested_path": nested_path, "sql": sql}
+                ]) 
+        else:
+            for col in cols:
+                if col.type == OBJECT:
+                    prefix = self.var + "."
+                    for cn, cs in schema.items():
+                        if cn.startswith(prefix):
+                            for child_col in cs:
+                                acc[literal_field(child_col.nested_path[0])][literal_field(schema.get_column_name(child_col))][json_type_to_sql_type[child_col.type]] = quote_column(child_col.es_column).sql
+                else:
+                    nested_path = col.nested_path[0]
+                    acc[literal_field(nested_path)][literal_field(schema.get_column_name(col))][json_type_to_sql_type[col.type]] = quote_column(col.es_column).sql
 
-        return wrap([
-            {"name": relative_field(cname, self.var), "sql": types, "nested_path": nested_path}
-            for nested_path, pairs in acc.items() for cname, types in pairs.items()
-        ])
-
+            return wrap([
+                {"name": relative_field(cname, self.var), "sql": types, "nested_path": nested_path}
+                for nested_path, pairs in acc.items() for cname, types in pairs.items()
+            ]) 
+        
     def __call__(self, row, rownum=None, rows=None):
         path = split_field(self.var)
         for p in path:
@@ -2407,7 +2415,7 @@ class FindOp(Expression):
             if start_index == "0":
                 index = "INSTR(" + value + "," + find + ")-1"
             else:
-                index = "INSTR(SUBSTR(" + value + "," + start_index + "+1)," + find + ")+" + start_index
+                index = "INSTR(SUBSTR(" + value + "," + start_index + "+1)," + find + ")+" + start_index + "-1"
 
             sql = "CASE WHEN (" + test + ") THEN (" + index + ") ELSE (" + default + ") END"
             return wrap([{"name": ".", "sql": {"n": sql}}])

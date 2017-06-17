@@ -138,7 +138,7 @@ class TestTime(BaseTestCase):
                 "data": {"v": [r.v for r in expected_list_1]}
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_time2_variables(self):
         test = {
@@ -203,7 +203,7 @@ class TestTime(BaseTestCase):
                 ]}
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_time_expression(self):
         test = {
@@ -253,4 +253,4 @@ class TestTime(BaseTestCase):
                 "data": {"v": [e.v for e in expected3]}
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
