@@ -127,19 +127,8 @@ class QueryTable(AggsTable):
             op = self._set_op(query, frum)
             return op
 
-
-
         result = self.db.query(command)
-        res = self.db.query("""
-        SELECT "a.$number",
-            CASE 
-                WHEN "b.$boolean"
-                    THEN 0
-                ELSE 1
-                END
-        FROM testing __a__
-        """)
-        res2 = self.db.query("select * from testing")
+
         column_names = query.edges.name + query.groupby.name + listwrap(query.select).name
         if query.format == "container":
             output = QueryTable(new_table, db=self.db, uid=self.uid, exists=True)
