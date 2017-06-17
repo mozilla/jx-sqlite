@@ -11,9 +11,11 @@
 from __future__ import division
 from __future__ import unicode_literals
 
+from unittest import skipIf
+
 from mo_dots import wrap
 
-from tests.test_jx import BaseTestCase, TEST_TABLE, NULL
+from tests.test_jx import BaseTestCase, TEST_TABLE, NULL, global_settings
 
 lots_of_data = wrap([{"a": i} for i in range(30)])
 
@@ -266,6 +268,7 @@ class TestSetOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
+    @skipIf(global_settings.use=="sqlite", "Can't handle array of primitives for now")
     def test_select_when_on_multivalue(self):
         test = {
             "data": [
@@ -299,6 +302,7 @@ class TestSetOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
+    @skipIf(global_settings.use=="sqlite", "Can't handle array of premitives for now")
     def test_select_in_w_multivalue(self):
         test = {
             "data": [
@@ -335,17 +339,17 @@ class TestSetOps(BaseTestCase):
     def test_select_mult_w_when(self):
         test = {
             "data": [
-                {"a": 0, "b": False},
-                {"a": 1, "b": False},
-                {"a": 2, "b": True},
-                {"a": 3, "b": False},
-                {"a": 4, "b": True},
-                {"a": 5, "b": False},
-                {"a": 6, "b": True},
-                {"a": 7, "b": True},
-                {"a": 8},  # COUNTED, "b" IS NOT true
-                {"b": True},  # NOT COUNTED
-                {"b": False},  # NOT COUNTED
+                {"a": 0, "b": False},                  # 0*1
+                {"a": 1, "b": False},                  # 1*1 = 1
+                {"a": 2, "b": True},                   # 2*0
+                {"a": 3, "b": False},                  # 3*1 = 3
+                {"a": 4, "b": True},                   # 4*0
+                {"a": 5, "b": False},                  # 5*1 = 5
+                {"a": 6, "b": True},                   # 6*0
+                {"a": 7, "b": True},                   # 7*0
+                {"a": 8},  # COUNTED, "b" IS NOT true  # 8*1 = 8
+                {"b": True},  # NOT COUNTED              null * 0 = null
+                {"b": False},  # NOT COUNTED             null * 1 = null
             ],
             "query": {
                 "from": TEST_TABLE,

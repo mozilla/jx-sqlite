@@ -15,7 +15,7 @@ from __future__ import unicode_literals
 
 from mo_kwargs import override
 
-from jx_sqlite import GUID
+from jx_sqlite import UID
 from jx_sqlite.snowflake import Snowflake
 from pyLibrary.queries import jx
 from pyLibrary.queries.containers import Container
@@ -26,7 +26,7 @@ _config=None
 
 class BaseTable(Container):
     @override
-    def __init__(self, name, db=None, uid=GUID, kwargs=None):
+    def __init__(self, name, db=None, uid=UID, kwargs=None):
         """
         :param name: NAME FOR THIS TABLE
         :param db: THE DB TO USE
