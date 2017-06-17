@@ -280,12 +280,15 @@ class Variable(Expression):
             return wrap([{"name": ".", "sql": {"0": "NULL"}, "nested_path": ROOT_PATH}])
         acc = Data()
         if boolean:
-            c = cols[0]
-            nested_path = c.nested_path
-            sql = {"b": quote_column(c.es_column).sql}
-            return wrap([
-                    {"name": ".", "nested_path": nested_path, "sql": sql}
-                ]) 
+            for col in cols:
+                nested_path = col.nested_path[0]
+                if col.type == OBJECT:
+                    value = "1"
+                elif col.type == "boolean":
+                    value = quote_column(col.es_column).sql
+                else:
+                    value = "(" + quote_column(col.es_column).sql + ") IS NOT NULL"
+                acc[literal_field(nested_path)][literal_field(schema.get_column_name(col))]['b'] = value
         else:
             for col in cols:
                 if col.type == OBJECT:
@@ -298,11 +301,11 @@ class Variable(Expression):
                     nested_path = col.nested_path[0]
                     acc[literal_field(nested_path)][literal_field(schema.get_column_name(col))][json_type_to_sql_type[col.type]] = quote_column(col.es_column).sql
 
-            return wrap([
-                {"name": relative_field(cname, self.var), "sql": types, "nested_path": nested_path}
-                for nested_path, pairs in acc.items() for cname, types in pairs.items()
-            ]) 
-        
+        return wrap([
+            {"name": relative_field(cname, self.var), "sql": types, "nested_path": nested_path}
+            for nested_path, pairs in acc.items() for cname, types in pairs.items()
+        ])
+
     def __call__(self, row, rownum=None, rows=None):
         path = split_field(self.var)
         for p in path:
@@ -1365,8 +1368,8 @@ class NotOp(Expression):
         return wrap([{"name": ".", "sql": {
             "0": "1",
             "b": "NOT (" + sql.b + ")",
-            "n": "(" + sql.n + " IS NULL)",
-            "s": "(" + sql.s + " IS NULL)"
+            "n": "(" + sql.n + ") IS NULL",
+            "s": "(" + sql.s + ") IS NULL"
         }}])
 
     def vars(self):
@@ -1715,10 +1718,10 @@ class MultiOp(Expression):
                 return wrap([{"name": ".", "sql": {"0": "NULL"}}])
             sql_terms.append(sql)
 
-        if self.nulls.json=="true":
+        if self.nulls.json == "true":
             sql = (
                 " CASE " +
-                " WHEN " + " AND ".join("(" + s + " IS NULL)" for s in sql_terms) +
+                " WHEN " + " AND ".join("((" + s + ") IS NULL)" for s in sql_terms) +
                 " THEN " + default +
                 " ELSE " + op.join("COALESCE(" + s + ", 0)" for s in sql_terms) +
                 " END"
@@ -1727,7 +1730,7 @@ class MultiOp(Expression):
         else:
             sql = (
                 " CASE " +
-                " WHEN " + " OR ".join("(" + s + " IS NULL)" for s in sql_terms) +
+                " WHEN " + " OR ".join("((" + s + ") IS NULL)" for s in sql_terms) +
                 " THEN " + default +
                 " ELSE " + op.join("(" + s + ")" for s in sql_terms) +
                 " END"
@@ -1776,12 +1779,12 @@ class RegExpOp(Expression):
         return "re.match(" + quote(json2value(self.pattern.json) + "$") + ", " + self.var.to_python() + ")"
 
     def to_sql(self, schema, not_null=False, boolean=False):
-        pattern = schema.db.quote_value(convert.json2value(self.pattern.json)) 
+        pattern = schema.db.quote_value(convert.json2value(self.pattern.json))
         value = self.var.to_sql(schema)[0].sql.s
         return wrap([
             {"name": ".", "sql": {"b": value + " REGEXP " + pattern}}
         ])
-        
+
     def to_esfilter(self):
         return {"regexp": {self.var.var: json2value(self.pattern.json)}}
 
@@ -1889,11 +1892,11 @@ class MissingOp(Expression):
         for c in field:
             for t, v in c.sql.items():
                 if t == "b":
-                    acc.append(v + " IS NULL")
+                    acc.append("(" + v + ") IS NULL")
                 if t == "s":
-                    acc.append("(" + v + " IS NULL OR " + v + "='')")
+                    acc.append("((" + v + ") IS NULL OR " + v + "='')")
                 if t == "n":
-                    acc.append(v + " IS NULL")
+                    acc.append("(" + v + ") IS NULL")
 
         if not acc:
             return wrap([{"name": ".", "sql": {"b": "1"}}])
@@ -2645,9 +2648,9 @@ class InOp(Expression):
         if j_value:
             var = self.value.to_sql(schema)
             return " OR ".join("(" + var + "==" + sql_quote(v) + ")" for v in j_value)
-        else: 
+        else:
             return wrap([{"name": ".", "sql": {"b": "0"}}])
-            
+
     def to_esfilter(self):
         if isinstance(self.value, Variable):
             return {"terms": {self.value.var: json2value(self.superset.json)}}
