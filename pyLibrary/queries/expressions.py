@@ -274,7 +274,7 @@ class Variable(Expression):
         return output
 
     def to_sql(self, schema, not_null=False, boolean=False):
-        cols = [c for cname, cs in schema.items() if startswith_field(cname, self.var) for c in cs]
+        cols = [c for cname, cs in schema.items() if startswith_field(cname, self.var.replace("\\.", ".")) for c in cs]
         if not cols:
             # DOES NOT EXIST
             return wrap([{"name": ".", "sql": {"0": "NULL"}, "nested_path": ROOT_PATH}])
@@ -299,7 +299,7 @@ class Variable(Expression):
                     acc[literal_field(nested_path)][literal_field(schema.get_column_name(col))][json_type_to_sql_type[col.type]] = quote_column(col.es_column).sql
 
             return wrap([
-                {"name": relative_field(cname, self.var), "sql": types, "nested_path": nested_path}
+                {"name": relative_field(cname, self.var.replace("\\.", ".")), "sql": types, "nested_path": nested_path}
                 for nested_path, pairs in acc.items() for cname, types in pairs.items()
             ]) 
         
