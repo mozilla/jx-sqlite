@@ -168,7 +168,7 @@ class SetOpTable(InsertTable):
                                     sql_selects.append(unsorted_sql + " AS " + column_alias)
                                     index_to_column[column_number] = nested_doc_details['index_to_column'][column_number] = ColumnMapping(
                                         push_name=s.name,
-                                        push_column_name=s.name,
+                                        push_column_name=s.name.replace("\\.", "."),
                                         push_column=si,
                                         push_child=column.name,
                                         pull=get_column(column_number),
@@ -318,7 +318,7 @@ class SetOpTable(InsertTable):
 
                 num_rows = len(data)
                 num_cols = MAX([c.push_column for c in cols]) + 1 if len(cols) else 0
-                map_index_to_name = {c.push_column: c.push_name for c in cols}
+                map_index_to_name = {c.push_column: c.push_column_name for c in cols}
                 temp_data = [[None]*num_rows for _ in range(num_cols)]
                 for rownum, d in enumerate(data):
                     for c in cols:
@@ -369,7 +369,7 @@ class SetOpTable(InsertTable):
                 num_column = MAX([c.push_column for c in cols])+1
                 header = [None]*num_column
                 for c in cols:
-                    header[c.push_column] = c.push_name
+                    header[c.push_column] = c.push_column_name
 
                 output_data = []
                 for d in data:
