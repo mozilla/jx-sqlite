@@ -119,7 +119,7 @@ class TestSchemaMerging(BaseTestCase):
             ],
             "query": {
                 "from": TEST_TABLE,
-                "select": "a.html"
+                "select": "a\\.html"
             },
             "expecting_list": {
                 "meta": {"format": "list"},
