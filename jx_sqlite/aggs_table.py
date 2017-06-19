@@ -507,7 +507,7 @@ class AggsTable(SetOpTable):
                 index_to_column[column_number] = ColumnMapping(
                     is_edge=True,
                     push_name=e.name,
-                    push_column_name=e.name,
+                    push_column_name=e.name.replace("\\.", "."),
                     push_column=i,
                     push_child=s.name,
                     pull=get_column(column_number),
