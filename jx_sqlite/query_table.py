@@ -134,7 +134,10 @@ class QueryTable(AggsTable):
         if query.format == "container":
             output = QueryTable(new_table, db=self.db, uid=self.uid, exists=True)
         elif query.format == "cube" or (not query.format and query.edges):
-            column_names = [index_to_columns[i].push_column_name for i in sorted(index_to_columns.keys())]
+            column_names= [None]*(max(c.push_column for c in index_to_columns.values()) + 1)
+            for c in index_to_columns.values():
+                column_names[c.push_column] = c.push_column_name
+                
             if len(query.edges) == 0 and len(query.groupby) == 0:
                 data = {n: Data() for n in column_names}
                 for s in index_to_columns.values():
