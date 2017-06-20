@@ -443,7 +443,11 @@ class SetOpTable(InsertTable):
         :param index_to_sql_select:
         :return: SQL FOR ONE NESTED LEVEL
         """
-
+        
+        nest_to_alias = {
+            nested_path: "__" + unichr(ord('a') + i) + "__"
+            for i, (nested_path, sub_table) in enumerate(self.sf.tables.items())
+        }
         parent_alias = "a"
         from_clause = ""
         select_clause = []
@@ -464,7 +468,11 @@ class SetOpTable(InsertTable):
                 for select_index, s in enumerate(selects):
                     sql_select = index_to_sql_select.get(select_index)
                     if not sql_select:
-                        select_clause.append(selects[select_index])
+                        sql = selects[select_index]
+                        if nested_path != "." and parent_alias not in sql and alias not in sql:
+                            select_clause.append("NULL AS " + _make_column_name(select_index))
+                        else:
+                            select_clause.append(selects[select_index])
                         continue
 
                     if startswith_field(sql_select.nested_path[0], nested_path):
@@ -479,6 +487,7 @@ class SetOpTable(InsertTable):
                     from_clause += "\nLEFT JOIN " + quote_table(concat_field(self.sf.fact,sub_table.name)) + " " + alias + "\n" \
                                                                                                 " ON " + alias + "." + quoted_PARENT + " = " + parent_alias + "." + quoted_UID + "\n"
                     where_clause = "(" + where_clause + ") AND " + alias + "." + quote_table(ORDER) + " > 0\n"
+                parent_alias = alias
 
             elif startswith_field(primary_nested_path, nested_path):
                 # PARENT TABLE
@@ -490,6 +499,7 @@ class SetOpTable(InsertTable):
                     from_clause += "\nLEFT JOIN " + quote_table(concat_field(self.sf.fact,sub_table.name)) + " " + alias + \
                                    " ON " + alias + "." + quoted_PARENT + " = " + parent_alias + "." + quoted_UID
                     where_clause = "(" + where_clause + ") AND " + parent_alias + "." + quote_table(ORDER) + " > 0\n"
+                parent_alias = alias
 
             elif startswith_field(nested_path, primary_nested_path):
                 # CHILD TABLE
@@ -512,7 +522,6 @@ class SetOpTable(InsertTable):
                 # SIBLING PATHS ARE IGNORED
                 continue
 
-            parent_alias = alias
 
         sql = "\nUNION ALL\n".join(
             ["SELECT\n" + ",\n".join(select_clause) + from_clause + "\nWHERE\n" + where_clause] +
