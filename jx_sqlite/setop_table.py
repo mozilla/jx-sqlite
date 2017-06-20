@@ -443,11 +443,7 @@ class SetOpTable(InsertTable):
         :param index_to_sql_select:
         :return: SQL FOR ONE NESTED LEVEL
         """
-        
-        nest_to_alias = {
-            nested_path: "__" + unichr(ord('a') + i) + "__"
-            for i, (nested_path, sub_table) in enumerate(self.sf.tables.items())
-        }
+       
         parent_alias = "a"
         from_clause = ""
         select_clause = []
