@@ -24,7 +24,7 @@ from jx_sqlite.base_table import BaseTable
 from pyLibrary.queries.containers import STRUCT
 from pyLibrary.queries.expressions import jx_expression
 from pyLibrary.queries.meta import Column
-from pyLibrary.sql.sqlite import quote_value
+from pyLibrary.sql.sqlite import quote_value, quote_column
 
 
 class InsertTable(BaseTable):
@@ -254,7 +254,7 @@ class InsertTable(BaseTable):
                     for path, _ in nested_tables.items():
                         if startswith_field(cname, path) and len(deeper_nested_path) < len(path):
                             deeper_nested_path = path
-                            
+
                     c = Column(
                         names={".": cname},
                         type=value_type,
@@ -283,7 +283,7 @@ class InsertTable(BaseTable):
                         )
                     for i, r in enumerate(v):
                         child_uid = self.next_uid()
-                        _flatten(r, child_uid, uid, i, cname, deeper_nested_path)                   
+                        _flatten(r, child_uid, uid, i, cname, deeper_nested_path)
                 elif value_type == "object":
                     row[c.es_column] = "."
                     _flatten(v, uid, parent_id, order, cname, nested_path, row=row)
