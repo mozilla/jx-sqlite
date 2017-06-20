@@ -13,7 +13,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
-from mo_dots import listwrap, Data, unwraplist, split_field, join_field, startswith_field, unwrap, relative_field, concat_field
+from mo_dots import listwrap, Data, unwraplist, split_field, join_field, startswith_field, unwrap, relative_field, concat_field, literal_field
 from mo_math import UNION, MAX
 
 from jx_sqlite import quote_table, quoted_UID, get_column, _make_column_name, ORDER, COLUMN, set_column, quoted_PARENT, ColumnMapping
@@ -145,8 +145,8 @@ class SetOpTable(InsertTable):
                                     column_alias = _make_column_name(column_number)
                                     sql_selects.append(unsorted_sql + " AS " + column_alias)
                                     index_to_column[column_number] = nested_doc_details['index_to_column'][column_number] = ColumnMapping(
-                                        push_name=concat_field(s.name, column.name),
-                                        push_column_name=concat_field(s.name, column.name),
+                                        push_name=literal_field(concat_field(s.name, column.name).lstrip(".")),
+                                        push_column_name=concat_field(s.name, column.name).lstrip("."),
                                         push_column=si,
                                         push_child=".",
                                         pull=get_column(column_number),
