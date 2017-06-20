@@ -271,9 +271,9 @@ class SetOpTable(InsertTable):
                                 doc = value
                             elif doc is None:
                                 doc = Data()
-                                doc[relative_path] = value
+                                doc[relative_path.replace("\\.", ".")] = value
                             else:
-                                doc[relative_path] = value
+                                doc[relative_path.replace("\\.", ".")] = value
 
                 for child_details in nested_doc_details['children']:
                     # EACH NESTED TABLE MUST BE ASSEMBLED INTO A LIST OF OBJECTS
@@ -292,9 +292,9 @@ class SetOpTable(InsertTable):
                                 doc = nested_value
                             elif doc is None:
                                 doc = Data()
-                                doc[relative_path] = nested_value
+                                doc[relative_path.replace("\\.", ".")] = nested_value
                             else:
-                                doc[relative_path] = nested_value
+                                doc[relative_path.replace("\\.", ".")] = nested_value
 
                 output.append(doc)
 
