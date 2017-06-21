@@ -263,7 +263,7 @@ class SetOpTable(InsertTable):
 
                             if isinstance(query.select, list) or isinstance(query.select.value, LeavesOp):
                                 # ASSIGN INNER PROPERTIES
-                                relative_path=join_field([c.push_name]+split_field(c.push_child))
+                                relative_path=join_field([c.push_name]+split_field(c.push_child)).replace("\\.", ".")
                             else:           # FACT IS EXPECTED TO BE A SINGLE VALUE, NOT AN OBJECT
                                 relative_path=c.push_child
 
@@ -284,7 +284,7 @@ class SetOpTable(InsertTable):
                             push_name = child_details['nested_path'][0]
                             if isinstance(query.select, list) or isinstance(query.select.value, LeavesOp):
                                 # ASSIGN INNER PROPERTIES
-                                relative_path=relative_field(push_name, curr_nested_path)
+                                relative_path=relative_field(push_name, curr_nested_path).replace("\\.", ".")
                             else:           # FACT IS EXPECTED TO BE A SINGLE VALUE, NOT AN OBJECT
                                 relative_path="."
 
