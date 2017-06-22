@@ -230,14 +230,26 @@ ColumnMapping = DataClass(
             "name":"num_push_columns",
             "nulls": True
         },
-        "push_name",    # NAME OF THE PROPERTY (USED BY LIST FORMAT ONLY)
-        "push_child",   # PATH INTO COLUMN WHERE VALUE IS STORED ("." MEANS COLUMN HOLDS PRIMITIVE VALUE)
-        {
-            "name": "push_column",  # THE COLUMN NUMBER
+        {               # NAME OF THE PROPERTY (USED BY LIST FORMAT ONLY)
+            "name": "push_name",
+            "nulls": True
+        },    
+        {               # PATH INTO COLUMN WHERE VALUE IS STORED ("." MEANS COLUMN HOLDS PRIMITIVE VALUE)
+            "name": "push_child",
             "nulls": True
         },
-        "push_column_name",  # THE COLUMN NAME FOR TABLES AND CUBES (WITH NO ESCAPING DOTS, NOT IN LEAF FORM)
-        "pull",         # A FUNCTION THAT WILL RETURN A VALUE
+        {               # THE COLUMN NUMBER
+            "name": "push_column",  
+            "nulls": True
+        },
+        {               # THE COLUMN NAME FOR TABLES AND CUBES (WITH NO ESCAPING DOTS, NOT IN LEAF FORM)
+            "name": "push_column_name", 
+            "nulls": True 
+        }, 
+        {               # A FUNCTION THAT WILL RETURN A VALUE
+            "name": "pull",
+            "nulls": True
+        },
         {               # A LIST OF MULTI-SQL REQUIRED TO GET THE VALUE FROM THE DATABASE
             "name": "sql",
             "type": list
@@ -248,7 +260,10 @@ ColumnMapping = DataClass(
             "type": list,
             "default": ["."]
         },
-        "column_alias"
+        {
+            "name": "column_alias",
+            "nulls": True
+        }
     ],
     constraint={"and": [
         {"in": {"type": ["null", "boolean", "number", "string", "object"]}},
