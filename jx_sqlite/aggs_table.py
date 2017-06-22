@@ -123,7 +123,7 @@ class AggsTable(SetOpTable):
                     pull=pull,
                     sql=sql,
                     type=sql_type_to_json_type[json_type],
-                    column_alias=None,                                                            
+                    column_alias=sql_name,                                                            
                 )
 
             vals = [v for t, v in edge_values]
