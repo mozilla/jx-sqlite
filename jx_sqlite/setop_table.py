@@ -117,19 +117,20 @@ class SetOpTable(InsertTable):
             column_number = index_to_uid[nested_path] = nested_doc_details['id_coord'] = len(sql_selects)
             sql_select = alias + "." + quoted_UID
             sql_selects.append(sql_select + " AS " + _make_column_name(column_number))
-            index_to_column[column_number]=ColumnMapping(
-                sql=sql_select,
-                type=json_type,
-                nested_path=[nested_path],            # fake the real nested path, we only look at [0] anyway               
-                column_alias=_make_column_name(column_number)
-            
-            )
+            if nested_path !=".":
+                index_to_column[column_number]=ColumnMapping(
+                    sql=sql_select,
+                    type="number",
+                    nested_path=[nested_path],            # fake the real nested path, we only look at [0] anyway               
+                    column_alias=_make_column_name(column_number)
+                
+                )
             if nested_path != ".":
                 sql_select = alias + "." + quote_table(ORDER)
                 sql_selects.append(sql_select + " AS " + _make_column_name(column_number+1))
-                index_to_column[column_number]=ColumnMapping(
+                index_to_column[column_number+1]=ColumnMapping(
                     sql=sql_select,
-                    type=json_type,
+                    type="number",
                     nested_path=[nested_path],            # fake the real nested path, we only look at [0] anyway               
                     column_alias=_make_column_name(column_number+1)
                 
@@ -320,7 +321,7 @@ class SetOpTable(InsertTable):
                     output = unwraplist(output)
                     return output if output else None
 
-        cols = tuple(index_to_column.values())
+        cols = tuple([i for i in index_to_column.values() if i.push_name != None])
         rows = list(reversed(unwrap(result.data)))
         if rows:
             row = rows.pop()
@@ -421,7 +422,7 @@ class SetOpTable(InsertTable):
                     data = []
                     for rownum in result.data:
                         row = Data()
-                        for c in index_to_column.values():
+                        for c in cols:
                             if c.push_child == ".":
                                 row[c.push_name] = c.pull(rownum)
                             elif c.num_push_columns:
@@ -479,12 +480,8 @@ class SetOpTable(InsertTable):
                 # ADD SELECT CLAUSE HERE
                 for select_index, s in enumerate(selects):
                     sql_select = index_to_sql_select.get(select_index)
-                    if sql_select.push_column == None:
-                        sql = selects[select_index]
-                        if startswith_field(sql_select.nested_path[0], nested_path):
-                            select_clause.append(sql_select.sql + " AS " + sql_select.column_alias)                            
-                        else:
-                            select_clause.append("NULL AS " + _make_column_name(select_index))
+                    if not sql_select:
+                        select_clause.append(selects[select_index])
                         continue
 
                     if startswith_field(sql_select.nested_path[0], nested_path):
