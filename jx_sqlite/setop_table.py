@@ -117,9 +117,23 @@ class SetOpTable(InsertTable):
             column_number = index_to_uid[nested_path] = nested_doc_details['id_coord'] = len(sql_selects)
             sql_select = alias + "." + quoted_UID
             sql_selects.append(sql_select + " AS " + _make_column_name(column_number))
+            index_to_column[column_number]=ColumnMapping(
+                sql=sql_select,
+                type=json_type,
+                nested_path=[nested_path],            # fake the real nested path, we only look at [0] anyway               
+                column_alias=_make_column_name(column_number)
+            
+            )
             if nested_path != ".":
                 sql_select = alias + "." + quote_table(ORDER)
                 sql_selects.append(sql_select + " AS " + _make_column_name(column_number+1))
+                index_to_column[column_number]=ColumnMapping(
+                    sql=sql_select,
+                    type=json_type,
+                    nested_path=[nested_path],            # fake the real nested path, we only look at [0] anyway               
+                    column_alias=_make_column_name(column_number+1)
+                
+                )                
 
             # WE DO NOT NEED DATA FROM TABLES WE REQUEST NOTHING FROM
             if nested_path not in active_columns:
@@ -152,8 +166,8 @@ class SetOpTable(InsertTable):
                                         pull=get_column(column_number),
                                         sql=unsorted_sql,
                                         type=json_type,
-                                        nested_path=[nested_path]
-                                        # fake the real nested path, we only look at [0] anyway
+                                        column_alias=column_alias,                                        
+                                        nested_path=[nested_path]           # fake the real nested path, we only look at [0] anyway
                                     )
                                     si += 1
                         else:
@@ -174,6 +188,7 @@ class SetOpTable(InsertTable):
                                         pull=get_column(column_number),
                                         sql=unsorted_sql,
                                         type=json_type,
+                                        column_alias=column_alias,                                                                                
                                         nested_path=[nested_path]
                                         # fake the real nested path, we only look at [0] anyway
                                     )
@@ -198,6 +213,7 @@ class SetOpTable(InsertTable):
                         pull=get_column(column_number),
                         sql=unsorted_sql,
                         type=c.type,
+                        column_alias=column_alias,                                                                
                         nested_path=nested_path
                     )
 
@@ -463,19 +479,19 @@ class SetOpTable(InsertTable):
                 # ADD SELECT CLAUSE HERE
                 for select_index, s in enumerate(selects):
                     sql_select = index_to_sql_select.get(select_index)
-                    if not sql_select:
+                    if sql_select.push_column == None:
                         sql = selects[select_index]
-                        if nested_path != "." and parent_alias not in sql and alias not in sql:
-                            select_clause.append("NULL AS " + _make_column_name(select_index))
+                        if startswith_field(sql_select.nested_path[0], nested_path):
+                            select_clause.append(sql_select.sql + " AS " + sql_select.column_alias)                            
                         else:
-                            select_clause.append(selects[select_index])
+                            select_clause.append("NULL AS " + _make_column_name(select_index))
                         continue
 
                     if startswith_field(sql_select.nested_path[0], nested_path):
-                        select_clause.append(sql_select.sql + " AS " + _make_column_name(select_index))
+                        select_clause.append(sql_select.sql + " AS " + sql_select.column_alias)
                     else:
                         # DO NOT INCLUDE DEEP STUFF AT THIS LEVEL
-                        select_clause.append("NULL AS " + _make_column_name(select_index))
+                        select_clause.append("NULL AS " + sql_select.column_alias)
 
                 if nested_path == ".":
                     from_clause += "\nFROM " + quote_table(self.sf.fact) + " " + alias + "\n"

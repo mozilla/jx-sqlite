@@ -232,7 +232,10 @@ ColumnMapping = DataClass(
         },
         "push_name",    # NAME OF THE PROPERTY (USED BY LIST FORMAT ONLY)
         "push_child",   # PATH INTO COLUMN WHERE VALUE IS STORED ("." MEANS COLUMN HOLDS PRIMITIVE VALUE)
-        "push_column",  # THE COLUMN NUMBER
+        {
+            "name": "push_column",  # THE COLUMN NUMBER
+            "nulls": True
+        },
         "push_column_name",  # THE COLUMN NAME FOR TABLES AND CUBES (WITH NO ESCAPING DOTS, NOT IN LEAF FORM)
         "pull",         # A FUNCTION THAT WILL RETURN A VALUE
         {               # A LIST OF MULTI-SQL REQUIRED TO GET THE VALUE FROM THE DATABASE
@@ -244,7 +247,8 @@ ColumnMapping = DataClass(
             "name": "nested_path",
             "type": list,
             "default": ["."]
-        }
+        },
+        "column_alias"
     ],
     constraint={"and": [
         {"in": {"type": ["null", "boolean", "number", "string", "object"]}},
