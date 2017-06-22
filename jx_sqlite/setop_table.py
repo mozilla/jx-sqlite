@@ -125,14 +125,14 @@ class SetOpTable(InsertTable):
                     column_alias=_make_column_name(column_number)
                 
                 )
-
+                column_number = len(sql_selects)
                 sql_select = alias + "." + quote_table(ORDER)
-                sql_selects.append(sql_select + " AS " + _make_column_name(column_number+1))
-                index_to_column[column_number+1]=ColumnMapping(
+                sql_selects.append(sql_select + " AS " + _make_column_name(column_number))
+                index_to_column[column_number]=ColumnMapping(
                     sql=sql_select,
                     type="number",
                     nested_path=[nested_path],            # fake the real nested path, we only look at [0] anyway               
-                    column_alias=_make_column_name(column_number+1)
+                    column_alias=_make_column_name(column_number)
                 
                 )                
 
