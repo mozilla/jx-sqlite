@@ -21,7 +21,8 @@ def is_variable_name(value):
 
     if not value or not isinstance(value, basestring):
         return False  # _a._b
-    if value == ".":
+    value = value.lstrip(".")
+    if not value:
         return True
     match = keyword_pattern.match(value)
     if not match:

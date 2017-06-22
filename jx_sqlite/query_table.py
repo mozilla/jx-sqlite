@@ -127,14 +127,15 @@ class QueryTable(AggsTable):
             op = self._set_op(query, frum)
             return op
 
-
-
         result = self.db.query(command)
-        
-        column_names = query.edges.name + query.groupby.name + listwrap(query.select).name
+
         if query.format == "container":
             output = QueryTable(new_table, db=self.db, uid=self.uid, exists=True)
         elif query.format == "cube" or (not query.format and query.edges):
+            column_names= [None]*(max(c.push_column for c in index_to_columns.values()) + 1)
+            for c in index_to_columns.values():
+                column_names[c.push_column] = c.push_column_name
+                
             if len(query.edges) == 0 and len(query.groupby) == 0:
                 data = {n: Data() for n in column_names}
                 for s in index_to_columns.values():
@@ -258,6 +259,9 @@ class QueryTable(AggsTable):
                 data={k: v.cube for k, v in data_cubes.items()}
             )
         elif query.format == "table" or (not query.format and query.groupby):
+            column_names= [None]*(max(c.push_column for c in index_to_columns.values()) + 1)
+            for c in index_to_columns.values():
+                    column_names[c.push_column] = c.push_column_name
             data = []
             for d in result.data:
                 row = [None for _ in column_names]
@@ -282,7 +286,6 @@ class QueryTable(AggsTable):
                 data=data
             )
         elif query.format == "list" or (not query.edges and not query.groupby):
-
             if not query.edges and not query.groupby and any(listwrap(query.select).aggregate):
                 if isinstance(query.select, list):
                     data = Data()
@@ -338,9 +341,9 @@ class QueryTable(AggsTable):
 
         return output
 
-    def query_metadata(self, query):        
+    def query_metadata(self, query):
         Log.error("Not implemented yet")
-        
+
     def _window_op(self, query, window):
         # http://www2.sqlite.org/cvstrac/wiki?p=UnsupportedSqlAnalyticalFunctions
         if window.value == "rownum":

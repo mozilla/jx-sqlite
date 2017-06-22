@@ -41,6 +41,8 @@ def unique_name():
 def column_key(k, v):
     if v == None:
         return None
+    elif isinstance(v, bool):
+        return k, "boolean"
     elif isinstance(v, basestring):
         return k, "string"
     elif isinstance(v, list):
@@ -56,6 +58,8 @@ def column_key(k, v):
 def get_type(v):
     if v == None:
         return None
+    elif isinstance(v, bool):
+        return "boolean"
     elif isinstance(v, basestring):
         return "string"
     elif isinstance(v, Mapping):
@@ -143,7 +147,7 @@ sql_types = {
     "string": "TEXT",
     "integer": "INTEGER",
     "number": "REAL",
-    "boolean": "INTEGER",
+    "boolean": "TINYINT",
     "object": "TEXT",
     "nested": "TEXT"
 }

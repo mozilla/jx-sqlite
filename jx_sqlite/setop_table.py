@@ -13,7 +13,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
-from mo_dots import listwrap, Data, unwraplist, split_field, join_field, startswith_field, unwrap, relative_field, concat_field
+from mo_dots import listwrap, Data, unwraplist, split_field, join_field, startswith_field, unwrap, relative_field, concat_field, literal_field
 from mo_math import UNION, MAX
 
 from jx_sqlite import quote_table, quoted_UID, get_column, _make_column_name, ORDER, COLUMN, set_column, quoted_PARENT, ColumnMapping
@@ -160,8 +160,8 @@ class SetOpTable(InsertTable):
                                     column_alias = _make_column_name(column_number)
                                     sql_selects.append(unsorted_sql + " AS " + column_alias)
                                     index_to_column[column_number] = nested_doc_details['index_to_column'][column_number] = ColumnMapping(
-                                        push_name=concat_field(s.name, column.name),
-                                        push_column_name=concat_field(s.name, column.name),
+                                        push_name=literal_field(concat_field(s.name, column.name).lstrip(".")),
+                                        push_column_name=concat_field(s.name, column.name).lstrip("."),
                                         push_column=si,
                                         push_child=".",
                                         pull=get_column(column_number),
@@ -183,7 +183,7 @@ class SetOpTable(InsertTable):
                                     sql_selects.append(unsorted_sql + " AS " + column_alias)
                                     index_to_column[column_number] = nested_doc_details['index_to_column'][column_number] = ColumnMapping(
                                         push_name=s.name,
-                                        push_column_name=s.name,
+                                        push_column_name=s.name.replace("\\.", "."),
                                         push_column=si,
                                         push_child=column.name,
                                         pull=get_column(column_number),
@@ -335,7 +335,7 @@ class SetOpTable(InsertTable):
 
                 num_rows = len(data)
                 num_cols = MAX([c.push_column for c in cols]) + 1 if len(cols) else 0
-                map_index_to_name = {c.push_column: c.push_name for c in cols}
+                map_index_to_name = {c.push_column: c.push_column_name for c in cols}
                 temp_data = [[None]*num_rows for _ in range(num_cols)]
                 for rownum, d in enumerate(data):
                     for c in cols:
@@ -386,7 +386,7 @@ class SetOpTable(InsertTable):
                 num_column = MAX([c.push_column for c in cols])+1
                 header = [None]*num_column
                 for c in cols:
-                    header[c.push_column] = c.push_name
+                    header[c.push_column] = c.push_column_name
 
                 output_data = []
                 for d in data:

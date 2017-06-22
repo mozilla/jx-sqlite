@@ -6,6 +6,6 @@ mo-kwargs
 mo-math
 mo-times
 mo-collections
-mo-testing
-mo-json
+mo-testing>=1.0.17168
+mo-json>=1.0.17168
 mo-json-config
