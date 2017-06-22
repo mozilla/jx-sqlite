@@ -264,10 +264,7 @@ ColumnMapping = DataClass(
             "type": list,
             "default": ["."]
         },
-        {
-            "name": "column_alias",
-            "nulls": True
-        }
+        "column_alias"
     ],
     constraint={"and": [
         {"in": {"type": ["null", "boolean", "number", "string", "object"]}},
