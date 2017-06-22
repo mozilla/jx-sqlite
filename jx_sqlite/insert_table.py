@@ -16,7 +16,7 @@ from __future__ import unicode_literals
 from collections import Mapping
 from copy import copy
 
-from mo_dots import listwrap, Data, wrap, Null, unwraplist, startswith_field, unwrap, concat_field
+from mo_dots import listwrap, Data, wrap, Null, unwraplist, startswith_field, unwrap, concat_field, literal_field
 from mo_logs import Log
 
 from jx_sqlite import typed_column, quote_table, get_type, ORDER, UID, PARENT, get_if_type
@@ -238,7 +238,7 @@ class InsertTable(BaseTable):
             if not isinstance(data, Mapping):
                 data = {".": data}
             for k, v in data.items():
-                cname = concat_field(full_path, k)
+                cname = concat_field(full_path, literal_field(k))
                 value_type = get_type(v)
                 if value_type is None:
                     continue
