@@ -168,7 +168,7 @@ class SetOpTable(InsertTable):
                                     sql_selects.append(unsorted_sql + " AS " + column_alias)
                                     index_to_column[column_number] = nested_doc_details['index_to_column'][column_number] = ColumnMapping(
                                         push_name=s.name,
-                                        push_column_name=s.name.replace("\\.", "."),
+                                        push_column_name=s.name,
                                         push_column=si,
                                         push_child=column.name,
                                         pull=get_column(column_number),
