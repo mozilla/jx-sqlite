@@ -117,9 +117,24 @@ class SetOpTable(InsertTable):
             column_number = index_to_uid[nested_path] = nested_doc_details['id_coord'] = len(sql_selects)
             sql_select = alias + "." + quoted_UID
             sql_selects.append(sql_select + " AS " + _make_column_name(column_number))
-            if nested_path != ".":
+            if nested_path !=".":
+                index_to_column[column_number]=ColumnMapping(
+                    sql=sql_select,
+                    type="number",
+                    nested_path=[nested_path],            # fake the real nested path, we only look at [0] anyway               
+                    column_alias=_make_column_name(column_number)
+                
+                )
+                column_number = len(sql_selects)
                 sql_select = alias + "." + quote_table(ORDER)
-                sql_selects.append(sql_select + " AS " + _make_column_name(column_number+1))
+                sql_selects.append(sql_select + " AS " + _make_column_name(column_number))
+                index_to_column[column_number]=ColumnMapping(
+                    sql=sql_select,
+                    type="number",
+                    nested_path=[nested_path],            # fake the real nested path, we only look at [0] anyway               
+                    column_alias=_make_column_name(column_number)
+                
+                )                
 
             # WE DO NOT NEED DATA FROM TABLES WE REQUEST NOTHING FROM
             if nested_path not in active_columns:
@@ -152,8 +167,8 @@ class SetOpTable(InsertTable):
                                         pull=get_column(column_number),
                                         sql=unsorted_sql,
                                         type=json_type,
-                                        nested_path=[nested_path]
-                                        # fake the real nested path, we only look at [0] anyway
+                                        column_alias=column_alias,                                        
+                                        nested_path=[nested_path]           # fake the real nested path, we only look at [0] anyway
                                     )
                                     si += 1
                         else:
@@ -174,6 +189,7 @@ class SetOpTable(InsertTable):
                                         pull=get_column(column_number),
                                         sql=unsorted_sql,
                                         type=json_type,
+                                        column_alias=column_alias,                                                                                
                                         nested_path=[nested_path]
                                         # fake the real nested path, we only look at [0] anyway
                                     )
@@ -198,6 +214,7 @@ class SetOpTable(InsertTable):
                         pull=get_column(column_number),
                         sql=unsorted_sql,
                         type=c.type,
+                        column_alias=column_alias,                                                                
                         nested_path=nested_path
                     )
 
@@ -304,7 +321,7 @@ class SetOpTable(InsertTable):
                     output = unwraplist(output)
                     return output if output else None
 
-        cols = tuple(index_to_column.values())
+        cols = tuple([i for i in index_to_column.values() if i.push_name != None])
         rows = list(reversed(unwrap(result.data)))
         if rows:
             row = rows.pop()
@@ -405,7 +422,7 @@ class SetOpTable(InsertTable):
                     data = []
                     for rownum in result.data:
                         row = Data()
-                        for c in index_to_column.values():
+                        for c in cols:
                             if c.push_child == ".":
                                 row[c.push_name] = c.pull(rownum)
                             elif c.num_push_columns:
@@ -443,7 +460,7 @@ class SetOpTable(InsertTable):
         :param index_to_sql_select:
         :return: SQL FOR ONE NESTED LEVEL
         """
-
+       
         parent_alias = "a"
         from_clause = ""
         select_clause = []
@@ -468,10 +485,10 @@ class SetOpTable(InsertTable):
                         continue
 
                     if startswith_field(sql_select.nested_path[0], nested_path):
-                        select_clause.append(sql_select.sql + " AS " + _make_column_name(select_index))
+                        select_clause.append(sql_select.sql + " AS " + sql_select.column_alias)
                     else:
                         # DO NOT INCLUDE DEEP STUFF AT THIS LEVEL
-                        select_clause.append("NULL AS " + _make_column_name(select_index))
+                        select_clause.append("NULL AS " + sql_select.column_alias)
 
                 if nested_path == ".":
                     from_clause += "\nFROM " + quote_table(self.sf.fact) + " " + alias + "\n"
@@ -479,6 +496,7 @@ class SetOpTable(InsertTable):
                     from_clause += "\nLEFT JOIN " + quote_table(concat_field(self.sf.fact,sub_table.name)) + " " + alias + "\n" \
                                                                                                 " ON " + alias + "." + quoted_PARENT + " = " + parent_alias + "." + quoted_UID + "\n"
                     where_clause = "(" + where_clause + ") AND " + alias + "." + quote_table(ORDER) + " > 0\n"
+                parent_alias = alias
 
             elif startswith_field(primary_nested_path, nested_path):
                 # PARENT TABLE
@@ -490,6 +508,7 @@ class SetOpTable(InsertTable):
                     from_clause += "\nLEFT JOIN " + quote_table(concat_field(self.sf.fact,sub_table.name)) + " " + alias + \
                                    " ON " + alias + "." + quoted_PARENT + " = " + parent_alias + "." + quoted_UID
                     where_clause = "(" + where_clause + ") AND " + parent_alias + "." + quote_table(ORDER) + " > 0\n"
+                parent_alias = alias
 
             elif startswith_field(nested_path, primary_nested_path):
                 # CHILD TABLE
@@ -512,7 +531,6 @@ class SetOpTable(InsertTable):
                 # SIBLING PATHS ARE IGNORED
                 continue
 
-            parent_alias = alias
 
         sql = "\nUNION ALL\n".join(
             ["SELECT\n" + ",\n".join(select_clause) + from_clause + "\nWHERE\n" + where_clause] +
