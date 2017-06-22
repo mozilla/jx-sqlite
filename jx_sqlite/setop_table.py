@@ -125,7 +125,7 @@ class SetOpTable(InsertTable):
                     column_alias=_make_column_name(column_number)
                 
                 )
-            if nested_path != ".":
+
                 sql_select = alias + "." + quote_table(ORDER)
                 sql_selects.append(sql_select + " AS " + _make_column_name(column_number+1))
                 index_to_column[column_number+1]=ColumnMapping(
