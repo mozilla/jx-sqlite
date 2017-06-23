@@ -238,6 +238,7 @@ class InsertTable(BaseTable):
             if not isinstance(data, Mapping):
                 data = {".": data}
             for k, v in data.items():
+                insertion = doc_collection[nested_path[0]]                
                 cname = concat_field(full_path, literal_field(k))
                 value_type = get_type(v)
                 if value_type is None:
@@ -259,7 +260,7 @@ class InsertTable(BaseTable):
                         names={".": cname},
                         type=value_type,
                         es_column=typed_column(cname, value_type),
-                        es_index=self.sf.fact,  # THIS MAY BE THE WRONG TABLE, IF THIS PATH IS A NESTED DOC
+                        es_index=concat_field(self.sf.fact, cname),  # THIS MAY BE THE WRONG TABLE, IF THIS PATH IS A NESTED DOC
                         nested_path=nested_path
                     )
                     abs_schema.add(cname, c)
