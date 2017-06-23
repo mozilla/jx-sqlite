@@ -1,4 +1,4 @@
-mo-dots
+mo-dots>=1.3.17173
 mo-logs
 mo-files
 mo-threads
