@@ -366,11 +366,11 @@ class SetOpTable(InsertTable):
                 num_rows = len(data)
                 map_index_to_name = {c.push_column: c.push_column_name for c in cols}
                 temp_data = Data()
-                for d in data:                
-                    row = []
-                    for c in cols:
-                        row.append(d[c.push_column_name])
-                    temp_data.append(row)                 
+                for rownum, d in enumerate(data):                
+                    for k, v in d.items(): 
+                        if temp_data[k] == None:
+                            temp_data[k] = [None] * num_rows                        
+                        temp_data[k][rownum] = v
                 return Data(
                     meta={"format": "cube"},
                     data={n: temp_data[n] for c, n in map_index_to_name.items()},
