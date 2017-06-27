@@ -426,6 +426,7 @@ class SetOpTable(InsertTable):
                         data=output_data
                     )
             if isinstance(query.select, list) or isinstance(query.select.value, LeavesOp):
+                num_rows = len(data)
                 column_names= [None]*(max(c.push_column for c in cols) + 1)
                 for c in cols:
                     column_names[c.push_column] = c.push_column_name
