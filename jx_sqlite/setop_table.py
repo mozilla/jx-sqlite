@@ -431,7 +431,7 @@ class SetOpTable(InsertTable):
                 for c in cols:
                     column_names[c.push_column] = c.push_column_name
                 
-                temp_data = []
+                temp_data = Data()
                 for rownum, d in enumerate(data):                
                     for k, v in d.items(): 
                         if temp_data[k] == None:
