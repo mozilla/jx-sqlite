@@ -430,17 +430,17 @@ class SetOpTable(InsertTable):
                 for c in cols:
                     column_names[c.push_column] = c.push_column_name
                 
-                output_data = []
-                for d in data:
-                    row = []
-                    for c in cols:
-                        row.append(d[c.push_column_name])
-                    output_data.append(row)
-                    
+                temp_data = []
+                for rownum, d in enumerate(data):                
+                    for k, v in d.items(): 
+                        if temp_data[k] == None:
+                            temp_data[k] = [None] * num_rows                        
+                        temp_data[k][rownum] = v
+                       
                 return Data(
                     meta={"format": "table"},
                     header=column_names,
-                    data=output_data
+                    data=temp_data
                 )
             else:
                 column_names = listwrap(query.select).name
