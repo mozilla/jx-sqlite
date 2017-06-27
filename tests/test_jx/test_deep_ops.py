@@ -1217,15 +1217,7 @@ class TestDeepOps(BaseTestCase):
                     {"f": "a"},
                     {"f": "b"}
                 ]
-            },
-            "expecting_table": {
-                "meta": {"format": "table"},
-                "header": ["f"],                
-                "data":[
-                    ["a"],
-                    ["b"]
-                ]
-            }            
+            }
         }
         self.utils.execute_tests(test)
 
