@@ -362,46 +362,24 @@ class SetOpTable(InsertTable):
                     )
                     return output
                 
-            if isinstance(query.select, list) or isinstance(query.select.value, LeavesOp):
-                num_rows = len(data)
-                map_index_to_name = {c.push_column: c.push_column_name for c in cols}
-                temp_data = Data()
-                for d in data:                
-                    row = []
-                    for c in cols:
-                        row.append(d[c.push_column_name])
-                    temp_data.append(row)                 
-                return Data(
-                    meta={"format": "cube"},
-                    data={n: temp_data[n] for c, n in map_index_to_name.items()},
-                    edges=[{
-                        "name": "rownum",
-                        "domain": {
-                            "type": "rownum",
-                            "min": 0,
-                            "max": num_rows,
-                            "interval": 1
-                        }
-                    }]
-                )                
-            else:    
-                num_rows = len(data)
-                map_index_to_name = {c.push_column: c.push_column_name for c in cols}
-                temp_data = [data]
-    
-                return Data(
-                    meta={"format": "cube"},
-                    data={n: temp_data[c] for c, n in map_index_to_name.items()},
-                    edges=[{
-                        "name": "rownum",
-                        "domain": {
-                            "type": "rownum",
-                            "min": 0,
-                            "max": num_rows,
-                            "interval": 1
-                        }
-                    }]
-                )
+     
+            num_rows = len(data)
+            map_index_to_name = {c.push_column: c.push_column_name for c in cols}
+            temp_data = [data]
+
+            return Data(
+                meta={"format": "cube"},
+                data={n: temp_data[c] for c, n in map_index_to_name.items()},
+                edges=[{
+                    "name": "rownum",
+                    "domain": {
+                        "type": "rownum",
+                        "min": 0,
+                        "max": num_rows,
+                        "interval": 1
+                    }
+                }]
+            )
 
         elif query.format == "table":
             for f, _ in self.sf.tables.items():
