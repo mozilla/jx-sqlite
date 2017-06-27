@@ -373,7 +373,7 @@ class SetOpTable(InsertTable):
                         temp_data[k][rownum] = v
                 return Data(
                     meta={"format": "cube"},
-                    data={n: temp_data[n] for c, n in map_index_to_name.items()},
+                    data={n: temp_data[literal_field(n)] for c, n in map_index_to_name.items()},
                     edges=[{
                         "name": "rownum",
                         "domain": {
