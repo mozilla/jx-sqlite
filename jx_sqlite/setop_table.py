@@ -469,14 +469,33 @@ class SetOpTable(InsertTable):
                                 row[c.push_name][c.push_child] = c.pull(d)
 
                         data.append(row)
+    
+                    return Data(
+                        meta={"format": "list"},
+                        data=data
+                    )
 
-            output = Data(
-                meta={"format": "list"},
-                data=data
-            )
-
-            return output
-
+            if isinstance(query.select, list) or isinstance(query.select.value, LeavesOp):                
+                temp_data=[]    
+                for rownum, d in enumerate(data):
+                    row = {}
+                    for k, v in d.items():
+                        for c in cols:
+                            if c.push_name==c.push_column_name==k:
+                                    row[c.push_column_name] = v
+                            elif c.push_name==k and c.push_column_name!=k:
+                                    row[c.push_column_name] = v
+                    temp_data.append(row)
+                return Data(
+                    meta={"format": "list"},
+                    data=temp_data
+                )                
+            else:
+                return Data(
+                    meta={"format": "list"},
+                    data=data
+                )                
+                
     def _make_sql_for_one_nest_in_set_op(
         self,
         primary_nested_path,
