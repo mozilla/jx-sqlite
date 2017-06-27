@@ -435,12 +435,14 @@ class SetOpTable(InsertTable):
                 for rownum, d in enumerate(data):
                     row =[None] * len(column_names)
                     for i, (k, v) in enumerate(sorted(d.items())):
-                        row[i] = v
+                        for c in cols:
+                            if k==c.push_name:
+                                row[c.push_column] = v
                     temp_data.append(row)
 
                 return Data(
                     meta={"format": "table"},
-                    header=sorted(column_names),
+                    header=column_names,
                     data=temp_data
                 )
             else:
