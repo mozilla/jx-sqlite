@@ -331,25 +331,50 @@ class SetOpTable(InsertTable):
             data = result.data
 
         if query.format == "cube":
-            if len(data) == len(result.data):       # means no accumulated nested object
-                data = result.data
-
+            for f, _ in self.sf.tables.items():
+                if frum.endswith(f):  
+                    data = result.data
+                    
+                    num_rows = len(data)
+                    num_cols = MAX([c.push_column for c in cols]) + 1 if len(cols) else 0
+                    map_index_to_name = {c.push_column: c.push_column_name for c in cols}
+                    temp_data = [[None]*num_rows for _ in range(num_cols)]
+                    for rownum, d in enumerate(data):
+                        for c in cols:
+                            if c.push_child == ".":
+                                temp_data[c.push_column][rownum] = c.pull(d)
+                            else:
+                                column = temp_data[c.push_column][rownum]
+                                if column is None:
+                                    column = temp_data[c.push_column][rownum] = {}
+                                column[c.push_child] = c.pull(d)
+                    output = Data(
+                        meta={"format": "cube"},
+                        data={n: temp_data[c] for c, n in map_index_to_name.items()},
+                        edges=[{
+                            "name": "rownum",
+                            "domain": {
+                                "type": "rownum",
+                                "min": 0,
+                                "max": num_rows,
+                                "interval": 1
+                            }
+                        }]
+                    )
+                    return output
+                
+            if isinstance(query.select, list) or isinstance(query.select.value, LeavesOp):
                 num_rows = len(data)
-                num_cols = MAX([c.push_column for c in cols]) + 1 if len(cols) else 0
                 map_index_to_name = {c.push_column: c.push_column_name for c in cols}
-                temp_data = [[None]*num_rows for _ in range(num_cols)]
-                for rownum, d in enumerate(data):
-                    for c in cols:
-                        if c.push_child == ".":
-                            temp_data[c.push_column][rownum] = c.pull(d)
-                        else:
-                            column = temp_data[c.push_column][rownum]
-                            if column is None:
-                                column = temp_data[c.push_column][rownum] = {}
-                            column[c.push_child] = c.pull(d)
-                output = Data(
+                temp_data = Data()
+                for rownum, d in enumerate(data):                
+                    for k, v in d.items(): 
+                        if temp_data[k] == None:
+                            temp_data[k] = [None] * num_rows                        
+                        temp_data[k][rownum] = v
+                return Data(
                     meta={"format": "cube"},
-                    data={n: temp_data[c] for c, n in map_index_to_name.items()},
+                    data={n: temp_data[literal_field(n)] for c, n in map_index_to_name.items()},
                     edges=[{
                         "name": "rownum",
                         "domain": {
@@ -359,13 +384,12 @@ class SetOpTable(InsertTable):
                             "interval": 1
                         }
                     }]
-                )
-                return output
-            else:
+                )                
+            else:    
                 num_rows = len(data)
-                map_index_to_name = {c.push_column: c.push_name for c in cols}
+                map_index_to_name = {c.push_column: c.push_column_name for c in cols}
                 temp_data = [data]
-
+    
                 return Data(
                     meta={"format": "cube"},
                     data={n: temp_data[c] for c, n in map_index_to_name.items()},
@@ -381,68 +405,100 @@ class SetOpTable(InsertTable):
                 )
 
         elif query.format == "table":
-            if len(data)==len(result.data):
-                data = result.data
-
-                num_column = MAX([c.push_column for c in cols])+1
-                header = [None]*num_column
-                for c in cols:
-                    header[c.push_column] = c.push_column_name
-
-                output_data = []
-                for d in data:
-                    row = [None] * num_column
+            for f, _ in self.sf.tables.items():
+                if  frum.endswith(f):  
+                    data = result.data
+                    
+                    num_column = MAX([c.push_column for c in cols])+1
+                    header = [None]*num_column
                     for c in cols:
-                        set_column(row, c.push_column, c.push_child, c.pull(d))
-                    output_data.append(row)
+                        header[c.push_column] = c.push_column_name
+    
+                    output_data = []
+                    for d in data:
+                        row = [None] * num_column
+                        for c in cols:
+                            set_column(row, c.push_column, c.push_child, c.pull(d))
+                        output_data.append(row)
+    
+                    return Data(
+                        meta={"format": "table"},
+                        header=header,
+                        data=output_data
+                    )
+            if isinstance(query.select, list) or isinstance(query.select.value, LeavesOp):
+                num_rows = len(data)
+                column_names= [None]*(max(c.push_column for c in cols) + 1)
+                for c in cols:
+                    column_names[c.push_column] = c.push_column_name
+
+                temp_data = []
+                for rownum, d in enumerate(data):
+                    row =[None] * len(column_names)
+                    for i, (k, v) in enumerate(sorted(d.items())):
+                        for c in cols:
+                            if k==c.push_name:
+                                row[c.push_column] = v
+                    temp_data.append(row)
 
                 return Data(
                     meta={"format": "table"},
-                    header=header,
-                    data=output_data
+                    header=column_names,
+                    data=temp_data
                 )
             else:
-                if isinstance(query.select, list):
-                    column_names = listwrap(query.select).name
-                    return Data(
-                        meta={"format": "table"},
-                        header=column_names,
-                        data=data
-                    )
-                else:
-                    column_names = listwrap(query.select).name
-                    return Data(
-                        meta={"format": "table"},
-                        header=column_names,
-                        data=[[d] for d in data]
-                    )
+                column_names = listwrap(query.select).name
+                return Data(
+                    meta={"format": "table"},
+                    header=column_names,
+                    data=[[d] for d in data]
+                )
 
         else:
             for f, _ in self.sf.tables.items():
                 if frum.endswith(f):
                     data = []
-                    for rownum in result.data:
+                    for d in result.data:
                         row = Data()
                         for c in cols:
                             if c.push_child == ".":
-                                row[c.push_name] = c.pull(rownum)
+                                row[c.push_name] = c.pull(d)
                             elif c.num_push_columns:
                                 tuple_value = row[c.push_name]
                                 if not tuple_value:
                                     tuple_value = row[c.push_name] = [None] * c.num_push_columns
-                                tuple_value[c.push_child] = c.pull(rownum)
+                                tuple_value[c.push_child] = c.pull(d)
                             else:
-                                row[c.push_name][c.push_child] = c.pull(rownum)
+                                row[c.push_name][c.push_child] = c.pull(d)
 
                         data.append(row)
+    
+                    return Data(
+                        meta={"format": "list"},
+                        data=data
+                    )
 
-            output = Data(
-                meta={"format": "list"},
-                data=data
-            )
-
-            return output
-
+            if isinstance(query.select, list) or isinstance(query.select.value, LeavesOp):                
+                temp_data=[]    
+                for rownum, d in enumerate(data):
+                    row = {}
+                    for k, v in d.items():
+                        for c in cols:
+                            if c.push_name==c.push_column_name==k:
+                                    row[c.push_column_name] = v
+                            elif c.push_name==k and c.push_column_name!=k:
+                                    row[c.push_column_name] = v
+                    temp_data.append(row)
+                return Data(
+                    meta={"format": "list"},
+                    data=temp_data
+                )                
+            else:
+                return Data(
+                    meta={"format": "list"},
+                    data=data
+                )                
+                
     def _make_sql_for_one_nest_in_set_op(
         self,
         primary_nested_path,
