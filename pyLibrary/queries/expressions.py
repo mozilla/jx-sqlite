@@ -27,7 +27,7 @@ from pyLibrary import convert
 from pyLibrary.queries.containers import STRUCT, OBJECT
 from jx_base.queries import is_variable_name
 from pyLibrary.queries.expression_compiler import compile_expression
-from pyLibrary.sql.sqlite import quote_column
+from pyLibrary.sql.sqlite import quote_column, quote_value
 
 ALLOW_SCRIPTING = False
 TRUE_FILTER = True
@@ -1779,7 +1779,7 @@ class RegExpOp(Expression):
         return "re.match(" + quote(json2value(self.pattern.json) + "$") + ", " + self.var.to_python() + ")"
 
     def to_sql(self, schema, not_null=False, boolean=False):
-        pattern = schema.db.quote_value(convert.json2value(self.pattern.json))
+        pattern = quote(convert.json2value(self.pattern.json))
         value = self.var.to_sql(schema)[0].sql.s
         return wrap([
             {"name": ".", "sql": {"b": value + " REGEXP " + pattern}}
