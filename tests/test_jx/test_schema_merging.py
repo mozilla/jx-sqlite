@@ -131,7 +131,7 @@ class TestSchemaMerging(BaseTestCase):
             },
             "expecting_table": {
                 "meta": {"format": "table"},
-                "header": ["a.html"],
+                "header": ["a\\.html"],
                 "data": [
                     ["hello"],
                     [NULL]
@@ -146,7 +146,7 @@ class TestSchemaMerging(BaseTestCase):
                     }
                 ],
                 "data": {
-                    "a.html": ["hello", NULL]
+                    "a\\.html": ["hello", NULL]
                 }
             }
         }
@@ -182,7 +182,7 @@ class TestSchemaMerging(BaseTestCase):
                 "edges": [
                     {
                         "name": "rownum",
-                        "domain": {"type": "rownum", "min": 0, "max": 1, "interval": 1}
+                        "domain": {"type": "rownum", "min": 0, "max": 2, "interval": 1}
                     }
                 ],
                 "data": {
