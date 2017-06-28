@@ -229,12 +229,16 @@ class QueryTable(AggsTable):
                     allowNulls=allowNulls,
                     domain=domain
                 ))
+                
+            zeros = []
+            data_cubes = {}
+            for si, s in enumerate(listwrap(query.select)):
+                if s.aggregate == "count" and index_to_columns[si].push_child == ".":
+                    zeros.append(0)
+                    data_cubes[s.name] = Matrix(dims=dims, zeros=zeros[si])
+                else:
+                    data_cubes[s.name] = Matrix(dims=dims)
 
-            zeros = [
-                0 if s.aggregate == "count" and index_to_columns[si].push_child == "." else Data
-                for si, s in enumerate(listwrap(query.select))
-                ]
-            data_cubes = {s.name: Matrix(dims=dims, zeros=zeros[si]) for si, s in enumerate(listwrap(query.select))}
             r2c = index_to_coordinate(dims)  # WORKS BECAUSE THE DATABASE SORTED THE EDGES TO CONFORM
             for rownum, row in enumerate(result.data):
                 coord = r2c(rownum)
