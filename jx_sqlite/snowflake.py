@@ -4,7 +4,7 @@ from copy import copy
 from mo_dots import relative_field, listwrap, split_field, join_field, wrap, startswith_field, concat_field, Null, coalesce
 from mo_logs import Log
 
-from jx_sqlite import quote_table, typed_column, UID, quoted_UID, sql_types, quoted_PARENT, ORDER, quoted_ORDER
+from jx_sqlite import quote_table, typed_column, UID, quoted_UID, quoted_GUID,sql_types, quoted_PARENT, ORDER, quoted_ORDER
 from jx_sqlite import untyped_column
 from pyLibrary.queries import jx
 from pyLibrary.queries.meta import Column
@@ -91,11 +91,13 @@ class Snowflake(object):
         command = (
             "CREATE TABLE " + quote_table(self.fact) + "(" +
             (",".join(
+                [quoted_GUID + " VARCHAR(80)"] +                
                 [quoted_UID + " INTEGER"] +
                 [quote_column(c.es_column) + " " + sql_types[c.type] for c in self.tables["."].schema.columns]
             )) +
             ", PRIMARY KEY (" +
             (", ".join(
+                [quoted_GUID] +                
                 [quoted_UID] +
                 [quote_column(c.es_column) for c in self.tables["."].schema.columns]
             )) +
