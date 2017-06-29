@@ -15,7 +15,7 @@ from __future__ import unicode_literals
 
 from mo_kwargs import override
 
-from jx_base import generateGUID()
+from jx_base import generateGuid
 from jx_sqlite import UID, GUID
 from jx_sqlite.snowflake import Snowflake
 from pyLibrary.queries import jx
@@ -27,7 +27,7 @@ _config=None
 
 class BaseTable(Container):
     @override
-    def __init__(self, name, db=None, uid=UID, guid=GUID, kwargs=None):
+    def __init__(self, name, db=None, uid=UID, kwargs=None):
         """
         :param name: NAME FOR THIS TABLE
         :param db: THE DB TO USE
@@ -50,8 +50,9 @@ class BaseTable(Container):
                     "settings": {"db": db}
                 }
 
-        self.sf = Snowflake(fact=name, uid=uid, guid=guid, db=db)
+        self.sf = Snowflake(fact=name, uid=uid, db=db)
         
+        self._next_guid = generateGuid()
         self._next_uid = 1
         self._make_digits_table()
         self.uid_accessor = jx.get(self.sf.uid)
