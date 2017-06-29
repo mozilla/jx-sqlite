@@ -16,7 +16,7 @@ from __future__ import unicode_literals
 from mo_dots import listwrap, Data, unwraplist, split_field, join_field, startswith_field, unwrap, relative_field, concat_field, literal_field
 from mo_math import UNION, MAX
 
-from jx_sqlite import quote_table, quoted_UID, get_column, _make_column_name, ORDER, COLUMN, set_column, quoted_PARENT, ColumnMapping
+from jx_sqlite import quote_table, quoted_UID, quoted_GUID, get_column, _make_column_name, ORDER, COLUMN, set_column, quoted_PARENT, ColumnMapping
 from jx_sqlite.insert_table import InsertTable
 from pyLibrary.queries.containers import STRUCT
 from pyLibrary.queries.expressions import sql_type_to_json_type, LeavesOp
@@ -490,7 +490,7 @@ class SetOpTable(InsertTable):
                                 row[c.push_name][c.push_child] = c.pull(d)
 
                         data.append(row)
-    
+
                     return Data(
                         meta={"format": "list"},
                         data=data
