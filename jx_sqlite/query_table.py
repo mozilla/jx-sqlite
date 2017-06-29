@@ -170,11 +170,12 @@ class QueryTable(AggsTable):
                         domain=domain
                     ))
 
-                zeros = [
-                    0 if s.aggregate == "count" and index_to_columns[si].push_child == "." else Data
-                    for si, s in enumerate(listwrap(query.select))
-                    ]
-                data = {s.name: Matrix(dims=dims, zeros=zeros[si]) for si, s in enumerate(listwrap(query.select))}
+                data = {}
+                for si, s in enumerate(listwrap(query.select)):
+                    if s.aggregate == "count":
+                        data[s.name] = Matrix(dims=dims, zeros=0)
+                    else:
+                        data[s.name] = Matrix(dims=dims)
 
                 if isinstance(query.select, list):
                     select = [{"name": s.name} for s in query.select]
@@ -230,12 +231,10 @@ class QueryTable(AggsTable):
                     domain=domain
                 ))
                 
-            zeros = []
             data_cubes = {}
             for si, s in enumerate(listwrap(query.select)):
-                if s.aggregate == "count" and index_to_columns[si].push_child == ".":
-                    zeros.append(0)
-                    data_cubes[s.name] = Matrix(dims=dims, zeros=zeros[si])
+                if s.aggregate == "count":
+                    data_cubes[s.name] = Matrix(dims=dims, zeros=0)
                 else:
                     data_cubes[s.name] = Matrix(dims=dims)
 
