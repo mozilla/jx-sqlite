@@ -636,7 +636,7 @@ class TestDeepOps(BaseTestCase):
 
     def test_id_select(self):
         """
-        ALWAYS GOOD TO HAVE AN ID, CALL IT "_id"
+        ALWAYS GOOD TO HAVE AN ID, CALL IT "__guid__"
         """
         test = {
             "data": [
@@ -654,22 +654,22 @@ class TestDeepOps(BaseTestCase):
                 {"o": 4, "a": {"_a": {"s": False}}}
             ],
             "query": {
-                "select": ["_id"],
+                "select": ["__guid__"],
                 "from": TEST_TABLE + ".a._a",
             },
             "expecting_list": {
                 "meta": {"format": "list"},
                 "data": [
-                    {"_id": Math.is_hex},
-                    {"_id": Math.is_hex},
-                    {"_id": Math.is_hex},
-                    {"_id": Math.is_hex},
-                    {"_id": Math.is_hex}
+                    {"__guid__": Math.is_hex},
+                    {"__guid__": Math.is_hex},
+                    {"__guid__": Math.is_hex},
+                    {"__guid__": Math.is_hex},
+                    {"__guid__": Math.is_hex}
                 ]
             },
             "expecting_table": {
                 "meta": {"format": "table"},
-                "header": ["_id"],
+                "header": ["__guid__"],
                 "data": [
                     [Math.is_hex],
                     [Math.is_hex],
@@ -687,7 +687,7 @@ class TestDeepOps(BaseTestCase):
                     }
                 ],
                 "data": {
-                    "_id": [Math.is_hex, Math.is_hex, Math.is_hex, Math.is_hex, Math.is_hex]
+                    "__guid__": [Math.is_hex, Math.is_hex, Math.is_hex, Math.is_hex, Math.is_hex]
                 }
             }
         }
@@ -695,7 +695,7 @@ class TestDeepOps(BaseTestCase):
 
     def test_id_value_select(self):
         """
-        ALWAYS GOOD TO HAVE AN ID, CALL IT "_id"
+        ALWAYS GOOD TO HAVE AN ID, CALL IT "__guid__"
         """
 
         test = {
@@ -714,7 +714,7 @@ class TestDeepOps(BaseTestCase):
                 {"o": 4, "a": {"_a": {"s": False}}}
             ],
             "query": {
-                "select": "_id",
+                "select": "__guid__",
                 "from": TEST_TABLE + ".a._a",
             },
             "expecting_list": {
