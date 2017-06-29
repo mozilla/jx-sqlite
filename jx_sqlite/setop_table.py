@@ -112,7 +112,25 @@ class SetOpTable(InsertTable):
                 place(primary_doc_details)
 
             alias = nested_doc_details['alias'] = nest_to_alias[nested_path]
-
+            
+            if nested_path=="." and quoted_GUID in vars_:
+                column_number = index_to_uid[nested_path] = nested_doc_details['id_coord'] = len(sql_selects)
+                sql_select = alias + "." + quoted_GUID
+                sql_selects.append(sql_select + " AS " + _make_column_name(column_number))
+                index_to_column[column_number] = nested_doc_details['index_to_column'][column_number] = ColumnMapping(
+                    push_name="__guid__",
+                    push_column_name="__guid__",
+                    push_column=0,
+                    push_child=".",
+                    sql=sql_select,
+                    pull=get_column(column_number),
+                    type="string",
+                    column_alias=_make_column_name(column_number),                                        
+                    nested_path=[nested_path]           # fake the real nested path, we only look at [0] anyway
+                )
+                query.select = [s for s in listwrap(query.select) if s.name!="__guid__"]
+            
+            
             # WE ALWAYS ADD THE UID AND ORDER
             column_number = index_to_uid[nested_path] = nested_doc_details['id_coord'] = len(sql_selects)
             sql_select = alias + "." + quoted_UID
