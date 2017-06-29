@@ -16,7 +16,7 @@ from __future__ import unicode_literals
 from mo_dots import listwrap, Data, unwraplist, split_field, join_field, startswith_field, unwrap, relative_field, concat_field, literal_field
 from mo_math import UNION, MAX
 
-from jx_sqlite import quote_table, quoted_UID, get_column, _make_column_name, ORDER, COLUMN, set_column, quoted_PARENT, ColumnMapping
+from jx_sqlite import quote_table, quoted_UID, quoted_GUID, get_column, _make_column_name, ORDER, COLUMN, set_column, quoted_PARENT, ColumnMapping
 from jx_sqlite.insert_table import InsertTable
 from pyLibrary.queries.containers import STRUCT
 from pyLibrary.queries.expressions import sql_type_to_json_type, LeavesOp
@@ -112,7 +112,25 @@ class SetOpTable(InsertTable):
                 place(primary_doc_details)
 
             alias = nested_doc_details['alias'] = nest_to_alias[nested_path]
-
+            
+            if nested_path=="." and quoted_GUID in vars_:
+                column_number = index_to_uid[nested_path] = nested_doc_details['id_coord'] = len(sql_selects)
+                sql_select = alias + "." + quoted_GUID
+                sql_selects.append(sql_select + " AS " + _make_column_name(column_number))
+                index_to_column[column_number] = nested_doc_details['index_to_column'][column_number] = ColumnMapping(
+                    push_name="_id",
+                    push_column_name="_id",
+                    push_column=0,
+                    push_child=".",
+                    sql=sql_select,
+                    pull=get_column(column_number),
+                    type="string",
+                    column_alias=_make_column_name(column_number),                                        
+                    nested_path=[nested_path]           # fake the real nested path, we only look at [0] anyway
+                )
+                query.select = [s for s in listwrap(query.select) if s.name!="_id"]
+            
+            
             # WE ALWAYS ADD THE UID AND ORDER
             column_number = index_to_uid[nested_path] = nested_doc_details['id_coord'] = len(sql_selects)
             sql_select = alias + "." + quoted_UID
@@ -472,7 +490,7 @@ class SetOpTable(InsertTable):
                                 row[c.push_name][c.push_child] = c.pull(d)
 
                         data.append(row)
-    
+
                     return Data(
                         meta={"format": "list"},
                         data=data

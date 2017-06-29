@@ -25,6 +25,7 @@ from mo_times import Date, Duration
 from pyLibrary.meta import DataClass
 from pyLibrary.sql.sqlite import quote_table
 
+GUID = "_id"
 UID = "__id__"  # will not be quoted
 ORDER = "__order__"
 PARENT = "__parent__"
@@ -164,6 +165,7 @@ STATS = {
     "avg": "AVG({{value}})"
 }
 
+quoted_GUID = quote_table(GUID)
 quoted_UID = quote_table(UID)
 quoted_ORDER = quote_table(ORDER)
 quoted_PARENT = quote_table(PARENT)

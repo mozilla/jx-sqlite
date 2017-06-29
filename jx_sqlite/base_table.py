@@ -15,7 +15,8 @@ from __future__ import unicode_literals
 
 from mo_kwargs import override
 
-from jx_sqlite import UID
+from jx_base import generateGuid
+from jx_sqlite import UID, GUID
 from jx_sqlite.snowflake import Snowflake
 from pyLibrary.queries import jx
 from pyLibrary.queries.containers import Container
@@ -50,7 +51,8 @@ class BaseTable(Container):
                 }
 
         self.sf = Snowflake(fact=name, uid=uid, db=db)
-
+        
+        self._next_guid = generateGuid()
         self._next_uid = 1
         self._make_digits_table()
         self.uid_accessor = jx.get(self.sf.uid)
