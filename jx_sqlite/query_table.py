@@ -170,11 +170,12 @@ class QueryTable(AggsTable):
                         domain=domain
                     ))
 
-                zeros = [
-                    0 if s.aggregate == "count" and index_to_columns[si].push_child == "." else Data
-                    for si, s in enumerate(listwrap(query.select))
-                    ]
-                data = {s.name: Matrix(dims=dims, zeros=zeros[si]) for si, s in enumerate(listwrap(query.select))}
+                data = {}
+                for si, s in enumerate(listwrap(query.select)):
+                    if s.aggregate == "count":
+                        data[s.name] = Matrix(dims=dims, zeros=0)
+                    else:
+                        data[s.name] = Matrix(dims=dims)
 
                 if isinstance(query.select, list):
                     select = [{"name": s.name} for s in query.select]
@@ -229,12 +230,14 @@ class QueryTable(AggsTable):
                     allowNulls=allowNulls,
                     domain=domain
                 ))
+                
+            data_cubes = {}
+            for si, s in enumerate(listwrap(query.select)):
+                if s.aggregate == "count":
+                    data_cubes[s.name] = Matrix(dims=dims, zeros=0)
+                else:
+                    data_cubes[s.name] = Matrix(dims=dims)
 
-            zeros = [
-                0 if s.aggregate == "count" and index_to_columns[si].push_child == "." else Data
-                for si, s in enumerate(listwrap(query.select))
-                ]
-            data_cubes = {s.name: Matrix(dims=dims, zeros=zeros[si]) for si, s in enumerate(listwrap(query.select))}
             r2c = index_to_coordinate(dims)  # WORKS BECAUSE THE DATABASE SORTED THE EDGES TO CONFORM
             for rownum, row in enumerate(result.data):
                 coord = r2c(rownum)
