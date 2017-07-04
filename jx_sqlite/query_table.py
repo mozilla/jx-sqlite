@@ -354,7 +354,7 @@ class QueryTable(AggsTable):
         if query.edges or query.groupby:
             Log.error("Aggregates(groupby or edge) are not supported")
             
-        meta_column = []
+        metadata = []
         result = self.db.query("""select * from SQLITE_MASTER where TYPE='table' order by NAME;""")
         tables = wrap([{k: d[i] for i, k in enumerate(result.header)} for d in result.data])        
         for table in tables:
@@ -371,14 +371,30 @@ class QueryTable(AggsTable):
                     "type": json_types[dtype],
                     "nested_path": nested_path
                 }
-                meta_column.append(c)
+                metadata.append(c)
+                
         if query.format == "cube":
-            pass
-        elif query.format == "table":
-            pass
-        else:
-            pass
-        Log.error("Not implemented yet")
+            num_rows = len(metadata)
+            temp_data = Data()
+            for rownum, d in enumerate(metadata):                
+                for k, v in d.items(): 
+                    if temp_data[k] == None:
+                        temp_data[k] = [None] * num_rows                        
+                    temp_data[k][rownum] = v
+            return Data(
+                meta={"format": "cube"},
+                data=temp_data,
+                edges=[{
+                    "name": "rownum",
+                    "domain": {
+                        "type": "rownum",
+                        "min": 0,
+                        "max": num_rows,
+                        "interval": 1
+                    }
+                }]
+            )   
+ 
 
     def _window_op(self, query, window):
         # http://www2.sqlite.org/cvstrac/wiki?p=UnsupportedSqlAnalyticalFunctions
