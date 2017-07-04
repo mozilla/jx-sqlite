@@ -366,8 +366,6 @@ class QueryTable(AggsTable):
                 if name.startswith("__"):
                     continue
                 cname, ctype = untyped_column(name)
-                if ctype == None:
-                    ctype = "string"       # for guid 
                 c ={"table": table.name,
                     "name": cname,
                     "type": json_types[dtype],
