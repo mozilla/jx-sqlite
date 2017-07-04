@@ -394,7 +394,21 @@ class QueryTable(AggsTable):
                     }
                 }]
             )   
+        elif query.format == "table":
+            num_rows = len(metadata)
+            column_names= [s.name for s in query.select]
+            temp_data = []
+            for rownum, d in enumerate(metadata):
+                row =[None] * len(column_names)
+                for i, (k, v) in enumerate(sorted(d.items())):
+                    row[i] = v
+                temp_data.append(row)
 
+            return Data(
+                meta={"format": "table"},
+                header=sorted(column_names),
+                data=temp_data
+            )
         else:
             return Data(
                 meta={"format": "list"},
