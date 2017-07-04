@@ -157,8 +157,7 @@ json_types = {
     "TEXT": "string",
     "INTEGER": "integer",
     "REAL": "number",
-    "TINYINT": "boolean",
-    "VARCHAR(80)": "string"    #varchar(80) for guid only
+    "TINYINT": "boolean"
 }
 STATS = {
     "count": "COUNT({{value}})",
