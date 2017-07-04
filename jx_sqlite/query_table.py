@@ -361,7 +361,8 @@ class QueryTable(AggsTable):
             if table.name.startswith("__"):
                 continue
             nested_path = [join_field(split_field(tab.name)[1:]) for tab in jx.reverse(tables) if startswith_field(table.name, tab.name)]
-            columns = self.db.query("pragma table_info('{}');".format(quote_table(table.name)))
+            command = "PRAGMA table_info(" + quote_table(table.name) + ")"
+            columns = self.db.query(command)
             for cid, name, dtype, notnull, dfft_value, pk in columns.data:
                 if name.startswith("__"):
                     continue
