@@ -394,8 +394,12 @@ class QueryTable(AggsTable):
                     }
                 }]
             )   
- 
 
+        else:
+            return Data(
+                meta={"format": "list"},
+                data=metadata
+            )
     def _window_op(self, query, window):
         # http://www2.sqlite.org/cvstrac/wiki?p=UnsupportedSqlAnalyticalFunctions
         if window.value == "rownum":
