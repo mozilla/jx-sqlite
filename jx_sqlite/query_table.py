@@ -18,7 +18,6 @@ from jx_sqlite import quote_table, sql_aggs, unique_name, untyped_column, json_t
 from mo_collections.matrix import Matrix, index_to_coordinate
 from mo_dots import listwrap, coalesce, Data, wrap, startswith_field, unliteral_field, unwrap, split_field, join_field
 from mo_logs import Log
-from mo_math import UNION, MAX
 
 from jx_sqlite.aggs_table import AggsTable
 from pyLibrary.queries import jx
@@ -26,7 +25,6 @@ from pyLibrary.queries.containers import STRUCT
 from pyLibrary.queries.domains import SimpleSetDomain
 from pyLibrary.queries.expressions import jx_expression, Variable, TupleOp
 from pyLibrary.queries.query import QueryOp
-from pyLibrary.queries.meta import Column
 
 
 class QueryTable(AggsTable):
