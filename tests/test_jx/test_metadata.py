@@ -100,7 +100,23 @@ class TestMetadata(BaseTestCase):
         table_name = settings.index
 
         # WE REQUIRE A QUERY TO FORCE LOADING OF METADATA
-        
+        pre_test = {
+            "query": {
+                "from": table_name,
+                "sort": "o"
+            },
+            "expecting_list": {
+                "meta": {"format": "list"}, "data": [
+                    {"o": 1, "_a": [
+                        {"b": "x", "v": 2},
+                        {"b": "y", "v": 3}
+                    ]},
+                    {"o": 2, "_a": {"b": "x", "v": 5}},
+                    {"o": 3, "_a": [{"b": "x", "v": 7}]},
+                    {"o": 4, "c": "x"}
+                ]}
+        }
+        self.utils.send_queries(pre_test)
 
         test = {
             "query": {
@@ -114,9 +130,9 @@ class TestMetadata(BaseTestCase):
                     {"table": table_name, "name": "_id", "type": "string", "nested_path": ["."]},
                     {"table": table_name, "name": "_a", "type": "nested", "nested_path": ["."]},
                     {"table": table_name + "._a", "name": "_a.b", "type": "string", "nested_path": ["_a", "."]},
-                    {"table": table_name + "._a", "name": "_a.v", "type": "double", "nested_path": ["_a", "."]},
+                    {"table": table_name + "._a", "name": "_a.v", "type": "number", "nested_path": ["_a", "."]},
                     {"table": table_name, "name": "c", "type": "string", "nested_path": ["."]},
-                    {"table": table_name, "name": "o", "type": "double", "nested_path": ["."]},
+                    {"table": table_name, "name": "o", "type": "number", "nested_path": ["."]},
                 ]},
             "expecting_table": {
                 "meta": {"format": "table"},
@@ -125,9 +141,9 @@ class TestMetadata(BaseTestCase):
                     [table_name, "_id", ["."], "string"],
                     [table_name, "_a", ["."], "nested"],
                     [table_name + "._a", "_a.b", ["_a", "."], "string"],
-                    [table_name + "._a", "_a.v", ["_a", "."], "double"],
+                    [table_name + "._a", "_a.v", ["_a", "."], "number"],
                     [table_name, "c", ["."], "string"],
-                    [table_name, "o", ["."], "double"]
+                    [table_name, "o", ["."], "number"]
                 ]
             }
         }
