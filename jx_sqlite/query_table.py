@@ -14,10 +14,11 @@ from __future__ import division
 from __future__ import unicode_literals
 
 import mo_json
-from jx_sqlite import quote_table, sql_aggs, unique_name
+from jx_sqlite import quote_table, sql_aggs, unique_name, untyped_column, json_types
 from mo_collections.matrix import Matrix, index_to_coordinate
-from mo_dots import listwrap, coalesce, Data, wrap, startswith_field, unliteral_field, unwrap, split_field
+from mo_dots import listwrap, coalesce, Data, wrap, startswith_field, unliteral_field, unwrap, split_field, join_field
 from mo_logs import Log
+from mo_math import UNION, MAX
 
 from jx_sqlite.aggs_table import AggsTable
 from pyLibrary.queries import jx
@@ -25,6 +26,7 @@ from pyLibrary.queries.containers import STRUCT
 from pyLibrary.queries.domains import SimpleSetDomain
 from pyLibrary.queries.expressions import jx_expression, Variable, TupleOp
 from pyLibrary.queries.query import QueryOp
+from pyLibrary.queries.meta import Column
 
 
 class QueryTable(AggsTable):
@@ -349,6 +351,35 @@ class QueryTable(AggsTable):
         schema = self.sf.tables["."].schema
         query = QueryOp.wrap(query, schema)
 
+        if query.edges or query.groupby:
+            Log.error("Aggregates(groupby or edge) are not supported")
+            
+        meta_column = []
+        result = self.db.query("""select * from SQLITE_MASTER where TYPE='table' order by NAME;""")
+        tables = wrap([{k: d[i] for i, k in enumerate(result.header)} for d in result.data])        
+        for table in tables:
+            if table.name.startswith("__"):
+                continue
+            nested_path = [join_field(split_field(tab.name)[1:]) for tab in jx.reverse(tables) if startswith_field(table.name, tab.name)]
+            columns = self.db.query("pragma table_info('{}');".format(quote_table(table.name)))
+            for cid, name, dtype, notnull, dfft_value, pk in columns.data:
+                if name.startswith("__"):
+                    continue
+                cname, ctype = untyped_column(name)
+                if ctype == None:
+                    ctype = "string"       # for guid 
+                c ={"table": table.name,
+                    "name": cname,
+                    "type": json_types[dtype],
+                    "nested_path": nested_path
+                }
+                meta_column.append(c)
+        if query.format == "cube":
+            pass
+        elif query.format == "table":
+            pass
+        else:
+            pass
         Log.error("Not implemented yet")
 
     def _window_op(self, query, window):
