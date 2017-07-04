@@ -153,6 +153,13 @@ sql_types = {
     "nested": "TEXT"
 }
 
+json_types = {
+    "TEXT": "string",
+    "INTEGER": "integer",
+    "REAL": "number",
+    "TINYINT": "boolean",
+    "VARCHAR(80)": "string"    #varchar(80) for guid only
+}
 STATS = {
     "count": "COUNT({{value}})",
     "std": "SQRT((1-1.0/COUNT({{value}}))*VARIANCE({{value}}))",
