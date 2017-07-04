@@ -367,9 +367,14 @@ class QueryTable(AggsTable):
                 if name.startswith("__"):
                     continue
                 cname, ctype = untyped_column(name)
+                if ctype == None:
+                    ctype = json_types[dtype]
+                elif ctype in STRUCT:
+                    ctype = "nested"
+
                 c ={"table": table.name,
                     "name": cname,
-                    "type": json_types[dtype],
+                    "type": ctype,
                     "nested_path": nested_path
                 }
                 metadata.append(c)
