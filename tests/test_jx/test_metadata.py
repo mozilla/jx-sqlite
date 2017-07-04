@@ -14,7 +14,7 @@ from __future__ import unicode_literals
 from mo_dots import set_default, wrap
 
 from pyLibrary.meta import extenstion_method
-from tests.test_jx import BaseTestCase
+from tests.test_jx import BaseTestCase, TEST_TABLE
 
 
 class TestMetadata(BaseTestCase):
@@ -22,7 +22,7 @@ class TestMetadata(BaseTestCase):
 
     def test_meta(self):
         test = wrap({
-            "query": {"from": "meta.columns"},
+            "query": {"from": TEST_TABLE},
             "data": [
                 {"a": "b"}
             ]
@@ -43,7 +43,7 @@ class TestMetadata(BaseTestCase):
         }
         self.utils.send_queries(pre_test)
 
-        test = set_default(test, {
+        test = {
             "query": {
                 "select": ["name", "table", "type", "nested_path"],
                 "from": "meta.columns",
@@ -78,12 +78,12 @@ class TestMetadata(BaseTestCase):
                     "nested_path": [".", "."]
                 }
             }
-        })
+        }
         self.utils.send_queries(test)
 
     def test_get_nested_columns(self):
         settings = self.utils.fill_container({
-            "query": {"from": "meta.columns"},  # DUMMY QUERY
+            "query": {"from": TEST_TABLE},  # DUMMY QUERY
             "data": [
                 {"o": 1, "_a": [
                     {"b": "x", "v": 2},
