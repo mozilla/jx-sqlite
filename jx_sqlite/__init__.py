@@ -159,6 +159,7 @@ json_types = {
     "REAL": "number",
     "TINYINT": "boolean"
 }
+
 STATS = {
     "count": "COUNT({{value}})",
     "std": "SQRT((1-1.0/COUNT({{value}}))*VARIANCE({{value}}))",
