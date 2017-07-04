@@ -345,6 +345,10 @@ class QueryTable(AggsTable):
         return output
 
     def query_metadata(self, query):
+        frum, query['from'] = query['from'], self
+        schema = self.sf.tables["."].schema
+        query = QueryOp.wrap(query, schema)
+
         Log.error("Not implemented yet")
 
     def _window_op(self, query, window):
