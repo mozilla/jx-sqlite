@@ -153,13 +153,6 @@ sql_types = {
     "nested": "TEXT"
 }
 
-json_types = {
-    "TEXT": "string",
-    "INTEGER": "integer",
-    "REAL": "number",
-    "TINYINT": "boolean"
-}
-
 STATS = {
     "count": "COUNT({{value}})",
     "std": "SQRT((1-1.0/COUNT({{value}}))*VARIANCE({{value}}))",
@@ -280,3 +273,11 @@ ColumnMapping = DataClass(
         {"gte": [{"length": "nested_path"}, 1]}
     ]}
 )
+
+
+json_types = {
+    "TEXT": "string",
+    "INTEGER": "integer",
+    "REAL": "double",
+    "TINYINT": "boolean"
+}
