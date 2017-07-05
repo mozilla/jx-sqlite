@@ -16,7 +16,7 @@ from __future__ import unicode_literals
 import mo_json
 from jx_sqlite import quote_table, sql_aggs, unique_name, untyped_column, json_types
 from mo_collections.matrix import Matrix, index_to_coordinate
-from mo_dots import listwrap, coalesce, Data, wrap, startswith_field, unliteral_field, unwrap, split_field, join_field
+from mo_dots import listwrap, coalesce, Data, wrap, startswith_field, unliteral_field, unwrap, split_field, join_field, unwraplist
 from mo_logs import Log
 
 from jx_sqlite.aggs_table import AggsTable
@@ -373,7 +373,7 @@ class QueryTable(AggsTable):
                 c ={"table": table.name,
                     "name": cname,
                     "type": ctype,
-                    "nested_path": nested_path
+                    "nested_path": unwraplist(nested_path)
                 }
                 metadata.append(c)
                 
