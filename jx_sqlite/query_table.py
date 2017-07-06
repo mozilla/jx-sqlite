@@ -365,10 +365,11 @@ class QueryTable(AggsTable):
                 if name.startswith("__"):
                     continue
                 cname, ctype = untyped_column(name)
-                if ctype == None:
-                    ctype = json_types[dtype]
-                elif ctype in STRUCT:
+                if ctype in STRUCT:
                     ctype = "nested"
+                else:
+                    ctype={"TEXT": "string", "REAL": "number", "INTEGER": "integer"}.get(dtype)
+                    
 
                 c ={"table": table.name,
                     "name": cname,
