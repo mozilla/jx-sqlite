@@ -14,7 +14,7 @@ from __future__ import division
 from __future__ import unicode_literals
 
 import mo_json
-from jx_sqlite import quote_table, sql_aggs, unique_name, untyped_column, json_types
+from jx_sqlite import quote_table, sql_aggs, unique_name, untyped_column
 from mo_collections.matrix import Matrix, index_to_coordinate
 from mo_dots import listwrap, coalesce, Data, wrap, startswith_field, unliteral_field, unwrap, split_field, join_field, unwraplist
 from mo_logs import Log
