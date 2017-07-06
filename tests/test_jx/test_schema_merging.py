@@ -232,4 +232,3 @@ class TestSchemaMerging(BaseTestCase):
             }
         }
         self.utils.execute_tests(test)
-
