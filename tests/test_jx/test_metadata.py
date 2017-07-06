@@ -46,7 +46,8 @@ class TestMetadata(BaseTestCase):
         test = {
             "query": {
                 "select": ["name", "table", "type", "nested_path"],
-                "from": "meta.columns"
+                "from": "meta.columns",
+                "where": {"eq": {"table": table_name}}
             },
             "expecting_list": {
                 "meta": {"format": "list"},
@@ -120,7 +121,8 @@ class TestMetadata(BaseTestCase):
         test = {
             "query": {
                 "select": ["name", "table", "type", "nested_path"],
-                "from": "meta.columns"
+                "from": "meta.columns",
+                "where": {"eq": {"table": table_name}}
             },
             "expecting_list": {
                 "meta": {"format": "list"},
