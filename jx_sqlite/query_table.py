@@ -14,9 +14,9 @@ from __future__ import division
 from __future__ import unicode_literals
 
 import mo_json
-from jx_sqlite import quote_table, sql_aggs, unique_name, untyped_column
+from jx_sqlite import quote_table, sql_aggs, unique_name, untyped_column, typed_column
 from mo_collections.matrix import Matrix, index_to_coordinate
-from mo_dots import listwrap, coalesce, Data, wrap, startswith_field, unliteral_field, unwrap, split_field, join_field, unwraplist
+from mo_dots import listwrap, coalesce, Data, wrap, startswith_field, unliteral_field, unwrap, split_field, join_field, unwraplist, concat_field
 from mo_logs import Log
 
 from jx_sqlite.aggs_table import AggsTable
@@ -25,7 +25,7 @@ from pyLibrary.queries.containers import STRUCT
 from pyLibrary.queries.domains import SimpleSetDomain
 from pyLibrary.queries.expressions import jx_expression, Variable, TupleOp
 from pyLibrary.queries.query import QueryOp
-
+from pyLibrary.queries.meta import Column
 
 class QueryTable(AggsTable):
     def get_column_name(self, column):
@@ -351,12 +351,21 @@ class QueryTable(AggsTable):
 
         if query.edges or query.groupby:
             Log.error("Aggregates(groupby or edge) are not supported")
-            
+        where = query.where
+        tableName = None
+        columnName = None
+        if where.op == "eq" and where.lhs.var == "table":
+            tableName = mo_json.json2value(where.rhs.json)
+        elif where.op =="eq" and where.lhs.var =="name":
+            columnName = mo_json.json2value(where.rhs.json)
+        else:
+            Log.error("Only simple filters are expected like: \"eq\" on table and column name")
+        
         metadata = []
-        result = self.db.query("""select * from SQLITE_MASTER where TYPE='table' order by NAME;""")
+        result = self.db.query("""SELECT NAME FROM SQLITE_MASTER WHERE type='table' ORDER BY NAME;""")
         tables = wrap([{k: d[i] for i, k in enumerate(result.header)} for d in result.data])        
         for table in tables:
-            if table.name.startswith("__"):
+            if table.name.startswith("__") or (tableName != None and tableName != table.name):
                 continue
             nested_path = [join_field(split_field(tab.name)[1:]) for tab in jx.reverse(tables) if startswith_field(table.name, tab.name)]
             command = "PRAGMA table_info(" + quote_table(table.name) + ")"
@@ -365,11 +374,12 @@ class QueryTable(AggsTable):
                 if name.startswith("__"):
                     continue
                 cname, ctype = untyped_column(name)
+                if columnName != None and columnName != cname:
+                    continue
                 if ctype in STRUCT:
                     ctype = "nested"
                 else:
                     ctype={"TEXT": "string", "REAL": "number", "INTEGER": "integer"}.get(dtype)
-                    
 
                 c ={"table": table.name,
                     "name": cname,
@@ -398,7 +408,7 @@ class QueryTable(AggsTable):
                         "interval": 1
                     }
                 }]
-            )   
+            )
         elif query.format == "table":
             num_rows = len(metadata)
             column_names= [s.name for s in query.select]
