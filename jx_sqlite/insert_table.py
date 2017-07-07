@@ -21,9 +21,9 @@ from mo_logs import Log
 
 from jx_sqlite import typed_column, quote_table, get_type, ORDER, UID, GUID, PARENT, get_if_type
 from jx_sqlite.base_table import BaseTable, generateGuid
-from pyLibrary.queries.containers import STRUCT
-from pyLibrary.queries.expressions import jx_expression
-from pyLibrary.queries.meta import Column
+from jx_python.containers import STRUCT
+from jx_python.expressions import jx_expression
+from jx_python.meta import Column
 from pyLibrary.sql.sqlite import quote_value, quote_column
 
 
@@ -199,7 +199,7 @@ class InsertTable(BaseTable):
             return self._next_guid
         finally:
             self._next_guid = generateGuid()
-    
+
     def flatten_many(self, docs, path="."):
         """
         :param docs: THE JSON DOCUMENT
@@ -244,7 +244,7 @@ class InsertTable(BaseTable):
             if not isinstance(data, Mapping):
                 data = {".": data}
             for k, v in data.items():
-                insertion = doc_collection[nested_path[0]]                
+                insertion = doc_collection[nested_path[0]]
                 cname = concat_field(full_path, literal_field(k))
                 value_type = get_type(v)
                 if value_type is None:
@@ -328,7 +328,7 @@ class InsertTable(BaseTable):
             prefix = "INSERT INTO " + quote_table(table_name) + \
                      "(" + ",".join(map(quote_table, all_columns)) + ")"
 
-            # BUILD THE RECORDS  
+            # BUILD THE RECORDS
             records = " UNION ALL ".join(
                 "\nSELECT " + ",".join(quote_value(row.get(c)) for c in all_columns)
                 for row in unwrap(rows)

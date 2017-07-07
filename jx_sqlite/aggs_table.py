@@ -19,9 +19,9 @@ from mo_math import Math
 
 from jx_sqlite import UID, quote_table, get_column, _make_column_name, sql_text_array_to_set, STATS, sql_aggs, PARENT, ColumnMapping
 from jx_sqlite.setop_table import SetOpTable
-from pyLibrary.queries import jx
-from pyLibrary.queries.domains import DefaultDomain, TimeDomain, DurationDomain
-from pyLibrary.queries.expressions import Variable, sql_type_to_json_type, TupleOp
+from jx_python import jx
+from jx_python.domains import DefaultDomain, TimeDomain, DurationDomain
+from jx_python.expressions import Variable, sql_type_to_json_type, TupleOp
 from pyLibrary.sql.sqlite import quote_value
 
 
@@ -49,7 +49,7 @@ class AggsTable(SetOpTable):
         previous = tables[0]
         for t in tables[1::]:
             from_sql += (
-                "\nLEFT JOIN\n" + quote_table(concat_field(base_table, t.nest)) + " " + t.alias + 
+                "\nLEFT JOIN\n" + quote_table(concat_field(base_table, t.nest)) + " " + t.alias +
                 " ON " + t.alias + "." + PARENT + " = " + previous.alias + "." + UID
             )
 
@@ -123,7 +123,7 @@ class AggsTable(SetOpTable):
                     pull=pull,
                     sql=sql,
                     type=sql_type_to_json_type[json_type],
-                    column_alias=sql_name                                                          
+                    column_alias=sql_name
                 )
 
             vals = [v for t, v in edge_values]
@@ -330,7 +330,7 @@ class AggsTable(SetOpTable):
                     push_child=".",
                     pull=get_column(column_number),
                     sql=sql,
-                    column_alias=quote_table(s.name),                                                                                        
+                    column_alias=quote_table(s.name),
                     type=sql_type_to_json_type["n"]
                 )
             elif s.aggregate == "percentile":
@@ -351,7 +351,7 @@ class AggsTable(SetOpTable):
                             push_child=".",
                             pull=get_column(column_number),
                             sql=count_sql,
-                            column_alias=_make_column_name(column_number),                                                                    
+                            column_alias=_make_column_name(column_number),
                             type=sql_type_to_json_type[json_type]
                         )
             elif s.aggregate == "union":
@@ -375,7 +375,7 @@ class AggsTable(SetOpTable):
                         push_child=".",
                         pull=sql_text_array_to_set(column_number),
                         sql=concat_sql,
-                        column_alias=_make_column_name(column_number),                                                                                            
+                        column_alias=_make_column_name(column_number),
                         type=sql_type_to_json_type[json_type]
                     )
 
@@ -393,7 +393,7 @@ class AggsTable(SetOpTable):
                             push_child=name,
                             pull=get_column(column_number),
                             sql=full_sql,
-                            column_alias=_make_column_name(column_number),                                                                                                
+                            column_alias=_make_column_name(column_number),
                             type="number"
                         )
             else:  # STANDARD AGGREGATES
@@ -411,7 +411,7 @@ class AggsTable(SetOpTable):
                             push_child=".",  # join_field(split_field(details.name)[1::]),
                             pull=get_column(column_number),
                             sql=sql,
-                            column_alias=_make_column_name(column_number),                                                                                                
+                            column_alias=_make_column_name(column_number),
                             type=sql_type_to_json_type[sql_type]
                         )
 
@@ -518,7 +518,7 @@ class AggsTable(SetOpTable):
                     push_child=s.name,
                     pull=get_column(column_number),
                     sql=sql,
-                    column_alias=column_alias,                                                                                        
+                    column_alias=column_alias,
                     type=sql_type_to_json_type[sql_type]
                 )
 
@@ -538,7 +538,7 @@ class AggsTable(SetOpTable):
                 push_child=".",
                 pull=get_column(column_number),
                 sql=sql,
-                column_alias=quote_table(s.name),                                                                                    
+                column_alias=quote_table(s.name),
                 type=sql_type_to_json_type[sql_type]
             )
 

@@ -21,7 +21,7 @@ from pyLibrary import convert
 from mo_logs.exceptions import suppress_exception
 from mo_logs import Log
 from mo_kwargs import override
-from pyLibrary.queries import jx
+from jx_python import jx
 from pyLibrary.sql import SQL
 from mo_logs.strings import expand_template
 from mo_threads import Lock

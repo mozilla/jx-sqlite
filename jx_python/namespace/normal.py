@@ -20,12 +20,12 @@ from mo_dots import wrap, listwrap
 from mo_dots import Data
 from mo_dots import FlatList
 from mo_math import Math
-from pyLibrary.queries.containers import Container
-from pyLibrary.queries.dimensions import Dimension
-from pyLibrary.queries.domains import Domain
-from pyLibrary.queries.expressions import TRUE_FILTER
-from pyLibrary.queries.namespace import Namespace, convert_list
-from pyLibrary.queries.query import QueryOp, get_all_vars
+from jx_python.containers import Container
+from jx_python.dimensions import Dimension
+from jx_python.domains import Domain
+from jx_python.expressions import TRUE_FILTER
+from jx_python.namespace import Namespace, convert_list
+from jx_python.query import QueryOp, get_all_vars
 
 DEFAULT_LIMIT = 10
 

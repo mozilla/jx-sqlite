@@ -524,7 +524,7 @@ json_decoder = json.JSONDecoder().decode
 
 
 def json_schema_to_markdown(schema):
-    from pyLibrary.queries import jx
+    from jx_python import jx
 
     def _md_code(code):
         return "`"+code+"`"

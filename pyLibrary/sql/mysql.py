@@ -31,7 +31,7 @@ from mo_times import Date
 from pymysql import connect, InterfaceError, cursors
 
 from pyLibrary import convert
-from pyLibrary.queries import jx
+from jx_python import jx
 from pyLibrary.sql import SQL
 
 DEBUG = False

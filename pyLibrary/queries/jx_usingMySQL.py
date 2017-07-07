@@ -58,7 +58,7 @@ class MySQL(object):
         """
         TRANSLATE JSON QUERY EXPRESSION ON SINGLE TABLE TO SQL QUERY
         """
-        from pyLibrary.queries.query import QueryOp
+        from jx_python.query import QueryOp
 
         query = QueryOp.wrap(query)
 
@@ -463,5 +463,5 @@ aggregates = {
     "variance": "POWER(STDDEV({{code}}), 2)"
 }
 
-from pyLibrary.queries.containers import type2container
+from jx_python.containers import type2container
 type2container["mysql"]=MySQL

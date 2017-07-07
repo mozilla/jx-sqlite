@@ -40,10 +40,10 @@ def _delayed_imports():
     global _Query
     global _Normal
 
-    from pyLibrary.queries.containers.list_usingPythonList import ListContainer as _ListContainer
-    from pyLibrary.queries.containers.cube import Cube as _Cube
-    from pyLibrary.queries.jx import run as _run
-    from pyLibrary.queries.query import QueryOp as _Query
+    from jx_python.containers.list_usingPythonList import ListContainer as _ListContainer
+    from jx_python.containers.cube import Cube as _Cube
+    from jx_python.jx import run as _run
+    from jx_python.query import QueryOp as _Query
 
     _ = _run
     _ = _Query
@@ -76,7 +76,7 @@ class Container(object):
         elif isinstance(frum, basestring):
             # USE DEFAULT STORAGE TO FIND Container
             if not config.default.settings:
-                Log.error("expecting pyLibrary.queries.query.config.default.settings to contain default elasticsearch connection info")
+                Log.error("expecting jx_python.query.config.default.settings to contain default elasticsearch connection info")
 
             settings = set_default(
                 {

@@ -13,7 +13,7 @@ from __future__ import absolute_import
 
 import dataset
 
-from pyLibrary.queries.containers.Table_usingDataset import Table_usingDataset
+from jx_python.containers.Table_usingDataset import Table_usingDataset
 
 
 class Dataset(object):

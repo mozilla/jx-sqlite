@@ -6,8 +6,8 @@ from mo_logs import Log
 
 from jx_sqlite import quote_table, typed_column, UID, quoted_UID, quoted_GUID,sql_types, quoted_PARENT, ORDER, quoted_ORDER
 from jx_sqlite import untyped_column
-from pyLibrary.queries import jx
-from pyLibrary.queries.meta import Column
+from jx_python import jx
+from jx_python.meta import Column
 from pyLibrary.sql.sqlite import quote_column
 
 
@@ -91,13 +91,13 @@ class Snowflake(object):
         command = (
             "CREATE TABLE " + quote_table(self.fact) + "(" +
             (",".join(
-                [quoted_GUID + " TEXT "] +                
+                [quoted_GUID + " TEXT "] +
                 [quoted_UID + " INTEGER"] +
                 [quote_column(c.es_column) + " " + sql_types[c.type] for c in self.tables["."].schema.columns]
             )) +
             ", PRIMARY KEY (" +
             (", ".join(
-                [quoted_GUID] +                
+                [quoted_GUID] +
                 [quoted_UID] +
                 [quote_column(c.es_column) for c in self.tables["."].schema.columns]
             )) +

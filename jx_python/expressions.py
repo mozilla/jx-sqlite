@@ -24,9 +24,9 @@ from mo_math import Math, OR, MAX
 from mo_times.dates import Date
 
 from pyLibrary import convert
-from pyLibrary.queries.containers import STRUCT, OBJECT
+from jx_python.containers import STRUCT, OBJECT
 from jx_base.queries import is_variable_name
-from pyLibrary.queries.expression_compiler import compile_expression
+from jx_python.expression_compiler import compile_expression
 from pyLibrary.sql.sqlite import quote_column, quote_value
 
 ALLOW_SCRIPTING = False
@@ -40,7 +40,7 @@ _Query = None
 def _late_import():
     global _Query
 
-    from pyLibrary.queries.query import QueryOp as _Query
+    from jx_python.query import QueryOp as _Query
 
     _ = _Query
 

@@ -16,10 +16,10 @@ from datetime import datetime
 from mo_dots import wrap, Data, FlatList, literal_field
 from mo_logs import Log
 from pyLibrary import convert
-from pyLibrary.queries import jx
-from pyLibrary.queries.containers import Container
-from pyLibrary.queries.expressions import Variable, Literal
-from pyLibrary.queries.query import QueryOp
+from jx_python import jx
+from jx_python.containers import Container
+from jx_python.expressions import Variable, Literal
+from jx_python.query import QueryOp
 
 INDEX = "__index__"
 PARENT = "__parent__"

@@ -27,14 +27,14 @@ import mo_dots
 from mo_collections.index import Index
 from mo_collections.unique_index import UniqueIndex
 from mo_dots.objects import DataObject
-from pyLibrary.queries import flat_list, query, group_by
-from pyLibrary.queries.containers import Container
-from pyLibrary.queries.containers.cube import Cube
-from pyLibrary.queries.cubes.aggs import cube_aggs
-from pyLibrary.queries.expression_compiler import compile_expression
-from pyLibrary.queries.expressions import TRUE_FILTER, FALSE_FILTER, jx_expression_to_function
-from pyLibrary.queries.flat_list import PartFlatList
-from pyLibrary.queries.query import QueryOp, _normalize_selects
+from jx_python import flat_list, query, group_by
+from jx_python.containers import Container
+from jx_python.containers.cube import Cube
+from jx_python.cubes.aggs import cube_aggs
+from jx_python.expression_compiler import compile_expression
+from jx_python.expressions import TRUE_FILTER, FALSE_FILTER, jx_expression_to_function
+from jx_python.flat_list import PartFlatList
+from jx_python.query import QueryOp, _normalize_selects
 
 # A COLLECTION OF DATABASE OPERATORS (RELATIONAL ALGEBRA OPERATORS)
 # JSON QUERY EXPRESSION DOCUMENTATION: https://github.com/klahnakoski/jx/tree/master/docs
@@ -65,7 +65,7 @@ def run(query, frum=Null):
         query_op = QueryOp.wrap(query, frum.schema)
 
     if frum == None:
-        from pyLibrary.queries.containers.list_usingPythonList import DUAL
+        from jx_python.containers.list_usingPythonList import DUAL
         return DUAL.query(query_op)
     elif isinstance(frum, Container):
         return frum.query(query_op)
@@ -1060,4 +1060,4 @@ def countdown(vals):
 
 
 
-from pyLibrary.queries.lists.aggs import is_aggs, list_aggs
+from jx_python.lists.aggs import is_aggs, list_aggs

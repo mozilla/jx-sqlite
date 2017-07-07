@@ -34,7 +34,7 @@ from mo_logs import Log
 from mo_dots import Data, coalesce, wrap, set_default, unwrap
 from pyLibrary.env.big_data import safe_size, ibytes2ilines, icompressed2ibytes
 from mo_math import Math
-from pyLibrary.queries import jx
+from jx_python import jx
 from mo_threads import Thread, Lock
 from mo_threads import Till
 from mo_times.durations import Duration
