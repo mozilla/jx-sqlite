@@ -351,13 +351,11 @@ class SetOpTable(InsertTable):
         if query.format == "cube":
             for f, _ in self.sf.tables.items():
                 if frum.endswith(f) or (test_dots(cols) and isinstance(query.select, list)):
-                    data = result.data
-                    
-                    num_rows = len(data)
+                    num_rows = len(result.data)
                     num_cols = MAX([c.push_column for c in cols]) + 1 if len(cols) else 0
                     map_index_to_name = {c.push_column: c.push_column_name for c in cols}
                     temp_data = [[None]*num_rows for _ in range(num_cols)]
-                    for rownum, d in enumerate(data):
+                    for rownum, d in enumerate(result.data):
                         for c in cols:
                             if c.push_child == ".":
                                 temp_data[c.push_column][rownum] = c.pull(d)
@@ -425,15 +423,13 @@ class SetOpTable(InsertTable):
         elif query.format == "table":
             for f, _ in self.sf.tables.items():
                 if  frum.endswith(f):  
-                    data = result.data
-                    
                     num_column = MAX([c.push_column for c in cols])+1
                     header = [None]*num_column
                     for c in cols:
                         header[c.push_column] = c.push_column_name
     
                     output_data = []
-                    for d in data:
+                    for d in result.data:
                         row = [None] * num_column
                         for c in cols:
                             set_column(row, c.push_column, c.push_child, c.pull(d))
