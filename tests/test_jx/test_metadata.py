@@ -14,7 +14,7 @@ from __future__ import unicode_literals
 from mo_dots import set_default, wrap
 
 from pyLibrary.meta import extenstion_method
-from tests.test_jx import BaseTestCase
+from tests.test_jx import BaseTestCase, TEST_TABLE
 
 
 class TestMetadata(BaseTestCase):
@@ -22,7 +22,7 @@ class TestMetadata(BaseTestCase):
 
     def test_meta(self):
         test = wrap({
-            "query": {"from": "meta.columns"},
+            "query": {"from": TEST_TABLE},
             "data": [
                 {"a": "b"}
             ]
@@ -43,14 +43,15 @@ class TestMetadata(BaseTestCase):
         }
         self.utils.send_queries(pre_test)
 
-        test = set_default(test, {
+        test = {
             "query": {
                 "select": ["name", "table", "type", "nested_path"],
                 "from": "meta.columns",
                 "where": {"eq": {"table": table_name}}
             },
             "expecting_list": {
-                "meta": {"format": "list"}, "data": [
+                "meta": {"format": "list"},
+                "data": [
                     {"table": table_name, "name": "_id", "type": "string", "nested_path": "."},
                     {"table": table_name, "name": "a", "type": "string", "nested_path": "."}
                 ]
@@ -72,18 +73,18 @@ class TestMetadata(BaseTestCase):
                     }
                 ],
                 "data": {
-                    "table": [table_name],
+                    "table": [table_name, table_name],
                     "name": ["_id", "a"],
                     "type": ["string", "string"],
                     "nested_path": [".", "."]
                 }
             }
-        })
+        }
         self.utils.send_queries(test)
 
     def test_get_nested_columns(self):
         settings = self.utils.fill_container({
-            "query": {"from": "meta.columns"},  # DUMMY QUERY
+            "query": {"from": TEST_TABLE},  # DUMMY QUERY
             "data": [
                 {"o": 1, "_a": [
                     {"b": "x", "v": 2},
@@ -121,7 +122,7 @@ class TestMetadata(BaseTestCase):
             "query": {
                 "select": ["name", "table", "type", "nested_path"],
                 "from": "meta.columns",
-                "where": {"term": {"table": table_name}}
+                "where": {"eq": {"table": table_name}}
             },
             "expecting_list": {
                 "meta": {"format": "list"},
@@ -129,9 +130,9 @@ class TestMetadata(BaseTestCase):
                     {"table": table_name, "name": "_id", "type": "string", "nested_path": "."},
                     {"table": table_name, "name": "_a", "type": "nested", "nested_path": "."},
                     {"table": table_name, "name": "_a.b", "type": "string", "nested_path": ["_a", "."]},
-                    {"table": table_name, "name": "_a.v", "type": "double", "nested_path": ["_a", "."]},
+                    {"table": table_name, "name": "_a.v", "type": "number", "nested_path": ["_a", "."]},
                     {"table": table_name, "name": "c", "type": "string", "nested_path": "."},
-                    {"table": table_name, "name": "o", "type": "double", "nested_path": "."},
+                    {"table": table_name, "name": "o", "type": "number", "nested_path": "."},
                 ]},
             "expecting_table": {
                 "meta": {"format": "table"},
@@ -140,9 +141,9 @@ class TestMetadata(BaseTestCase):
                     [table_name, "_id", ".", "string"],
                     [table_name, "_a", ".", "nested"],
                     [table_name, "_a.b", ["_a", "."], "string"],
-                    [table_name, "_a.v", ["_a", "."], "double"],
+                    [table_name, "_a.v", ["_a", "."], "number"],
                     [table_name, "c", ".", "string"],
-                    [table_name, "o", ".", "double"]
+                    [table_name, "o", ".", "number"]
                 ]
             }
         }

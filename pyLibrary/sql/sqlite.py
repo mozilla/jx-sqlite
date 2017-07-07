@@ -135,7 +135,7 @@ class Sqlite(DB):
         if Sqlite.canonical:
             self.db = Sqlite.canonical
         else:
-            self.db = sqlite3.connect(coalesce(self.filename, ':memory:'))
+            self.db = sqlite3.connect(coalesce(self.filename, ':memory:'), check_same_thread = False)
 
             library_loc = File.new_instance(sys.modules[__name__].__file__, "../..")
             full_path = File.new_instance(library_loc, "vendor/sqlite/libsqlitefunctions.so").abspath
@@ -207,6 +207,13 @@ class Sqlite(DB):
     def quote_value(self, value):
         return quote_value(value)
 
+    def create_new_functions(self):
+
+        def regexp(pattern, item):
+            reg = re.compile(pattern)
+            return reg.search(item) is not None
+        
+        self.db.create_function("REGEXP", 2, regexp)
 
 _no_need_to_quote = re.compile(r"^\w+$", re.UNICODE)
 

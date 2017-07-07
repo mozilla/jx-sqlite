@@ -1,11 +1,11 @@
-mo-dots
+mo-dots>=1.4
 mo-logs
-mo-files
+mo-files>=1.2
 mo-threads
 mo-kwargs
 mo-math
 mo-times
 mo-collections
-mo-testing
+mo-testing>=1.0.17168
 mo-json>=1.0.17168
 mo-json-config

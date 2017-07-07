@@ -16,15 +16,15 @@ from __future__ import unicode_literals
 from collections import Mapping
 from copy import copy
 
-from mo_dots import listwrap, Data, wrap, Null, unwraplist, startswith_field, unwrap, concat_field
+from mo_dots import listwrap, Data, wrap, Null, unwraplist, startswith_field, unwrap, concat_field, literal_field
 from mo_logs import Log
 
-from jx_sqlite import typed_column, quote_table, get_type, ORDER, UID, PARENT, get_if_type
-from jx_sqlite.base_table import BaseTable
+from jx_sqlite import typed_column, quote_table, get_type, ORDER, UID, GUID, PARENT, get_if_type
+from jx_sqlite.base_table import BaseTable, generateGuid
 from pyLibrary.queries.containers import STRUCT
 from pyLibrary.queries.expressions import jx_expression
 from pyLibrary.queries.meta import Column
-from pyLibrary.sql.sqlite import quote_value
+from pyLibrary.sql.sqlite import quote_value, quote_column
 
 
 class InsertTable(BaseTable):
@@ -194,6 +194,12 @@ class InsertTable(BaseTable):
             self.delete(where)
             self.insert(doc)
 
+    def next_guid(self):
+        try:
+            return self._next_guid
+        finally:
+            self._next_guid = generateGuid()
+    
     def flatten_many(self, docs, path="."):
         """
         :param docs: THE JSON DOCUMENT
@@ -219,7 +225,7 @@ class InsertTable(BaseTable):
         nested_tables = copy(self.sf.tables)
         abs_schema = copy(self.sf.tables["."].schema)
 
-        def _flatten(data, uid, parent_id, order, full_path, nested_path, row=None):
+        def _flatten(data, uid, parent_id, order, full_path, nested_path, row=None, guid=None):
             """
             :param data: the data we are pulling apart
             :param uid: the uid we are giving this doc
@@ -232,13 +238,14 @@ class InsertTable(BaseTable):
             """
             insertion = doc_collection[nested_path[0]]
             if not row:
-                row = {UID: uid, PARENT: parent_id, ORDER: order}
+                row = {GUID: guid, UID: uid, PARENT: parent_id, ORDER: order}
                 insertion.rows.append(row)
 
             if not isinstance(data, Mapping):
                 data = {".": data}
             for k, v in data.items():
-                cname = concat_field(full_path, k)
+                insertion = doc_collection[nested_path[0]]                
+                cname = concat_field(full_path, literal_field(k))
                 value_type = get_type(v)
                 if value_type is None:
                     continue
@@ -254,12 +261,12 @@ class InsertTable(BaseTable):
                     for path, _ in nested_tables.items():
                         if startswith_field(cname, path) and len(deeper_nested_path) < len(path):
                             deeper_nested_path = path
-                            
+
                     c = Column(
                         names={".": cname},
                         type=value_type,
                         es_column=typed_column(cname, value_type),
-                        es_index=self.sf.fact,  # THIS MAY BE THE WRONG TABLE, IF THIS PATH IS A NESTED DOC
+                        es_index=concat_field(self.sf.fact, cname),  # THIS MAY BE THE WRONG TABLE, IF THIS PATH IS A NESTED DOC
                         nested_path=nested_path
                     )
                     abs_schema.add(cname, c)
@@ -283,7 +290,7 @@ class InsertTable(BaseTable):
                         )
                     for i, r in enumerate(v):
                         child_uid = self.next_uid()
-                        _flatten(r, child_uid, uid, i, cname, deeper_nested_path)                   
+                        _flatten(r, child_uid, uid, i, cname, deeper_nested_path)
                 elif value_type == "object":
                     row[c.es_column] = "."
                     _flatten(v, uid, parent_id, order, cname, nested_path, row=row)
@@ -291,7 +298,7 @@ class InsertTable(BaseTable):
                     row[c.es_column] = v
 
         for doc in docs:
-            _flatten(doc, self.next_uid(), 0, 0, full_path=path, nested_path=["."])
+            _flatten(doc, self.next_uid(), 0, 0, full_path=path, nested_path=["."], guid=self.next_guid())
             if required_changes:
                 self.sf.change_schema(required_changes)
             required_changes = []
@@ -312,7 +319,7 @@ class InsertTable(BaseTable):
 
             if table_name == self.sf.fact:
                 # DO NOT REQUIRE PARENT OR ORDER COLUMNS
-                meta_columns = [UID]
+                meta_columns = [GUID, UID]
             else:
                 meta_columns = [UID, PARENT, ORDER]
 
@@ -321,7 +328,7 @@ class InsertTable(BaseTable):
             prefix = "INSERT INTO " + quote_table(table_name) + \
                      "(" + ",".join(map(quote_table, all_columns)) + ")"
 
-            # BUILD THE RECORDS
+            # BUILD THE RECORDS  
             records = " UNION ALL ".join(
                 "\nSELECT " + ",".join(quote_value(row.get(c)) for c in all_columns)
                 for row in unwrap(rows)

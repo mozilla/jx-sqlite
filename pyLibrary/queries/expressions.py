@@ -27,7 +27,7 @@ from pyLibrary import convert
 from pyLibrary.queries.containers import STRUCT, OBJECT
 from jx_base.queries import is_variable_name
 from pyLibrary.queries.expression_compiler import compile_expression
-from pyLibrary.sql.sqlite import quote_column
+from pyLibrary.sql.sqlite import quote_column, quote_value
 
 ALLOW_SCRIPTING = False
 TRUE_FILTER = True
@@ -288,7 +288,10 @@ class Variable(Expression):
                     value = quote_column(col.es_column).sql
                 else:
                     value = "(" + quote_column(col.es_column).sql + ") IS NOT NULL"
-                acc[literal_field(nested_path)][literal_field(schema.get_column_name(col))]['b'] = value
+                acc = unwrap(acc)
+                tempa = acc.setdefault(nested_path, {})
+                tempb = tempa.setdefault(schema.get_column_name(col), {})
+                tempb['b'] = value
         else:
             for col in cols:
                 if col.type == OBJECT:
@@ -296,10 +299,16 @@ class Variable(Expression):
                     for cn, cs in schema.items():
                         if cn.startswith(prefix):
                             for child_col in cs:
-                                acc[literal_field(child_col.nested_path[0])][literal_field(schema.get_column_name(child_col))][json_type_to_sql_type[child_col.type]] = quote_column(child_col.es_column).sql
+                                acc = unwrap(acc)
+                                tempa = acc.setdefault(child_col.nested_path[0], {})
+                                tempb = tempa.setdefault(schema.get_column_name(child_col), {})
+                                tempb[json_type_to_sql_type[col.type]] = quote_column(child_col.es_column).sql
                 else:
                     nested_path = col.nested_path[0]
-                    acc[literal_field(nested_path)][literal_field(schema.get_column_name(col))][json_type_to_sql_type[col.type]] = quote_column(col.es_column).sql
+                    acc = unwrap(acc)
+                    tempa = acc.setdefault(nested_path, {})
+                    tempb = tempa.setdefault(schema.get_column_name(col), {})
+                    tempb[json_type_to_sql_type[col.type]] = quote_column(col.es_column).sql
 
         return wrap([
             {"name": relative_field(cname, self.var), "sql": types, "nested_path": nested_path}
@@ -1779,7 +1788,7 @@ class RegExpOp(Expression):
         return "re.match(" + quote(json2value(self.pattern.json) + "$") + ", " + self.var.to_python() + ")"
 
     def to_sql(self, schema, not_null=False, boolean=False):
-        pattern = schema.db.quote_value(convert.json2value(self.pattern.json))
+        pattern = quote_value(convert.json2value(self.pattern.json))
         value = self.var.to_sql(schema)[0].sql.s
         return wrap([
             {"name": ".", "sql": {"b": value + " REGEXP " + pattern}}

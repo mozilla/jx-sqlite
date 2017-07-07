@@ -13,7 +13,7 @@ from __future__ import unicode_literals
 
 from unittest import skipIf
 
-from tests.test_jx import BaseTestCase, TEST_TABLE, global_settings
+from tests.test_jx import BaseTestCase, TEST_TABLE, global_settings, NULL
 
 
 class TestSchemaMerging(BaseTestCase):
@@ -115,7 +115,8 @@ class TestSchemaMerging(BaseTestCase):
     def test_dots_in_property_names(self):
         test = {
             "data": [
-                {"a.html": "hello world"}
+                {"a.html": "hello"},
+                {"a": {"html": "world"}}
             ],
             "query": {
                 "from": TEST_TABLE,
@@ -124,14 +125,16 @@ class TestSchemaMerging(BaseTestCase):
             "expecting_list": {
                 "meta": {"format": "list"},
                 "data": [
-                    "hello world"
+                    "hello",
+                    NULL
                 ]
             },
             "expecting_table": {
                 "meta": {"format": "table"},
-                "header": ["a.html"],
+                "header": ["a\\.html"],
                 "data": [
-                    ["hello world"]
+                    ["hello"],
+                    [NULL]
                 ]
             },
             "expecting_cube": {
@@ -139,11 +142,92 @@ class TestSchemaMerging(BaseTestCase):
                 "edges": [
                     {
                         "name": "rownum",
-                        "domain": {"type": "rownum", "min": 0, "max": 1, "interval": 1}
+                        "domain": {"type": "rownum", "min": 0, "max": 2, "interval": 1}
                     }
                 ],
                 "data": {
-                    "a.html": ["hello world"]
+                    "a\\.html": ["hello", NULL]
+                }
+            }
+        }
+        self.utils.execute_tests(test)
+
+    def test_dots_in_property_names2(self):
+        test = {
+            "data": [
+                {"a.html": "hello"},
+                {"a": {"html": "world"}}
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "select": "a.html"
+            },
+            "expecting_list": {
+                "meta": {"format": "list"},
+                "data": [
+                    NULL,
+                    "world"
+                ]
+            },
+            "expecting_table": {
+                "meta": {"format": "table"},
+                "header": ["a.html"],
+                "data": [
+                    [NULL],
+                    ["world"]
+                ]
+            },
+            "expecting_cube": {
+                "meta": {"format": "cube"},
+                "edges": [
+                    {
+                        "name": "rownum",
+                        "domain": {"type": "rownum", "min": 0, "max": 2, "interval": 1}
+                    }
+                ],
+                "data": {
+                    "a.html": [NULL, "world"]
+                }
+            }
+        }
+        self.utils.execute_tests(test)
+
+    def test_dots_in_property_names3(self):
+        test = {
+            "data": [
+                {"a.html": "hello"},
+                {"a": {"html": "world"}}
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "select": ["a\\.html", "a.html"]
+            },
+            "expecting_list": {
+                "meta": {"format": "list"},
+                "data": [
+                    {"a.html": "hello"},
+                    {"a": {"html": "world"}}
+                ]
+            },
+            "expecting_table": {
+                "meta": {"format": "table"},
+                "header": ["a\\.html", "a.html"],
+                "data": [
+                    ["hello", NULL],
+                    [NULL, "world"]
+                ]
+            },
+            "expecting_cube": {
+                "meta": {"format": "cube"},
+                "edges": [
+                    {
+                        "name": "rownum",
+                        "domain": {"type": "rownum", "min": 0, "max": 2, "interval": 1}
+                    }
+                ],
+                "data": {
+                    "a\\.html": ["hello", NULL],
+                    "a.html": [NULL, "world"]
                 }
             }
         }
