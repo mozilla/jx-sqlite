@@ -376,23 +376,15 @@ class QueryTable(AggsTable):
                 cname, ctype = untyped_column(name)
                 if columnName != None and columnName != cname:
                     continue
-
+                if ctype in STRUCT:
+                    dtype = "OBJECT"
                 ctype=json_types.get(dtype)
-                c ={"table": table.name,
-                    "name": cname,
-                    "type": ctype,
-                    "nested_path": unwraplist(nested_path)
-                }
-                metadata.append(c)
-                
+                metadata.append((table.name, cname, ctype, unwraplist(nested_path)))
+
         if query.format == "cube":
             num_rows = len(metadata)
-            temp_data = Data()
-            for rownum, d in enumerate(metadata):                
-                for k, v in d.items(): 
-                    if temp_data[k] == None:
-                        temp_data[k] = [None] * num_rows                        
-                    temp_data[k][rownum] = v
+            header = ["table", "name", "type", "nested_path"]
+            temp_data = dict(zip(header, zip(*metadata)))
             return Data(
                 meta={"format": "cube"},
                 data=temp_data,
@@ -407,25 +399,19 @@ class QueryTable(AggsTable):
                 }]
             )
         elif query.format == "table":
-            num_rows = len(metadata)
-            column_names= [s.name for s in query.select]
-            temp_data = []
-            for rownum, d in enumerate(metadata):
-                row =[None] * len(column_names)
-                for i, (k, v) in enumerate(sorted(d.items())):
-                    row[i] = v
-                temp_data.append(row)
-
+            header = ["table", "name", "type", "nested_path"]
             return Data(
                 meta={"format": "table"},
-                header=sorted(column_names),
-                data=temp_data
-            )
-        else:
-            return Data(
-                meta={"format": "list"},
+                header=header,
                 data=metadata
             )
+        else:
+            header = ["table", "name", "type", "nested_path"]
+            return Data(
+                    meta={"format": "list"},
+                    data=[dict(zip(header, r)) for r in metadata]
+                )       
+
     def _window_op(self, query, window):
         # http://www2.sqlite.org/cvstrac/wiki?p=UnsupportedSqlAnalyticalFunctions
         if window.value == "rownum":

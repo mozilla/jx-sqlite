@@ -129,8 +129,8 @@ class TestMetadata(BaseTestCase):
                 "data": [
                     {"table": table_name, "name": "_id", "type": "string", "nested_path": "."},
                     {"table": table_name, "name": "_a", "type": "nested", "nested_path": "."},
-                    {"table": table_name + "._a", "name": "_a.b", "type": "string", "nested_path": ["_a", "."]},
-                    {"table": table_name + "._a", "name": "_a.v", "type": "number", "nested_path": ["_a", "."]},
+                    {"table": table_name, "name": "_a.b", "type": "string", "nested_path": ["_a", "."]},
+                    {"table": table_name, "name": "_a.v", "type": "number", "nested_path": ["_a", "."]},
                     {"table": table_name, "name": "c", "type": "string", "nested_path": "."},
                     {"table": table_name, "name": "o", "type": "number", "nested_path": "."},
                 ]},
@@ -140,8 +140,8 @@ class TestMetadata(BaseTestCase):
                 "data": [
                     [table_name, "_id", ".", "string"],
                     [table_name, "_a", ".", "nested"],
-                    [table_name + "._a", "_a.b", ["_a", "."], "string"],
-                    [table_name + "._a", "_a.v", ["_a", "."], "number"],
+                    [table_name, "_a.b", ["_a", "."], "string"],
+                    [table_name, "_a.v", ["_a", "."], "number"],
                     [table_name, "c", ".", "string"],
                     [table_name, "o", ".", "number"]
                 ]
