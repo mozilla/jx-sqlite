@@ -11,11 +11,11 @@
 from __future__ import division
 from __future__ import unicode_literals
 
-from unittest import skipIf
-
 from mo_dots import wrap
 from mo_math import Math
-from jx_python import query
+from unittest import skipIf
+
+from jx_python.query import DEFAULT_LIMIT, MAX_LIMIT
 from tests.test_jx import BaseTestCase, TEST_TABLE, global_settings, NULL
 
 lots_of_data = wrap([{"a": i} for i in range(30)])
@@ -610,7 +610,7 @@ class TestSetOps(BaseTestCase):
 
         self.utils.fill_container(test)
         result = self.utils.execute_query(test.query)
-        self.assertEqual(result.meta.es_query.size, query.MAX_LIMIT)
+        self.assertEqual(result.meta.es_query.size, MAX_LIMIT)
 
     def test_default_limit(self):
         test = wrap({
@@ -624,15 +624,15 @@ class TestSetOps(BaseTestCase):
         self.utils.fill_container(test)
         test.query.format = "list"
         result = self.utils.execute_query(test.query)
-        self.assertEqual(len(result.data), query.DEFAULT_LIMIT)
+        self.assertEqual(len(result.data), DEFAULT_LIMIT)
 
         test.query.format = "table"
         result = self.utils.execute_query(test.query)
-        self.assertEqual(len(result.data), query.DEFAULT_LIMIT)
+        self.assertEqual(len(result.data), DEFAULT_LIMIT)
 
         test.query.format = "cube"
         result = self.utils.execute_query(test.query)
-        self.assertEqual(len(result.data.value), query.DEFAULT_LIMIT)
+        self.assertEqual(len(result.data.value), DEFAULT_LIMIT)
 
     def test_specific_limit(self):
         test = wrap({
@@ -1084,7 +1084,6 @@ class TestSetOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.is_travis, "not expected to pass yet")
     def test_select_nested_column(self):
         test = {
             "data": [
