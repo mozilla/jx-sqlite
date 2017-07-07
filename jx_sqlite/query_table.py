@@ -376,11 +376,10 @@ class QueryTable(AggsTable):
                 nested_path=["."]
             ))
 
-        for table in tables:
+        for tname, table in zip(t, tables):
             if tableName != None and tableName != table:
                 continue
 
-            tname=join_field(split_field(table)[1:])        
             for col in columns:
                 cname, ctype = untyped_column(col.es_column)
                 if columnName != None and columnName != cname:
