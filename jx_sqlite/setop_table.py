@@ -347,7 +347,7 @@ class SetOpTable(InsertTable):
             data=listwrap(_accumulate_nested(rows, row, primary_doc_details, None, None))
         else:
             data = result.data
-        
+
         if query.format == "cube":
             for f, _ in self.sf.tables.items():
                 if frum.endswith(f) or (test_dots(cols) and isinstance(query.select, list)):
@@ -378,7 +378,7 @@ class SetOpTable(InsertTable):
                         }]
                     )
                     return output
-                
+
             if isinstance(query.select, list) or isinstance(query.select.value, LeavesOp):
                 num_rows = len(data)
                 map_index_to_name = {c.push_column: c.push_column_name for c in cols}
