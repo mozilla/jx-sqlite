@@ -16,14 +16,14 @@ from __future__ import unicode_literals
 import mo_json
 from jx_sqlite import quote_table, sql_aggs, unique_name, untyped_column, typed_column, json_types
 from mo_collections.matrix import Matrix, index_to_coordinate
-from mo_dots import listwrap, coalesce, Data, wrap, startswith_field, unliteral_field, unwrap, split_field, join_field, unwraplist, concat_field
+from mo_dots import listwrap, coalesce, Data, wrap, startswith_field, unliteral_field, unwrap, split_field, join_field, unwraplist, concat_field, relative_field
 from mo_logs import Log
 
 from jx_sqlite.aggs_table import AggsTable
 from pyLibrary.queries import jx
 from pyLibrary.queries.containers import STRUCT
 from pyLibrary.queries.domains import SimpleSetDomain
-from pyLibrary.queries.expressions import jx_expression, Variable, TupleOp, jx_expression_to_function
+from pyLibrary.queries.expressions import jx_expression, Variable, TupleOp
 from pyLibrary.queries.query import QueryOp
 from pyLibrary.queries.meta import Column
 
@@ -352,27 +352,41 @@ class QueryTable(AggsTable):
         where = query.where
         tableName = None
         columnName = None
-        
+
         if query.edges or query.groupby:
             Log.error("Aggregates(groupby or edge) are not supported")
+
         if where.op == "eq" and where.lhs.var == "table":
             tableName = mo_json.json2value(where.rhs.json)
         elif where.op =="eq" and where.lhs.var =="name":
             columnName = mo_json.json2value(where.rhs.json)
         else:
             Log.error("Only simple filters are expected like: \"eq\" on table and column name")
-        
-        metadata = [[self.sf.fact, "_id", "string", "."]]
-        
-        for col in columns:
-            cname, ctype = untyped_column(col.es_column)
-            if columnName != None and columnName != cname:
-                continue            
-            tables = [concat_field(self.sf.fact, t) for t in col.names.keys()]
-            for table in tables:
-                if tableName != None and tableName != table:
-                    continue
-                metadata.append((table, cname, col.type, unwraplist(col.nested_path)))
+
+        t = [i for i in columns[0].names.keys()]
+        tables = [concat_field(self.sf.fact, i) for i in t]
+
+        metadata = []
+        if columns[-1].es_column!="_id":
+            columns.append(Column(
+                names={i: relative_field("_id", i) for i in t},
+                type="string",
+                es_column="_id",
+                es_index=self.sf.fact,
+                nested_path=["."]
+            ))
+
+        for table in tables:
+            if tableName != None and tableName != table:
+                continue
+
+            tname=join_field(split_field(table)[1:])        
+            for col in columns:
+                cname, ctype = untyped_column(col.es_column)
+                if columnName != None and columnName != cname:
+                    continue            
+
+                metadata.append((table, col.names[tname], col.type, unwraplist(col.nested_path)))
         
         if query.format == "cube":
             num_rows = len(metadata)
