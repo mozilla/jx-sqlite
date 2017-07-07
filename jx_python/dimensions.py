@@ -13,8 +13,8 @@ from __future__ import absolute_import
 from collections import Mapping
 import mo_dots as dot
 from mo_math import SUM
-from pyLibrary.queries.containers import Container
-from pyLibrary.queries.domains import Domain, ALGEBRAIC, KNOWN
+from jx_python.containers import Container
+from jx_python.domains import Domain, ALGEBRAIC, KNOWN
 from mo_dots import Null, coalesce, join_field, split_field, Data
 from mo_dots.lists import FlatList
 from mo_times.timer import Timer

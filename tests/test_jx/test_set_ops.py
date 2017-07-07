@@ -15,7 +15,7 @@ from unittest import skipIf
 
 from mo_dots import wrap
 from mo_math import Math
-from pyLibrary.queries import query
+from jx_python import query
 from tests.test_jx import BaseTestCase, TEST_TABLE, global_settings, NULL
 
 lots_of_data = wrap([{"a": i} for i in range(30)])

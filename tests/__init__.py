@@ -26,8 +26,8 @@ from mo_testing.fuzzytestcase import assertAlmostEqual
 
 from jx_sqlite.query_table import QueryTable
 from pyLibrary import convert
-from pyLibrary.queries import jx
-from pyLibrary.queries.query import QueryOp
+from jx_python import jx
+from jx_python.query import QueryOp
 
 from tests import test_jx
 

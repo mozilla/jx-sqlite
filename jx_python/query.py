@@ -23,11 +23,11 @@ from mo_math import AND, UNION
 from mo_math import Math
 
 from jx_base.queries import is_variable_name
-from pyLibrary.queries import Schema, wrap_from
-from pyLibrary.queries.containers import Container, STRUCT
-from pyLibrary.queries.dimensions import Dimension
-from pyLibrary.queries.domains import Domain, SetDomain
-from pyLibrary.queries.expressions import jx_expression, TrueOp, Expression, FalseOp, Variable, LeavesOp, ScriptOp, OffsetOp
+from jx_python import Schema, wrap_from
+from jx_python.containers import Container, STRUCT
+from jx_python.dimensions import Dimension
+from jx_python.domains import Domain, SetDomain
+from jx_python.expressions import jx_expression, TrueOp, Expression, FalseOp, Variable, LeavesOp, ScriptOp, OffsetOp
 
 DEFAULT_LIMIT = 10
 MAX_LIMIT = 50000
@@ -40,8 +40,8 @@ def _late_import():
     global _jx
     global _Column
 
-    from pyLibrary.queries.meta import Column as _Column
-    from pyLibrary.queries import jx as _jx
+    from jx_python.meta import Column as _Column
+    from jx_python import jx as _jx
 
     _ = _jx
     _ = _Column

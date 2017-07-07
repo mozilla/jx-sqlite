@@ -30,7 +30,7 @@ from mo_json.typed_encoder import json2typed
 from mo_math import Math
 from mo_math.randoms import Random
 from mo_kwargs import override
-from pyLibrary.queries import jx
+from jx_python import jx
 from mo_threads import ThreadedQueue
 from mo_threads import Till
 from mo_times.dates import Date
@@ -544,7 +544,7 @@ class Cluster(object):
         return Index(kwargs)
 
     def _get_best(self, settings):
-        from pyLibrary.queries import jx
+        from jx_python import jx
         aliases = self.get_aliases()
         indexes = jx.sort([
             a
@@ -1082,7 +1082,7 @@ def parse_properties(parent_index_name, parent_name, esProperties):
     """
     RETURN THE COLUMN DEFINITIONS IN THE GIVEN esProperties OBJECT
     """
-    from pyLibrary.queries.meta import Column
+    from jx_python.meta import Column
 
     columns = FlatList()
     for name, property in esProperties.items():

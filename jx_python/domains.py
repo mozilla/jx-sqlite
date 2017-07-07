@@ -228,7 +228,7 @@ class SimpleSetDomain(Domain):
             if desc.partitions and all(desc.partitions.where) or all(desc.partitions.esfilter):
                 if not all(desc.partitions.name):
                     Log.error("Expecting all partitions to have a name")
-                from pyLibrary.queries.expressions import jx_expression
+                from jx_python.expressions import jx_expression
 
                 self.key = "name"
                 self.map = dict()

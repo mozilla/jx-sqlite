@@ -13,9 +13,9 @@ from __future__ import unicode_literals
 
 from unittest import skip
 
-from pyLibrary.queries.jx_usingES import FromES
-from pyLibrary.queries.namespace.rename import Rename
-from pyLibrary.queries.namespace.typed import Typed
+from jx_python.jx_usingES import FromES
+from jx_python.namespace.rename import Rename
+from jx_python.namespace.typed import Typed
 from tests.test_jx import BaseTestCase, TEST_TABLE, NULL
 
 

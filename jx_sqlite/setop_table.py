@@ -18,9 +18,9 @@ from mo_math import UNION, MAX
 
 from jx_sqlite import quote_table, quoted_UID, quoted_GUID, get_column, _make_column_name, ORDER, COLUMN, set_column, quoted_PARENT, ColumnMapping
 from jx_sqlite.insert_table import InsertTable
-from pyLibrary.queries.containers import STRUCT
-from pyLibrary.queries.expressions import sql_type_to_json_type, LeavesOp
-from pyLibrary.queries.meta import Column
+from jx_python.containers import STRUCT
+from jx_python.expressions import sql_type_to_json_type, LeavesOp
+from jx_python.meta import Column
 from pyLibrary.sql.sqlite import quote_value
 
 
@@ -112,7 +112,7 @@ class SetOpTable(InsertTable):
                 place(primary_doc_details)
 
             alias = nested_doc_details['alias'] = nest_to_alias[nested_path]
-            
+
             if nested_path=="." and quoted_GUID in vars_:
                 column_number = index_to_uid[nested_path] = nested_doc_details['id_coord'] = len(sql_selects)
                 sql_select = alias + "." + quoted_GUID
@@ -125,12 +125,12 @@ class SetOpTable(InsertTable):
                     sql=sql_select,
                     pull=get_column(column_number),
                     type="string",
-                    column_alias=_make_column_name(column_number),                                        
+                    column_alias=_make_column_name(column_number),
                     nested_path=[nested_path]           # fake the real nested path, we only look at [0] anyway
                 )
                 query.select = [s for s in listwrap(query.select) if s.name!="_id"]
-            
-            
+
+
             # WE ALWAYS ADD THE UID AND ORDER
             column_number = index_to_uid[nested_path] = nested_doc_details['id_coord'] = len(sql_selects)
             sql_select = alias + "." + quoted_UID
@@ -139,9 +139,9 @@ class SetOpTable(InsertTable):
                 index_to_column[column_number]=ColumnMapping(
                     sql=sql_select,
                     type="number",
-                    nested_path=[nested_path],            # fake the real nested path, we only look at [0] anyway               
+                    nested_path=[nested_path],            # fake the real nested path, we only look at [0] anyway
                     column_alias=_make_column_name(column_number)
-                
+
                 )
                 column_number = len(sql_selects)
                 sql_select = alias + "." + quote_table(ORDER)
@@ -149,10 +149,10 @@ class SetOpTable(InsertTable):
                 index_to_column[column_number]=ColumnMapping(
                     sql=sql_select,
                     type="number",
-                    nested_path=[nested_path],            # fake the real nested path, we only look at [0] anyway               
+                    nested_path=[nested_path],            # fake the real nested path, we only look at [0] anyway
                     column_alias=_make_column_name(column_number)
-                
-                )                
+
+                )
 
             # WE DO NOT NEED DATA FROM TABLES WE REQUEST NOTHING FROM
             if nested_path not in active_columns:
@@ -185,7 +185,7 @@ class SetOpTable(InsertTable):
                                         pull=get_column(column_number),
                                         sql=unsorted_sql,
                                         type=json_type,
-                                        column_alias=column_alias,                                        
+                                        column_alias=column_alias,
                                         nested_path=[nested_path]           # fake the real nested path, we only look at [0] anyway
                                     )
                                     si += 1
@@ -207,7 +207,7 @@ class SetOpTable(InsertTable):
                                         pull=get_column(column_number),
                                         sql=unsorted_sql,
                                         type=json_type,
-                                        column_alias=column_alias,                                                                                
+                                        column_alias=column_alias,
                                         nested_path=[nested_path]
                                         # fake the real nested path, we only look at [0] anyway
                                     )
@@ -232,7 +232,7 @@ class SetOpTable(InsertTable):
                         pull=get_column(column_number),
                         sql=unsorted_sql,
                         type=c.type,
-                        column_alias=column_alias,                                                                
+                        column_alias=column_alias,
                         nested_path=nested_path
                     )
 
@@ -382,11 +382,11 @@ class SetOpTable(InsertTable):
             if isinstance(query.select, list) or isinstance(query.select.value, LeavesOp):
                 num_rows = len(data)
                 map_index_to_name = {c.push_column: c.push_column_name for c in cols}
-                temp_data = Data()                    
-                for rownum, d in enumerate(data):                
-                    for k, v in d.items(): 
+                temp_data = Data()
+                for rownum, d in enumerate(data):
+                    for k, v in d.items():
                         if temp_data[k] == None:
-                            temp_data[k] = [None] * num_rows                        
+                            temp_data[k] = [None] * num_rows
                         temp_data[k][rownum] = v
                 return Data(
                     meta={"format": "cube"},
@@ -400,12 +400,12 @@ class SetOpTable(InsertTable):
                             "interval": 1
                         }
                     }]
-                )                
-            else:    
+                )
+            else:
                 num_rows = len(data)
                 map_index_to_name = {c.push_column: c.push_column_name for c in cols}
                 temp_data = [data]
-    
+
                 return Data(
                     meta={"format": "cube"},
                     data={n: temp_data[c] for c, n in map_index_to_name.items()},
@@ -422,19 +422,19 @@ class SetOpTable(InsertTable):
 
         elif query.format == "table":
             for f, _ in self.sf.tables.items():
-                if  frum.endswith(f):  
+                if  frum.endswith(f):
                     num_column = MAX([c.push_column for c in cols])+1
                     header = [None]*num_column
                     for c in cols:
                         header[c.push_column] = c.push_column_name
-    
+
                     output_data = []
                     for d in result.data:
                         row = [None] * num_column
                         for c in cols:
                             set_column(row, c.push_column, c.push_child, c.pull(d))
                         output_data.append(row)
-    
+
                     return Data(
                         meta={"format": "table"},
                         header=header,
@@ -492,8 +492,8 @@ class SetOpTable(InsertTable):
                         data=data
                     )
 
-            if isinstance(query.select, list) or isinstance(query.select.value, LeavesOp):                
-                temp_data=[]    
+            if isinstance(query.select, list) or isinstance(query.select.value, LeavesOp):
+                temp_data=[]
                 for rownum, d in enumerate(data):
                     row = {}
                     for k, v in d.items():
@@ -506,13 +506,13 @@ class SetOpTable(InsertTable):
                 return Data(
                     meta={"format": "list"},
                     data=temp_data
-                )                
+                )
             else:
                 return Data(
                     meta={"format": "list"},
                     data=data
-                )                
-                
+                )
+
     def _make_sql_for_one_nest_in_set_op(
         self,
         primary_nested_path,
@@ -531,7 +531,7 @@ class SetOpTable(InsertTable):
         :param index_to_sql_select:
         :return: SQL FOR ONE NESTED LEVEL
         """
-       
+
         parent_alias = "a"
         from_clause = ""
         select_clause = []

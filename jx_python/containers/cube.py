@@ -18,10 +18,10 @@ from mo_dots import Null, Data, FlatList, wrap, wrap_leaves, listwrap
 from mo_logs import Log
 from mo_math import MAX, OR
 from mo_collections.matrix import Matrix
-from pyLibrary.queries.containers import Container
-from pyLibrary.queries.cubes.aggs import cube_aggs
-from pyLibrary.queries.lists.aggs import is_aggs
-from pyLibrary.queries.query import _normalize_edge
+from jx_python.containers import Container
+from jx_python.cubes.aggs import cube_aggs
+from jx_python.lists.aggs import is_aggs
+from jx_python.query import _normalize_edge
 
 
 class Cube(Container):
@@ -117,7 +117,7 @@ class Cube(Container):
         columns = wrap({s.name: s for s in self.select + self.edges})
 
         # DEFER TO ListContainer
-        from pyLibrary.queries.containers.list_usingPythonList import ListContainer
+        from jx_python.containers.list_usingPythonList import ListContainer
 
         frum = ListContainer(name="", data=frum.values(), schema=columns)
         return frum.query(q)
@@ -293,7 +293,7 @@ class Cube(Container):
     def filter(self, where):
         if len(self.edges)==1 and self.edges[0].domain.type=="index":
             # USE THE STANDARD LIST FILTER
-            from pyLibrary.queries import jx
+            from jx_python import jx
             return jx.filter(self.data.values()[0].cube, where)
         else:
             # FILTER DOES NOT ALTER DIMESIONS, JUST WHETHER THERE ARE VALUES IN THE CELLS
@@ -410,7 +410,7 @@ class Cube(Container):
         if window.edges or window.sort:
             Log.error("not implemented")
 
-        from pyLibrary.queries import jx
+        from jx_python import jx
 
         # SET OP
         canonical = self.data.values()[0]

@@ -20,12 +20,12 @@ from mo_dots import listwrap, coalesce, Data, wrap, startswith_field, unliteral_
 from mo_logs import Log
 
 from jx_sqlite.aggs_table import AggsTable
-from pyLibrary.queries import jx
-from pyLibrary.queries.containers import STRUCT
-from pyLibrary.queries.domains import SimpleSetDomain
-from pyLibrary.queries.expressions import jx_expression, Variable, TupleOp
-from pyLibrary.queries.query import QueryOp
-from pyLibrary.queries.meta import Column
+from jx_python import jx
+from jx_python.containers import STRUCT
+from jx_python.domains import SimpleSetDomain
+from jx_python.expressions import jx_expression, Variable, TupleOp
+from jx_python.query import QueryOp
+from jx_python.meta import Column
 
 class QueryTable(AggsTable):
     def get_column_name(self, column):
@@ -135,7 +135,7 @@ class QueryTable(AggsTable):
             column_names= [None]*(max(c.push_column for c in index_to_columns.values()) + 1)
             for c in index_to_columns.values():
                 column_names[c.push_column] = c.push_column_name
-                
+
             if len(query.edges) == 0 and len(query.groupby) == 0:
                 data = {n: Data() for n in column_names}
                 for s in index_to_columns.values():
@@ -230,7 +230,7 @@ class QueryTable(AggsTable):
                     allowNulls=allowNulls,
                     domain=domain
                 ))
-                
+
             data_cubes = {}
             for si, s in enumerate(listwrap(query.select)):
                 if s.aggregate == "count":
@@ -360,10 +360,10 @@ class QueryTable(AggsTable):
             columnName = mo_json.json2value(where.rhs.json)
         else:
             Log.error("Only simple filters are expected like: \"eq\" on table and column name")
-        
+
         metadata = []
         result = self.db.query("""SELECT NAME FROM SQLITE_MASTER WHERE type='table' ORDER BY NAME;""")
-        tables = wrap([{k: d[i] for i, k in enumerate(result.header)} for d in result.data])        
+        tables = wrap([{k: d[i] for i, k in enumerate(result.header)} for d in result.data])
         for table in tables:
             if table.name.startswith("__") or (tableName != None and tableName != table.name):
                 continue
@@ -410,7 +410,7 @@ class QueryTable(AggsTable):
             return Data(
                     meta={"format": "list"},
                     data=[dict(zip(header, r)) for r in metadata]
-                )       
+                )
 
     def _window_op(self, query, window):
         # http://www2.sqlite.org/cvstrac/wiki?p=UnsupportedSqlAnalyticalFunctions
@@ -449,6 +449,6 @@ class QueryTable(AggsTable):
         return output
 
 
-from pyLibrary.queries.containers import type2container
+from jx_python.containers import type2container
 
 type2container["sqlite"] = QueryTable

@@ -16,9 +16,9 @@ import itertools
 from mo_collections.matrix import Matrix
 from mo_logs import Log
 from mo_dots import listwrap
-from pyLibrary.queries import windows
-from pyLibrary.queries.domains import SimpleSetDomain, DefaultDomain
-from pyLibrary.queries.expressions import jx_expression_to_function
+from jx_python import windows
+from jx_python.domains import SimpleSetDomain, DefaultDomain
+from jx_python.expressions import jx_expression_to_function
 
 
 def cube_aggs(frum, query):
@@ -93,7 +93,7 @@ def cube_aggs(frum, query):
             if var != None:
                 m[c] = var.end()
 
-    from pyLibrary.queries.containers.cube import Cube
+    from jx_python.containers.cube import Cube
 
     return Cube(select, query.edges, result)
 

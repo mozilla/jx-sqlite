@@ -20,11 +20,11 @@ from mo_threads import Lock
 from pyLibrary import convert
 
 from mo_collections import UniqueIndex
-from pyLibrary.queries.containers import Container
-from pyLibrary.queries.expression_compiler import compile_expression
-from pyLibrary.queries.expressions import TRUE_FILTER, jx_expression, Expression, TrueOp, jx_expression_to_function, Variable
-from pyLibrary.queries.lists.aggs import is_aggs, list_aggs
-from pyLibrary.queries.meta import get_schema_from_list
+from jx_python.containers import Container
+from jx_python.expression_compiler import compile_expression
+from jx_python.expressions import TRUE_FILTER, jx_expression, Expression, TrueOp, jx_expression_to_function, Variable
+from jx_python.lists.aggs import is_aggs, list_aggs
+from jx_python.meta import get_schema_from_list
 
 _get = object.__getattribute__
 
@@ -232,7 +232,7 @@ def _exec(code):
 
 
 
-from pyLibrary.queries import Schema, jx
+from jx_python import Schema, jx
 
 DUAL = ListContainer(
     name="dual",

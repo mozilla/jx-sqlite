@@ -19,7 +19,7 @@ from mo_dots import unwrap, wrap
 from pyLibrary import convert
 from pyLibrary.env.elasticsearch import Index, Cluster
 from mo_kwargs import override
-from pyLibrary.queries import jx
+from jx_python import jx
 
 
 def make_test_instance(name, settings):

@@ -34,9 +34,9 @@ from mo_dots import coalesce, set_default, Null, literal_field, split_field, joi
 from mo_dots import wrap
 from mo_kwargs import override
 from pyLibrary.meta import DataClass
-from pyLibrary.queries import jx, Schema
-from pyLibrary.queries.containers import STRUCT, Container
-from pyLibrary.queries.query import QueryOp
+from jx_python import jx, Schema
+from jx_python.containers import STRUCT, Container
+from jx_python.query import QueryOp
 
 _elasticsearch = None
 
@@ -69,7 +69,7 @@ class FromESMetadata(Schema):
         if hasattr(self, "settings"):
             return
 
-        from pyLibrary.queries.containers.list_usingPythonList import ListContainer
+        from jx_python.containers.list_usingPythonList import ListContainer
         from pyLibrary.env import elasticsearch as _elasticsearch
 
         self.settings = kwargs
@@ -680,7 +680,7 @@ class ColumnList(Container):
         if not self.meta_schema:
             self.meta_schema = get_schema_from_list("meta\\.columns", output)
 
-        from pyLibrary.queries.containers.list_usingPythonList import ListContainer
+        from jx_python.containers.list_usingPythonList import ListContainer
         return ListContainer("meta\\.columns", data=output, schema=self.meta_schema)
 
 

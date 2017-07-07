@@ -14,7 +14,7 @@ from __future__ import absolute_import
 from collections import Mapping
 
 from mo_dots import set_default, Data
-from pyLibrary.queries.query import QueryOp
+from jx_python.query import QueryOp
 
 
 class Namespace(object):
