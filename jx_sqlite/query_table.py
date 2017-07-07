@@ -14,7 +14,7 @@ from __future__ import division
 from __future__ import unicode_literals
 
 import mo_json
-from jx_sqlite import quote_table, sql_aggs, unique_name, untyped_column, typed_column
+from jx_sqlite import quote_table, sql_aggs, unique_name, untyped_column, typed_column, json_types
 from mo_collections.matrix import Matrix, index_to_coordinate
 from mo_dots import listwrap, coalesce, Data, wrap, startswith_field, unliteral_field, unwrap, split_field, join_field, unwraplist, concat_field
 from mo_logs import Log
@@ -376,11 +376,8 @@ class QueryTable(AggsTable):
                 cname, ctype = untyped_column(name)
                 if columnName != None and columnName != cname:
                     continue
-                if ctype in STRUCT:
-                    ctype = "nested"
-                else:
-                    ctype={"TEXT": "string", "REAL": "number", "INTEGER": "integer"}.get(dtype)
 
+                ctype=json_types.get(dtype)
                 c ={"table": table.name,
                     "name": cname,
                     "type": ctype,
