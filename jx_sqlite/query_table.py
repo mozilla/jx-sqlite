@@ -23,7 +23,7 @@ from jx_sqlite.aggs_table import AggsTable
 from pyLibrary.queries import jx
 from pyLibrary.queries.containers import STRUCT
 from pyLibrary.queries.domains import SimpleSetDomain
-from pyLibrary.queries.expressions import jx_expression, Variable, TupleOp
+from pyLibrary.queries.expressions import jx_expression, Variable, TupleOp, jx_expression_to_function
 from pyLibrary.queries.query import QueryOp
 from pyLibrary.queries.meta import Column
 
@@ -345,6 +345,17 @@ class QueryTable(AggsTable):
         return output
 
     def query_metadata(self, query):
+        frum, query['from'] = query['from'], self
+        schema = self.sf.tables["."].schema
+        query = QueryOp.wrap(query, schema)
+        tables = self.sf.tables.items()
+        if query.edges or query.groupby:
+            Log.error("Aggregates(groupby or edge) are not supported")
+        where = jx_expression_to_function(query.where)
+        for table, columns in tables:
+            pass
+
+    def query_metadata1(self, query):
         frum, query['from'] = query['from'], self
         schema = self.sf.tables["."].schema
         query = QueryOp.wrap(query, schema)
