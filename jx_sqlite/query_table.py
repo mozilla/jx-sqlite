@@ -348,23 +348,13 @@ class QueryTable(AggsTable):
         frum, query['from'] = query['from'], self
         schema = self.sf.tables["."].schema
         query = QueryOp.wrap(query, schema)
-        tables = self.sf.tables.items()
-        if query.edges or query.groupby:
-            Log.error("Aggregates(groupby or edge) are not supported")
-        where = jx_expression_to_function(query.where)
-        for table, columns in tables:
-            pass
-
-    def query_metadata1(self, query):
-        frum, query['from'] = query['from'], self
-        schema = self.sf.tables["."].schema
-        query = QueryOp.wrap(query, schema)
-
-        if query.edges or query.groupby:
-            Log.error("Aggregates(groupby or edge) are not supported")
+        columns = self.sf.columns
         where = query.where
         tableName = None
         columnName = None
+        
+        if query.edges or query.groupby:
+            Log.error("Aggregates(groupby or edge) are not supported")
         if where.op == "eq" and where.lhs.var == "table":
             tableName = mo_json.json2value(where.rhs.json)
         elif where.op =="eq" and where.lhs.var =="name":
@@ -372,26 +362,18 @@ class QueryTable(AggsTable):
         else:
             Log.error("Only simple filters are expected like: \"eq\" on table and column name")
         
-        metadata = []
-        result = self.db.query("""SELECT NAME FROM SQLITE_MASTER WHERE type='table' ORDER BY NAME;""")
-        tables = wrap([{k: d[i] for i, k in enumerate(result.header)} for d in result.data])        
-        for table in tables:
-            if table.name.startswith("__") or (tableName != None and tableName != table.name):
-                continue
-            nested_path = [join_field(split_field(tab.name)[1:]) for tab in jx.reverse(tables) if startswith_field(table.name, tab.name)]
-            command = "PRAGMA table_info(" + quote_table(table.name) + ")"
-            columns = self.db.query(command)
-            for cid, name, dtype, notnull, dfft_value, pk in columns.data:
-                if name.startswith("__"):
+        metadata = [[self.sf.fact, "_id", "string", "."]]
+        
+        for col in columns:
+            cname, ctype = untyped_column(col.es_column)
+            if columnName != None and columnName != cname:
+                continue            
+            tables = [concat_field(self.sf.fact, t) for t in col.names.keys()]
+            for table in tables:
+                if tableName != None and tableName != table:
                     continue
-                cname, ctype = untyped_column(name)
-                if columnName != None and columnName != cname:
-                    continue
-                if ctype in STRUCT:
-                    dtype = "OBJECT"
-                ctype=json_types.get(dtype)
-                metadata.append((table.name, cname, ctype, unwraplist(nested_path)))
-
+                metadata.append((table, cname, col.type, unwraplist(col.nested_path)))
+        
         if query.format == "cube":
             num_rows = len(metadata)
             header = ["table", "name", "type", "nested_path"]
