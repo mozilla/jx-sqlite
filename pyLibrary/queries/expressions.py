@@ -278,7 +278,7 @@ class Variable(Expression):
         if not cols:
             # DOES NOT EXIST
             return wrap([{"name": ".", "sql": {"0": "NULL"}, "nested_path": ROOT_PATH}])
-        acc = Data()
+        acc = {}
         if boolean:
             for col in cols:
                 nested_path = col.nested_path[0]
@@ -288,7 +288,6 @@ class Variable(Expression):
                     value = quote_column(col.es_column).sql
                 else:
                     value = "(" + quote_column(col.es_column).sql + ") IS NOT NULL"
-                acc = unwrap(acc)
                 tempa = acc.setdefault(nested_path, {})
                 tempb = tempa.setdefault(schema.get_column_name(col), {})
                 tempb['b'] = value
@@ -299,13 +298,11 @@ class Variable(Expression):
                     for cn, cs in schema.items():
                         if cn.startswith(prefix):
                             for child_col in cs:
-                                acc = unwrap(acc)
                                 tempa = acc.setdefault(child_col.nested_path[0], {})
                                 tempb = tempa.setdefault(schema.get_column_name(child_col), {})
                                 tempb[json_type_to_sql_type[col.type]] = quote_column(child_col.es_column).sql
                 else:
                     nested_path = col.nested_path[0]
-                    acc = unwrap(acc)
                     tempa = acc.setdefault(nested_path, {})
                     tempb = tempa.setdefault(schema.get_column_name(col), {})
                     tempb[json_type_to_sql_type[col.type]] = quote_column(col.es_column).sql
