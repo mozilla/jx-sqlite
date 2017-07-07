@@ -91,7 +91,7 @@ class Snowflake(object):
         command = (
             "CREATE TABLE " + quote_table(self.fact) + "(" +
             (",".join(
-                [quoted_GUID + " VARCHAR(80)"] +                
+                [quoted_GUID + " TEXT "] +                
                 [quoted_UID + " INTEGER"] +
                 [quote_column(c.es_column) + " " + sql_types[c.type] for c in self.tables["."].schema.columns]
             )) +

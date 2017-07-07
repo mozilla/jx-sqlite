@@ -14,9 +14,9 @@ from __future__ import division
 from __future__ import unicode_literals
 
 import mo_json
-from jx_sqlite import quote_table, sql_aggs, unique_name
+from jx_sqlite import quote_table, sql_aggs, unique_name, untyped_column, typed_column, json_types
 from mo_collections.matrix import Matrix, index_to_coordinate
-from mo_dots import listwrap, coalesce, Data, wrap, startswith_field, unliteral_field, unwrap, split_field
+from mo_dots import listwrap, coalesce, Data, wrap, startswith_field, unliteral_field, unwrap, split_field, join_field, unwraplist, concat_field
 from mo_logs import Log
 
 from jx_sqlite.aggs_table import AggsTable
@@ -25,7 +25,7 @@ from pyLibrary.queries.containers import STRUCT
 from pyLibrary.queries.domains import SimpleSetDomain
 from pyLibrary.queries.expressions import jx_expression, Variable, TupleOp
 from pyLibrary.queries.query import QueryOp
-
+from pyLibrary.queries.meta import Column
 
 class QueryTable(AggsTable):
     def get_column_name(self, column):
@@ -345,7 +345,72 @@ class QueryTable(AggsTable):
         return output
 
     def query_metadata(self, query):
-        Log.error("Not implemented yet")
+        frum, query['from'] = query['from'], self
+        schema = self.sf.tables["."].schema
+        query = QueryOp.wrap(query, schema)
+
+        if query.edges or query.groupby:
+            Log.error("Aggregates(groupby or edge) are not supported")
+        where = query.where
+        tableName = None
+        columnName = None
+        if where.op == "eq" and where.lhs.var == "table":
+            tableName = mo_json.json2value(where.rhs.json)
+        elif where.op =="eq" and where.lhs.var =="name":
+            columnName = mo_json.json2value(where.rhs.json)
+        else:
+            Log.error("Only simple filters are expected like: \"eq\" on table and column name")
+        
+        metadata = []
+        result = self.db.query("""SELECT NAME FROM SQLITE_MASTER WHERE type='table' ORDER BY NAME;""")
+        tables = wrap([{k: d[i] for i, k in enumerate(result.header)} for d in result.data])        
+        for table in tables:
+            if table.name.startswith("__") or (tableName != None and tableName != table.name):
+                continue
+            nested_path = [join_field(split_field(tab.name)[1:]) for tab in jx.reverse(tables) if startswith_field(table.name, tab.name)]
+            command = "PRAGMA table_info(" + quote_table(table.name) + ")"
+            columns = self.db.query(command)
+            for cid, name, dtype, notnull, dfft_value, pk in columns.data:
+                if name.startswith("__"):
+                    continue
+                cname, ctype = untyped_column(name)
+                if columnName != None and columnName != cname:
+                    continue
+                if ctype in STRUCT:
+                    dtype = "OBJECT"
+                ctype=json_types.get(dtype)
+                metadata.append((table.name, cname, ctype, unwraplist(nested_path)))
+
+        if query.format == "cube":
+            num_rows = len(metadata)
+            header = ["table", "name", "type", "nested_path"]
+            temp_data = dict(zip(header, zip(*metadata)))
+            return Data(
+                meta={"format": "cube"},
+                data=temp_data,
+                edges=[{
+                    "name": "rownum",
+                    "domain": {
+                        "type": "rownum",
+                        "min": 0,
+                        "max": num_rows,
+                        "interval": 1
+                    }
+                }]
+            )
+        elif query.format == "table":
+            header = ["table", "name", "type", "nested_path"]
+            return Data(
+                meta={"format": "table"},
+                header=header,
+                data=metadata
+            )
+        else:
+            header = ["table", "name", "type", "nested_path"]
+            return Data(
+                    meta={"format": "list"},
+                    data=[dict(zip(header, r)) for r in metadata]
+                )       
 
     def _window_op(self, query, window):
         # http://www2.sqlite.org/cvstrac/wiki?p=UnsupportedSqlAnalyticalFunctions

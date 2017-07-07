@@ -273,3 +273,11 @@ ColumnMapping = DataClass(
         {"gte": [{"length": "nested_path"}, 1]}
     ]}
 )
+
+json_types = {
+    "TEXT": "string",
+    "REAL": "number", 
+    "INTEGER": "integer",
+    "TINYINT": "boolean",
+    "OBJECT": "nested"
+}
