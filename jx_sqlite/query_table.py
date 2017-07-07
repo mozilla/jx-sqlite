@@ -16,7 +16,7 @@ from __future__ import unicode_literals
 import mo_json
 from jx_sqlite import quote_table, sql_aggs, unique_name, untyped_column, typed_column, json_types
 from mo_collections.matrix import Matrix, index_to_coordinate
-from mo_dots import listwrap, coalesce, Data, wrap, startswith_field, unliteral_field, unwrap, split_field, join_field, unwraplist, concat_field
+from mo_dots import listwrap, coalesce, Data, wrap, startswith_field, unliteral_field, unwrap, split_field, join_field, unwraplist, concat_field, relative_field
 from mo_logs import Log
 
 from jx_sqlite.aggs_table import AggsTable
@@ -348,39 +348,45 @@ class QueryTable(AggsTable):
         frum, query['from'] = query['from'], self
         schema = self.sf.tables["."].schema
         query = QueryOp.wrap(query, schema)
-
-        if query.edges or query.groupby:
-            Log.error("Aggregates(groupby or edge) are not supported")
+        columns = self.sf.columns
         where = query.where
         tableName = None
         columnName = None
+
+        if query.edges or query.groupby:
+            Log.error("Aggregates(groupby or edge) are not supported")
+
         if where.op == "eq" and where.lhs.var == "table":
             tableName = mo_json.json2value(where.rhs.json)
         elif where.op =="eq" and where.lhs.var =="name":
             columnName = mo_json.json2value(where.rhs.json)
         else:
             Log.error("Only simple filters are expected like: \"eq\" on table and column name")
-        
-        metadata = []
-        result = self.db.query("""SELECT NAME FROM SQLITE_MASTER WHERE type='table' ORDER BY NAME;""")
-        tables = wrap([{k: d[i] for i, k in enumerate(result.header)} for d in result.data])        
-        for table in tables:
-            if table.name.startswith("__") or (tableName != None and tableName != table.name):
-                continue
-            nested_path = [join_field(split_field(tab.name)[1:]) for tab in jx.reverse(tables) if startswith_field(table.name, tab.name)]
-            command = "PRAGMA table_info(" + quote_table(table.name) + ")"
-            columns = self.db.query(command)
-            for cid, name, dtype, notnull, dfft_value, pk in columns.data:
-                if name.startswith("__"):
-                    continue
-                cname, ctype = untyped_column(name)
-                if columnName != None and columnName != cname:
-                    continue
-                if ctype in STRUCT:
-                    dtype = "OBJECT"
-                ctype=json_types.get(dtype)
-                metadata.append((table.name, cname, ctype, unwraplist(nested_path)))
 
+        t = [i for i in columns[0].names.keys()]
+        tables = [concat_field(self.sf.fact, i) for i in t]
+
+        metadata = []
+        if columns[-1].es_column!="_id":
+            columns.append(Column(
+                names={i: relative_field("_id", i) for i in t},
+                type="string",
+                es_column="_id",
+                es_index=self.sf.fact,
+                nested_path=["."]
+            ))
+
+        for tname, table in zip(t, tables):
+            if tableName != None and tableName != table:
+                continue
+
+            for col in columns:
+                cname, ctype = untyped_column(col.es_column)
+                if columnName != None and columnName != cname:
+                    continue            
+
+                metadata.append((table, col.names[tname], col.type, unwraplist(col.nested_path)))
+        
         if query.format == "cube":
             num_rows = len(metadata)
             header = ["table", "name", "type", "nested_path"]
