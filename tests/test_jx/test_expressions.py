@@ -14,7 +14,8 @@ from __future__ import unicode_literals
 from jx_base.queries import is_variable_name
 from mo_testing.fuzzytestcase import FuzzyTestCase
 from mo_times.dates import Date
-from jx_base.expressions import simplify_esfilter, jx_expression, USE_BOOL_MUST
+from jx_elasticsearch.es14.expressions import simplify_esfilter, USE_BOOL_MUST
+from jx_base.expressions import jx_expression
 
 
 class TestExpressions(FuzzyTestCase):
