@@ -21,7 +21,7 @@ from pyLibrary import convert
 from jx_base.expressions import Variable, DateOp, TupleOp, LeavesOp, BinaryOp, OrOp, InequalityOp, extend, Literal, sql_quote, NullOp, TrueOp, FalseOp, DivOp, FloorOp, \
     NeOp, NotOp, LengthOp, NumberOp, StringOp, CountOp, MultiOp, RegExpOp, CoalesceOp, MissingOp, ExistsOp, \
     PrefixOp, UnixOp, FromUnixOp, NotLeftOp, RightOp, NotRightOp, FindOp, BetweenOp, InOp, RangeOp, CaseOp, AndOp, \
-    ConcatOp, LeftOp, EqOp
+    ConcatOp, LeftOp, EqOp, WhenOp
 from jx_python.containers import STRUCT, OBJECT
 from pyLibrary.sql.sqlite import quote_column, quote_value
 
@@ -444,6 +444,29 @@ def to_sql(self, schema, not_null=False, boolean=False):
         return wrap([{"name": ".", "sql": {"b": " AND ".join(acc)}}])
 
 
+@extend(WhenOp)
+def to_sql(self, schema, not_null=False, boolean=False):
+    when = self.when.to_sql(schema, boolean=True)[0].sql
+    then = self.then.to_sql(schema, not_null=not_null)[0].sql
+    els_ = self.els_.to_sql(schema, not_null=not_null)[0].sql
+    output = {}
+    for t in "bsn":
+        if then[t] == None:
+            if els_[t] == None:
+                pass
+            else:
+                output[t] = "CASE WHEN " + when.b + " THEN NULL ELSE " + els_[t] + " END"
+        else:
+            if els_[t] == None:
+                output[t] = "CASE WHEN " + when.b + " THEN " + then[t] + " END"
+            else:
+                output[t] = "CASE WHEN " + when.b + " THEN " + then[t] + " ELSE " + els_[t] + " END"
+    if not output:
+        return wrap([{"name": ".", "sql": {"0": "NULL"}}])
+    else:
+        return wrap([{"name": ".", "sql": output}])
+
+
 @extend(ExistsOp)
 def to_sql(self, schema, not_null=False, boolean=False):
     field = self.field.to_sql(schema)[0].sql
@@ -724,4 +747,3 @@ sql_type_to_json_type = {
     "s": "string",
     "j": "object"
 }
-
