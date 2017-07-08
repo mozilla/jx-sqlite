@@ -27,7 +27,7 @@ from jx_python import Schema, wrap_from
 from jx_python.containers import Container, STRUCT
 from jx_python.dimensions import Dimension
 from jx_python.domains import Domain, SetDomain
-from jx_python.expressions import jx_expression, TrueOp, Expression, FalseOp, Variable, LeavesOp, ScriptOp, OffsetOp
+from jx_base.expressions import jx_expression, TrueOp, Expression, FalseOp, Variable, LeavesOp, ScriptOp, OffsetOp
 
 DEFAULT_LIMIT = 10
 MAX_LIMIT = 50000

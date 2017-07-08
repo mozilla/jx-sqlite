@@ -21,7 +21,7 @@ from jx_sqlite import UID, quote_table, get_column, _make_column_name, sql_text_
 from jx_sqlite.setop_table import SetOpTable
 from jx_python import jx
 from jx_python.domains import DefaultDomain, TimeDomain, DurationDomain
-from jx_python.expressions import Variable, sql_type_to_json_type, TupleOp
+from jx_sqlite.expressions import Variable, sql_type_to_json_type, TupleOp
 from pyLibrary.sql.sqlite import quote_value
 
 

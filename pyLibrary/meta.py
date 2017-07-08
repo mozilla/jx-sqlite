@@ -23,7 +23,7 @@ from mo_threads import Lock
 from mo_times.dates import Date
 from mo_times.durations import DAY
 from pyLibrary import convert
-from jx_python.expressions import jx_expression_to_function, jx_expression
+from jx_base.expressions import jx_expression_to_function, jx_expression
 
 _ = jx_expression_to_function
 

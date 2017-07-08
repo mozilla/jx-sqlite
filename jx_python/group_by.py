@@ -15,13 +15,14 @@ from __future__ import unicode_literals
 import math
 import sys
 
-from mo_collections.multiset import Multiset
-from mo_logs.exceptions import Except
-from mo_logs import Log
 from mo_dots import listwrap, Null, Data
-from mo_dots.lists import FlatList
+from mo_logs import Log
+
+from jx_base.expressions import jx_expression_to_function, jx_expression, Expression
 from jx_python.containers import Container
-from jx_python.expressions import jx_expression_to_function, jx_expression, Expression, TupleOp
+from mo_collections.multiset import Multiset
+from mo_dots.lists import FlatList
+from mo_logs.exceptions import Except
 
 
 def groupby(data, keys=None, size=None, min_size=None, max_size=None, contiguous=False):

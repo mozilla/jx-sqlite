@@ -23,7 +23,7 @@ from jx_sqlite.aggs_table import AggsTable
 from jx_python import jx
 from jx_python.containers import STRUCT
 from jx_python.domains import SimpleSetDomain
-from jx_python.expressions import jx_expression, Variable, TupleOp
+from jx_base.expressions import jx_expression, Variable, TupleOp
 from jx_python.query import QueryOp
 from jx_python.meta import Column
 
