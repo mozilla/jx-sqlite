@@ -17,7 +17,7 @@ from mo_logs import Log
 from mo_dots import set_default, wrap, split_field, join_field, concat_field
 from mo_math import Math
 from jx_base.queries import is_variable_name
-from jx_python.expressions import Expression
+from jx_base.expressions import Expression
 from jx_python.namespace import convert_list, Namespace
 from jx_python.query import QueryOp
 from mo_times.dates import Date

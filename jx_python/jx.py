@@ -32,7 +32,7 @@ from jx_python.containers import Container
 from jx_python.containers.cube import Cube
 from jx_python.cubes.aggs import cube_aggs
 from jx_python.expression_compiler import compile_expression
-from jx_python.expressions import TRUE_FILTER, FALSE_FILTER, jx_expression_to_function
+from jx_base.expressions import TRUE_FILTER, FALSE_FILTER, jx_expression_to_function
 from jx_python.flat_list import PartFlatList
 from jx_python.query import QueryOp, _normalize_selects
 

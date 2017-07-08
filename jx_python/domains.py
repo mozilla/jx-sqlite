@@ -12,24 +12,23 @@ from __future__ import division
 from __future__ import unicode_literals
 
 import itertools
-import re
 from collections import Mapping
 from numbers import Number
 
-from mo_collections.unique_index import UniqueIndex
 from mo_dots import coalesce, Data, set_default, Null, listwrap
 from mo_dots import wrap
-from mo_dots.lists import FlatList
 from mo_logs import Log
-from mo_math import Math, MAX, MIN
+from mo_math import MAX, MIN
+
+from jx_base.expressions import jx_expression
+from mo_collections.unique_index import UniqueIndex
+from mo_dots.lists import FlatList
 from mo_times.dates import Date
 from mo_times.durations import Duration
 
 ALGEBRAIC = {"time", "duration", "numeric", "count", "datetime"}  # DOMAINS THAT HAVE ALGEBRAIC OPERATIONS DEFINED
 KNOWN = {"set", "boolean", "duration", "time", "numeric"}  # DOMAINS THAT HAVE A KNOWN NUMBER FOR PARTS AT QUERY TIME
 PARTITION = {"uid", "set", "boolean"}  # DIMENSIONS WITH CLEAR PARTS
-
-
 
 
 class Domain(object):
@@ -228,8 +227,6 @@ class SimpleSetDomain(Domain):
             if desc.partitions and all(desc.partitions.where) or all(desc.partitions.esfilter):
                 if not all(desc.partitions.name):
                     Log.error("Expecting all partitions to have a name")
-                from jx_python.expressions import jx_expression
-
                 self.key = "name"
                 self.map = dict()
                 self.map[None] = self.NULL

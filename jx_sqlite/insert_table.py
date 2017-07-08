@@ -22,7 +22,7 @@ from mo_logs import Log
 from jx_sqlite import typed_column, quote_table, get_type, ORDER, UID, GUID, PARENT, get_if_type
 from jx_sqlite.base_table import BaseTable, generateGuid
 from jx_python.containers import STRUCT
-from jx_python.expressions import jx_expression
+from jx_base.expressions import jx_expression
 from jx_python.meta import Column
 from pyLibrary.sql.sqlite import quote_value, quote_column
 

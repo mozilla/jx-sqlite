@@ -18,7 +18,7 @@ from mo_logs import Log
 from mo_dots import listwrap
 from jx_python import windows
 from jx_python.domains import SimpleSetDomain, DefaultDomain
-from jx_python.expressions import jx_expression_to_function
+from jx_base.expressions import jx_expression_to_function
 
 
 def cube_aggs(frum, query):
