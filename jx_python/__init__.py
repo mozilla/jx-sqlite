@@ -43,10 +43,10 @@ def _delayed_imports():
 
     try:
         from jx_elasticsearch.jx_usingES import FromES
+        from jx_elasticsearch.meta import FromESMetadata
     except Exception:
         FromES = None
-
-    from jx_python.meta import FromESMetadata
+        FromESMetadata = None
 
     set_default(_containers.type2container, {
         "elasticsearch": FromES,
