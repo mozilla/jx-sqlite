@@ -246,9 +246,6 @@ class OffsetOp(Expression):
             Log.error("Expecting an integer")
         self.var = var
 
-    def to_python(self, not_null=False, boolean=False, many=False):
-        return "row[" + unicode(self.var) + "] if 0<=" + unicode(self.var) + "<len(row) else None"
-
     def __call__(self, row, rownum=None, rows=None):
         try:
             return row[self.var]
@@ -295,16 +292,6 @@ class RowsOp(Expression):
         else:
             Log.error("can not handle")
 
-    def to_python(self, not_null=False, boolean=False, many=False):
-        agg = "rows[rownum+" + self.offset.to_python() + "]"
-        path = split_field(json2value(self.var.json))
-        if not path:
-            return agg
-
-        for p in path[:-1]:
-            agg = agg+".get("+convert.value2quote(p)+", EMPTY_DICT)"
-        return agg+".get("+convert.value2quote(path[-1])+")"
-
     def __data__(self):
         if isinstance(self.var, Literal) and isinstance(self.offset, Literal):
             return {"rows": {self.var.json, json2value(self.offset.json)}}
@@ -327,11 +314,6 @@ class GetOp(Expression):
     def __init__(self, op, term):
         Expression.__init__(self, op, term)
         self.var, self.offset = term
-
-    def to_python(self, not_null=False, boolean=False, many=False):
-        obj = self.var.to_python()
-        code = self.offset.to_python()
-        return obj + "[" + code + "]"
 
     def __data__(self):
         if isinstance(self.var, Literal) and isinstance(self.offset, Literal):
@@ -570,15 +552,6 @@ class DateOp(Literal):
         self.value = term.date
         Literal.__init__(self, op, Date(term.date).unix)
 
-    def to_python(self, not_null=False, boolean=False, many=False):
-        return unicode(Date(self.value).unix)
-
-    def to_sql(self, schema, not_null=False, boolean=False):
-        return wrap([{"name": ".", "sql": {"n": sql_quote(json2value(self.json))}}])
-
-    def to_esfilter(self):
-        return json2value(self.json)
-
     def __data__(self):
         return {"date": self.value}
 
@@ -806,19 +779,6 @@ class EqOp(Expression):
         Expression.__init__(self, op, terms)
         self.op = op
         self.lhs, self.rhs = terms
-
-    def to_esfilter(self):
-        if isinstance(self.lhs, Variable) and isinstance(self.rhs, Literal):
-            rhs = json2value(self.rhs.json)
-            if isinstance(rhs, list):
-                if len(rhs) == 1:
-                    return {"term": {self.lhs.var: rhs[0]}}
-                else:
-                    return {"terms": {self.lhs.var: rhs}}
-            else:
-                return {"term": {self.lhs.var: rhs}}
-        else:
-            return {"script": {"script": self.to_ruby(boolean=True)}}
 
     def __data__(self):
         if isinstance(self.lhs, Variable) and isinstance(self.rhs, Literal):
@@ -1071,19 +1031,6 @@ class RegExpOp(Expression):
         Expression.__init__(self, op, term)
         self.var, self.pattern = term
 
-    def to_python(self, not_null=False, boolean=False, many=False):
-        return "re.match(" + quote(json2value(self.pattern.json) + "$") + ", " + self.var.to_python() + ")"
-
-    def to_sql(self, schema, not_null=False, boolean=False):
-        pattern = quote_value(convert.json2value(self.pattern.json))
-        value = self.var.to_sql(schema)[0].sql.s
-        return wrap([
-            {"name": ".", "sql": {"b": value + " REGEXP " + pattern}}
-        ])
-
-    def to_esfilter(self):
-        return {"regexp": {self.var.var: json2value(self.pattern.json)}}
-
     def __data__(self):
         return {"regexp": {self.var.var: self.pattern}}
 
@@ -1241,13 +1188,6 @@ class UnixOp(Expression):
         Expression.__init__(self, op, term)
         self.value = term
 
-    def to_sql(self, schema, not_null=False, boolean=False):
-        v = self.value.to_sql(schema)[0].sql
-        return wrap([{
-            "name": ".",
-            "sql": {"n": "UNIX_TIMESTAMP("+v.n+")"}
-        }])
-
     def vars(self):
         return self.value.vars()
 
@@ -1266,13 +1206,6 @@ class FromUnixOp(Expression):
     def __init__(self, op, term):
         Expression.__init__(self, op, term)
         self.value = term
-
-    def to_sql(self, schema, not_null=False, boolean=False):
-        v = self.value.to_sql(schema)[0].sql
-        return wrap([{
-            "name": ".",
-            "sql": {"n": "FROM_UNIXTIME("+v.n+")"}
-        }])
 
     def vars(self):
         return self.value.vars()
@@ -1587,228 +1520,6 @@ class CaseOp(Expression):
         return MissingOp("missing", self)
 
 
-USE_BOOL_MUST = True
-
-def simplify_esfilter(esfilter):
-    try:
-        output = normalize_esfilter(esfilter)
-        if output is TRUE_FILTER:
-            return {"match_all": {}}
-        elif output is FALSE_FILTER:
-            return {"not": {"match_all": {}}}
-
-        output.isNormal = None
-        return output
-    except Exception as e:
-        from mo_logs import Log
-
-        Log.unexpected("programmer error", cause=e)
-
-
-def removeOr(esfilter):
-    if esfilter["not"]:
-        return {"not": removeOr(esfilter["not"])}
-
-    if esfilter["and"]:
-        return {"and": [removeOr(v) for v in esfilter["and"]]}
-
-    if esfilter["or"]:  # CONVERT OR TO NOT.AND.NOT
-        return {"not": {"and": [{"not": removeOr(v)} for v in esfilter["or"]]}}
-
-    return esfilter
-
-
-def normalize_esfilter(esfilter):
-    """
-    SIMPLFY THE LOGIC EXPRESSION
-    """
-    return wrap(_normalize(wrap(esfilter)))
-
-
-def _normalize(esfilter):
-    """
-    TODO: DO NOT USE Data, WE ARE SPENDING TOO MUCH TIME WRAPPING/UNWRAPPING
-    REALLY, WE JUST COLLAPSE CASCADING `and` AND `or` FILTERS
-    """
-    if esfilter is TRUE_FILTER or esfilter is FALSE_FILTER or esfilter.isNormal:
-        return esfilter
-
-    # Log.note("from: " + convert.value2json(esfilter))
-    isDiff = True
-
-    while isDiff:
-        isDiff = False
-
-        if coalesce(esfilter["and"], esfilter.bool.must):
-            terms = coalesce(esfilter["and"], esfilter.bool.must)
-            # MERGE range FILTER WITH SAME FIELD
-            for (i0, t0), (i1, t1) in itertools.product(enumerate(terms), enumerate(terms)):
-                if i0 >= i1:
-                    continue  # SAME, IGNORE
-                with suppress_exception:
-                    f0, tt0 = t0.range.items()[0]
-                    f1, tt1 = t1.range.items()[0]
-                    if f0 == f1:
-                        set_default(terms[i0].range[literal_field(f1)], tt1)
-                        terms[i1] = True
-
-            output = []
-            for a in terms:
-                if isinstance(a, (list, set)):
-                    from mo_logs import Log
-
-                    Log.error("and clause is not allowed a list inside a list")
-                a_ = normalize_esfilter(a)
-                if a_ is not a:
-                    isDiff = True
-                a = a_
-                if a == TRUE_FILTER:
-                    isDiff = True
-                    continue
-                if a == FALSE_FILTER:
-                    return FALSE_FILTER
-                if coalesce(a.get("and"), a.bool.must):
-                    isDiff = True
-                    a.isNormal = None
-                    output.extend(coalesce(a.get("and"), a.bool.must))
-                else:
-                    a.isNormal = None
-                    output.append(a)
-            if not output:
-                return TRUE_FILTER
-            elif len(output) == 1:
-                # output[0].isNormal = True
-                esfilter = output[0]
-                break
-            elif isDiff:
-                if USE_BOOL_MUST:
-                    esfilter = wrap({"bool": {"must": output}})
-                else:
-                    esfilter = wrap({"and": output})
-            continue
-
-        if esfilter["or"] != None:
-            output = []
-            for a in esfilter["or"]:
-                a_ = _normalize(a)
-                if a_ is not a:
-                    isDiff = True
-                a = a_
-
-                if a == TRUE_FILTER:
-                    return TRUE_FILTER
-                if a == FALSE_FILTER:
-                    isDiff = True
-                    continue
-                if a.get("or"):
-                    a.isNormal = None
-                    isDiff = True
-                    output.extend(a["or"])
-                else:
-                    a.isNormal = None
-                    output.append(a)
-            if not output:
-                return FALSE_FILTER
-            elif len(output) == 1:
-                esfilter = output[0]
-                break
-            elif isDiff:
-                esfilter = wrap({"or": output})
-            continue
-
-        if esfilter.term != None:
-            if esfilter.term.keys():
-                esfilter.isNormal = True
-                return esfilter
-            else:
-                return TRUE_FILTER
-
-        if esfilter.terms != None:
-            for k, v in esfilter.terms.items():
-                if len(v) > 0:
-                    if OR(vv == None for vv in v):
-                        rest = [vv for vv in v if vv != None]
-                        if len(rest) > 0:
-                            return {
-                                "or": [
-                                    {"missing": {"field": k}},
-                                    {"terms": {k: rest}}
-                                ],
-                                "isNormal": True
-                            }
-                        else:
-                            return {
-                                "missing": {"field": k},
-                                "isNormal": True
-                            }
-                    else:
-                        esfilter.isNormal = True
-                        return esfilter
-            return FALSE_FILTER
-
-        if esfilter["not"] != None:
-            _sub = esfilter["not"]
-            sub = _normalize(_sub)
-            if sub is FALSE_FILTER:
-                return TRUE_FILTER
-            elif sub is TRUE_FILTER:
-                return FALSE_FILTER
-            elif sub is not _sub:
-                sub.isNormal = None
-                return wrap({"not": sub, "isNormal": True})
-            else:
-                sub.isNormal = None
-
-    esfilter.isNormal = True
-    return esfilter
-
-
-def split_expression_by_depth(where, schema, map_=None, output=None, var_to_depth=None):
-    """
-    :param where: EXPRESSION TO INSPECT
-    :param schema: THE SCHEMA
-    :param map_: THE VARIABLE NAME MAPPING TO PERFORM ON where
-    :param output:
-    :param var_to_depth: MAP FROM EACH VARIABLE NAME TO THE DEPTH
-    :return:
-    """
-    """
-    It is unfortunate that ES can not handle expressions that
-    span nested indexes.  This will split your where clause
-    returning {"and": [filter_depth0, filter_depth1, ...]}
-    """
-    vars_ = where.vars()
-    if not map_:
-        map_ = {v: schema[v][0].es_column for v in vars_}
-
-    if var_to_depth is None:
-        if not vars_:
-            return Null
-        # MAP VARIABLE NAMES TO HOW DEEP THEY ARE
-        var_to_depth = {v: len(c.nested_path)-1 for v in vars_ for c in schema[v]}
-        all_depths = set(var_to_depth.values())
-        if -1 in all_depths:
-            Log.error(
-                "Can not find column with name {{column|quote}}",
-                column=unwraplist([k for k, v in var_to_depth.items() if v == -1])
-            )
-        if len(all_depths)==0:
-            all_depths = {0}
-        output = wrap([[] for _ in range(MAX(all_depths) + 1)])
-    else:
-        all_depths = set(var_to_depth[v] for v in vars_)
-
-    if len(all_depths) == 1:
-        output[list(all_depths)[0]] += [where.map(map_)]
-    elif isinstance(where, AndOp):
-        for a in where.terms:
-            split_expression_by_depth(a, schema, map_, output, var_to_depth)
-    else:
-        Log.error("Can not handle complex where clause")
-
-    return output
-
-
 operators = {
     "add": MultiOp,
     "and": AndOp,
@@ -1869,20 +1580,6 @@ operators = {
     "unix": UnixOp,
     "when": WhenOp,
 }
-
-
-def sql_quote(value):
-    if value == Null:
-        return "NULL"
-    elif value is True:
-        return "0"
-    elif value is False:
-        return "1"
-    elif isinstance(value, unicode):
-        return "'" + value.replace("'", "''") + "'"
-    else:
-        return unicode(value)
-
 
 
 def extend(cls):

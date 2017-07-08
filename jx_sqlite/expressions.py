@@ -18,7 +18,7 @@ from mo_logs import Log
 from mo_math import Math
 from pyLibrary import convert
 
-from jx_base.expressions import Variable, DateOp, TupleOp, LeavesOp, BinaryOp, OrOp, InequalityOp, extend, Literal, sql_quote, NullOp, TrueOp, FalseOp, DivOp, FloorOp, \
+from jx_base.expressions import Variable, DateOp, TupleOp, LeavesOp, BinaryOp, OrOp, InequalityOp, extend, Literal, NullOp, TrueOp, FalseOp, DivOp, FloorOp, \
     NeOp, NotOp, LengthOp, NumberOp, StringOp, CountOp, MultiOp, RegExpOp, CoalesceOp, MissingOp, ExistsOp, \
     PrefixOp, UnixOp, FromUnixOp, NotLeftOp, RightOp, NotRightOp, FindOp, BetweenOp, InOp, RangeOp, CaseOp, AndOp, \
     ConcatOp, LeftOp, EqOp, WhenOp
@@ -729,6 +729,19 @@ def to_sql(self, schema, not_null=False, boolean=False):
             acc = " WHEN " + w.when.to_sql(boolean=True).b + " THEN " + w.then.to_sql(schema)[t] + acc
         output[t] = "CASE" + acc
     return output
+
+
+def sql_quote(value):
+    if value == Null:
+        return "NULL"
+    elif value is True:
+        return "0"
+    elif value is False:
+        return "1"
+    elif isinstance(value, unicode):
+        return "'" + value.replace("'", "''") + "'"
+    else:
+        return unicode(value)
 
 
 json_type_to_sql_type = {
