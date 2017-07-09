@@ -12,6 +12,7 @@ from __future__ import division
 from __future__ import unicode_literals
 
 import mo_json
+from jx_python import expressions as _expressions
 from mo_dots import set_default, wrap, _get_attr, Null, coalesce
 from mo_logs import Log
 from mo_logs.exceptions import Except
@@ -25,6 +26,7 @@ from types import FunctionType
 
 from jx_base.expressions import jx_expression_to_function, jx_expression
 
+_ = _expressions
 _ = jx_expression_to_function
 
 
