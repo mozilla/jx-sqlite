@@ -287,7 +287,6 @@ class TestSetOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.use=="sqlite", "not implemented yet, is not needed for small data")
     def test_id_select(self):
         """
         ALWAYS GOOD TO HAVE AN ID, CALL IT "_id"

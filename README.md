@@ -109,6 +109,13 @@ Our nested documents are stored in a new table, called `example.a`
 
 Child tables have a `_id` column, plus two others: `_order` so we can reconstruct the original JSON and `_parent` which is used to refer to the immediate parent of the array.
 
+## More Design Docs
+
+* [Snowflake](https://github.com/mozilla/jx-sqlite/blob/master/docs/Perspective.md)
+* [JSON in Database](https://github.com/mozilla/jx-sqlite/blob/master/docs/JSON%20in%20Database.md)
+
+
+
 ## Open problems
 
 **Do we copy the `a.*` columns from the `example` table to our new child table?** As I see it, there are two possible answers:
