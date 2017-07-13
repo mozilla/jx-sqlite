@@ -169,7 +169,11 @@ class SetOpTable(InsertTable):
                         db_columns = s.value.to_sql(schema)
 
                         if isinstance(s.value, LeavesOp):
-                            for column in db_columns:                              
+                            for column in db_columns:
+                                if isinstance(column.nested_path, list):
+                                    column.nested_path=column.nested_path[0]
+                                if column.nested_path and column.nested_path!=nested_path:
+                                    continue                                   
                                 for t, unsorted_sql in column.sql.items():
                                     json_type = sql_type_to_json_type[t]
                                     if json_type in STRUCT:
@@ -195,6 +199,10 @@ class SetOpTable(InsertTable):
                                     si += 1
                         else:
                             for column in db_columns:
+                                if isinstance(column.nested_path, list):
+                                    column.nested_path=column.nested_path[0]
+                                if column.nested_path and column.nested_path!=nested_path:
+                                    continue                                
                                 for t, unsorted_sql in column.sql.items():
                                     json_type = sql_type_to_json_type[t]
                                     if json_type in STRUCT:
