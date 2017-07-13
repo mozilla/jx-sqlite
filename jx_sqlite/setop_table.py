@@ -353,7 +353,8 @@ class SetOpTable(InsertTable):
                                 for k, v in nested_value.items():
                                     if k==push_name:
                                         doc[push_name].append(v)
-
+                                    else:
+                                        doc[k] = v
                             elif doc is None:
                                 doc = Data()
                                 doc[relative_path] = nested_value
