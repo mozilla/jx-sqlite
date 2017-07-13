@@ -11,20 +11,22 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
-from types import FunctionType
-
 import mo_json
+from jx_python import expressions as _expressions
 from mo_dots import set_default, wrap, _get_attr, Null, coalesce
-from mo_logs import Log, strings
+from mo_logs import Log
 from mo_logs.exceptions import Except
-from mo_logs.strings import expand_template, quote
+from mo_logs.strings import expand_template
 from mo_math.randoms import Random
 from mo_threads import Lock
 from mo_times.dates import Date
 from mo_times.durations import DAY
 from pyLibrary import convert
+from types import FunctionType
+
 from jx_base.expressions import jx_expression_to_function, jx_expression
-from jx_python.expressions import Literal
+
+_ = _expressions
 _ = jx_expression_to_function
 
 
