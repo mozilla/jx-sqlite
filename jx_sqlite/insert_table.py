@@ -346,5 +346,7 @@ class InsertTable(BaseTable):
                 for i, c in enumerate(self.sf.columns):
                     if c.es_column==d.es_column and c.es_index==d.es_index:
                         del_column.append(i)
-                        self.remove_col_from_db(d)
-                
+                for i in del_column:
+                    del(self.sf.columns[i])
+                    
+                    
