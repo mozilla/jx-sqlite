@@ -342,7 +342,7 @@ class SetOpTable(InsertTable):
                             else:           # FACT IS EXPECTED TO BE A SINGLE VALUE, NOT AN OBJECT
                                 relative_path="."
 
-                            if relative_path == ".":
+                            if relative_path == "." and doc is None:
                                 doc = nested_value
 
                             elif doc is None:
