@@ -344,6 +344,7 @@ class SetOpTable(InsertTable):
 
                             if relative_path == ".":
                                 doc = nested_value
+
                             elif doc is None:
                                 doc = Data()
                                 doc[relative_path] = nested_value
