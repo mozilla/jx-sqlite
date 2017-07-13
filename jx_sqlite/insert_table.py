@@ -293,7 +293,7 @@ class InsertTable(BaseTable):
                         _flatten(r, child_uid, uid, i, cname, deeper_nested_path, table=concat_field(self.sf.fact, cname))
                 elif value_type == "object":
                     row[c.es_column] = "."
-                    _flatten(v, uid, parent_id, order, cname, nested_path, row=row)
+                    _flatten(v, uid, parent_id, order, cname, nested_path, row=row, table=table)
                 elif c.type:
                     row[c.es_column] = v
         
