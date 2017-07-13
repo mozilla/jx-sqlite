@@ -177,9 +177,9 @@ class SetOpTable(InsertTable):
                                     column_number = len(sql_selects)
                                     # SQL HAS ABS TABLE REFERENCE
                                     column_alias = _make_column_name(column_number)
-                                    if unsorted_sql in selects and len(unsorted_sql.split())==1:
+                                    if alias + "." + unsorted_sql in selects and len(unsorted_sql.split())==1:
                                         continue
-                                    selects.append(unsorted_sql)
+                                    selects.append(alias + "." + unsorted_sql)
                                     sql_selects.append(alias + "." + unsorted_sql + " AS " + column_alias)
                                     index_to_column[column_number] = nested_doc_details['index_to_column'][column_number] = ColumnMapping(
                                         push_name=literal_field(concat_field(s.name, column.name).lstrip(".")),
@@ -202,9 +202,9 @@ class SetOpTable(InsertTable):
                                     column_number = len(sql_selects)
                                     # SQL HAS ABS TABLE REFERENCE
                                     column_alias = _make_column_name(column_number)
-                                    if unsorted_sql in selects and len(unsorted_sql.split())==1:
+                                    if alias + "." + unsorted_sql in selects and len(unsorted_sql.split())==1:
                                         continue
-                                    selects.append(unsorted_sql)
+                                    selects.append(alias + "." + unsorted_sql)
                                     sql_selects.append(alias + "." + unsorted_sql + " AS " + column_alias)
                                     index_to_column[column_number] = nested_doc_details['index_to_column'][column_number] = ColumnMapping(
                                         push_name=s.name,
@@ -230,9 +230,9 @@ class SetOpTable(InsertTable):
                     nested_path = c.nested_path
                     unsorted_sql = nest_to_alias[nested_path[0]] + "." + quote_table(c.es_column)
                     column_alias = _make_column_name(column_number)
-                    if unsorted_sql in selects and len(unsorted_sql.split())==1:
+                    if alias + "." + unsorted_sql in selects and len(unsorted_sql.split())==1:
                         continue
-                    selects.append(unsorted_sql)                    
+                    selects.append(alias + "." + unsorted_sql)                    
                     sql_selects.append(alias + "." + unsorted_sql + " AS " + column_alias)
                     index_to_column[column_number] = nested_doc_details['index_to_column'][column_number] = ColumnMapping(
                         push_name=s.name,
