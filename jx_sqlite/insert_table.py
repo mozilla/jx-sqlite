@@ -341,3 +341,10 @@ class InsertTable(BaseTable):
         commands = [cc for c in commands for cc in c]
         for command in commands:
             self.db.execute(command[0])
+            for d in command[1]:
+                del_column = []
+                for i, c in enumerate(self.sf.columns):
+                    if c.es_column==d.es_column and c.es_index==d.es_index:
+                        del_column.append(i)
+                        self.remove_col_from_db(d)
+                
