@@ -87,6 +87,7 @@ class SetOpTable(InsertTable):
                         sorts.append(column_alias + " IS NULL")
                         sorts.append(column_alias)
 
+        selects = []        
         primary_doc_details = Data()
         # EVERY SELECT STATEMENT THAT WILL BE REQUIRED, NO MATTER THE DEPTH
         # WE WILL CREATE THEM ACCORDING TO THE DEPTH REQUIRED
@@ -157,7 +158,7 @@ class SetOpTable(InsertTable):
             # WE DO NOT NEED DATA FROM TABLES WE REQUEST NOTHING FROM
             if nested_path not in active_columns:
                 continue
-
+            
             if len(active_columns[nested_path]) != 0:
                 # ADD SQL SELECT COLUMNS FOR EACH jx SELECT CLAUSE
                 si = 0
@@ -168,7 +169,7 @@ class SetOpTable(InsertTable):
                         db_columns = s.value.to_sql(schema)
 
                         if isinstance(s.value, LeavesOp):
-                            for column in db_columns:
+                            for column in db_columns:                              
                                 for t, unsorted_sql in column.sql.items():
                                     json_type = sql_type_to_json_type[t]
                                     if json_type in STRUCT:
@@ -176,7 +177,10 @@ class SetOpTable(InsertTable):
                                     column_number = len(sql_selects)
                                     # SQL HAS ABS TABLE REFERENCE
                                     column_alias = _make_column_name(column_number)
-                                    sql_selects.append(unsorted_sql + " AS " + column_alias)
+                                    if unsorted_sql in selects and len(unsorted_sql.split())==1:
+                                        continue
+                                    selects.append(unsorted_sql)
+                                    sql_selects.append(alias + "." + unsorted_sql + " AS " + column_alias)
                                     index_to_column[column_number] = nested_doc_details['index_to_column'][column_number] = ColumnMapping(
                                         push_name=literal_field(concat_field(s.name, column.name).lstrip(".")),
                                         push_column_name=concat_field(s.name, column.name).lstrip("."),
@@ -198,7 +202,10 @@ class SetOpTable(InsertTable):
                                     column_number = len(sql_selects)
                                     # SQL HAS ABS TABLE REFERENCE
                                     column_alias = _make_column_name(column_number)
-                                    sql_selects.append(unsorted_sql + " AS " + column_alias)
+                                    if unsorted_sql in selects and len(unsorted_sql.split())==1:
+                                        continue
+                                    selects.append(unsorted_sql)
+                                    sql_selects.append(alias + "." + unsorted_sql + " AS " + column_alias)
                                     index_to_column[column_number] = nested_doc_details['index_to_column'][column_number] = ColumnMapping(
                                         push_name=s.name,
                                         push_column_name=s.name,
@@ -223,7 +230,10 @@ class SetOpTable(InsertTable):
                     nested_path = c.nested_path
                     unsorted_sql = nest_to_alias[nested_path[0]] + "." + quote_table(c.es_column)
                     column_alias = _make_column_name(column_number)
-                    sql_selects.append(unsorted_sql + " AS " + column_alias)
+                    if unsorted_sql in selects and len(unsorted_sql.split())==1:
+                        continue
+                    selects.append(unsorted_sql)                    
+                    sql_selects.append(alias + "." + unsorted_sql + " AS " + column_alias)
                     index_to_column[column_number] = nested_doc_details['index_to_column'][column_number] = ColumnMapping(
                         push_name=s.name,
                         push_column_name=s.name,
