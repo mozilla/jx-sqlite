@@ -225,7 +225,7 @@ class InsertTable(BaseTable):
         nested_tables = copy(self.sf.tables)
         abs_schema = copy(self.sf.tables["."].schema)
 
-        def _flatten(data, uid, parent_id, order, full_path, nested_path, row=None, guid=None):
+        def _flatten(data, uid, parent_id, order, full_path, nested_path, row=None, guid=None, table=self.sf.fact):
             """
             :param data: the data we are pulling apart
             :param uid: the uid we are giving this doc
@@ -266,7 +266,7 @@ class InsertTable(BaseTable):
                         names={".": cname},
                         type=value_type,
                         es_column=typed_column(cname, value_type),
-                        es_index=concat_field(self.sf.fact, cname),  # THIS MAY BE THE WRONG TABLE, IF THIS PATH IS A NESTED DOC
+                        es_index=table,  # THIS MAY BE THE WRONG TABLE, IF THIS PATH IS A NESTED DOC
                         nested_path=nested_path
                     )
                     abs_schema.add(cname, c)
@@ -277,6 +277,9 @@ class InsertTable(BaseTable):
 
                     # INSIDE IF BLOCK BECAUSE WE DO NOT WANT IT TO ADD WHAT WE columns.get() ALREADY
                     insertion.active_columns.add(c)
+                elif c.type=="nested" and value_type=="object":
+                    value_type = "nested"
+                    v = [v]
 
                 # BE SURE TO NEST VALUES, IF NEEDED
                 if value_type == "nested":
@@ -290,10 +293,10 @@ class InsertTable(BaseTable):
                         )
                     for i, r in enumerate(v):
                         child_uid = self.next_uid()
-                        _flatten(r, child_uid, uid, i, cname, deeper_nested_path)
+                        _flatten(r, child_uid, uid, i, cname, deeper_nested_path, table=concat_field(self.sf.fact, cname))
                 elif value_type == "object":
                     row[c.es_column] = "."
-                    _flatten(v, uid, parent_id, order, cname, nested_path, row=row)
+                    _flatten(v, uid, parent_id, order, cname, nested_path, row=row, table=table)
                 elif c.type:
                     row[c.es_column] = v
 
