@@ -357,7 +357,7 @@ class InsertTable(BaseTable):
         tmp_table = "tmp_" + col.es_index
         columns = self.db.query("select * from " + quote_table(org_table)).header
         self.db.execute(
-            "ALTER TABLE " + quote_table(org_table) + 
+            "ALTER TABLE " + quote_table(org_table) +
             " RENAME TO " + quote_table(tmp_table)
         )
         self.db.execute(
