@@ -349,20 +349,3 @@ class InsertTable(BaseTable):
                         self.remove_col_from_db(d)
                 for i in del_column:
                     del(self.sf.columns[i])
-                    
-                    
-    def remove_col_from_db(self, col):
-        org_table = col.es_index
-        column = col.es_column
-        tmp_table = "tmp_" + col.es_index
-        columns = self.db.query("select * from " + quote_table(org_table)).header
-        self.db.execute(
-            "ALTER TABLE " + quote_table(org_table) +
-            " RENAME TO " + quote_table(tmp_table)
-        )
-        self.db.execute(
-            "CREATE TABLE " + quote_table(org_table) +
-            " AS SELECT " + (", ".join([quote_table(c) for c in columns if c!=column])) +
-            " FROM " + quote_table(tmp_table)
-        )
-        self.db.execute("DROP TABLE " + quote_table(tmp_table))
