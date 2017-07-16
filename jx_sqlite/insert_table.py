@@ -225,7 +225,7 @@ class InsertTable(BaseTable):
         nested_tables = copy(self.sf.tables)
         abs_schema = copy(self.sf.tables["."].schema)
 
-        def _flatten(data, uid, parent_id, order, full_path, nested_path, row=None, guid=None, table=self.sf.fact):
+        def _flatten(data, uid, parent_id, order, full_path, nested_path, row=None, guid=None, table=concat_field(self.sf.fact, nested_path[0])):
             """
             :param data: the data we are pulling apart
             :param uid: the uid we are giving this doc
