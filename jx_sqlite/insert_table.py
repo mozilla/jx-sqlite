@@ -225,7 +225,7 @@ class InsertTable(BaseTable):
         nested_tables = copy(self.sf.tables)
         abs_schema = copy(self.sf.tables["."].schema)
 
-        def _flatten(data, uid, parent_id, order, full_path, nested_path, row=None, guid=None, table=concat_field(self.sf.fact, nested_path[0])):
+        def _flatten(data, uid, parent_id, order, full_path, nested_path, row=None, guid=None):
             """
             :param data: the data we are pulling apart
             :param uid: the uid we are giving this doc
@@ -236,6 +236,7 @@ class InsertTable(BaseTable):
             :param row: we will be filling this
             :return:
             """
+            table=concat_field(self.sf.fact, nested_path[0])
             insertion = doc_collection[nested_path[0]]
             if not row:
                 row = {GUID: guid, UID: uid, PARENT: parent_id, ORDER: order}
@@ -290,10 +291,10 @@ class InsertTable(BaseTable):
                         )
                     for i, r in enumerate(v):
                         child_uid = self.next_uid()
-                        _flatten(r, child_uid, uid, i, cname, deeper_nested_path, table=concat_field(self.sf.fact, cname))
+                        _flatten(r, child_uid, uid, i, cname, deeper_nested_path)
                 elif value_type == "object":
                     row[c.es_column] = "."
-                    _flatten(v, uid, parent_id, order, cname, nested_path, row=row, table=table)
+                    _flatten(v, uid, parent_id, order, cname, nested_path, row=row)
                 elif c.type:
                     row[c.es_column] = v
         
@@ -337,7 +338,7 @@ class InsertTable(BaseTable):
             )
 
             self.db.execute(prefix + records)
-        
+
         commands = [cc for c in commands for cc in c]
         for command in commands:
             self.db.execute(command[0])
@@ -346,6 +347,6 @@ class InsertTable(BaseTable):
                 for i, c in enumerate(self.sf.columns):
                     if c.es_column==d.es_column and c.es_index==d.es_index:
                         del_column.append(i)
-                        self.remove_col_from_db(d)
+                        self.sf.remove_col_from_db(d)
                 for i in del_column:
                     del(self.sf.columns[i])

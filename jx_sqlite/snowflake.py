@@ -229,7 +229,7 @@ class Snowflake(object):
         org_table = col.es_index
         column = col.es_column
         tmp_table = "tmp_" + col.es_index
-        columns = self.db.query("select * from " + quote_table(org_table)).header
+        columns = self.db.query("select * from " + quote_table(org_table) + "LIMIT 0").header
         self.db.execute(
             "ALTER TABLE " + quote_table(org_table) +
             " RENAME TO " + quote_table(tmp_table)
