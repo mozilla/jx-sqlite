@@ -15,6 +15,7 @@ import itertools
 from collections import Mapping
 from decimal import Decimal
 
+import operator
 from mo_dots import coalesce, wrap, set_default, literal_field, Null, split_field, startswith_field
 from mo_dots import Data, join_field, unwraplist, ROOT_PATH, relative_field, unwrap
 from mo_json import json2value, quote
@@ -183,6 +184,13 @@ class Expression(object):
         :return: True, IF THIS EXPRESSION ALWAYS RETURNS BOOLEAN false
         """
         return FalseOp()  # GOOD DEFAULT ASSUMPTION
+
+    def __call__(self):
+        """
+        ATTEMPT TO SIMPLIFY THE EXPRESSION:
+        PREFERABLY RETURNING A LITERAL, BUT MAYBE A SIMPLER EXPRESSION, OR self IF NOT POSSIBLE
+        """
+        return self
 
 
 class Variable(Expression):
@@ -370,20 +378,20 @@ class Literal(Expression):
     def __init__(self, op, term):
         Expression.__init__(self, "", None)
         if term == "":
-            self.json = '""'
+            self._json = '""'
         else:
-            self.json = convert.value2json(term)
+            self._json = convert.value2json(term)
 
     def __nonzero__(self):
         return True
 
     def __eq__(self, other):
         if other == None:
-            if self.json == "null":
+            if self._json == "null":
                 return True
             else:
                 return False
-        elif self.json == "null":
+        elif self._json == "null":
             return False
 
         Log.warning("expensive")
@@ -391,13 +399,21 @@ class Literal(Expression):
         from mo_testing.fuzzytestcase import assertAlmostEqual
 
         try:
-            assertAlmostEqual(json2value(self.json), other)
+            assertAlmostEqual(json2value(self._json), other)
             return True
         except Exception:
             return False
 
     def __data__(self):
-        return {"literal": json2value(self.json)}
+        return {"literal": json2value(self._json)}
+
+    @property
+    def value(self):
+        return json2value(self._json)
+
+    @property
+    def json(self):
+        return self._json
 
     def vars(self):
         return set()
@@ -406,18 +422,16 @@ class Literal(Expression):
         return self
 
     def missing(self):
-        if self.json == '""':
+        if self._json == '""':
             return TrueOp()
         return FalseOp()
 
-    def __call__(self, row=None, rownum=None, rows=None):
-        return json2value(self.json)
-
     def __unicode__(self):
-        return self.json
+        return self._json
 
     def __str__(self):
-        return str(self.json)
+        return str(self._json)
+
 
 class NullOp(Literal):
     """
@@ -451,9 +465,6 @@ class NullOp(Literal):
 
     def exists(self):
         return FalseOp()
-
-    def __call__(self, row=None, rownum=None, rows=None):
-        return Null
 
     def __unicode__(self):
         return "null"
@@ -496,9 +507,6 @@ class TrueOp(Literal):
     def is_false(self):
         return FalseOp()
 
-    def __call__(self, row=None, rownum=None, rows=None):
-        return True
-
     def __unicode__(self):
         return "true"
 
@@ -537,9 +545,6 @@ class FalseOp(Literal):
     def is_false(self):
         return TrueOp()
 
-    def __call__(self, row=None, rownum=None, rows=None):
-        return False
-
     def __unicode__(self):
         return "false"
 
@@ -555,14 +560,11 @@ class DateOp(Literal):
     def __data__(self):
         return {"date": self.value}
 
-    def __call__(self, row=None, rownum=None, rows=None):
-        return Date(self.value)
-
     def __unicode__(self):
-        return self.json
+        return self._json
 
     def __str__(self):
-        return str(self.json)
+        return str(self._json)
 
 
 class TupleOp(Expression):
@@ -698,6 +700,15 @@ class InequalityOp(Expression):
         else:
             return OrOp("or", [self.lhs.missing(), self.rhs.missing()])
 
+    def __call__(self):
+        lhs = self.lhs()
+        rhs = self.rhs()
+
+        if isinstance(lhs, Literal) and isinstance(rhs, Literal):
+            return Literal(None, ops[self.op](lhs, rhs))
+        else:
+            return InequalityOp(self.op, [lhs, rhs], default=self.default)
+
 
 class DivOp(Expression):
     has_simple_form = True
@@ -797,6 +808,15 @@ class EqOp(Expression):
 
     def exists(self):
         return TrueOp()
+
+    def __call__(self):
+        lhs = self.lhs()
+        rhs = self.rhs()
+
+        if isinstance(lhs, Literal) and isinstance(rhs, Literal):
+            return EqOp("eq", ops["eq"](lhs, rhs))
+        else:
+            return EqOp(self.op, [lhs, rhs])
 
 
 class NeOp(Expression):
@@ -1490,6 +1510,18 @@ class WhenOp(Expression):
         else:
             return FalseOp()
 
+    def __call__(self):
+        when = self.when()
+        if isinstance(when, Literal):
+            if isinstance(when, TrueOp):
+                return self.then()
+            elif isinstance(when, (FalseOp, NullOp)):
+                return self.els_()
+            else:
+                Log.error("Expecting `when` clause to return a Boolean, or `null`")
+        else:
+            return self
+
 
 class CaseOp(Expression):
     def __init__(self, op, term, **clauses):
@@ -1588,3 +1620,11 @@ def extend(cls):
         return func
     return extender
 
+
+ops={
+    "eq": operator.eq,
+    "gte": operator.ge,
+    "gt": operator.gt,
+    "lte": operator.le,
+    "lt": operator.lt
+}
