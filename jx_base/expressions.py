@@ -133,6 +133,7 @@ class Expression(object):
     has_simple_form = False
 
     def __init__(self, op, terms):
+        self.simplified = False
         if isinstance(terms, (list, tuple)):
             if not all(isinstance(t, Expression) for t in terms):
                 Log.error("Expecting an expression")
@@ -185,11 +186,12 @@ class Expression(object):
         """
         return FalseOp()  # GOOD DEFAULT ASSUMPTION
 
-    def __call__(self):
+    def partial_eval(self):
         """
         ATTEMPT TO SIMPLIFY THE EXPRESSION:
         PREFERABLY RETURNING A LITERAL, BUT MAYBE A SIMPLER EXPRESSION, OR self IF NOT POSSIBLE
         """
+        self.simplified = True
         return self
 
 
@@ -426,6 +428,9 @@ class Literal(Expression):
             return TrueOp()
         return FalseOp()
 
+    def __call__(self, row=None, rownum=None, rows=None):
+        return json2value(self.json)
+
     def __unicode__(self):
         return self._json
 
@@ -465,6 +470,9 @@ class NullOp(Literal):
 
     def exists(self):
         return FalseOp()
+
+    def __call__(self, row=None, rownum=None, rows=None):
+        return Null
 
     def __unicode__(self):
         return "null"
@@ -507,6 +515,9 @@ class TrueOp(Literal):
     def is_false(self):
         return FalseOp()
 
+    def __call__(self, row=None, rownum=None, rows=None):
+        return True
+
     def __unicode__(self):
         return "true"
 
@@ -545,6 +556,9 @@ class FalseOp(Literal):
     def is_false(self):
         return TrueOp()
 
+    def __call__(self, row=None, rownum=None, rows=None):
+        return False
+
     def __unicode__(self):
         return "false"
 
@@ -559,6 +573,9 @@ class DateOp(Literal):
 
     def __data__(self):
         return {"date": self.value}
+
+    def __call__(self, row=None, rownum=None, rows=None):
+        return Date(self.value)
 
     def __unicode__(self):
         return self._json
@@ -700,14 +717,17 @@ class InequalityOp(Expression):
         else:
             return OrOp("or", [self.lhs.missing(), self.rhs.missing()])
 
-    def __call__(self):
-        lhs = self.lhs()
-        rhs = self.rhs()
+    def partial_eval(self):
+        lhs = self.lhs.partial_eval()
+        rhs = self.rhs.partial_eval()
 
         if isinstance(lhs, Literal) and isinstance(rhs, Literal):
-            return Literal(None, ops[self.op](lhs, rhs))
+            output = Literal(None, ops[self.op](lhs, rhs))
         else:
-            return InequalityOp(self.op, [lhs, rhs], default=self.default)
+            output = InequalityOp(self.op, [lhs, rhs], default=self.default)
+
+        output.simplified = True
+        return output
 
 
 class DivOp(Expression):
@@ -809,14 +829,17 @@ class EqOp(Expression):
     def exists(self):
         return TrueOp()
 
-    def __call__(self):
-        lhs = self.lhs()
-        rhs = self.rhs()
+    def partial_eval(self):
+        lhs = self.lhs.partial_eval()
+        rhs = self.rhs.partial_eval()
 
         if isinstance(lhs, Literal) and isinstance(rhs, Literal):
-            return EqOp("eq", ops["eq"](lhs, rhs))
+            output = EqOp("eq", ops["eq"](lhs, rhs))
         else:
-            return EqOp(self.op, [lhs, rhs])
+            output = EqOp(self.op, [lhs, rhs])
+
+        output.simplified = True
+        return output
 
 
 class NeOp(Expression):
@@ -1474,6 +1497,21 @@ class InOp(Expression):
     def map(self, map_):
         return InOp("in", [self.value.map(map_), self.superset])
 
+    def partial_eval(self):
+        if self.simplified:
+            return self
+
+        value = self.value.partial_eval()
+        superset = self.superset.partial_eval()
+        if isinstance(value, Literal) and isinstance(superset, Literal):
+            return Literal(None, self())
+        else:
+            self.simplified = True
+            return self
+
+    def __call__(self):
+        return self.value() in self.superset()
+
 
 class RangeOp(Expression):
     has_simple_form = True
@@ -1510,16 +1548,17 @@ class WhenOp(Expression):
         else:
             return FalseOp()
 
-    def __call__(self):
-        when = self.when()
+    def partial_eval(self):
+        when = self.when.partial_eval()
         if isinstance(when, Literal):
             if isinstance(when, TrueOp):
-                return self.then()
+                return self.then.partial_eval()
             elif isinstance(when, (FalseOp, NullOp)):
-                return self.els_()
+                return self.els_.partial_eval()
             else:
                 Log.error("Expecting `when` clause to return a Boolean, or `null`")
         else:
+            self.simplified = True
             return self
 
 
