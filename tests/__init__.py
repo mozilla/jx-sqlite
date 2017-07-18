@@ -112,7 +112,7 @@ class SQLiteUtils(object):
                 Log.error("Expecting test {{name|quote}} to have property named 'expecting_*' for testing the various format clauses", {
                     "name": subtest.name
                 })
-        except Exception, e:
+        except Exception as e:
             Log.error("Failed test {{name|quote}}", {"name": subtest.name}, e)
 
     def execute_query(self, query):
