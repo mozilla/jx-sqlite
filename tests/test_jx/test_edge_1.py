@@ -411,6 +411,117 @@ class TestEdge1(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
+    def test_union_values(self):
+        data = [
+            {"a": "x"},
+            {"a": "x", "c": 2},
+            {"a": "x", "c": [2, 3]},
+            {"a": "y"},
+            {"a": "y", "c": 4},
+            {"a": "y", "c": [5, 6]},
+            {},
+            {"c": 7},
+            {"c": [8, 8]}
+        ]
+
+        test = {
+            "data": data,
+            "query": {
+                "from": TEST_TABLE,
+                "select": {"value": "c", "aggregate": "union"},
+                "edges": ["a"]
+            },
+            "expecting_list": {
+                "meta": {"format": "list"},
+                "data": [
+                    {"a": "x", "c": [2, 3]},
+                    {"a": "y", "c": [4, 5, 6]},
+                    {"a": NULL, "c": [7, 8]}
+                ]},
+            "expecting_table": {
+                "meta": {"format": "table"},
+                "header": ["a", "c"],
+                "data": [
+                    ["x", [2, 3]],
+                    ["y", [4, 5, 6]],
+                    [NULL, [7, 8]]
+                ]
+            },
+            "expecting_cube": {
+                "meta": {"format": "cube"},
+                "edges": [
+                    {
+                        "name": "a",
+                        "allowNulls": True,
+                        "domain": {
+                            "type": "set",
+                            "key": "value",
+                            "partitions": [{"value": "x"}, {"value": "y"}]
+                        }
+                    }
+                ],
+                "data": {
+                    "v": [[2, 3], [4, 5, 6], [7, 8]]
+                }
+            }
+        }
+        self.utils.execute_tests(test)
+
+    def test_union_objects(self):
+        data = [
+            {"a": "x"},
+            {"a": "x", "c": {"v": 2}},
+            {"a": "x", "c": [{"v": 2}, {"v": 3}]},
+            {"a": "y"},
+            {"a": "y", "c": {"v": 4}},
+            {"a": "y", "c": [{"v": 5}, {"v": 6}]},
+            {},
+            {"c": {"v": 7}},
+            {"c": [{"v": 8}, {"v": 8}]}
+        ]
+
+        test = {
+            "data": data,
+            "query": {
+                "from": TEST_TABLE,
+                "select": {"name": "c", "value": "c.v", "aggregate": "union"},
+                "edges": ["a"]
+            },
+            "expecting_list": {
+                "meta": {"format": "list"},
+                "data": [
+                    {"a": "x", "c": [2, 3]},
+                    {"a": "y", "c": [4, 5, 6]},
+                    {"a": NULL, "c": [7, 8]}
+                ]},
+            "expecting_table": {
+                "meta": {"format": "table"},
+                "header": ["a", "c"],
+                "data": [
+                    ["x", [2, 3]],
+                    ["y", [4, 5, 6]],
+                    [NULL, [7, 8]]
+                ]
+            },
+            "expecting_cube": {
+                "meta": {"format": "cube"},
+                "edges": [
+                    {
+                        "name": "a",
+                        "allowNulls": True,
+                        "domain": {
+                            "type": "set",
+                            "key": "value",
+                            "partitions": [{"value": "x"}, {"value": "y"}]
+                        }
+                    }
+                ],
+                "data": {
+                    "v": [[2, 3], [4, 5, 6], [7, 8]]
+                }
+            }
+        }
+        self.utils.execute_tests(test)
 
     def test_sum_column(self):
         test = {

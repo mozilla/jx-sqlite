@@ -15,6 +15,7 @@ import itertools
 from collections import Mapping
 from decimal import Decimal
 
+import operator
 from mo_dots import coalesce, wrap, set_default, literal_field, Null, split_field, startswith_field
 from mo_dots import Data, join_field, unwraplist, ROOT_PATH, relative_field, unwrap
 from mo_json import json2value, quote
@@ -132,6 +133,7 @@ class Expression(object):
     has_simple_form = False
 
     def __init__(self, op, terms):
+        self.simplified = False
         if isinstance(terms, (list, tuple)):
             if not all(isinstance(t, Expression) for t in terms):
                 Log.error("Expecting an expression")
@@ -183,6 +185,14 @@ class Expression(object):
         :return: True, IF THIS EXPRESSION ALWAYS RETURNS BOOLEAN false
         """
         return FalseOp()  # GOOD DEFAULT ASSUMPTION
+
+    def partial_eval(self):
+        """
+        ATTEMPT TO SIMPLIFY THE EXPRESSION:
+        PREFERABLY RETURNING A LITERAL, BUT MAYBE A SIMPLER EXPRESSION, OR self IF NOT POSSIBLE
+        """
+        self.simplified = True
+        return self
 
 
 class Variable(Expression):
@@ -370,20 +380,20 @@ class Literal(Expression):
     def __init__(self, op, term):
         Expression.__init__(self, "", None)
         if term == "":
-            self.json = '""'
+            self._json = '""'
         else:
-            self.json = convert.value2json(term)
+            self._json = convert.value2json(term)
 
     def __nonzero__(self):
         return True
 
     def __eq__(self, other):
         if other == None:
-            if self.json == "null":
+            if self._json == "null":
                 return True
             else:
                 return False
-        elif self.json == "null":
+        elif self._json == "null":
             return False
 
         Log.warning("expensive")
@@ -391,13 +401,21 @@ class Literal(Expression):
         from mo_testing.fuzzytestcase import assertAlmostEqual
 
         try:
-            assertAlmostEqual(json2value(self.json), other)
+            assertAlmostEqual(json2value(self._json), other)
             return True
         except Exception:
             return False
 
     def __data__(self):
-        return {"literal": json2value(self.json)}
+        return {"literal": json2value(self._json)}
+
+    @property
+    def value(self):
+        return json2value(self._json)
+
+    @property
+    def json(self):
+        return self._json
 
     def vars(self):
         return set()
@@ -406,7 +424,7 @@ class Literal(Expression):
         return self
 
     def missing(self):
-        if self.json == '""':
+        if self._json == '""':
             return TrueOp()
         return FalseOp()
 
@@ -414,10 +432,11 @@ class Literal(Expression):
         return json2value(self.json)
 
     def __unicode__(self):
-        return self.json
+        return self._json
 
     def __str__(self):
-        return str(self.json)
+        return str(self._json)
+
 
 class NullOp(Literal):
     """
@@ -559,10 +578,10 @@ class DateOp(Literal):
         return Date(self.value)
 
     def __unicode__(self):
-        return self.json
+        return self._json
 
     def __str__(self):
-        return str(self.json)
+        return str(self._json)
 
 
 class TupleOp(Expression):
@@ -698,6 +717,18 @@ class InequalityOp(Expression):
         else:
             return OrOp("or", [self.lhs.missing(), self.rhs.missing()])
 
+    def partial_eval(self):
+        lhs = self.lhs.partial_eval()
+        rhs = self.rhs.partial_eval()
+
+        if isinstance(lhs, Literal) and isinstance(rhs, Literal):
+            output = Literal(None, ops[self.op](lhs, rhs))
+        else:
+            output = InequalityOp(self.op, [lhs, rhs], default=self.default)
+
+        output.simplified = True
+        return output
+
 
 class DivOp(Expression):
     has_simple_form = True
@@ -797,6 +828,18 @@ class EqOp(Expression):
 
     def exists(self):
         return TrueOp()
+
+    def partial_eval(self):
+        lhs = self.lhs.partial_eval()
+        rhs = self.rhs.partial_eval()
+
+        if isinstance(lhs, Literal) and isinstance(rhs, Literal):
+            output = EqOp("eq", ops["eq"](lhs, rhs))
+        else:
+            output = EqOp(self.op, [lhs, rhs])
+
+        output.simplified = True
+        return output
 
 
 class NeOp(Expression):
@@ -1454,6 +1497,21 @@ class InOp(Expression):
     def map(self, map_):
         return InOp("in", [self.value.map(map_), self.superset])
 
+    def partial_eval(self):
+        if self.simplified:
+            return self
+
+        value = self.value.partial_eval()
+        superset = self.superset.partial_eval()
+        if isinstance(value, Literal) and isinstance(superset, Literal):
+            return Literal(None, self())
+        else:
+            self.simplified = True
+            return self
+
+    def __call__(self):
+        return self.value() in self.superset()
+
 
 class RangeOp(Expression):
     has_simple_form = True
@@ -1489,6 +1547,19 @@ class WhenOp(Expression):
             return WhenOp("when", self.when, **{"then": self.then.missing(), "else": self.els_.missing()})
         else:
             return FalseOp()
+
+    def partial_eval(self):
+        when = self.when.partial_eval()
+        if isinstance(when, Literal):
+            if isinstance(when, TrueOp):
+                return self.then.partial_eval()
+            elif isinstance(when, (FalseOp, NullOp)):
+                return self.els_.partial_eval()
+            else:
+                Log.error("Expecting `when` clause to return a Boolean, or `null`")
+        else:
+            self.simplified = True
+            return self
 
 
 class CaseOp(Expression):
@@ -1588,3 +1659,11 @@ def extend(cls):
         return func
     return extender
 
+
+ops={
+    "eq": operator.eq,
+    "gte": operator.ge,
+    "gt": operator.gt,
+    "lte": operator.le,
+    "lt": operator.lt
+}
