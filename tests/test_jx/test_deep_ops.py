@@ -1286,7 +1286,48 @@ class TestDeepOps(BaseTestCase):
             }
         }
         self.utils.execute_tests(test)
-
+  
+    def test_nested_column1(self):
+        test = {
+            "data": [
+                {"a": 1},
+                {"a": [1, 2]},
+                {"a": 5}
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "select": "a"
+            },
+            "expecting_list": {
+                "meta": {"format": "list"},
+                "data": [
+                    1,
+                    [1, 2],
+                    5
+                ]
+            }
+        }
+        self.utils.execute_tests(test)
+        
+    def test_nested_column2(self):
+        test = {
+            "data": [
+                {"a":[1, 2]},
+                {"a": 5}
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "select": "a"
+            },
+            "expecting_list": {
+                "meta": {"format": "list"},
+                "data": [
+                    [1, 2],
+                    5
+                ]
+            }
+        }
+        self.utils.execute_tests(test)    
 
 # TODO: using "find" as a filter should be legitimate:
 todo = {

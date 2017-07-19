@@ -16,7 +16,7 @@ from __future__ import unicode_literals
 from collections import Mapping
 from copy import copy
 
-from mo_dots import listwrap, Data, wrap, Null, unwraplist, startswith_field, unwrap, concat_field, literal_field
+from mo_dots import listwrap, Data, wrap, Null, unwraplist, startswith_field, unwrap, concat_field, literal_field, relative_field
 from mo_logs import Log
 
 from jx_sqlite import typed_column, quote_table, get_type, ORDER, UID, GUID, PARENT, get_if_type
@@ -33,8 +33,8 @@ class InsertTable(BaseTable):
         self.insert([doc])
 
     def insert(self, docs):
-        doc_collection = self.flatten_many(docs)
-        self._insert(doc_collection)
+        doc_collection, commands = self.flatten_many(docs)
+        self._insert(doc_collection, commands)
 
     def update(self, command):
         """
@@ -236,6 +236,7 @@ class InsertTable(BaseTable):
             :param row: we will be filling this
             :return:
             """
+            table=concat_field(self.sf.fact, nested_path[0])
             insertion = doc_collection[nested_path[0]]
             if not row:
                 row = {GUID: guid, UID: uid, PARENT: parent_id, ORDER: order}
@@ -253,8 +254,8 @@ class InsertTable(BaseTable):
                 if value_type in STRUCT:
                     c = unwraplist([cc for cc in abs_schema[cname] if cc.type in STRUCT])
                 else:
-                    c = unwraplist([cc for cc in abs_schema[cname] if cc.type == value_type])
-
+                    c = unwraplist([cc for cc in abs_schema[cname] if cc.type == value_type and cc.es_index==table])
+                
                 if not c:
                     # WHAT IS THE NESTING LEVEL FOR THIS PATH?
                     deeper_nested_path = "."
@@ -266,7 +267,7 @@ class InsertTable(BaseTable):
                         names={".": cname},
                         type=value_type,
                         es_column=typed_column(cname, value_type),
-                        es_index=concat_field(self.sf.fact, cname),  # THIS MAY BE THE WRONG TABLE, IF THIS PATH IS A NESTED DOC
+                        es_index=table,
                         nested_path=nested_path
                     )
                     abs_schema.add(cname, c)
@@ -296,14 +297,16 @@ class InsertTable(BaseTable):
                     _flatten(v, uid, parent_id, order, cname, nested_path, row=row)
                 elif c.type:
                     row[c.es_column] = v
-
+        
+        commands = []
         for doc in docs:
             _flatten(doc, self.next_uid(), 0, 0, full_path=path, nested_path=["."], guid=self.next_guid())
             if required_changes:
                 self.sf.change_schema(required_changes)
+                commands.append(required_changes[-1])
             required_changes = []
 
-        return doc_collection
+        return (doc_collection, commands)
 
     def next_uid(self):
         try:
@@ -311,7 +314,7 @@ class InsertTable(BaseTable):
         finally:
             self._next_uid += 1
 
-    def _insert(self, collection):
+    def _insert(self, collection, commands):
         for nested_path, details in collection.items():
             active_columns = wrap(list(details.active_columns))
             rows = details.rows
@@ -335,3 +338,15 @@ class InsertTable(BaseTable):
             )
 
             self.db.execute(prefix + records)
+
+        commands = [cc for c in commands for cc in c]
+        for command in commands:
+            self.db.execute(command[0])
+            for d in command[1]:
+                del_column = []
+                for i, c in enumerate(self.sf.columns):
+                    if c.es_column==d.es_column and c.es_index==d.es_index:
+                        del_column.append(i)
+                        self.sf.remove_col_from_db(d)
+                for i in del_column:
+                    del(self.sf.columns[i])
