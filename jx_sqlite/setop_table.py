@@ -13,7 +13,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
-from mo_dots import listwrap, Data, unwraplist, split_field, join_field, startswith_field, unwrap, relative_field, concat_field, literal_field
+from mo_dots import listwrap, Data, unwraplist, split_field, join_field, startswith_field, unwrap, relative_field, concat_field, literal_field, Null
 from mo_math import UNION, MAX
 
 from jx_sqlite import quote_table, quoted_UID, quoted_GUID, get_column, _make_column_name, ORDER, COLUMN, set_column, quoted_PARENT, ColumnMapping
@@ -290,7 +290,7 @@ class SetOpTable(InsertTable):
             :return: the nested property (usually an array)
             """
             previous_doc_id = None
-            doc = None
+            doc = Null
             output = []
             id_coord = nested_doc_details['id_coord']
 
@@ -303,7 +303,7 @@ class SetOpTable(InsertTable):
 
                 if doc_id != previous_doc_id:
                     previous_doc_id = doc_id
-                    doc = None
+                    doc = Null
                     curr_nested_path = nested_doc_details['nested_path'][0]
                     index_to_column = nested_doc_details['index_to_column'].items()
                     if index_to_column:
@@ -322,7 +322,7 @@ class SetOpTable(InsertTable):
 
                             if relative_path == ".":
                                 doc = value
-                            elif doc is None:
+                            elif doc is Null:
                                 doc = Data()
                                 doc[relative_path] = value
                             else:
@@ -345,7 +345,7 @@ class SetOpTable(InsertTable):
                                 doc = nested_value
                             elif relative_path == ".":
                                 doc[push_name] = unwraplist([v[push_name] for v in nested_value])
-                            elif doc is None:
+                            elif doc is Null:
                                 doc = Data()
                                 doc[relative_path] = unwraplist(nested_value)
                             else:
