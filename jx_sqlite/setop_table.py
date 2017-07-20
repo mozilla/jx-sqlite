@@ -13,7 +13,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
-from mo_dots import listwrap, Data, unwraplist, split_field, join_field, startswith_field, unwrap, relative_field, concat_field, literal_field
+from mo_dots import listwrap, Data, unwraplist, split_field, join_field, startswith_field, unwrap, relative_field, concat_field, literal_field, Null
 from mo_math import UNION, MAX
 
 from jx_sqlite import quote_table, quoted_UID, quoted_GUID, get_column, _make_column_name, ORDER, COLUMN, set_column, quoted_PARENT, ColumnMapping
@@ -87,7 +87,7 @@ class SetOpTable(InsertTable):
                         sorts.append(column_alias + " IS NULL")
                         sorts.append(column_alias)
 
-        selects = []        
+        selects = []
         primary_doc_details = Data()
         # EVERY SELECT STATEMENT THAT WILL BE REQUIRED, NO MATTER THE DEPTH
         # WE WILL CREATE THEM ACCORDING TO THE DEPTH REQUIRED
@@ -158,7 +158,7 @@ class SetOpTable(InsertTable):
             # WE DO NOT NEED DATA FROM TABLES WE REQUEST NOTHING FROM
             if nested_path not in active_columns:
                 continue
-            
+
             if len(active_columns[nested_path]) != 0:
                 # ADD SQL SELECT COLUMNS FOR EACH jx SELECT CLAUSE
                 si = 0
@@ -173,7 +173,7 @@ class SetOpTable(InsertTable):
                                 if isinstance(column.nested_path, list):
                                     column.nested_path=column.nested_path[0]
                                 if column.nested_path and column.nested_path!=nested_path:
-                                    continue                                   
+                                    continue
                                 for t, unsorted_sql in column.sql.items():
                                     json_type = sql_type_to_json_type[t]
                                     if json_type in STRUCT:
@@ -202,7 +202,7 @@ class SetOpTable(InsertTable):
                                 if isinstance(column.nested_path, list):
                                     column.nested_path=column.nested_path[0]
                                 if column.nested_path and column.nested_path!=nested_path:
-                                    continue                                
+                                    continue
                                 for t, unsorted_sql in column.sql.items():
                                     json_type = sql_type_to_json_type[t]
                                     if json_type in STRUCT:
@@ -290,7 +290,7 @@ class SetOpTable(InsertTable):
             :return: the nested property (usually an array)
             """
             previous_doc_id = None
-            doc = None
+            doc = Null
             output = []
             id_coord = nested_doc_details['id_coord']
 
@@ -299,12 +299,11 @@ class SetOpTable(InsertTable):
 
                 if doc_id == None or (parent_id_coord is not None and row[parent_id_coord] != parent_doc_id):
                     rows.append(row)  # UNDO PREVIOUS POP (RECORD IS NOT A NESTED RECORD OF parent_doc)
-                    output = unwraplist(output)
-                    return output if output else None
+                    return output
 
                 if doc_id != previous_doc_id:
                     previous_doc_id = doc_id
-                    doc = None
+                    doc = Null
                     curr_nested_path = nested_doc_details['nested_path'][0]
                     index_to_column = nested_doc_details['index_to_column'].items()
                     if index_to_column:
@@ -323,7 +322,7 @@ class SetOpTable(InsertTable):
 
                             if relative_path == ".":
                                 doc = value
-                            elif doc is None:
+                            elif doc is Null:
                                 doc = Data()
                                 doc[relative_path] = value
                             else:
@@ -333,8 +332,8 @@ class SetOpTable(InsertTable):
                     # EACH NESTED TABLE MUST BE ASSEMBLED INTO A LIST OF OBJECTS
                     child_id = row[child_details['id_coord']]
                     if child_id is not None:
-                        nested_value = listwrap(_accumulate_nested(rows, row, child_details, doc_id, id_coord))
-                        if nested_value is not None:
+                        nested_value = _accumulate_nested(rows, row, child_details, doc_id, id_coord)
+                        if nested_value:
                             push_name = child_details['nested_path'][0]
                             if isinstance(query.select, list) or isinstance(query.select.value, LeavesOp):
                                 # ASSIGN INNER PROPERTIES
@@ -342,34 +341,28 @@ class SetOpTable(InsertTable):
                             else:           # FACT IS EXPECTED TO BE A SINGLE VALUE, NOT AN OBJECT
                                 relative_path="."
 
-                            if relative_path == "." and doc is None:
+                            if relative_path == "." and doc is Null:
                                 doc = nested_value
-                            elif relative_path == "." and isinstance(nested_value, list):
-                                if len(nested_value)>1:
-                                    doc[push_name] = []                                    
-                                    for v in nested_value:
-                                        doc[push_name].append(v[push_name])
-                                elif len(nested_value)==1:
-                                    doc[push_name] = nested_value[0][push_name]
-                            elif doc is None:
+                            elif relative_path == ".":
+                                doc[push_name] = unwraplist([v[push_name] for v in nested_value])
+                            elif doc is Null:
                                 doc = Data()
-                                doc[relative_path] = nested_value
+                                doc[relative_path] = unwraplist(nested_value)
                             else:
-                                doc[relative_path] = nested_value
+                                doc[relative_path] = unwraplist(nested_value)
 
                 output.append(doc)
 
                 try:
                     row = rows.pop()
                 except IndexError:
-                    output = unwraplist(output)
-                    return output if output else None
+                    return output
 
         cols = tuple([i for i in index_to_column.values() if i.push_name != None])
         rows = list(reversed(unwrap(result.data)))
         if rows:
             row = rows.pop()
-            data=listwrap(_accumulate_nested(rows, row, primary_doc_details, None, None))
+            data = _accumulate_nested(rows, row, primary_doc_details, None, None)
         else:
             data = result.data
 
