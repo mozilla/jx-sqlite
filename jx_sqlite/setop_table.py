@@ -333,7 +333,7 @@ class SetOpTable(InsertTable):
                     # EACH NESTED TABLE MUST BE ASSEMBLED INTO A LIST OF OBJECTS
                     child_id = row[child_details['id_coord']]
                     if child_id is not None:
-                        nested_value = _accumulate_nested(rows, row, child_details, doc_id, id_coord)
+                        nested_value = listwrap(_accumulate_nested(rows, row, child_details, doc_id, id_coord))
                         if nested_value is not None:
                             push_name = child_details['nested_path'][0]
                             if isinstance(query.select, list) or isinstance(query.select.value, LeavesOp):
@@ -345,16 +345,12 @@ class SetOpTable(InsertTable):
                             if relative_path == "." and doc is None:
                                 doc = nested_value
                             elif relative_path == "." and isinstance(nested_value, list):
-                                doc[push_name] = []
-                                for v in nested_value:
-                                    doc[push_name].append(v[push_name])
-                            elif relative_path == "." and isinstance(nested_value, dict):
-                                doc[push_name] = []
-                                for k, v in nested_value.items():
-                                    if k==push_name:
-                                        doc[push_name].append(v)
-                                    else:
-                                        doc[k] = v
+                                if len(nested_value)>1:
+                                    doc[push_name] = []                                    
+                                    for v in nested_value:
+                                        doc[push_name].append(v[push_name])
+                                elif len(nested_value)==1:
+                                    doc[push_name] = nested_value[0][push_name]
                             elif doc is None:
                                 doc = Data()
                                 doc[relative_path] = nested_value
