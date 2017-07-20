@@ -236,6 +236,7 @@ class InsertTable(BaseTable):
             :param row: we will be filling this
             :return:
             """
+            table=concat_field(self.sf.fact, nested_path[0])            
             insertion = doc_collection[nested_path[0]]
             if not row:
                 row = {GUID: guid, UID: uid, PARENT: parent_id, ORDER: order}
@@ -266,7 +267,7 @@ class InsertTable(BaseTable):
                         names={".": cname},
                         type=value_type,
                         es_column=typed_column(cname, value_type),
-                        es_index=concat_field(self.sf.fact, cname),  # THIS MAY BE THE WRONG TABLE, IF THIS PATH IS A NESTED DOC
+                        es_index=table,  # THIS MAY BE THE WRONG TABLE, IF THIS PATH IS A NESTED DOC
                         nested_path=nested_path
                     )
                     abs_schema.add(cname, c)
@@ -277,6 +278,9 @@ class InsertTable(BaseTable):
 
                     # INSIDE IF BLOCK BECAUSE WE DO NOT WANT IT TO ADD WHAT WE columns.get() ALREADY
                     insertion.active_columns.add(c)
+                elif c.type=="nested" and value_type=="object":
+                    value_type = "nested"
+                    v = [v]
 
                 # BE SURE TO NEST VALUES, IF NEEDED
                 if value_type == "nested":

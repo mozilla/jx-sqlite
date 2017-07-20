@@ -87,6 +87,7 @@ class SetOpTable(InsertTable):
                         sorts.append(column_alias + " IS NULL")
                         sorts.append(column_alias)
 
+        selects = []        
         primary_doc_details = Data()
         # EVERY SELECT STATEMENT THAT WILL BE REQUIRED, NO MATTER THE DEPTH
         # WE WILL CREATE THEM ACCORDING TO THE DEPTH REQUIRED
@@ -157,7 +158,7 @@ class SetOpTable(InsertTable):
             # WE DO NOT NEED DATA FROM TABLES WE REQUEST NOTHING FROM
             if nested_path not in active_columns:
                 continue
-
+            
             if len(active_columns[nested_path]) != 0:
                 # ADD SQL SELECT COLUMNS FOR EACH jx SELECT CLAUSE
                 si = 0
@@ -169,6 +170,10 @@ class SetOpTable(InsertTable):
 
                         if isinstance(s.value, LeavesOp):
                             for column in db_columns:
+                                if isinstance(column.nested_path, list):
+                                    column.nested_path=column.nested_path[0]
+                                if column.nested_path and column.nested_path!=nested_path:
+                                    continue                                   
                                 for t, unsorted_sql in column.sql.items():
                                     json_type = sql_type_to_json_type[t]
                                     if json_type in STRUCT:
@@ -176,7 +181,10 @@ class SetOpTable(InsertTable):
                                     column_number = len(sql_selects)
                                     # SQL HAS ABS TABLE REFERENCE
                                     column_alias = _make_column_name(column_number)
-                                    sql_selects.append(unsorted_sql + " AS " + column_alias)
+                                    if concat_field(alias, unsorted_sql) in selects and len(unsorted_sql.split())==1:
+                                        continue
+                                    selects.append(concat_field(alias, unsorted_sql))
+                                    sql_selects.append(alias + "." + unsorted_sql + " AS " + column_alias)
                                     index_to_column[column_number] = nested_doc_details['index_to_column'][column_number] = ColumnMapping(
                                         push_name=literal_field(concat_field(s.name, column.name).lstrip(".")),
                                         push_column_name=concat_field(s.name, column.name).lstrip("."),
@@ -191,6 +199,10 @@ class SetOpTable(InsertTable):
                                     si += 1
                         else:
                             for column in db_columns:
+                                if isinstance(column.nested_path, list):
+                                    column.nested_path=column.nested_path[0]
+                                if column.nested_path and column.nested_path!=nested_path:
+                                    continue                                
                                 for t, unsorted_sql in column.sql.items():
                                     json_type = sql_type_to_json_type[t]
                                     if json_type in STRUCT:
@@ -198,7 +210,10 @@ class SetOpTable(InsertTable):
                                     column_number = len(sql_selects)
                                     # SQL HAS ABS TABLE REFERENCE
                                     column_alias = _make_column_name(column_number)
-                                    sql_selects.append(unsorted_sql + " AS " + column_alias)
+                                    if concat_field(alias, unsorted_sql) in selects and len(unsorted_sql.split())==1:
+                                        continue
+                                    selects.append(concat_field(alias, unsorted_sql))
+                                    sql_selects.append(alias + "." + unsorted_sql + " AS " + column_alias)
                                     index_to_column[column_number] = nested_doc_details['index_to_column'][column_number] = ColumnMapping(
                                         push_name=s.name,
                                         push_column_name=s.name,
@@ -223,7 +238,10 @@ class SetOpTable(InsertTable):
                     nested_path = c.nested_path
                     unsorted_sql = nest_to_alias[nested_path[0]] + "." + quote_table(c.es_column)
                     column_alias = _make_column_name(column_number)
-                    sql_selects.append(unsorted_sql + " AS " + column_alias)
+                    if concat_field(alias, unsorted_sql) in selects and len(unsorted_sql.split())==1:
+                        continue
+                    selects.append(concat_field(alias, unsorted_sql))
+                    sql_selects.append(alias + "." + unsorted_sql + " AS " + column_alias)
                     index_to_column[column_number] = nested_doc_details['index_to_column'][column_number] = ColumnMapping(
                         push_name=s.name,
                         push_column_name=s.name,
@@ -315,7 +333,7 @@ class SetOpTable(InsertTable):
                     # EACH NESTED TABLE MUST BE ASSEMBLED INTO A LIST OF OBJECTS
                     child_id = row[child_details['id_coord']]
                     if child_id is not None:
-                        nested_value = _accumulate_nested(rows, row, child_details, doc_id, id_coord)
+                        nested_value = listwrap(_accumulate_nested(rows, row, child_details, doc_id, id_coord))
                         if nested_value is not None:
                             push_name = child_details['nested_path'][0]
                             if isinstance(query.select, list) or isinstance(query.select.value, LeavesOp):
@@ -324,8 +342,15 @@ class SetOpTable(InsertTable):
                             else:           # FACT IS EXPECTED TO BE A SINGLE VALUE, NOT AN OBJECT
                                 relative_path="."
 
-                            if relative_path == ".":
+                            if relative_path == "." and doc is None:
                                 doc = nested_value
+                            elif relative_path == "." and isinstance(nested_value, list):
+                                if len(nested_value)>1:
+                                    doc[push_name] = []                                    
+                                    for v in nested_value:
+                                        doc[push_name].append(v[push_name])
+                                elif len(nested_value)==1:
+                                    doc[push_name] = nested_value[0][push_name]
                             elif doc is None:
                                 doc = Data()
                                 doc[relative_path] = nested_value
