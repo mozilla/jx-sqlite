@@ -341,7 +341,7 @@ class SetOpTable(InsertTable):
                             else:           # FACT IS EXPECTED TO BE A SINGLE VALUE, NOT AN OBJECT
                                 relative_path="."
 
-                            if relative_path == "." and doc is None:
+                            if relative_path == "." and doc is Null:
                                 doc = nested_value
                             elif relative_path == ".":
                                 doc[push_name] = unwraplist([v[push_name] for v in nested_value])
