@@ -1,11 +1,11 @@
 # Logical Equality 
 
-##Definitions
+## Definitions
 
-Let `●` represent a logic operator; an operator that returns a Boolean. We define three families of logical operators 
+Let `●` represent a logic operator; an operator that returns a Boolean. We define two families of logical operators 
 
 * **conservative** - operators that define `a ● b == null` if either `a` or `b` are `null`
-* **decisive** - operators that do not return `null`
+* **decisive** - operators that return only Boolean; do not return `null`
 
 
 ## Desirable features
