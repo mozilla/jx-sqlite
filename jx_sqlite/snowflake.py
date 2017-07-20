@@ -233,7 +233,7 @@ class Table(object):
 
 class Schema(object):
     """
-    A Schema MAPS ALL COLUMNS IN SNOWFLAKE FROM THE PERSPECTIVE OF A SINGLE TABLE
+    A Schema MAPS ALL COLUMNS IN SNOWFLAKE FROM THE PERSPECTIVE OF A SINGLE TABLE (a nested_path)
     """
 
     def __init__(self, nested_path):
@@ -241,7 +241,7 @@ class Schema(object):
         self.nested_path = nested_path
 
     def add(self, column_name, column):
-        if column_name!=column.names[self.nested_path[0]]:
+        if column_name != column.names[self.nested_path[0]]:
             Log.error("Logic error")
 
         container = self.map.get(column_name)
