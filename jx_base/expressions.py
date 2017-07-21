@@ -887,6 +887,24 @@ class NotOp(Expression):
     def missing(self):
         return self.term.missing()
 
+    def partial_eval(self):
+        if self.simplified:
+            return self
+
+        term = self.term.partial_eval()
+        if isinstance(term, TrueOp):
+            return FalseOp()
+        elif isinstance(term, FalseOp):
+            return TrueOp()
+        elif isinstance(term, NullOp):
+            return term
+        elif isinstance(term, Literal):
+            Log.error("`not` operator expects a Boolean term")
+        else:
+            output = NotOp("not", term)
+            output.simplified = True
+            return output
+
 
 class AndOp(Expression):
     def __init__(self, op, terms):
@@ -913,6 +931,25 @@ class AndOp(Expression):
     def missing(self):
         return False
 
+    def partial_eval(self):
+        if self.simplified:
+            return self
+
+        terms = []
+        for t in self.terms:
+            simple = t.partial_eval()
+            if isinstance(simple, (TrueOp, NullOp)):
+                pass
+            elif isinstance(simple, FalseOp):
+                return FalseOp()
+            else:
+                terms.append(simple)
+        if len(terms) == 0:
+            return TrueOp()
+        output = AndOp("and", terms)
+        output.simplified = True
+        return output
+
 
 class OrOp(Expression):
     def __init__(self, op, terms):
@@ -936,6 +973,25 @@ class OrOp(Expression):
 
     def __call__(self, row=None, rownum=None, rows=None):
         return any(t(row, rownum, rows) for t in self.terms)
+
+    def partial_eval(self):
+        if self.simplified:
+            return self
+
+        terms = []
+        for t in self.terms:
+            simple = t.partial_eval()
+            if isinstance(simple, TrueOp):
+                return TrueOp()
+            elif isinstance(simple, (FalseOp, NullOp)):
+                pass
+            else:
+                terms.append(simple)
+        if len(terms) == 0:
+            return FalseOp()
+        output = OrOp("or", terms)
+        output.simplified = True
+        return output
 
 
 class LengthOp(Expression):
@@ -1558,7 +1614,8 @@ class WhenOp(Expression):
             else:
                 Log.error("Expecting `when` clause to return a Boolean, or `null`")
         else:
-            self.simplified = True
+            output = WhenOp("when", when, **{"then": self.then.partial_eval(), "else": self.els_.partial_eval()})
+            output.simplified = True
             return self
 
 
