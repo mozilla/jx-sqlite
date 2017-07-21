@@ -216,7 +216,6 @@ class TestAggOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.use == "elasticsearch", "require dynamic typing before primitives are expected to pass")
     def test_simplest_on_value(self):
         test = {
             "data": range(30),
@@ -244,10 +243,10 @@ class TestAggOps(BaseTestCase):
 
     def test_max_on_value(self):
         test = {
-            "data": [{"a": i*2} for i in range(30)],
+            "data": [i*2 for i in range(30)],
             "query": {
                 "from": TEST_TABLE,
-                "select": {"value": ".", "aggregate": "max"}
+                "select": {"name": "max", "value": "a", "aggregate": "max"}
             },
             "expecting_list": {
                 "meta": {"format": "value"}, "data": 58
@@ -272,7 +271,7 @@ class TestAggOps(BaseTestCase):
             "data": [{"a": i*2} for i in range(30)],
             "query": {
                 "from": TEST_TABLE,
-                "select": [{"value": ".", "aggregate": "max"}]
+                "select": [ {"name":"max", "value": "a", "aggregate": "max"} ]
             },
             "expecting_list": {
                 "meta": {"format": "value"}, "data": {"max": 58}

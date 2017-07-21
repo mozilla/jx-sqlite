@@ -461,30 +461,30 @@ class TestEdge1(BaseTestCase):
                     }
                 ],
                 "data": {
-                    "v": [[2, 3], [4, 5, 6], [7, 8]]
+                    "c": [[2, 3], [4, 5, 6], [7, 8]]
                 }
             }
         }
         self.utils.execute_tests(test)
 
-    def test_union_objects(self):
+    def test_union_nested_objects(self):
         data = [
             {"a": "x"},
-            {"a": "x", "c": {"v": 2}},
-            {"a": "x", "c": [{"v": 2}, {"v": 3}]},
+            {"a": "x", "_c": {"v": 2}},
+            {"a": "x", "_c": [{"v": 2}, {"v": 3}]},
             {"a": "y"},
-            {"a": "y", "c": {"v": 4}},
-            {"a": "y", "c": [{"v": 5}, {"v": 6}]},
+            {"a": "y", "_c": {"v": 4}},
+            {"a": "y", "_c": [{"v": 5}, {"v": 6}]},
             {},
-            {"c": {"v": 7}},
-            {"c": [{"v": 8}, {"v": 8}]}
+            {"_c": {"v": 7}},
+            {"_c": [{"v": 8}, {"v": 8}]}
         ]
 
         test = {
             "data": data,
             "query": {
                 "from": TEST_TABLE,
-                "select": {"name": "c", "value": "c.v", "aggregate": "union"},
+                "select": {"name": "c", "value": "_c.v", "aggregate": "union"},
                 "edges": ["a"]
             },
             "expecting_list": {
@@ -517,7 +517,7 @@ class TestEdge1(BaseTestCase):
                     }
                 ],
                 "data": {
-                    "v": [[2, 3], [4, 5, 6], [7, 8]]
+                    "c": [[2, 3], [4, 5, 6], [7, 8]]
                 }
             }
         }
