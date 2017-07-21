@@ -539,7 +539,7 @@ class Cluster(object):
         meta = self.get_metadata()
         columns = parse_properties(index, ".", meta.indices[index].mappings.values()[0].properties)
         if len(columns) != 0:
-            kwargs.tjson = tjson or any(c.names["."].endswith("$value") for c in columns)
+            kwargs.tjson = tjson or any(c.names["."].find(".$") != -1 for c in columns)
 
         return Index(kwargs)
 
