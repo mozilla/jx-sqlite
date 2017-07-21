@@ -13,7 +13,7 @@ Let `●` represent a logic operator; an operator that returns a Boolean. We def
 
 ### Coordinate-wise structural comparison
 
-The naive `eq` operator, common in databases, is not very useful; a common SQL pattern is `WHERE a=b OR (a IS NULL and b IS NULL)` that is used to detect structural similarity.  We define `eq` to represent this structural comparison, and further demand it is decisive.
+The conservative `eq` operator, common in databases, is not very useful; a common SQL pattern is `WHERE a=b OR (a IS NULL and b IS NULL)` that is used to detect structural similarity.  We define `eq` to represent this structural comparison, and further demand it is decisive.
 
 Given 
 
@@ -88,7 +88,7 @@ This duck-typing comparison restricts us to only one consistent definition for `
 
 ### Consistency with branching code
 
-Decision code, like `if/else` or `when/then`, are easier to reason about when `not.eq == ne` 
+Decision code, like `if/else` or `when/then`, are easier to reason about when `not.eq ⇔ ne` 
 
 **Truth table for a *decisive* `ne`**
 
@@ -121,7 +121,7 @@ Decision code, like `if/else` or `when/then`, are easier to reason about when `n
 
 ### Using conservative `eq` with decisive `and`: Inconsistent
  
-Suppose we want to check that two data structures `x` and `y` are structurally identical. What works for values does not work for `nulls`. 
+Suppose we want to check that two data structures `x` and `y` are structurally identical. What works for values does not work with `nulls`:
 
     x = {"a": 1, "b": 2}
 	y = {"a": 1}
