@@ -265,7 +265,8 @@ def to_sql(self, schema, not_null=False, boolean=False):
         for t in "bsnj":
             if lhs[t] and rhs[t]:
                 acc.append("(" + lhs[t] + ") = (" + rhs[t] + ")")
-        return wrap([{"name": ".", "sql": {"b": "NOT (" + " OR ".join(acc) + ")" }}])
+        return wrap([{"name": ".", "sql": {"b": "NOT (" + " OR ".join(acc) + ")" + " OR (" +
+                                            lhs[type] + "IS NULL) AND ( " + rhs[type] + "IS NULL)"}}])
     else:
         sql = self.term.to_sql(schema)[0].sql
         return wrap([{"name": ".", "sql": {
