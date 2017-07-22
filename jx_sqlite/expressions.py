@@ -253,9 +253,8 @@ def to_sql(self, schema, not_null=False, boolean=False):
     if not acc:
         return FalseOp().to_sql(schema)
     else:
-        return wrap([{"name": ".", "sql": {"b": "NOT (" + " OR ".join(acc) + ")" + " OR (" + 
+        return wrap([{"name": ".", "sql": {"b": "NOT (" + " OR ".join(acc) + ")" + " OR (" +
                                            lhs[type] + "IS NULL) OR ( " + rhs[type] + "IS NULL)"}}])
-
 
 @extend(NotOp)
 def to_sql(self, schema, not_null=False, boolean=False):
