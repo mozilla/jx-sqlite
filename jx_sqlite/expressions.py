@@ -258,13 +258,18 @@ def to_sql(self, schema, not_null=False, boolean=False):
 
 @extend(NotOp)
 def to_sql(self, schema, not_null=False, boolean=False):
-    sql = self.term.to_sql(schema)[0].sql
-    return wrap([{"name": ".", "sql": {
-        "0": "1",
-        "b": "NOT (" + sql.b + ")",
-        "n": "(" + sql.n + ") IS NULL",
-        "s": "(" + sql.s + ") IS NULL"
-    }}])
+    if isinstance(self.term, EqOp):
+        lhs = self.term.lhs.to_sql(schema)[0].sql
+        rhs = self.term.rhs.to_sql(schema)[0].sql
+
+    else:
+        sql = self.term.to_sql(schema)[0].sql
+        return wrap([{"name": ".", "sql": {
+            "0": "1",
+            "b": "NOT (" + sql.b + ")",
+            "n": "(" + sql.n + ") IS NULL",
+            "s": "(" + sql.s + ") IS NULL"
+        }}])
 
 
 @extend(AndOp)
