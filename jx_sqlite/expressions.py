@@ -267,7 +267,7 @@ def to_sql(self, schema, not_null=False, boolean=False):
                 acc.append("(" + lhs[t] + ") = (" + rhs[t] + ")")
                 type = t
         return wrap([{"name": ".", "sql": {"b": "NOT (" + " OR ".join(acc) + ")" + " OR (" +
-                                            lhs[type] + "IS NULL) AND ( " + rhs[type] + "IS NULL)"}}])
+                                            lhs[type] + "IS NULL) OR ( " + rhs[type] + "IS NULL)"}}])
     else:
         sql = self.term.to_sql(schema)[0].sql
         return wrap([{"name": ".", "sql": {
