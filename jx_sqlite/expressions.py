@@ -248,11 +248,11 @@ def to_sql(self, schema, not_null=False, boolean=False):
     acc = []
     for t in "bsnj":
         if lhs[t] and rhs[t]:
-            acc.append("(" + lhs[t] + ") = (" + rhs[t] + ")")
+            acc.append( "NOT (" + lhs[t] + ") = (" + rhs[t] ")")
     if not acc:
         return FalseOp().to_sql(schema)
     else:
-        return wrap([{"name": ".", "sql": {"b": "NOT (" + " OR ".join(acc) + ")"}}])
+        return wrap([{"name": ".", "sql": {"b": " OR ".join(acc)}}])
 
 
 @extend(NotOp)
