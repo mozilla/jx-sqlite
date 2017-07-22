@@ -261,7 +261,11 @@ def to_sql(self, schema, not_null=False, boolean=False):
     if isinstance(self.term, EqOp):
         lhs = self.term.lhs.to_sql(schema)[0].sql
         rhs = self.term.rhs.to_sql(schema)[0].sql
-
+        acc = []
+        for t in "bsnj":
+            if lhs[t] and rhs[t]:
+                acc.append("(" + lhs[t] + ") = (" + rhs[t] + ")")
+        return wrap([{"name": ".", "sql": {"b": "NOT (" + " OR ".join(acc) + ")" }}])
     else:
         sql = self.term.to_sql(schema)[0].sql
         return wrap([{"name": ".", "sql": {
