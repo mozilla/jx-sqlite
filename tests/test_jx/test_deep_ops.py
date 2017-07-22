@@ -1005,7 +1005,7 @@ class TestDeepOps(BaseTestCase):
             "query": {
                 "select": ["r.s", "v.u"],
                 "from": TEST_TABLE + ".a._b",
-                "where": {"not": {"eq": {"r.s": "b"}}}
+                "where": {"ne": {"r.s": "b"}}
             },
             "expecting_list": {
                 "meta": {"format": "list"},
