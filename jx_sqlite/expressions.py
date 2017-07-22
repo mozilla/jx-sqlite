@@ -248,7 +248,7 @@ def to_sql(self, schema, not_null=False, boolean=False):
     acc = []
     for t in "bsnj":
         if lhs[t] and rhs[t]:
-            acc.append( "(" + lhs[t] + ") <> (" + rhs[t] + ") OR ((" + lhs[t] + ") IS NULL AND (" + rhs[t] + ") IS NULL)")
+            acc.append( "(" + lhs[t] + ") <> (" + rhs[t] + ") OR ((" + lhs[t] + ") IS NULL)")
     if not acc:
         return FalseOp().to_sql(schema)
     else:
