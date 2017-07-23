@@ -259,10 +259,9 @@ def to_sql(self, schema, not_null=False, boolean=False):
 @extend(NotOp)
 def to_sql(self, schema, not_null=False, boolean=False):
     sql = self.term.to_sql(schema)[0].sql
-    sql_eq, sql_left = sql.b.split("OR")
     return wrap([{"name": ".", "sql": {
         "0": "1",
-        "b": "NOT (" + sql_eq + ") OR " + sql_left.split("AND")[0] + ")",
+        "b": "NOT (" + sql.b + ")",
         "n": "(" + sql.n + ") IS NULL",
         "s": "(" + sql.s + ") IS NULL"
     }}])
