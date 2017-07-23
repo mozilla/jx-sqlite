@@ -144,7 +144,7 @@ def to_sql(self, schema, not_null=False, boolean=False):
                 if r.sql[t] == None:
                     acc.append("(" + l.sql[t] + ") IS NULL")
                 else:
-                    acc.append("((" + l.sql[t] + ") = (" + r.sql[t] + ") OR ((" + l.sql[t] + ") IS NULL AND (" + r.sql[t] + ") IS NULL))")
+                    acc.append("((" + l.sql[t] + ") = (" + r.sql[t] + ")) OR ((" + l.sql[t] + ") IS NULL AND (" + r.sql[t] + ") IS NULL)")
     if not acc:
         return FalseOp().to_sql(schema)
     else:
@@ -259,9 +259,10 @@ def to_sql(self, schema, not_null=False, boolean=False):
 @extend(NotOp)
 def to_sql(self, schema, not_null=False, boolean=False):
     sql = self.term.to_sql(schema)[0].sql
+    sql_eq, sql_left = sql.b.split("OR")
     return wrap([{"name": ".", "sql": {
         "0": "1",
-        "b": "NOT (" + sql.b + ")",
+        "b": "NOT (" + sql_eq + ") OR " + sql_left.split("AND")[0] + ")",
         "n": "(" + sql.n + ") IS NULL",
         "s": "(" + sql.s + ") IS NULL"
     }}])
