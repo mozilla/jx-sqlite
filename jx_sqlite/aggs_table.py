@@ -407,6 +407,8 @@ class AggsTable(SetOpTable):
                         if len(cols)>0:
                             column_number = len(outer_selects)
                             sql = sql_aggs[s.aggregate] + "(" + " || ".join(["COALESCE(" + c + ", \"\" )" for c in cols]) + ")"                                
+                            if s.default != None:
+                                sql = "COALESCE(" + sql + ", " + quote_value(s.default) + ")"
                             outer_selects.append(sql + " AS " + _make_column_name(column_number))
                             index_to_column[column_number] = ColumnMapping(
                                 push_name=s.name,
