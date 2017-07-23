@@ -1060,7 +1060,7 @@ class TestDeepOps(BaseTestCase):
                 "select": {"value": "v.u", "aggregate": "sum"},  # TEST RELATIVE NAME IN select
                 "from": TEST_TABLE + ".a._b",
                 "edges": ["r.s"],  # TEST RELATIVE NAME IN edges
-                "where": {"not": {"eq": {"r.s": "b"}}} # TEST RELATIVE NAME IN where
+                "where": {"not": {"eq": {"r.s": "b"}}}  # TEST RELATIVE NAME IN where
             },
             "expecting_list": {
                 "meta": {"format": "list"},
@@ -1150,7 +1150,7 @@ class TestDeepOps(BaseTestCase):
             }
         }
         self.utils.execute_tests(test)
-        
+
     def test_select_average_on_none(self):
         test = {
             "data": [{"a": {"_b": [
