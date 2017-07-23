@@ -249,8 +249,8 @@ class TestSchemaMerging(BaseTestCase):
                 "select": {"value": "a", "aggregate": "count"}
             },
             "expecting_list": {
-                "meta": {"format": "list"},
-                "data": [3]
+                "meta": {"format": "value"},
+                "data": 3
             },
             "expecting_table": {
                 "meta": {"format": "table"},
