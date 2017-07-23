@@ -420,7 +420,21 @@ class AggsTable(SetOpTable):
                                     column_alias=_make_column_name(column_number),
                                     type=sql_type_to_json_type["n"]
                                 )
-                              
+                            else:
+                                for sql_type, sql in details.sql.items():
+                                    column_number = len(outer_selects)
+                                    sql = sql_aggs[s.aggregate] + "(" + sql + ")"
+                                    outer_selects.append(sql + " AS " + _make_column_name(column_number))
+                                    index_to_column[column_number] = ColumnMapping(
+                                        push_name=s.name,
+                                        push_column_name=s.name,
+                                        push_column=si,
+                                        push_child=".",  # join_field(split_field(details.name)[1::]),
+                                        pull=get_column(column_number),
+                                        sql=sql,
+                                        column_alias=_make_column_name(column_number),
+                                        type=sql_type_to_json_type[sql_type]
+                                    )                                
                     else:
                         for sql_type, sql in details.sql.items():
                             column_number = len(outer_selects)
