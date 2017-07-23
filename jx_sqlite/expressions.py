@@ -258,24 +258,13 @@ def to_sql(self, schema, not_null=False, boolean=False):
 
 @extend(NotOp)
 def to_sql(self, schema, not_null=False, boolean=False):
-    if isinstance(self.term, EqOp):
-        lhs = self.term.lhs.to_sql(schema)[0].sql
-        rhs = self.term.rhs.to_sql(schema)[0].sql
-        acc = []
-        for t in "bsnj":
-            if lhs[t] and rhs[t]:
-                acc.append("(" + lhs[t] + ") = (" + rhs[t] + ")")
-                type = t
-        return wrap([{"name": ".", "sql": {"b": "NOT (" + " OR ".join(acc) + ")" + " OR (" +
-                                            lhs[type] + "IS NULL) OR ( " + rhs[type] + "IS NULL)"}}])
-    else:
-        sql = self.term.to_sql(schema)[0].sql
-        return wrap([{"name": ".", "sql": {
-            "0": "1",
-            "b": "NOT (" + sql.b + ")",
-            "n": "(" + sql.n + ") IS NULL",
-            "s": "(" + sql.s + ") IS NULL"
-        }}])
+    sql = self.term.to_sql(schema)[0].sql
+    return wrap([{"name": ".", "sql": {
+        "0": "1",
+        "b": "NOT (" + sql.b + ")",
+        "n": "(" + sql.n + ") IS NULL",
+        "s": "(" + sql.s + ") IS NULL"
+    }}])
 
 
 @extend(AndOp)
