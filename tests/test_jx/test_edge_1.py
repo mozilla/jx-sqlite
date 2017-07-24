@@ -849,7 +849,8 @@ class TestEdge1(BaseTestCase):
                 "meta": {"format": "list"},
                 "data": [
                     {"a": "b"},
-                    {"a": "c"}
+                    {"a": "c"},
+                    {"v": 3}
                 ]
             },
             "expecting_table": {
@@ -857,7 +858,8 @@ class TestEdge1(BaseTestCase):
                 "header": ["a", "v"],
                 "data": [
                     ["b", NULL],
-                    ["c", NULL]
+                    ["c", NULL],
+                    [NULL, 3]
                 ]
             },
             "expecting_cube": {
@@ -885,7 +887,7 @@ class TestEdge1(BaseTestCase):
                     }
                 ],
                 "data": {
-                    "v": [NULL, NULL, NULL]
+                    "v": [NULL, NULL, 3]
                 }
             }
         }
