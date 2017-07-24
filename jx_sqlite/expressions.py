@@ -18,6 +18,7 @@ from mo_logs import Log
 from mo_math import Math
 from pyLibrary import convert
 
+from jx_base.queries import is_column_name, dequote
 from jx_base.expressions import Variable, DateOp, TupleOp, LeavesOp, BinaryOp, OrOp, InequalityOp, extend, Literal, NullOp, TrueOp, FalseOp, DivOp, FloorOp, \
     NeOp, NotOp, LengthOp, NumberOp, StringOp, CountOp, MultiOp, RegExpOp, CoalesceOp, MissingOp, ExistsOp, \
     PrefixOp, UnixOp, FromUnixOp, NotLeftOp, RightOp, NotRightOp, FindOp, BetweenOp, InOp, RangeOp, CaseOp, AndOp, \
@@ -144,9 +145,9 @@ def to_sql(self, schema, not_null=False, boolean=False):
                 if r.sql[t] == None:
                     acc.append("(" + l.sql[t] + ") IS NULL")
                 else:
-                    if ".$" in l.sql[t] and ".$" in r.sql[t]:
+                    if is_column_name(dequote(l.sql[t])) and is_column_name(dequote(r.sql[t])):
                         sql = "((" + l.sql[t] + ") = (" + r.sql[t] + ")) OR ((" + l.sql[t] + ") IS NULL AND (" + r.sql[t] + ") IS NULL)"
-                    elif ".$" in l.sql[t]:
+                    elif is_column_name(dequote(l.sql[t])):
                         sql = "((" + l.sql[t] + ") = (" + r.sql[t] + ")) OR ((" + l.sql[t] + ") IS NULL)"
                     else:
                         sql = "((" + l.sql[t] + ") = (" + r.sql[t] + ")) OR ((" + r.sql[t] + ") IS NULL)"
