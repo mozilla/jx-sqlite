@@ -927,7 +927,7 @@ class TestEdge1(BaseTestCase):
                     }
                 ],
                 "data": {
-                    "v": [NULL, NULL, NULL]
+                    "v": [NULL, NULL, 3]
                 }
             }
         }
