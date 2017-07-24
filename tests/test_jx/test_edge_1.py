@@ -594,7 +594,7 @@ class TestEdge1(BaseTestCase):
                 "data": [
                     ["b", NULL],
                     ["c", 13],
-                    [NULL, 3]
+                    [NULL, NULL]
                 ]
             },
             "expecting_cube": {
