@@ -38,3 +38,9 @@ def dequote(s):
     if (s[0] == s[-1]) and s.startswith(("'", '"')):
         return s[1:-1]
     return s
+
+def is_column_name(col):
+    if re.match(r"(\$|\w|\\\.)+(?:\.(\$|\w|\\\.)+)*\.\$\w{6}$", col):
+        return True
+    else:
+        return False
