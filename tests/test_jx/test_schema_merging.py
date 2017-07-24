@@ -241,8 +241,11 @@ class TestSchemaMerging(BaseTestCase):
         test = {
             "data": [
                 {"a": "b"},
+                {"a": {"b": 1}},
+                {"a": {}},
                 {"a": [{"b": 1}, {"b": 2}]},
-                {"a": 3}
+                {"a": 3},
+                {}
             ],
             "query": {
                 "from": TEST_TABLE,
@@ -250,17 +253,17 @@ class TestSchemaMerging(BaseTestCase):
             },
             "expecting_list": {
                 "meta": {"format": "value"},
-                "data": 3
+                "data": 5
             },
             "expecting_table": {
                 "meta": {"format": "table"},
                 "header": ["a"],
-                "data": [[3]]
+                "data": [[5]]
             },
             "expecting_cube": {
                 "meta": {"format": "cube"},
                 "data": {
-                    "a": 3
+                    "a": 5
                 }
             }
         }
