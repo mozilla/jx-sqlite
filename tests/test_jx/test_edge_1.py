@@ -1762,8 +1762,8 @@ class TestEdge1(BaseTestCase):
             "expecting_list": {
                 "meta": {"format": "list"},
                 "data": [
-                    {"a": "b", "count": 4, "sum": 28},
-                    {"a": "3", "count": 3, "sum": 24},
+                    {"a": "b", "count": 3, "sum": 15},
+                    {"a": "3", "count": 4, "sum": 37},
                     {"a": NULL, "count": 6, "sum": 39}
                 ]
             },
@@ -1771,8 +1771,8 @@ class TestEdge1(BaseTestCase):
                 "meta": {"format": "table"},
                 "header":["a", "count", "sum"],
                 "data": [
-                    ["b", 4, 28],
-                    ["3", 3, 24],
+                    ["b", 3, 15],
+                    ["3", 4, 37],
                     [NULL, 6, 39],
                 ]
             },
@@ -1786,8 +1786,8 @@ class TestEdge1(BaseTestCase):
                     ]}
                 }],
                 "data": {
-                    "count": [4, 3, 6],
-                    "sum": [28, 24, 39]
+                    "count": [3, 4, 6],
+                    "sum": [15, 37, 39]
                 }
             }
         }
