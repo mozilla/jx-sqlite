@@ -628,6 +628,7 @@ class SetOpTable(InsertTable):
 
         return sql
 
+
 def test_dots(cols):
     for c in cols:
         if "\\" in c.push_column_name:
