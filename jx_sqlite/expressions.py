@@ -135,31 +135,18 @@ def to_sql(self, schema, not_null=False, boolean=False):
     if len(lhs) != len(rhs):
         Log.error("lhs and rhs have different dimensionality!?")
     
-    if boolean:
-        for l, r in zip(lhs, rhs):
-            for t in "bsnj":
-                if l.sql[t] == None:
-                    if r.sql[t] == None:
-                        pass
-                    else:
-                        acc.append("(" + r.sql[t] + ") IS NULL")
+    for l, r in zip(lhs, rhs):
+        for t in "bsnj":
+            if l.sql[t] == None:
+                if r.sql[t] == None:
+                    pass
                 else:
-                    if r.sql[t] == None:
-                        acc.append("(" + l.sql[t] + ") IS NULL")
-                    else:
-                        if is_column_name(dequote(l.sql[t])) and is_column_name(dequote(r.sql[t])):
-                            sql = "((" + l.sql[t] + ") = (" + r.sql[t] + ")) OR ((" + l.sql[t] + ") IS NULL AND (" + r.sql[t] + ") IS NULL)"
-                        elif is_column_name(dequote(l.sql[t])):
-                            sql = "((" + l.sql[t] + ") = (" + r.sql[t] + ")) OR ((" + l.sql[t] + ") IS NULL)"
-                        else:
-                            sql = "((" + l.sql[t] + ") = (" + r.sql[t] + ")) OR ((" + r.sql[t] + ") IS NULL)"
-    
-                        acc.append(sql)
-    else:
-        for l, r in zip(lhs, rhs):
-            for t in "bsnj":
-                if l.sql[t] and r.sql[t]:
-                    acc.append("((" + l.sql[t] + ") = (" + r.sql[t] + "))")
+                    acc.append("(" + r.sql[t] + ") IS NULL")
+            else:
+                if r.sql[t] == None:
+                    acc.append("(" + l.sql[t] + ") IS NULL")
+                else:
+                    acc.append("COALESCE((" + l.sql[t] + ") = (" + r.sql[t] + "), (" + l.sql[t] + ") IS NULL AND (" + r.sql[t] + ") IS NULL)")
     if not acc:
         return FalseOp().to_sql(schema)
     else:
@@ -258,17 +245,7 @@ def to_sql(self, schema, not_null=False, boolean=False):
 
 @extend(NeOp)
 def to_sql(self, schema, not_null=False, boolean=False):
-    lhs = self.lhs.to_sql(schema)[0].sql
-    rhs = self.rhs.to_sql(schema)[0].sql
-    acc = []
-    for t in "bsnj":
-        if lhs[t] and rhs[t]:
-            acc.append("(" + lhs[t] + ") = (" + rhs[t] + ")")
-    if not acc:
-        return FalseOp().to_sql(schema)
-    else:
-        return wrap([{"name": ".", "sql": {"b": "NOT (" + " OR ".join(acc) + ")"}}])
-
+    return NotOp("not", EqOp("eq", [self.lhs, self.rhs])).to_sql(schema, not_null, boolean)
 
 @extend(NotOp)
 def to_sql(self, schema, not_null=False, boolean=False):
