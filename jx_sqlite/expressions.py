@@ -18,6 +18,7 @@ from mo_logs import Log
 from mo_math import Math
 from pyLibrary import convert
 
+from jx_base.queries import is_column_name, dequote
 from jx_base.expressions import Variable, DateOp, TupleOp, LeavesOp, BinaryOp, OrOp, InequalityOp, extend, Literal, NullOp, TrueOp, FalseOp, DivOp, FloorOp, \
     NeOp, NotOp, LengthOp, NumberOp, StringOp, CountOp, MultiOp, RegExpOp, CoalesceOp, MissingOp, ExistsOp, \
     PrefixOp, UnixOp, FromUnixOp, NotLeftOp, RightOp, NotRightOp, FindOp, BetweenOp, InOp, RangeOp, CaseOp, AndOp, \
@@ -133,6 +134,7 @@ def to_sql(self, schema, not_null=False, boolean=False):
     acc = []
     if len(lhs) != len(rhs):
         Log.error("lhs and rhs have different dimensionality!?")
+    
     for l, r in zip(lhs, rhs):
         for t in "bsnj":
             if l.sql[t] == None:
@@ -144,7 +146,7 @@ def to_sql(self, schema, not_null=False, boolean=False):
                 if r.sql[t] == None:
                     acc.append("(" + l.sql[t] + ") IS NULL")
                 else:
-                    acc.append("((" + l.sql[t] + ") = (" + r.sql[t] + ") OR ((" + l.sql[t] + ") IS NULL AND (" + r.sql[t] + ") IS NULL))")
+                    acc.append("COALESCE((" + l.sql[t] + ") = (" + r.sql[t] + "), (" + l.sql[t] + ") IS NULL AND (" + r.sql[t] + ") IS NULL)")
     if not acc:
         return FalseOp().to_sql(schema)
     else:
@@ -243,17 +245,7 @@ def to_sql(self, schema, not_null=False, boolean=False):
 
 @extend(NeOp)
 def to_sql(self, schema, not_null=False, boolean=False):
-    lhs = self.lhs.to_sql(schema)[0].sql
-    rhs = self.rhs.to_sql(schema)[0].sql
-    acc = []
-    for t in "bsnj":
-        if lhs[t] and rhs[t]:
-            acc.append("(" + lhs[t] + ") = (" + rhs[t] + ")")
-    if not acc:
-        return FalseOp().to_sql(schema)
-    else:
-        return wrap([{"name": ".", "sql": {"b": "NOT (" + " OR ".join(acc) + ")"}}])
-
+    return NotOp("not", EqOp("eq", [self.lhs, self.rhs])).to_sql(schema, not_null, boolean)
 
 @extend(NotOp)
 def to_sql(self, schema, not_null=False, boolean=False):

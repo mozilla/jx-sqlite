@@ -419,7 +419,7 @@ class AggsTable(SetOpTable):
         for w in query.window:
             outer_selects.append(self._window_op(self, query, w))
 
-        main_filter = query.where.to_sql(schema)[0].sql.b
+        main_filter = query.where.to_sql(schema, boolean=True)[0].sql.b
 
         all_parts = []
 
