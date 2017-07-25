@@ -276,9 +276,6 @@ class SetOpTable(InsertTable):
         self.db.create_new_functions()  #creating new functions: regexp
         result = self.db.query(ordered_sql)
 
-        temp = self.db.query('select *, "a.$number"="b.$number", "a.$number" is null,  "b.$number" is null, ("a.$number" is null and "b.$number" is null) AS both_null from testing')
-
-
         def _accumulate_nested(rows, row, nested_doc_details, parent_doc_id, parent_id_coord):
             """
             :param rows: REVERSED STACK OF ROWS (WITH push() AND pop())
