@@ -118,7 +118,6 @@ Decision code, like `if/else` or `when/then`, are easier to reason about when `n
     {"eq": [null, "b"]} == null
     {"eq": [null, null]} == null
 
-
 ### Using conservative `eq` with decisive `and`: Inconsistent
  
 Suppose we want to check that two data structures `x` and `y` are structurally identical. What works for values does not work with `nulls`:
@@ -179,6 +178,22 @@ Given the above, we can conclude that mixing conservative and decisive operators
 	null  
 
 which is an unfortunate conclusion
+
+### Using conservative `eq` with control flow code: Inconsistent
+
+The conservative operators require care when used in control flow code. What does this expression return?
+
+    CASE WHEN NOT a=b THEN "not equal" ELSE "equal" END
+
+The problem can be seen in the example where `a=1` and `b=NULL`:  
+
+    CASE WHEN NOT 1=null THEN "not equal" ELSE "equal" END
+    CASE WHEN NOT null THEN "not equal" ELSE "equal" END
+    CASE WHEN null THEN "not equal" ELSE "equal" END
+    CASE WHEN null THEN "not equal" ELSE "equal" END
+    "equal"
+
+The problem is the control flow statement is decisive: It treats `NULL` as falsey. Our solution is to ensure our logical operators are decisive. Another solution is to define conservative control flow: statements that explicitly deal with `null` or a three-way branching statement. Conservative control flow is not explored here.  
 
 ## Summary
 
