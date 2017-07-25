@@ -18,6 +18,7 @@ from mo_logs import Log
 from mo_math import Math
 from pyLibrary import convert
 
+from jx_base.queries import is_column_name, dequote
 from jx_base.expressions import Variable, DateOp, TupleOp, LeavesOp, BinaryOp, OrOp, InequalityOp, extend, Literal, NullOp, TrueOp, FalseOp, DivOp, FloorOp, \
     NeOp, NotOp, LengthOp, NumberOp, StringOp, CountOp, MultiOp, RegExpOp, CoalesceOp, MissingOp, ExistsOp, \
     PrefixOp, UnixOp, FromUnixOp, NotLeftOp, RightOp, NotRightOp, FindOp, BetweenOp, InOp, RangeOp, CaseOp, AndOp, \
@@ -133,6 +134,7 @@ def to_sql(self, schema, not_null=False, boolean=False):
     acc = []
     if len(lhs) != len(rhs):
         Log.error("lhs and rhs have different dimensionality!?")
+    
     for l, r in zip(lhs, rhs):
         for t in "bsnj":
             if l.sql[t] == None:
@@ -244,7 +246,6 @@ def to_sql(self, schema, not_null=False, boolean=False):
 @extend(NeOp)
 def to_sql(self, schema, not_null=False, boolean=False):
     return NotOp("not", EqOp("eq", [self.lhs, self.rhs])).to_sql(schema, not_null, boolean)
-
 
 @extend(NotOp)
 def to_sql(self, schema, not_null=False, boolean=False):
