@@ -398,45 +398,22 @@ class AggsTable(SetOpTable):
                         )
             else:  # STANDARD AGGREGATES
                 for details in s.value.to_sql(schema):
-                    if len(query.edges)==0 and len(query.groupby)==0 and s.aggregate=="count":
-                        if details.nested_path==details.name:
-                            cols = details.sql.values()
-                        else:
-                            cols = []
-                        
-                        if len(cols)>0:
-                            column_number = len(outer_selects)
-                            sql = sql_aggs[s.aggregate] + "(" + " || ".join(["COALESCE(" + c + ", \"\" )" for c in cols]) + ")"                                
-                            if s.default != None:
-                                sql = "COALESCE(" + sql + ", " + quote_value(s.default) + ")"
-                            outer_selects.append(sql + " AS " + _make_column_name(column_number))
-                            index_to_column[column_number] = ColumnMapping(
-                                push_name=s.name,
-                                push_column_name=s.name,
-                                push_column=si,
-                                push_child=".",
-                                pull=get_column(column_number),
-                                sql=sql,
-                                column_alias=_make_column_name(column_number),
-                                type=sql_type_to_json_type["n"]
-                            )                               
-                    else:
-                        for sql_type, sql in details.sql.items():
-                            column_number = len(outer_selects)
-                            sql = sql_aggs[s.aggregate] + "(" + sql + ")"
-                            if s.default != None:
-                                sql = "COALESCE(" + sql + ", " + quote_value(s.default) + ")"
-                            outer_selects.append(sql + " AS " + _make_column_name(column_number))
-                            index_to_column[column_number] = ColumnMapping(
-                                push_name=s.name,
-                                push_column_name=s.name,
-                                push_column=si,
-                                push_child=".",  # join_field(split_field(details.name)[1::]),
-                                pull=get_column(column_number),
-                                sql=sql,
-                                column_alias=_make_column_name(column_number),
-                                type=sql_type_to_json_type[sql_type]
-                            )
+                    for sql_type, sql in details.sql.items():
+                        column_number = len(outer_selects)
+                        sql = sql_aggs[s.aggregate] + "(" + sql + ")"
+                        if s.default != None:
+                            sql = "COALESCE(" + sql + ", " + quote_value(s.default) + ")"
+                        outer_selects.append(sql + " AS " + _make_column_name(column_number))
+                        index_to_column[column_number] = ColumnMapping(
+                            push_name=s.name,
+                            push_column_name=s.name,
+                            push_column=si,
+                            push_child=".",  # join_field(split_field(details.name)[1::]),
+                            pull=get_column(column_number),
+                            sql=sql,
+                            column_alias=_make_column_name(column_number),
+                            type=sql_type_to_json_type[sql_type]
+                        )
 
 
         for w in query.window:
