@@ -631,25 +631,9 @@ class SetOpTable(InsertTable):
 
         return sql
 
+
 def test_dots(cols):
     for c in cols:
         if "\\" in c.push_column_name:
             return True
     return False
-
-    {
-        "header": [
-            "_id", "__id__", "a.$number", "b.$number", "\"a.$number\"=\"b.$number\"", "\"a.$number\"isnull", "\"b.$number\"isnull", "both_null"],
-        "meta": {"format": "table"},
-        "data": [
-            ["27a18f5a-7dd3-4380-9ef0-c8f4ef12053e", 1, 0, 0, 1, 0, 0, 0],
-            ["0849a16b-132a-45ce-8a43-46b5f469ee55", 2, 0, 1, 0, 0, 0, 0],
-            ["64bba272-117e-4b8b-b6e9-76f02dd9b410", 3, 0, null, null, 0, 1, 0],
-            ["cdc049fb-5ce8-4430-9800-d80c3b00bc8d", 4, 1, 0, 0, 0, 0, 0],
-            ["a1ff07e5-a49c-485f-b991-9e96f3e3caff", 5, 1, 1, 1, 0, 0, 0],
-            ["0037bab9-d2da-4355-8825-4795c94956d3", 6, 1, null, null, 0, 1, 0],
-            ["d57dbac4-15c8-452a-a0b2-2b4e876579aa", 7, null, 0, null, 1, 0, 0],
-            ["86bea9f6-e487-4212-9133-dc188ab6f5df", 8, null, 1, null, 1, 0, 0],
-            ["58f29ae0-ef04-4331-81bf-cc0e12e7f5d6", 9, null, null, null, 1, 1, 1]
-        ]
-    }
