@@ -245,22 +245,7 @@ def to_sql(self, schema, not_null=False, boolean=False):
 
 @extend(NeOp)
 def to_sql(self, schema, not_null=False, boolean=False):
-<<<<<<< HEAD
-    lhs = self.lhs.to_sql(schema)[0].sql
-    rhs = self.rhs.to_sql(schema)[0].sql
-    acc = []
-    for t in "bsnj":
-        if lhs[t] and rhs[t]:
-            acc.append("(" + lhs[t] + ") = (" + rhs[t] + ")")
-            type = t
-    if not acc:
-        return FalseOp().to_sql(schema)
-    else:
-        return wrap([{"name": ".", "sql": {"b": "NOT (" + " OR ".join(acc) + ")" + " OR (" +
-                                           lhs[type] + "IS NULL) OR ( " + rhs[type] + "IS NULL)"}}])
-=======
     return NotOp("not", EqOp("eq", [self.lhs, self.rhs])).to_sql(schema, not_null, boolean)
->>>>>>> master
 
 @extend(NotOp)
 def to_sql(self, schema, not_null=False, boolean=False):
