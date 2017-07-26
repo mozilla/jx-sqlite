@@ -144,9 +144,9 @@ class Snowflake(object):
         # FIND THE INNER COLUMNS WE WILL BE MOVING
         moving_columns = []
         for c in self.columns:
-            if startswith_field(c.names["."], destination_table):
+            if startswith_field(c.names["."], new_path) and column.es_column==c.es_column:
                 moving_columns.append(c)
-                c.nested_path = [destination_table]
+                c.nested_path = [new_path] + c.nested_path
 
         # TODO: IF THERE ARE CHILD TABLES, WE MUST UPDATE THEIR RELATIONS TOO?
 
@@ -173,31 +173,7 @@ class Snowflake(object):
         if not moving_columns:
             return
 
-        if len(moving_columns) == 1:
-            has_nested_data = quote_column(moving_columns[0]) + " IS NOT NULL"
-        else:
-            has_nested_data = (
-                "COALESCE(" +
-                ",".join(quote_column(c) for c in moving_columns) +
-                ") IS NOT NULL"
-            )
-
-        # FILL TABLE WITH EXISTING COLUMN DATA
-        command = (
-            "INSERT INTO " + quote_table(destination_table) + "(\n" +
-            ",\n".join(
-                [quoted_UID, quoted_PARENT, quote_table(ORDER)] +
-                [quote_column(c) for c in moving_columns]
-            ) +
-            "\n)\n" +
-            "\nSELECT " + ",".join(
-                [quoted_UID, quoted_UID, "0"] +
-                [quote_column(c) for c in moving_columns]
-            ) +
-            "\nFROM " + quote_table(existing_table) +
-            "\nWHERE " + has_nested_data
-        )
-        self.db.execute(command)
+        self._add_column(required_change.add)
 
     def add_table_to_schema(self, nested_path):
         table = Table(nested_path)
