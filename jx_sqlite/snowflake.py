@@ -144,7 +144,7 @@ class Snowflake(object):
         # FIND THE INNER COLUMNS WE WILL BE MOVING
         moving_columns = []
         for c in self.columns:
-            if startswith_field(c.names["."], new_path) and column.es_column==c.es_column:
+            if destination_table!=column.es_index and column.es_column==c.es_column:
                 moving_columns.append(c)
                 c.nested_path = [new_path] + c.nested_path
 
@@ -172,9 +172,12 @@ class Snowflake(object):
         # TEST IF THERE IS ANY DATA IN THE NEW NESTED ARRAY
         if not moving_columns:
             return
-        column.nested_path = [new_path] + c.nested_path
+        
         column.es_index = destination_table
-        self._add_column(column)
+        self.db.execute(
+            "ALTER TABLE " + quote_table(destination_table) +
+            " ADD COLUMN " + quote_column(column.es_column) + " " + sql_types[column.type]
+        )
 
     def add_table_to_schema(self, nested_path):
         table = Table(nested_path)
