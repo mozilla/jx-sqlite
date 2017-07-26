@@ -267,7 +267,7 @@ class InsertTable(BaseTable):
                         names={".": cname},
                         type=value_type,
                         es_column=typed_column(cname, value_type),
-                        es_index=table,  # THIS MAY BE THE WRONG TABLE, IF THIS PATH IS A NESTED DOC
+                        es_index=table,
                         nested_path=nested_path
                     )
                     abs_schema.add(cname, c)
@@ -281,7 +281,23 @@ class InsertTable(BaseTable):
                 elif c.type=="nested" and value_type=="object":
                     value_type = "nested"
                     v = [v]
-
+                elif c.es_index!=table:
+                    from_doc = doc_collection.get(c.nested_path[0], None)
+                    column = c.es_column
+                    from_doc.active_columns.remove(c)
+                    abs_schema.remove(cname, c)
+                    required_changes.append({"nest": (c, nested_path[0])})                    
+                    c = Column(
+                        names={".": cname},
+                        type=value_type,
+                        es_column=typed_column(cname, value_type),
+                        es_index=table,
+                        nested_path=nested_path
+                    )
+                    abs_schema.add(cname, c)
+                    insertion.active_columns.add(c)
+                    
+ 
                 # BE SURE TO NEST VALUES, IF NEEDED
                 if value_type == "nested":
                     row[c.es_column] = "."
@@ -300,6 +316,7 @@ class InsertTable(BaseTable):
                     _flatten(v, uid, parent_id, order, cname, nested_path, row=row)
                 elif c.type:
                     row[c.es_column] = v
+
 
         for doc in docs:
             _flatten(doc, self.next_uid(), 0, 0, full_path=path, nested_path=["."], guid=self.next_guid())
