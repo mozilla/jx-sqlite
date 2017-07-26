@@ -297,14 +297,14 @@ class InsertTable(BaseTable):
                     )
                     abs_schema.add(cname, c)
                     insertion.active_columns.add(c)
-                    
+
                     for r in from_doc.rows:
                         r1=unwrap(r)
                         if column in r1:
                             row1 = {UID: self.next_uid(), PARENT: r1["__id__"], ORDER: 0}
                             row1[column]=r1[column]
                             rows.append(row1)
-                            
+
                 # BE SURE TO NEST VALUES, IF NEEDED
                 if value_type == "nested":
                     row[c.es_column] = "."
