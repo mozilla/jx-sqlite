@@ -415,7 +415,6 @@ class AggsTable(SetOpTable):
                             type=sql_type_to_json_type[sql_type]
                         )
 
-
         for w in query.window:
             outer_selects.append(self._window_op(self, query, w))
 
