@@ -117,7 +117,8 @@ class Snowflake(object):
             if required_change.add:
                 self._add_column(required_change.add)
             elif required_change.nest:
-                self._nest_column(**required_change)
+                column, cname = required_change.nest
+                self._nest_column(column, cname)
                 # REMOVE KNOWLEDGE OF PARENT COLUMNS (DONE AUTOMATICALLY)
                 # TODO: DELETE PARENT COLUMNS?
 
