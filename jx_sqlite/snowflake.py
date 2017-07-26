@@ -172,8 +172,9 @@ class Snowflake(object):
         # TEST IF THERE IS ANY DATA IN THE NEW NESTED ARRAY
         if not moving_columns:
             return
-
-        self._add_column(required_change.add)
+        column.nested_path = [new_path] + c.nested_path
+        column.es_index = destination_table
+        self._add_column(column)
 
     def add_table_to_schema(self, nested_path):
         table = Table(nested_path)
