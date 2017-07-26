@@ -249,6 +249,12 @@ class Schema(object):
             container = self.map[column_name] = []
         container.append(column)
 
+    def remove(self, column_name, column):
+        if column_name != column.names[self.nested_path[0]]:
+            Log.error("Logic error")
+
+        self.map[column_name]=[c for c in self.map[column_name] if c != column]
+                
     def __getitem__(self, item):
         output = self.map.get(item)
         return output if output else Null
