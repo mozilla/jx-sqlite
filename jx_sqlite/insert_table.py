@@ -322,7 +322,8 @@ class InsertTable(BaseTable):
                     _flatten(v, uid, parent_id, order, cname, nested_path, row=row)
                 elif c.type:
                     row[c.es_column] = v
-
+                    if row1:
+                        insertion.rows.append(row1)
 
         for doc in docs:
             _flatten(doc, self.next_uid(), 0, 0, full_path=path, nested_path=["."], guid=self.next_guid())
