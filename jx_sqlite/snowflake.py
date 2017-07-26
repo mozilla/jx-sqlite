@@ -120,7 +120,7 @@ class Snowflake(object):
                 column, cname = required_change.nest
                 self._nest_column(column, cname)
                 # REMOVE KNOWLEDGE OF PARENT COLUMNS (DONE AUTOMATICALLY)
-                # TODO: DELETE PARENT COLUMNS?
+                # TODO: DELETE PARENT COLUMNS? : Done
 
     def _add_column(self, column):
         cname = column.names["."]
@@ -172,13 +172,29 @@ class Snowflake(object):
         # TEST IF THERE IS ANY DATA IN THE NEW NESTED ARRAY
         if not moving_columns:
             return
-        
+
         column.es_index = destination_table
         self.db.execute(
             "ALTER TABLE " + quote_table(destination_table) +
             " ADD COLUMN " + quote_column(column.es_column) + " " + sql_types[column.type]
         )
 
+        # Deleting parent columns
+        for col in moving_columns:
+            column = col.es_column
+            tmp_table = "tmp_" + existing_table
+            columns = self.db.query("select * from " + quote_table(existing_table) + " LIMIT 0").header
+            self.db.execute(
+                "ALTER TABLE " + quote_table(existing_table) +
+                " RENAME TO " + quote_table(tmp_table)
+            )
+            self.db.execute(
+                "CREATE TABLE " + quote_table(existing_table) +
+                " AS SELECT " + (", ".join([quote_table(c) for c in columns if c!=column])) +
+                " FROM " + quote_table(tmp_table)
+            )
+            self.db.execute("DROP TABLE " + quote_table(tmp_table))
+            
     def add_table_to_schema(self, nested_path):
         table = Table(nested_path)
         self.tables[table.name] = table
