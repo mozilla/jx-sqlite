@@ -282,7 +282,7 @@ class InsertTable(BaseTable):
                 elif c.type=="nested" and value_type=="object":
                     value_type = "nested"
                     v = [v]
-                elif c.es_index!=table:
+                elif len(c.nested_path) < len(nested_path):
                     from_doc = doc_collection.get(c.nested_path[0], None)
                     column = c.es_column
                     from_doc.active_columns.remove(c)
