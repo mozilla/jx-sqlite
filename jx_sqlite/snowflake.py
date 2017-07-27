@@ -154,20 +154,18 @@ class Snowflake(object):
         # LOAD THE COLUMNS
         command = "PRAGMA table_info(" + quote_table(destination_table) + ")"
         details = self.db.query(command)
-        if details.data:
-            raise Log.error("not expected, new nesting!")
-
-        command = (
-            "CREATE TABLE " + quote_table(destination_table) + "(" +
-            (",".join(
-                [quoted_UID + " INTEGER", quoted_PARENT + " INTEGER", quoted_ORDER+" INTEGER"]
-            )) +
-            ", PRIMARY KEY (" + quoted_UID + ")" +
-            ", FOREIGN KEY (" + quoted_PARENT + ") REFERENCES " + quote_table(existing_table) + "(" + quoted_UID + ")"
-            ")"
-        )
-        self.db.execute(command)
-        self.add_table_to_schema([new_path])
+        if not details.data:
+            command = (
+                "CREATE TABLE " + quote_table(destination_table) + "(" +
+                (",".join(
+                    [quoted_UID + " INTEGER", quoted_PARENT + " INTEGER", quoted_ORDER+" INTEGER"]
+                )) +
+                ", PRIMARY KEY (" + quoted_UID + ")" +
+                ", FOREIGN KEY (" + quoted_PARENT + ") REFERENCES " + quote_table(existing_table) + "(" + quoted_UID + ")"
+                ")"
+            )
+            self.db.execute(command)
+            self.add_table_to_schema([new_path])
 
         # TEST IF THERE IS ANY DATA IN THE NEW NESTED ARRAY
         if not moving_columns:
