@@ -44,3 +44,10 @@ def is_column_name(col):
         return True
     else:
         return False
+
+
+def get_property_name(s):
+    if s==".":
+        return s
+    else:
+        return s.lstrip(".")
