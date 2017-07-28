@@ -302,6 +302,11 @@ class InsertTable(BaseTable):
                         if column in r1:
                             row1 = {UID: self.next_uid(), PARENT: r1["__id__"], ORDER: 0, column: r1[column]}
                             insertion.rows.append(row1)
+                            
+                elif len(c.nested_path) > len(nested_path):
+                    insertion = doc_collection[c.nested_path[0]]
+                    row = {UID: self.next_uid(), PARENT: uid, ORDER: order}
+                    insertion.rows.append(row)
 
                 # BE SURE TO NEST VALUES, IF NEEDED
                 if value_type == "nested":
