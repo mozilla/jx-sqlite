@@ -134,7 +134,7 @@ def to_sql(self, schema, not_null=False, boolean=False):
     acc = []
     if len(lhs) != len(rhs):
         Log.error("lhs and rhs have different dimensionality!?")
-    
+
     for l, r in zip(lhs, rhs):
         for t in "bsnj":
             if l.sql[t] == None:

@@ -267,7 +267,7 @@ class InsertTable(BaseTable):
                         names={".": cname},
                         type=value_type,
                         es_column=typed_column(cname, value_type),
-                        es_index=table,  # THIS MAY BE THE WRONG TABLE, IF THIS PATH IS A NESTED DOC
+                        es_index=table,
                         nested_path=nested_path
                     )
                     abs_schema.add(cname, c)
@@ -281,6 +281,32 @@ class InsertTable(BaseTable):
                 elif c.type=="nested" and value_type=="object":
                     value_type = "nested"
                     v = [v]
+                elif len(c.nested_path) < len(nested_path):
+                    from_doc = doc_collection.get(c.nested_path[0], None)
+                    column = c.es_column
+                    from_doc.active_columns.remove(c)
+                    abs_schema.remove(cname, c)
+                    required_changes.append({"nest": (c, nested_path[0])})                    
+                    deep_c = Column(
+                        names={".": cname},
+                        type=value_type,
+                        es_column=typed_column(cname, value_type),
+                        es_index=table,
+                        nested_path=nested_path
+                    )
+                    abs_schema.add(cname, deep_c)
+                    insertion.active_columns.add(deep_c)
+
+                    for r in from_doc.rows:
+                        r1=unwrap(r)
+                        if column in r1:
+                            row1 = {UID: self.next_uid(), PARENT: r1["__id__"], ORDER: 0, column: r1[column]}
+                            insertion.rows.append(row1)
+                            
+                elif len(c.nested_path) > len(nested_path):
+                    insertion = doc_collection[c.nested_path[0]]
+                    row = {UID: self.next_uid(), PARENT: uid, ORDER: order}
+                    insertion.rows.append(row)
 
                 # BE SURE TO NEST VALUES, IF NEEDED
                 if value_type == "nested":

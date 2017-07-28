@@ -117,9 +117,10 @@ class Snowflake(object):
             if required_change.add:
                 self._add_column(required_change.add)
             elif required_change.nest:
-                self._nest_column(**required_change)
+                column, cname = required_change.nest
+                self._nest_column(column, cname)
                 # REMOVE KNOWLEDGE OF PARENT COLUMNS (DONE AUTOMATICALLY)
-                # TODO: DELETE PARENT COLUMNS?
+                # TODO: DELETE PARENT COLUMNS? : Done
 
     def _add_column(self, column):
         cname = column.names["."]
@@ -143,9 +144,9 @@ class Snowflake(object):
         # FIND THE INNER COLUMNS WE WILL BE MOVING
         moving_columns = []
         for c in self.columns:
-            if startswith_field(c.names["."], destination_table):
+            if destination_table!=column.es_index and column.es_column==c.es_column:
                 moving_columns.append(c)
-                c.nested_path = [destination_table]
+                c.nested_path = [new_path] + c.nested_path
 
         # TODO: IF THERE ARE CHILD TABLES, WE MUST UPDATE THEIR RELATIONS TOO?
 
@@ -153,51 +154,45 @@ class Snowflake(object):
         # LOAD THE COLUMNS
         command = "PRAGMA table_info(" + quote_table(destination_table) + ")"
         details = self.db.query(command)
-        if details.data:
-            raise Log.error("not expected, new nesting!")
-
-        command = (
-            "CREATE TABLE " + quote_table(destination_table) + "(" +
-            (",".join(
-                [quoted_UID + " INTEGER", quoted_PARENT + " INTEGER", quoted_ORDER+" INTEGER"]
-            )) +
-            ", PRIMARY KEY (" + quoted_UID + ")" +
-            ", FOREIGN KEY (" + quoted_PARENT + ") REFERENCES " + quote_table(existing_table) + "(" + quoted_UID + ")"
-            ")"
-        )
-        self.db.execute(command)
-        self.add_table_to_schema([new_path])
+        if not details.data:
+            command = (
+                "CREATE TABLE " + quote_table(destination_table) + "(" +
+                (",".join(
+                    [quoted_UID + " INTEGER", quoted_PARENT + " INTEGER", quoted_ORDER+" INTEGER"]
+                )) +
+                ", PRIMARY KEY (" + quoted_UID + ")" +
+                ", FOREIGN KEY (" + quoted_PARENT + ") REFERENCES " + quote_table(existing_table) + "(" + quoted_UID + ")"
+                ")"
+            )
+            self.db.execute(command)
+            self.add_table_to_schema([new_path])
 
         # TEST IF THERE IS ANY DATA IN THE NEW NESTED ARRAY
         if not moving_columns:
             return
 
-        if len(moving_columns) == 1:
-            has_nested_data = quote_column(moving_columns[0]) + " IS NOT NULL"
-        else:
-            has_nested_data = (
-                "COALESCE(" +
-                ",".join(quote_column(c) for c in moving_columns) +
-                ") IS NOT NULL"
-            )
-
-        # FILL TABLE WITH EXISTING COLUMN DATA
-        command = (
-            "INSERT INTO " + quote_table(destination_table) + "(\n" +
-            ",\n".join(
-                [quoted_UID, quoted_PARENT, quote_table(ORDER)] +
-                [quote_column(c) for c in moving_columns]
-            ) +
-            "\n)\n" +
-            "\nSELECT " + ",".join(
-                [quoted_UID, quoted_UID, "0"] +
-                [quote_column(c) for c in moving_columns]
-            ) +
-            "\nFROM " + quote_table(existing_table) +
-            "\nWHERE " + has_nested_data
+        column.es_index = destination_table
+        self.db.execute(
+            "ALTER TABLE " + quote_table(destination_table) +
+            " ADD COLUMN " + quote_column(column.es_column) + " " + sql_types[column.type]
         )
-        self.db.execute(command)
 
+        # Deleting parent columns
+        for col in moving_columns:
+            column = col.es_column
+            tmp_table = "tmp_" + existing_table
+            columns = self.db.query("select * from " + quote_table(existing_table) + " LIMIT 0").header
+            self.db.execute(
+                "ALTER TABLE " + quote_table(existing_table) +
+                " RENAME TO " + quote_table(tmp_table)
+            )
+            self.db.execute(
+                "CREATE TABLE " + quote_table(existing_table) +
+                " AS SELECT " + (", ".join([quote_table(c) for c in columns if c!=column])) +
+                " FROM " + quote_table(tmp_table)
+            )
+            self.db.execute("DROP TABLE " + quote_table(tmp_table))
+            
     def add_table_to_schema(self, nested_path):
         table = Table(nested_path)
         self.tables[table.name] = table
@@ -249,6 +244,12 @@ class Schema(object):
             container = self.map[column_name] = []
         container.append(column)
 
+    def remove(self, column_name, column):
+        if column_name != column.names[self.nested_path[0]]:
+            Log.error("Logic error")
+
+        self.map[column_name]=[c for c in self.map[column_name] if c != column]
+                
     def __getitem__(self, item):
         output = self.map.get(item)
         return output if output else Null
