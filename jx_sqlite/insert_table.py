@@ -238,7 +238,6 @@ class InsertTable(BaseTable):
             """
             table=concat_field(self.sf.fact, nested_path[0])            
             insertion = doc_collection[nested_path[0]]
-            rows=[]
             if not row:
                 row = {GUID: guid, UID: uid, PARENT: parent_id, ORDER: order}
                 insertion.rows.append(row)
@@ -301,9 +300,8 @@ class InsertTable(BaseTable):
                     for r in from_doc.rows:
                         r1=unwrap(r)
                         if column in r1:
-                            row1 = {UID: self.next_uid(), PARENT: r1["__id__"], ORDER: 0}
-                            row1[column]=r1[column]
-                            rows.append(row1)
+                            row1 = {UID: self.next_uid(), PARENT: r1["__id__"], ORDER: 0, column: r1[column]}
+                            insertion.rows.append(row1)
 
                 # BE SURE TO NEST VALUES, IF NEEDED
                 if value_type == "nested":
@@ -323,9 +321,6 @@ class InsertTable(BaseTable):
                     _flatten(v, uid, parent_id, order, cname, nested_path, row=row)
                 elif c.type:
                     row[c.es_column] = v
-                    for r in rows:
-                        insertion.rows.append(r)
-                    rows=[]
 
         for doc in docs:
             _flatten(doc, self.next_uid(), 0, 0, full_path=path, nested_path=["."], guid=self.next_guid())
