@@ -288,15 +288,15 @@ class InsertTable(BaseTable):
                     from_doc.active_columns.remove(c)
                     abs_schema.remove(cname, c)
                     required_changes.append({"nest": (c, nested_path[0])})                    
-                    c = Column(
+                    deep_c = Column(
                         names={".": cname},
                         type=value_type,
                         es_column=typed_column(cname, value_type),
                         es_index=table,
                         nested_path=nested_path
                     )
-                    abs_schema.add(cname, c)
-                    insertion.active_columns.add(c)
+                    abs_schema.add(cname, deep_c)
+                    insertion.active_columns.add(deep_c)
 
                     for r in from_doc.rows:
                         r1=unwrap(r)
