@@ -29,7 +29,7 @@ from pyLibrary.sql.sqlite import quote_column, quote_value
 
 @extend(Variable)
 def to_sql(self, schema, not_null=False, boolean=False):
-    cols = [c for cname, cs in schema.items() if startswith_field(cname, get_property_name(self.var)) for c in cs]
+    cols = [c for cname, cs in schema.items() if startswith_field(cname, self.var) for c in cs]
     if not cols:
         # DOES NOT EXIST
         return wrap([{"name": ".", "sql": {"0": "NULL"}, "nested_path": ROOT_PATH}])
