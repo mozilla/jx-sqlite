@@ -324,8 +324,7 @@ class InsertTable(BaseTable):
                 elif c.type:
                     row[c.es_column] = v
                     for r in rows:
-                        if r:
-                            insertion.rows.append(r)
+                        insertion.rows.append(r)
                     rows=[]
 
         for doc in docs:
