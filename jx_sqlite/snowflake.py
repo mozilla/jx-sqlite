@@ -278,3 +278,20 @@ class Schema(object):
     @property
     def columns(self):
         return [c for cs in self.map.values() for c in cs]
+    
+    def map_to_sql(self, origin):
+        """
+        RETURN A MAP FROM THE RELATIVE AND ABSOLUTE NAME SPACE TO COLUMNS 
+        """
+        return set_default(
+                {
+                    c.names[origin]: c.es_column
+                    for k, cs in self.items()
+                    for c in cs if c.type not in STRUCT
+                    },
+                {
+                    c.names["."]: c.es_column
+                    for k, cs in self.items()
+                    for c in cs if c.type not in STRUCT
+                    }
+        )
