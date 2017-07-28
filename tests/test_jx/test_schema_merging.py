@@ -243,7 +243,8 @@ class TestSchemaMerging(BaseTestCase):
                 {"a": "b"},
                 {"a": {"b": 1}},
                 {"a": {}},
-                {"a": [{"b": 1}, {"b": 2}]},
+                {"a": [{"b": 1}, {"b": 2}]},  # TEST THAT INNER CAN BE MAPPED TO NESTED
+                {"a": {"b": 4}},  # TEST THAT INNER IS MAPPED TO NESTED, AFTER SEEING NESTED
                 {"a": 3},
                 {}
             ],
