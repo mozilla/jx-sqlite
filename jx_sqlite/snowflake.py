@@ -4,6 +4,7 @@ from copy import copy
 from mo_dots import relative_field, listwrap, split_field, join_field, wrap, startswith_field, concat_field, Null, coalesce
 from mo_logs import Log
 
+from jx_base.queries import get_property_name
 from jx_sqlite import quote_table, typed_column, UID, quoted_UID, quoted_GUID,sql_types, quoted_PARENT, ORDER, quoted_ORDER
 from jx_sqlite import untyped_column
 from jx_python import jx
@@ -239,9 +240,9 @@ class Schema(object):
         if column_name != column.names[self.nested_path[0]]:
             Log.error("Logic error")
 
-        container = self.map.get(column_name)
+        container = self.map.get(get_property_name(column_name))
         if not container:
-            container = self.map[column_name] = []
+            container = self.map[get_property_name(column_name)] = []
         container.append(column)
 
     def remove(self, column_name, column):
@@ -266,7 +267,7 @@ class Schema(object):
         :param column:
         :return: NAME OF column
         """
-        return column.names[self.nested_path[0]]
+        return get_property_name(column.names[self.nested_path[0]])
 
     def keys(self):
         return self.map.keys()
