@@ -251,7 +251,7 @@ class Schema(object):
             Log.error("Logic error")
 
         self.map[column_name]=[c for c in self.map[column_name] if c != column]
-                
+
     def __getitem__(self, item):
         output = self.map.get(item)
         return output if output else Null
@@ -301,4 +301,4 @@ class Schema(object):
                         else:
                             fact_dict[c.names["."]] = [c]                    
         return set_default(origin_dict, fact_dict)
-     
+
