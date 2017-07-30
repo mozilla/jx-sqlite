@@ -284,15 +284,20 @@ class Schema(object):
         RETURN A MAP FROM THE RELATIVE AND ABSOLUTE NAME SPACE TO COLUMNS 
         """
         origin = self.nested_path[0]
-        return set_default(
-                {
-                    c.names[origin]: [c]
-                    for k, cs in self.map.items()
-                    for c in cs if c.type not in STRUCT
-                    },
-                {
-                    c.names["."]: [c]
-                    for k, cs in self.map.items()
-                    for c in cs if c.type not in STRUCT
-                }
-        )
+        fact_dict={}
+        origin_dict={}
+        for k, cs in self.map.items():
+            for c in cs :
+                if c.type not in STRUCT:
+                    if origin_dict.has_key(c.names[origin]):
+                        origin_dict[c.names[origin]].append(c)
+                    else:
+                        origin_dict[c.names[origin]] = [c]
+    
+                    if not origin_dict.has_key(c.names["."]):
+                        if fact_dict.has_key(c.names["."]):
+                            fact_dict[c.names["."]].append(c)
+                        else:
+                            fact_dict[c.names["."]] = [c]                    
+        return set_default(origin_dict, fact_dict)
+     
