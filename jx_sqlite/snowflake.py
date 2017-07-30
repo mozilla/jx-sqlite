@@ -6,6 +6,7 @@ from mo_logs import Log
 
 from jx_sqlite import quote_table, typed_column, UID, quoted_UID, quoted_GUID,sql_types, quoted_PARENT, ORDER, quoted_ORDER
 from jx_sqlite import untyped_column
+from jx_base.queries import get_property_name
 from jx_python import jx
 from jx_python.meta import Column
 from jx_python.containers import STRUCT
@@ -267,7 +268,7 @@ class Schema(object):
         :param column:
         :return: NAME OF column
         """
-        return column.names[self.nested_path[0]]
+        return get_property_name(column.names[self.nested_path[0]])
 
     def keys(self):
         return self.map.keys()
