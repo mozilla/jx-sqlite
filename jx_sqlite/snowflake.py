@@ -290,15 +290,15 @@ class Schema(object):
         for k, cs in self.map.items():
             for c in cs :
                 if c.type not in STRUCT:
-                    if origin_dict.has_key(c.names[origin]):
+                    if c.names[origin] in origin_dict:
                         origin_dict[c.names[origin]].append(c)
                     else:
                         origin_dict[c.names[origin]] = [c]
 
                     if origin!=c.nested_path[0]:
-                        if fact_dict.has_key(c.names["."]):
+                        if c.names["."] in fact_dict:
                             fact_dict[c.names["."]].append(c)
                         else:
-                            fact_dict[c.names["."]] = [c]                    
+                            fact_dict[c.names["."]] = [c]
         return set_default(origin_dict, fact_dict)
 
