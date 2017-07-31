@@ -26,7 +26,7 @@ from mo_times.dates import Date
 
 from pyLibrary import convert
 from jx_python.containers import STRUCT, OBJECT
-from jx_base.queries import is_variable_name
+from jx_base.queries import is_variable_name, get_property_name
 from jx_python.expression_compiler import compile_expression
 from pyLibrary.sql.sqlite import quote_column, quote_value
 
@@ -201,7 +201,7 @@ class Variable(Expression):
         Expression.__init__(self, "", None)
         if not is_variable_name(var):
             Log.error("Expecting a variable name")
-        self.var = var
+        self.var = get_property_name(var)
 
     def __call__(self, row, rownum=None, rows=None):
         path = split_field(self.var)

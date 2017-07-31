@@ -18,7 +18,6 @@ from mo_logs import Log
 from mo_math import Math
 from pyLibrary import convert
 
-from jx_base.queries import is_column_name, dequote
 from jx_base.expressions import Variable, DateOp, TupleOp, LeavesOp, BinaryOp, OrOp, InequalityOp, extend, Literal, NullOp, TrueOp, FalseOp, DivOp, FloorOp, \
     NeOp, NotOp, LengthOp, NumberOp, StringOp, CountOp, MultiOp, RegExpOp, CoalesceOp, MissingOp, ExistsOp, \
     PrefixOp, UnixOp, FromUnixOp, NotLeftOp, RightOp, NotRightOp, FindOp, BetweenOp, InOp, RangeOp, CaseOp, AndOp, \
@@ -29,7 +28,7 @@ from pyLibrary.sql.sqlite import quote_column, quote_value
 
 @extend(Variable)
 def to_sql(self, schema, not_null=False, boolean=False):
-    cols = [c for cname, cs in schema.items() if startswith_field(cname, self.var) for c in cs]
+    cols = [c for cname, cs in schema.map_to_sql().items() if startswith_field(cname, self.var) for c in cs]
     if not cols:
         # DOES NOT EXIST
         return wrap([{"name": ".", "sql": {"0": "NULL"}, "nested_path": ROOT_PATH}])

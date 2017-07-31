@@ -1,13 +1,15 @@
 from collections import OrderedDict
 from copy import copy
 
-from mo_dots import relative_field, listwrap, split_field, join_field, wrap, startswith_field, concat_field, Null, coalesce
+from mo_dots import relative_field, listwrap, split_field, join_field, wrap, startswith_field, concat_field, Null, coalesce, set_default
 from mo_logs import Log
 
 from jx_sqlite import quote_table, typed_column, UID, quoted_UID, quoted_GUID,sql_types, quoted_PARENT, ORDER, quoted_ORDER
 from jx_sqlite import untyped_column
+from jx_base.queries import get_property_name
 from jx_python import jx
 from jx_python.meta import Column
+from jx_python.containers import STRUCT
 from pyLibrary.sql.sqlite import quote_column
 
 
@@ -249,7 +251,7 @@ class Schema(object):
             Log.error("Logic error")
 
         self.map[column_name]=[c for c in self.map[column_name] if c != column]
-                
+
     def __getitem__(self, item):
         output = self.map.get(item)
         return output if output else Null
@@ -266,7 +268,7 @@ class Schema(object):
         :param column:
         :return: NAME OF column
         """
-        return column.names[self.nested_path[0]]
+        return get_property_name(column.names[self.nested_path[0]])
 
     def keys(self):
         return self.map.keys()
@@ -277,3 +279,26 @@ class Schema(object):
     @property
     def columns(self):
         return [c for cs in self.map.values() for c in cs]
+
+    def map_to_sql(self):
+        """
+        RETURN A MAP FROM THE RELATIVE AND ABSOLUTE NAME SPACE TO COLUMNS 
+        """
+        origin = self.nested_path[0]
+        fact_dict={}
+        origin_dict={}
+        for k, cs in self.map.items():
+            for c in cs :
+                if c.type not in STRUCT:
+                    if c.names[origin] in origin_dict:
+                        origin_dict[c.names[origin]].append(c)
+                    else:
+                        origin_dict[c.names[origin]] = [c]
+
+                    if origin!=c.nested_path[0]:
+                        if c.names["."] in fact_dict:
+                            fact_dict[c.names["."]].append(c)
+                        else:
+                            fact_dict[c.names["."]] = [c]
+        return set_default(origin_dict, fact_dict)
+

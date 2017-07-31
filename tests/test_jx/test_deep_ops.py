@@ -225,9 +225,9 @@ class TestDeepOps(BaseTestCase):
             "expecting_list": {
                 "meta": {"format": "list"},
                 "data": [
-                    {"o": 1, "a": {"b": "x", "v": 5}},
-                    {"o": 2, "a": {"b": "x", "v": 7}},
-                    {"o": 3, "a": [
+                    {"o": 1, "_a": {"b": "x", "v": 5}},
+                    {"o": 2, "_a": {"b": "x", "v": 7}},
+                    {"o": 3, "_a": [
                         {"b": "x", "v": 2},
                         {"b": "y", "v": 3}
                     ]},
@@ -235,7 +235,7 @@ class TestDeepOps(BaseTestCase):
                 ]},
             "expecting_table": {
                 "meta": {"format": "table"},
-                "header": ["o", "a", "c"],
+                "header": ["o", "_a", "c"],
                 "data": [
                     [1, {"b": "x", "v": 5}, NULL],
                     [2, {"b": "x", "v": 7}, NULL],
@@ -258,7 +258,7 @@ class TestDeepOps(BaseTestCase):
                     }
                 ],
                 "data": {
-                    "a": [
+                    "_a": [
                         {"b": "x", "v": 5},
                         {"b": "x", "v": 7},
                         [
@@ -272,6 +272,8 @@ class TestDeepOps(BaseTestCase):
                 }
             }
         }
+        self.utils.execute_tests(test)
+
 
     def test_select_whole_nested_document(self):
         test = {

@@ -16,6 +16,7 @@ from __future__ import unicode_literals
 from mo_dots import listwrap, Data, unwraplist, split_field, join_field, startswith_field, unwrap, relative_field, concat_field, literal_field, Null
 from mo_math import UNION, MAX
 
+from jx_base.queries import get_property_name
 from jx_sqlite import quote_table, quoted_UID, quoted_GUID, get_column, _make_column_name, ORDER, COLUMN, set_column, quoted_PARENT, ColumnMapping
 from jx_sqlite.insert_table import InsertTable
 from jx_python.containers import STRUCT
@@ -186,8 +187,8 @@ class SetOpTable(InsertTable):
                                     selects.append(concat_field(alias, unsorted_sql))
                                     sql_selects.append(alias + "." + unsorted_sql + " AS " + column_alias)
                                     index_to_column[column_number] = nested_doc_details['index_to_column'][column_number] = ColumnMapping(
-                                        push_name=literal_field(concat_field(s.name, column.name).lstrip(".")),
-                                        push_column_name=concat_field(s.name, column.name).lstrip("."),
+                                        push_name=literal_field(get_property_name(concat_field(s.name, column.name))),
+                                        push_column_name=get_property_name(concat_field(s.name, column.name)),
                                         push_column=si,
                                         push_child=".",
                                         pull=get_column(column_number),
