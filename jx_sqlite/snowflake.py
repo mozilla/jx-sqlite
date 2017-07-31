@@ -294,8 +294,8 @@ class Schema(object):
                         origin_dict[c.names[origin]].append(c)
                     else:
                         origin_dict[c.names[origin]] = [c]
-    
-                    if not origin_dict.has_key(c.names["."]):
+
+                    if not origin_dict.has_key(c.names["."]) and origin!=c.nested_path[0]:
                         if fact_dict.has_key(c.names["."]):
                             fact_dict[c.names["."]].append(c)
                         else:
