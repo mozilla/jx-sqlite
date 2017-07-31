@@ -140,8 +140,14 @@ class QueryTable(AggsTable):
                 data = {n: Data() for n in column_names}
                 for s in index_to_columns.values():
                     data[s.push_name][s.push_child] = unwrap(s.pull(result.data[0]))
+                if isinstance(query.select, list):
+                    select = [{"name": s.name} for s in query.select]
+                else:
+                    select = {"name": query.select.name}
+
                 return Data(
                     data=unwrap(data),
+                    select=select,                    
                     meta={"format": "cube"}
                 )
 
