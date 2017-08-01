@@ -42,15 +42,15 @@ def find_packages(where='.', lib_prefix='', exclude=()):
 
 setup(
     name='jx-sqlite',
-    version='0.9',
+    version='0.9.001',
     description='JSON query expressions using SQLite',
     long_description=long_desc,
-    author=['Rohit Kumar', 'Kyle Lahnakoski'],
-    author_email=['rohitkumar.a255@gmail.com', 'kyle@lahnakoski.com'],
+    author='Rohit Kumar, Kyle Lahnakoski',
+    author_email='rohitkumar.a255@gmail.com, kyle@lahnakoski.com',
     url='https://github.com/mozilla/jx-sqlite',
     license='MPL 2.0',
     packages=find_packages('.', lib_prefix=''),
-    install_requires=[],
+    install_requires=["mo-collections", "mo-dots>=1.5.17188", "mo-files>=1.2", "mo-json-config", "mo-json>=1.0.17168", "mo-kwargs", "mo-logs", "mo-math", "mo-testing>=1.0.17168", "mo-threads", "mo-times"],
     include_package_data=True,
     zip_safe=False,
     classifiers=[  #https://pypi.python.org/pypi?%3Aaction=list_classifiers
