@@ -1,5 +1,0 @@
-jx_base
-jx_python
-jx_sqlite
-pyLibrary
-tests
