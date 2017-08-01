@@ -42,7 +42,7 @@ def find_packages(where='.', lib_prefix='', exclude=()):
 
 setup(
     name='jx-sqlite',
-    version='0.9.001',
+    version='0.9.17206',
     description='JSON query expressions using SQLite',
     long_description=long_desc,
     author='Rohit Kumar, Kyle Lahnakoski',
