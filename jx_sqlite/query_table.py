@@ -276,7 +276,10 @@ class QueryTable(AggsTable):
                 row = [None for _ in column_names]
                 for s in index_to_columns.values():
                     if s.push_child == ".":
-                        row[s.push_column] = s.pull(d)
+                        if not row[s.push_column]:                        
+                            row[s.push_column] = s.pull(d)
+                        else:
+                            row[s.push_column] += s.pull(d)
                     elif s.num_push_columns:
                         tuple_value = row[s.push_column]
                         if tuple_value == None:
