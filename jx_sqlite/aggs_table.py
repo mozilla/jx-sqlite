@@ -17,7 +17,7 @@ from mo_dots import listwrap, coalesce, split_field, join_field, startswith_fiel
 from mo_logs import Log
 from mo_math import Math
 
-from jx_sqlite import UID, quote_table, get_column, _make_column_name, sql_text_array_to_set, STATS, sql_aggs, PARENT, ColumnMapping
+from jx_sqlite import UID, quote_table, get_column, _make_column_name, sql_text_array_to_set, STATS, sql_aggs, PARENT, ColumnMapping, untyped_column
 from jx_sqlite.setop_table import SetOpTable
 from jx_python import jx
 from jx_python.domains import DefaultDomain, TimeDomain, DurationDomain
@@ -333,6 +333,25 @@ class AggsTable(SetOpTable):
                     column_alias=quote_table(s.name),
                     type=sql_type_to_json_type["n"]
                 )
+            elif s.aggregate == "count" and (not query.edges and not query.groupby):
+                value=s.value.var
+                columns=[c.es_column for c in self.sf.columns if untyped_column(c.es_column)[0]==value]
+                for sql in columns:
+                    column_number = len(outer_selects)
+                    sql = "COUNT(" + quote_table(sql) + ")"
+                    if s.default != None:
+                        sql = "COALESCE(" + sql + ", " + quote_value(s.default) + ")"
+                    outer_selects.append(sql + " AS " + _make_column_name(column_number))
+                    index_to_column[column_number] = ColumnMapping(
+                        push_name=s.name,
+                        push_column_name=s.name,
+                        push_column=si,
+                        push_child=".",
+                        pull=get_column(column_number),
+                        sql=sql,
+                        column_alias=_make_column_name(column_number),
+                        type=sql_type_to_json_type["n"]
+                    )
             elif s.aggregate == "percentile":
                 if not isinstance(s.percentile, (int, float)):
                     Log.error("Expecting percentile to be a float between 0 and 1")
