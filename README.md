@@ -14,6 +14,12 @@ The tests fail because what I have written does not handle the most interesting,
 1. Inner objects `{"a":{"b":0}}` are a shortcut for nested arrays `{"a":[{"b":0}]}`, plus
 2. Schemas can be expanded from one-to-one  to one-to-many `{"a":[{"b":0}, {"b":1}]}`.
 
+## Installation
+
+$ git clone https://github.com/mozilla/jx-sqlite
+$ cd jx-sqlite
+$ python setup.py install
+
 ## Running tests
 
     export PYTHONPATH=.
