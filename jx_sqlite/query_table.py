@@ -314,9 +314,14 @@ class QueryTable(AggsTable):
                         data=data
                     )
                 else:
-                    data = Data()
+                    data = {}
                     for s in index_to_columns.values():
-                        if data[s.push_child] == None:
+                        if s.push_child == ".":
+                            if isinstance(data, dict):
+                                data = unwrap(s.pull(result.data[0]))
+                            else:
+                                data += unwrap(s.pull(result.data[0]))
+                        elif data[s.push_child] == None:
                             data[s.push_child] = s.pull(result.data[0])
                         else:
                             data[s.push_child] += [s.pull(result.data[0])]
