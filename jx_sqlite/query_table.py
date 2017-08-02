@@ -139,7 +139,12 @@ class QueryTable(AggsTable):
             if len(query.edges) == 0 and len(query.groupby) == 0:
                 data = {n: Data() for n in column_names}
                 for s in index_to_columns.values():
-                    data[s.push_name][s.push_child] = unwrap(s.pull(result.data[0]))
+                    if not data[s.push_name]:
+                        data[s.push_name] = unwrap(s.pull(result.data[0]))
+                    else:
+                        unwrap(data[s.push_name])
+                        data[s.push_name] += unwrap(s.pull(result.data[0]))
+                        wrap(data[s.push_name])
                 if isinstance(query.select, list):
                     select = [{"name": s.name} for s in query.select]
                 else:
