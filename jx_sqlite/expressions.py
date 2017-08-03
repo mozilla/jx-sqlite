@@ -28,7 +28,7 @@ from pyLibrary.sql.sqlite import quote_column, quote_value
 
 @extend(Variable)
 def to_sql(self, schema, not_null=False, boolean=False):
-    cols = [c for cname, cs in schema.map_to_sql().items() if startswith_field(cname, self.var) for c in cs]
+    cols = [c for cname, cs in schema.map_to_sql(self.var).items() for c in cs]
     if not cols:
         # DOES NOT EXIST
         return wrap([{"name": ".", "sql": {"0": "NULL"}, "nested_path": ROOT_PATH}])
@@ -119,8 +119,7 @@ def to_sql(self, schema, not_null=False, boolean=False):
             "name": join_field(split_field(schema.get_column_name(c))[prefix_length:]),
             "sql": Variable(schema.get_column_name(c)).to_sql(schema)[0].sql
         }
-        for n, cols in schema.items()
-        if startswith_field(n, term)
+        for n, cols in schema.map_to_sql(term).items()
         for c in cols
         if c.type not in STRUCT
     ])
