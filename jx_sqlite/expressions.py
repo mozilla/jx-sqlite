@@ -61,11 +61,15 @@ def to_sql(self, schema, not_null=False, boolean=False):
                 tempb = tempa.setdefault(schema.get_column_name(col), {})
                 tempb[json_type_to_sql_type[col.type]] = quote_column(col.es_column).sql
 
-    return wrap([
-        {"name": relative_field(cname, self.var), "sql": types, "nested_path": nested_path}
-        for nested_path, pairs in acc.items() for cname, types in pairs.items()
-    ])
-
+    cols = []
+    for nested_path, pairs in acc.items():
+        for cname, types in pairs.items():
+            if not startswith_field(cname, self.var):
+                cols.append({"name": cname, "sql": types, "nested_path": nested_path})
+            else:
+                cols.append({"name": relative_field(cname, self.var), "sql": types, "nested_path": nested_path})
+            
+    return wrap(cols)
 
 @extend(Literal)
 def to_sql(self, schema, not_null=False, boolean=False):
