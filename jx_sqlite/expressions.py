@@ -68,7 +68,7 @@ def to_sql(self, schema, not_null=False, boolean=False):
                 cols.append({"name": cname, "sql": types, "nested_path": nested_path})
             else:
                 cols.append({"name": relative_field(cname, self.var), "sql": types, "nested_path": nested_path})
-            
+
     return wrap(cols)
 
 @extend(Literal)
