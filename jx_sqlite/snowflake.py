@@ -289,7 +289,7 @@ class Schema(object):
         origin_dict={}
         for k, cs in self.map.items():
             for c in cs :
-                if c.type not in STRUCT and (startswith_field(get_property_name(k), var)):
+                if c.type not in STRUCT and (startswith_field(get_property_name(k), var) or origin==var):
                     if c.names[origin] in origin_dict:
                         origin_dict[c.names[origin]].append(c)
                     else:
