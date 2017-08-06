@@ -18,6 +18,7 @@ from mo_logs import Log
 from mo_math import Math
 from pyLibrary import convert
 
+from jx_base.queries import get_property_name
 from jx_base.expressions import Variable, DateOp, TupleOp, LeavesOp, BinaryOp, OrOp, InequalityOp, extend, Literal, NullOp, TrueOp, FalseOp, DivOp, FloorOp, \
     NeOp, NotOp, LengthOp, NumberOp, StringOp, CountOp, MultiOp, RegExpOp, CoalesceOp, MissingOp, ExistsOp, \
     PrefixOp, UnixOp, FromUnixOp, NotLeftOp, RightOp, NotRightOp, FindOp, BetweenOp, InOp, RangeOp, CaseOp, AndOp, \
@@ -44,7 +45,7 @@ def to_sql(self, schema, not_null=False, boolean=False):
             else:
                 value = "(" + quote_column(col.es_column).sql + ") IS NOT NULL"
             tempa = acc.setdefault(nested_path, {})
-            tempb = tempa.setdefault(cname, {})
+            tempb = tempa.setdefault(get_property_name(cname), {})
             tempb['b'] = value
     else:
         for col in cols:
@@ -55,13 +56,13 @@ def to_sql(self, schema, not_null=False, boolean=False):
                     if cn.startswith(prefix):
                         for child_col in cs:
                             tempa = acc.setdefault(child_col.nested_path[0], {})
-                            tempb = tempa.setdefault(cname, {})
+                            tempb = tempa.setdefault(get_property_name(cname), {})
                             tempb[json_type_to_sql_type[col.type]] = quote_column(child_col.es_column).sql
 
             else:
                 nested_path = col.nested_path[0]
                 tempa = acc.setdefault(nested_path, {})
-                tempb = tempa.setdefault(schema.get_column_name(col), {})
+                tempb = tempa.setdefault(get_property_name(cname), {})
                 tempb[json_type_to_sql_type[col.type]] = quote_column(col.es_column).sql
 
     cols = []
