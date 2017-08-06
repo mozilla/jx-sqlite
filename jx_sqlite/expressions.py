@@ -58,7 +58,6 @@ def to_sql(self, schema, not_null=False, boolean=False):
                             tempa = acc.setdefault(child_col.nested_path[0], {})
                             tempb = tempa.setdefault(get_property_name(cname), {})
                             tempb[json_type_to_sql_type[col.type]] = quote_column(child_col.es_column).sql
-
             else:
                 nested_path = col.nested_path[0]
                 tempa = acc.setdefault(nested_path, {})
@@ -74,6 +73,7 @@ def to_sql(self, schema, not_null=False, boolean=False):
                 cols.append({"name": relative_field(cname, self.var), "sql": types, "nested_path": nested_path})
 
     return wrap(cols)
+
 @extend(Literal)
 def to_sql(self, schema, not_null=False, boolean=False):
     value = json2value(self.json)
