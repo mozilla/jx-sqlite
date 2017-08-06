@@ -289,16 +289,29 @@ class Schema(object):
         origin_dict={}
         for k, cs in self.map.items():
             for c in cs :
-                if c.type not in STRUCT and (startswith_field(get_property_name(k), var) or origin==var):
-                    if c.names[origin] in origin_dict:
-                        origin_dict[c.names[origin]].append(c)
-                    else:
-                        origin_dict[c.names[origin]] = [c]
-
-                    if origin!=c.nested_path[0]:
-                        if c.names["."] in fact_dict:
-                            fact_dict[c.names["."]].append(c)
+                if c.type not in STRUCT:
+                    if (startswith_field(get_property_name(k), var)):
+                        if c.names[origin] in origin_dict:
+                            origin_dict[c.names[origin]].append(c)
                         else:
-                            fact_dict[c.names["."]] = [c]
+                            origin_dict[c.names[origin]] = [c]
+    
+                        if origin!=c.nested_path[0]:
+                            if c.names["."] in fact_dict:
+                                fact_dict[c.names["."]].append(c)
+                            else:
+                                fact_dict[c.names["."]] = [c]
+                    elif origin==var:
+                        if concat_field(var, c.names[origin]) in origin_dict:
+                            origin_dict[concat_field(var, c.names[origin])].append(c)
+                        else:
+                            origin_dict[concat_field(var, c.names[origin])] = [c]
+
+                        if origin!=c.nested_path[0]:
+                            if c.names["."] in fact_dict:
+                                fact_dict[concat_field(var, c.names["."])].append(c)
+                            else:
+                                fact_dict[concat_field(var, c.names["."])] = [c]                        
+
         return set_default(origin_dict, fact_dict)
 
