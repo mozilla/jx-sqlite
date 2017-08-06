@@ -43,8 +43,9 @@ def to_sql(self, schema, not_null=False, boolean=False):
                 value = quote_column(col.es_column).sql
             else:
                 value = "(" + quote_column(col.es_column).sql + ") IS NOT NULL"
-            acc.append({"name": cname, "nested_path": nested_path, "sql": {"b": value}})
-
+            tempa = acc.setdefault(nested_path, {})
+            tempb = tempa.setdefault(schema.get_column_name(col), {})
+            tempb['b'] = value
     else:
         for col in cols:
             cname, col = col.items()[0]
@@ -53,11 +54,15 @@ def to_sql(self, schema, not_null=False, boolean=False):
                 for cn, cs in schema.items():
                     if cn.startswith(prefix):
                         for child_col in cs:
-                            acc.append({"name": cname, "nested_path": child_col.nested_path[0], "sql": {json_type_to_sql_type[col.type]: quote_column(col.es_column).sql}})
+                            tempa = acc.setdefault(child_col.nested_path[0], {})
+                            tempb = tempa.setdefault(schema.get_column_name(child_col), {})
+                            tempb[json_type_to_sql_type[col.type]] = quote_column(child_col.es_column).sql
 
             else:
-                nested_path = col.names[schema.nested_path[0]]
-            acc.append({"name": cname, "nested_path": nested_path, "sql": {json_type_to_sql_type[col.type]: quote_column(col.es_column).sql}})
+                nested_path = col.nested_path[0]
+                tempa = acc.setdefault(nested_path, {})
+                tempb = tempa.setdefault(schema.get_column_name(col), {})
+                tempb[json_type_to_sql_type[col.type]] = quote_column(col.es_column).sql
 
     return wrap(acc)
 
