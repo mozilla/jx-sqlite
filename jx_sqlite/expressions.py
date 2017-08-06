@@ -44,7 +44,7 @@ def to_sql(self, schema, not_null=False, boolean=False):
             else:
                 value = "(" + quote_column(col.es_column).sql + ") IS NOT NULL"
             tempa = acc.setdefault(nested_path, {})
-            tempb = tempa.setdefault(schema.get_column_name(col), {})
+            tempb = tempa.setdefault(cname, {})
             tempb['b'] = value
     else:
         for col in cols:
@@ -55,7 +55,7 @@ def to_sql(self, schema, not_null=False, boolean=False):
                     if cn.startswith(prefix):
                         for child_col in cs:
                             tempa = acc.setdefault(child_col.nested_path[0], {})
-                            tempb = tempa.setdefault(schema.get_column_name(child_col), {})
+                            tempb = tempa.setdefault(cname, {})
                             tempb[json_type_to_sql_type[col.type]] = quote_column(child_col.es_column).sql
 
             else:
