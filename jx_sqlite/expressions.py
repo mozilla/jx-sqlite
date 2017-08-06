@@ -12,7 +12,7 @@ from __future__ import division
 from __future__ import unicode_literals
 
 from mo_dots import coalesce, wrap, Null, split_field, startswith_field
-from mo_dots import join_field, ROOT_PATH, relative_field
+from mo_dots import join_field, ROOT_PATH, relative_field, Data
 from mo_json import json2value
 from mo_logs import Log
 from mo_math import Math
@@ -28,13 +28,14 @@ from pyLibrary.sql.sqlite import quote_column, quote_value
 
 @extend(Variable)
 def to_sql(self, schema, not_null=False, boolean=False):
-    cols = [c for cname, cs in schema.map_to_sql(self.var).items() for c in cs]
+    cols = [Data({cname: c}) for cname, cs in schema.map_to_sql(self.var).items() for c in cs]
     if not cols:
         # DOES NOT EXIST
         return wrap([{"name": ".", "sql": {"0": "NULL"}, "nested_path": ROOT_PATH}])
-    acc = {}
+    acc = []
     if boolean:
         for col in cols:
+            cname, col = col.items()[0]            
             nested_path = col.nested_path[0]
             if col.type == OBJECT:
                 value = "1"
@@ -42,34 +43,23 @@ def to_sql(self, schema, not_null=False, boolean=False):
                 value = quote_column(col.es_column).sql
             else:
                 value = "(" + quote_column(col.es_column).sql + ") IS NOT NULL"
-            tempa = acc.setdefault(nested_path, {})
-            tempb = tempa.setdefault(schema.get_column_name(col), {})
-            tempb['b'] = value
+            acc.append({"name": cname, "nested_path": nested_path, "sql": {"b": value}})
+
     else:
         for col in cols:
+            cname, col = col.items()[0]
             if col.type == OBJECT:
                 prefix = self.var + "."
                 for cn, cs in schema.items():
                     if cn.startswith(prefix):
                         for child_col in cs:
-                            tempa = acc.setdefault(child_col.nested_path[0], {})
-                            tempb = tempa.setdefault(schema.get_column_name(child_col), {})
-                            tempb[json_type_to_sql_type[col.type]] = quote_column(child_col.es_column).sql
-            else:
-                nested_path = col.nested_path[0]
-                tempa = acc.setdefault(nested_path, {})
-                tempb = tempa.setdefault(schema.get_column_name(col), {})
-                tempb[json_type_to_sql_type[col.type]] = quote_column(col.es_column).sql
+                            acc.append({"name": cname, "nested_path": child_col.nested_path[0], "sql": {json_type_to_sql_type[col.type]: quote_column(col.es_column).sql}})
 
-    cols = []
-    for nested_path, pairs in acc.items():
-        for cname, types in pairs.items():
-            if not startswith_field(cname, self.var):
-                cols.append({"name": cname, "sql": types, "nested_path": nested_path})
             else:
-                cols.append({"name": relative_field(cname, self.var), "sql": types, "nested_path": nested_path})
+                nested_path = col.names[schema.nested_path[0]]
+            acc.append({"name": cname, "nested_path": nested_path, "sql": {json_type_to_sql_type[col.type]: quote_column(col.es_column).sql}})
 
-    return wrap(cols)
+    return wrap(acc)
 
 @extend(Literal)
 def to_sql(self, schema, not_null=False, boolean=False):
