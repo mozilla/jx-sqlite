@@ -367,12 +367,13 @@ class AggsTable(SetOpTable):
                     else:
                         concat_sql = concat_sql[0] + " AS " + _make_column_name(column_number)
                     
-                    nested_table = [t for t in tables if details.nested_path!=t["nest"]]
+                    included_tables = [t["nest"] for t in tables]
+                    nested_table = [t for t in tables if details.nested_path==t["nest"]]
                     for t in nested_table:
-                            from_sql += (
-                                "\nLEFT JOIN\n" + quote_table(concat_field(base_table, t.nest)) + " " + t.alias +
-                                " ON " + t.alias + "." + PARENT + " = " + previous.alias + "." + UID
-                            )
+                        from_sql += (
+                            "\nLEFT JOIN\n" + quote_table(concat_field(base_table, t.nest)) + " " + t.alias +
+                            " ON " + t.alias + "." + PARENT + " = " + previous.alias + "." + UID
+                        )
 
                     outer_selects.append(concat_sql)
                     index_to_column[column_number] = ColumnMapping(
