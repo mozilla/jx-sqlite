@@ -11,7 +11,7 @@ We want the Python code responsible for performing the final structure construct
 Therefore we generate SQL code that performs all this for us in a single query
 
 1. Pull all required records from all tables
-2. Sort the records so they make constructing structures easy
+2. Sort the records so they make building data structures easy
 
 **Example**
 

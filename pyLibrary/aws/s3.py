@@ -19,6 +19,7 @@ from tempfile import TemporaryFile
 import boto
 from BeautifulSoup import BeautifulSoup
 from boto.s3.connection import Location
+from future.utils import text_type
 
 from mo_dots import wrap, Null, coalesce, unwrap, Data
 from mo_kwargs import override
@@ -405,11 +406,11 @@ class SkeletonBucket(Bucket):
 
 
 content_keys={
-    "key": unicode,
+    "key": text_type,
     "lastmodified": Date,
-    "etag": unicode,
+    "etag": text_type,
     "size": int,
-    "storageclass": unicode
+    "storageclass": text_type
 }
 
 
