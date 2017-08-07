@@ -436,7 +436,7 @@ class TestEdge1(BaseTestCase):
                 "data": [
                     {"a": "x", "c": [2, 3]},
                     {"a": "y", "c": [4, 5, 6]},
-                    {"a": NULL, "c": [7, 8]}
+                    {"a": NULL, "c": [8, 7]}
                 ]},
             "expecting_table": {
                 "meta": {"format": "table"},
@@ -444,7 +444,7 @@ class TestEdge1(BaseTestCase):
                 "data": [
                     ["x", [2, 3]],
                     ["y", [4, 5, 6]],
-                    [NULL, [7, 8]]
+                    [NULL, [8, 7]]
                 ]
             },
             "expecting_cube": {
@@ -461,7 +461,7 @@ class TestEdge1(BaseTestCase):
                     }
                 ],
                 "data": {
-                    "c": [[2, 3], [4, 5, 6], [7, 8]]
+                    "c": [[2, 3], [4, 5, 6], [8, 7]]
                 }
             }
         }
@@ -492,7 +492,7 @@ class TestEdge1(BaseTestCase):
                 "data": [
                     {"a": "x", "c": [2, 3]},
                     {"a": "y", "c": [4, 5, 6]},
-                    {"a": NULL, "c": [7, 8]}
+                    {"a": NULL, "c": [8, 7]}
                 ]},
             "expecting_table": {
                 "meta": {"format": "table"},
@@ -500,7 +500,7 @@ class TestEdge1(BaseTestCase):
                 "data": [
                     ["x", [2, 3]],
                     ["y", [4, 5, 6]],
-                    [NULL, [7, 8]]
+                    [NULL, [8, 7]]
                 ]
             },
             "expecting_cube": {
@@ -517,7 +517,7 @@ class TestEdge1(BaseTestCase):
                     }
                 ],
                 "data": {
-                    "c": [[2, 3], [4, 5, 6], [7, 8]]
+                    "c": [[2, 3], [4, 5, 6], [8, 7]]
                 }
             }
         }
