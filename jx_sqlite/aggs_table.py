@@ -336,11 +336,7 @@ class AggsTable(SetOpTable):
             elif s.aggregate == "count" and (not query.edges and not query.groupby):
                 value=s.value.var
                 columns=[c.es_column for c in self.sf.columns if untyped_column(c.es_column)[0]==value]
-                if s.default != None:
-                    sql = " + ".join("COALESCE(COUNT(" + quote_table(col) + "), " + quote_value(s.default) + ")"for col in columns)
-                else:
-                    sql = " + ".join("COUNT(" + quote_table(col) + ")" for col in columns)
-
+                sql = " + ".join("COUNT(" + quote_table(col) + ")" for col in columns)
                 column_number = len(outer_selects)
                 outer_selects.append(sql + " AS " + _make_column_name(column_number))
                 index_to_column[column_number] = ColumnMapping(
