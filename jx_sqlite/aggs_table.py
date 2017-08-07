@@ -368,10 +368,12 @@ class AggsTable(SetOpTable):
                         concat_sql = concat_sql[0] + " AS " + _make_column_name(column_number)
                     
                     query_tables = [t["nest"] for t in tables]
-                    if details.nested_path not in included_tables:
+                    if details.nested_path not in query_tables:
+                        p = details.nested_path
+                        alias = nest_to_alias[p]
                         from_sql += (
-                            "\nLEFT JOIN\n" + quote_table(concat_field(base_table, t.nest)) + " " + t.alias +
-                            " ON " + t.alias + "." + PARENT + " = " + previous.alias + "." + UID
+                            "\nLEFT JOIN\n" + quote_table(concat_field(base_table, p)) + " " + alias +
+                            " ON " + alias + "." + PARENT + " = " + previous.alias + "." + UID
                         )
 
                     outer_selects.append(concat_sql)
