@@ -11,6 +11,7 @@
 from __future__ import division
 from __future__ import unicode_literals
 
+from future.utils import text_type
 from mo_dots import wrap, set_default
 
 from tests.test_jx import BaseTestCase, TEST_TABLE, NULL
@@ -363,7 +364,7 @@ class TestgroupBy1(BaseTestCase):
 
     def test_groupby_left_id(self):
         test = {
-            "data": [set_default(d, {"_id": "aa"+text_type(i)}) for i, d in enumerate(simple_test_data)],
+            "data": [set_default(d, {"_id": "aa" + text_type(i)}) for i, d in enumerate(simple_test_data)],
             "query": {
                 "from": TEST_TABLE,
                 "groupby": {"name": "prefix", "value": {"left": {"_id": 2}}}
