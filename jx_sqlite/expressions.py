@@ -12,12 +12,13 @@ from __future__ import division
 from __future__ import unicode_literals
 
 from mo_dots import coalesce, wrap, Null, split_field, startswith_field
-from mo_dots import join_field, ROOT_PATH, relative_field
+from mo_dots import join_field, ROOT_PATH, relative_field, Data
 from mo_json import json2value
 from mo_logs import Log
 from mo_math import Math
 from pyLibrary import convert
 
+from jx_base.queries import get_property_name
 from jx_base.expressions import Variable, DateOp, TupleOp, LeavesOp, BinaryOp, OrOp, InequalityOp, extend, Literal, NullOp, TrueOp, FalseOp, DivOp, FloorOp, \
     NeOp, NotOp, LengthOp, NumberOp, StringOp, CountOp, MultiOp, RegExpOp, CoalesceOp, MissingOp, ExistsOp, \
     PrefixOp, UnixOp, FromUnixOp, NotLeftOp, RightOp, NotRightOp, FindOp, BetweenOp, InOp, RangeOp, CaseOp, AndOp, \
@@ -28,13 +29,14 @@ from pyLibrary.sql.sqlite import quote_column, quote_value
 
 @extend(Variable)
 def to_sql(self, schema, not_null=False, boolean=False):
-    cols = [c for cname, cs in schema.map_to_sql().items() if startswith_field(cname, self.var) for c in cs]
+    cols = [Data({cname: c}) for cname, cs in schema.map_to_sql(self.var).items() for c in cs]
     if not cols:
         # DOES NOT EXIST
         return wrap([{"name": ".", "sql": {"0": "NULL"}, "nested_path": ROOT_PATH}])
     acc = {}
     if boolean:
         for col in cols:
+            cname, col = col.items()[0]            
             nested_path = col.nested_path[0]
             if col.type == OBJECT:
                 value = "1"
@@ -43,29 +45,29 @@ def to_sql(self, schema, not_null=False, boolean=False):
             else:
                 value = "(" + quote_column(col.es_column).sql + ") IS NOT NULL"
             tempa = acc.setdefault(nested_path, {})
-            tempb = tempa.setdefault(schema.get_column_name(col), {})
+            tempb = tempa.setdefault(get_property_name(cname), {})
             tempb['b'] = value
     else:
         for col in cols:
+            cname, col = col.items()[0]
             if col.type == OBJECT:
                 prefix = self.var + "."
                 for cn, cs in schema.items():
                     if cn.startswith(prefix):
                         for child_col in cs:
                             tempa = acc.setdefault(child_col.nested_path[0], {})
-                            tempb = tempa.setdefault(schema.get_column_name(child_col), {})
+                            tempb = tempa.setdefault(get_property_name(cname), {})
                             tempb[json_type_to_sql_type[col.type]] = quote_column(child_col.es_column).sql
             else:
                 nested_path = col.nested_path[0]
                 tempa = acc.setdefault(nested_path, {})
-                tempb = tempa.setdefault(schema.get_column_name(col), {})
+                tempb = tempa.setdefault(get_property_name(cname), {})
                 tempb[json_type_to_sql_type[col.type]] = quote_column(col.es_column).sql
 
     return wrap([
         {"name": relative_field(cname, self.var), "sql": types, "nested_path": nested_path}
         for nested_path, pairs in acc.items() for cname, types in pairs.items()
     ])
-
 
 @extend(Literal)
 def to_sql(self, schema, not_null=False, boolean=False):
@@ -119,10 +121,8 @@ def to_sql(self, schema, not_null=False, boolean=False):
             "name": join_field(split_field(schema.get_column_name(c))[prefix_length:]),
             "sql": Variable(schema.get_column_name(c)).to_sql(schema)[0].sql
         }
-        for n, cols in schema.items()
-        if startswith_field(n, term)
+        for n, cols in schema.map_to_sql(term).items()
         for c in cols
-        if c.type not in STRUCT
     ])
 
 

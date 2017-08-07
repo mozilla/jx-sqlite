@@ -280,7 +280,7 @@ class Schema(object):
     def columns(self):
         return [c for cs in self.map.values() for c in cs]
 
-    def map_to_sql(self):
+    def map_to_sql(self, var=""):
         """
         RETURN A MAP FROM THE RELATIVE AND ABSOLUTE NAME SPACE TO COLUMNS 
         """
@@ -290,15 +290,28 @@ class Schema(object):
         for k, cs in self.map.items():
             for c in cs :
                 if c.type not in STRUCT:
-                    if c.names[origin] in origin_dict:
-                        origin_dict[c.names[origin]].append(c)
-                    else:
-                        origin_dict[c.names[origin]] = [c]
-
-                    if origin!=c.nested_path[0]:
-                        if c.names["."] in fact_dict:
-                            fact_dict[c.names["."]].append(c)
+                    if (startswith_field(get_property_name(k), var)):
+                        if c.names[origin] in origin_dict:
+                            origin_dict[c.names[origin]].append(c)
                         else:
-                            fact_dict[c.names["."]] = [c]
+                            origin_dict[c.names[origin]] = [c]
+    
+                        if origin!=c.nested_path[0]:
+                            if c.names["."] in fact_dict:
+                                fact_dict[c.names["."]].append(c)
+                            else:
+                                fact_dict[c.names["."]] = [c]
+                    elif origin==var:
+                        if concat_field(var, c.names[origin]) in origin_dict:
+                            origin_dict[concat_field(var, c.names[origin])].append(c)
+                        else:
+                            origin_dict[concat_field(var, c.names[origin])] = [c]
+
+                        if origin!=c.nested_path[0]:
+                            if c.names["."] in fact_dict:
+                                fact_dict[concat_field(var, c.names["."])].append(c)
+                            else:
+                                fact_dict[concat_field(var, c.names["."])] = [c]                        
+
         return set_default(origin_dict, fact_dict)
 
