@@ -367,7 +367,7 @@ class AggsTable(SetOpTable):
                     else:
                         concat_sql = concat_sql[0] + " AS " + _make_column_name(column_number)
 
-                    query_tables = [t["nest"] for t in tables]
+                    query_tables = tables.nest
                     if details.nested_path not in query_tables:
                         p = details.nested_path
                         alias = nest_to_alias[p]
