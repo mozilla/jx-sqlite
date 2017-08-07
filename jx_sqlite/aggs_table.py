@@ -336,22 +336,23 @@ class AggsTable(SetOpTable):
             elif s.aggregate == "count" and (not query.edges and not query.groupby):
                 value=s.value.var
                 columns=[c.es_column for c in self.sf.columns if untyped_column(c.es_column)[0]==value]
-                for sql in columns:
-                    column_number = len(outer_selects)
-                    sql = "COUNT(" + quote_table(sql) + ")"
-                    if s.default != None:
-                        sql = "COALESCE(" + sql + ", " + quote_value(s.default) + ")"
-                    outer_selects.append(sql + " AS " + _make_column_name(column_number))
-                    index_to_column[column_number] = ColumnMapping(
-                        push_name=s.name,
-                        push_column_name=s.name,
-                        push_column=si,
-                        push_child=".",
-                        pull=get_column(column_number),
-                        sql=sql,
-                        column_alias=_make_column_name(column_number),
-                        type=sql_type_to_json_type["n"]
-                    )
+                if s.default != None:
+                    sql = " + ".join("COALESCE(COUNT(" + quote_table(col) + "), " + quote_value(s.default) + ")"for col in columns)
+                else:
+                    sql = " + ".join("COUNT(" + quote_table(col) + ")" for col in columns)
+
+                column_number = len(outer_selects)
+                outer_selects.append(sql + " AS " + _make_column_name(column_number))
+                index_to_column[column_number] = ColumnMapping(
+                    push_name=s.name,
+                    push_column_name=s.name,
+                    push_column=si,
+                    push_child=".",
+                    pull=get_column(column_number),
+                    sql=sql,
+                    column_alias=_make_column_name(column_number),
+                    type=sql_type_to_json_type["n"]
+                )
             elif s.aggregate == "percentile":
                 if not isinstance(s.percentile, (int, float)):
                     Log.error("Expecting percentile to be a float between 0 and 1")
