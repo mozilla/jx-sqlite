@@ -434,17 +434,17 @@ class TestEdge1(BaseTestCase):
             "expecting_list": {
                 "meta": {"format": "list"},
                 "data": [
-                    {"a": "x", "c": [2, 3]},
-                    {"a": "y", "c": [4, 5, 6]},
-                    {"a": NULL, "c": [8, 7]}
+                    {"a": "x", "c": {2, 3}},
+                    {"a": "y", "c": {4, 5, 6}},
+                    {"a": NULL, "c": {7, 8}}
                 ]},
             "expecting_table": {
                 "meta": {"format": "table"},
                 "header": ["a", "c"],
                 "data": [
-                    ["x", [2, 3]],
-                    ["y", [4, 5, 6]],
-                    [NULL, [8, 7]]
+                    ["x", {2, 3}],
+                    ["y", {4, 5, 6}],
+                    [NULL, {7, 8}]
                 ]
             },
             "expecting_cube": {
@@ -461,7 +461,7 @@ class TestEdge1(BaseTestCase):
                     }
                 ],
                 "data": {
-                    "c": [[2, 3], [4, 5, 6], [8, 7]]
+                    "c": [{2, 3}, {4, 5, 6}, {7, 8}]
                 }
             }
         }
@@ -490,17 +490,17 @@ class TestEdge1(BaseTestCase):
             "expecting_list": {
                 "meta": {"format": "list"},
                 "data": [
-                    {"a": "x", "c": [2, 3]},
-                    {"a": "y", "c": [4, 5, 6]},
-                    {"a": NULL, "c": [8, 7]}
+                    {"a": "x", "c": {2, 3}},
+                    {"a": "y", "c": {4, 5, 6}},
+                    {"a": NULL, "c": {7, 8}}
                 ]},
             "expecting_table": {
                 "meta": {"format": "table"},
                 "header": ["a", "c"],
                 "data": [
-                    ["x", [2, 3]],
-                    ["y", [4, 5, 6]],
-                    [NULL, [8, 7]]
+                    ["x", {2, 3}],
+                    ["y", {4, 5, 6}],
+                    [NULL, {7, 8}]
                 ]
             },
             "expecting_cube": {
@@ -517,7 +517,7 @@ class TestEdge1(BaseTestCase):
                     }
                 ],
                 "data": {
-                    "c": [[2, 3], [4, 5, 6], [8, 7]]
+                    "c": [{2, 3}, {4, 5, 6}, {7, 8}]
                 }
             }
         }
