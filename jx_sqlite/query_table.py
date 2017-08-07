@@ -135,10 +135,11 @@ class QueryTable(AggsTable):
             column_names= [None]*(max(c.push_column for c in index_to_columns.values()) + 1)
             for c in index_to_columns.values():
                 column_names[c.push_column] = c.push_column_name
+
             if len(query.edges) == 0 and len(query.groupby) == 0:
                 data = {n: Data() for n in column_names}
                 for s in index_to_columns.values():
-                    data[s.push_name] = unwrap(s.pull(result.data[0]))
+                    data[s.push_name][s.push_child] = unwrap(s.pull(result.data[0]))
 
                 if isinstance(query.select, list):
                     select = [{"name": s.name} for s in query.select]
@@ -316,9 +317,7 @@ class QueryTable(AggsTable):
                 else:
                     data = Data()
                     for s in index_to_columns.values():
-                        if s.push_child == ".":
-                            data = unwrap(s.pull(result.data[0]))
-                        elif data[s.push_child] == None:
+                        if data[s.push_child] == None:
                             data[s.push_child] = s.pull(result.data[0])
                         else:
                             data[s.push_child] += [s.pull(result.data[0])]
