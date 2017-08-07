@@ -27,6 +27,8 @@ from decimal import Decimal
 from io import BytesIO
 from tempfile import TemporaryFile
 
+from future.utils import text_type
+
 import mo_json
 import mo_math
 from mo_json import quote
@@ -206,7 +208,7 @@ def value2string(value):
     # PROPER NULL HANDLING
     if value == None:
         return None
-    return unicode(value)
+    return text_type(value)
 
 
 def value2quote(value):
@@ -227,7 +229,7 @@ string2regexp = re.escape
 
 
 def string2url(value):
-    if isinstance(value, unicode):
+    if isinstance(value, text_type):
         return "".join([_map2url[c] for c in unicode2latin1(value)])
     elif isinstance(value, str):
         return "".join([_map2url[c] for c in value])
@@ -239,7 +241,7 @@ def string2url(value):
 #     """
 #     CONVERT URL QUERY PARAMETERS INTO DICT
 #     """
-#     if isinstance(param, unicode):
+#     if isinstance(param, text_type):
 #         param = param.encode("ascii")
 #
 #     def _decode(v):
@@ -365,7 +367,7 @@ def bytes2base64(value):
 
 
 def bytes2sha1(value):
-    if isinstance(value, unicode):
+    if isinstance(value, text_type):
         Log.error("can not convert unicode to sha1")
     sha = hashlib.sha1(value)
     return sha.hexdigest()
@@ -412,10 +414,10 @@ def unicode2utf8(value):
 
 
 def latin12unicode(value):
-    if isinstance(value, unicode):
+    if isinstance(value, text_type):
         Log.error("can not convert unicode from latin1")
     try:
-        return unicode(value.decode('iso-8859-1'))
+        return text_type(value.decode('iso-8859-1'))
     except Exception as e:
         Log.error("Can not convert {{value|quote}} to unicode", value=value)
 
@@ -583,7 +585,7 @@ def table2csv(table_data):
 
     col_widths = [max(len(text) for text in cols) for cols in zip(*text_data)]
     template = ", ".join(
-        "{{" + unicode(i) + "|left_align(" + unicode(w) + ")}}"
+        "{{" + text_type(i) + "|left_align(" + text_type(w) + ")}}"
         for i, w in enumerate(col_widths)
     )
     text = "\n".join(expand_template(template, d) for d in text_data)

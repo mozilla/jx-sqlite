@@ -15,6 +15,8 @@ import re
 from collections import Mapping
 from copy import deepcopy
 
+from future.utils import text_type
+
 import mo_json
 from mo_logs import Log, strings
 from mo_logs.exceptions import Except
@@ -380,7 +382,7 @@ class Index(Features):
         if seconds <= 0:
             interval = -1
         else:
-            interval = unicode(seconds) + "s"
+            interval = text_type(seconds) + "s"
 
         if self.cluster.version.startswith("0.90."):
             response = self.cluster.put(
@@ -510,7 +512,7 @@ class Cluster(object):
         self.metadata_locker = Lock()
         self.debug = kwargs.debug
         self.version = None
-        self.path = kwargs.host + ":" + unicode(kwargs.port)
+        self.path = kwargs.host + ":" + text_type(kwargs.port)
         self.get_metadata()
 
     @override
@@ -671,7 +673,7 @@ class Cluster(object):
         return es
 
     def delete_index(self, index_name):
-        if not isinstance(index_name, unicode):
+        if not isinstance(index_name, text_type):
             Log.error("expecting an index name")
 
         if self.debug:
@@ -685,7 +687,7 @@ class Cluster(object):
                 data={"actions": [{"remove": a} for a in aliases]}
             )
 
-        url = self.settings.host + ":" + unicode(self.settings.port) + "/" + index_name
+        url = self.settings.host + ":" + text_type(self.settings.port) + "/" + index_name
         try:
             response = http.delete(url)
             if response.status_code != 200:
@@ -734,7 +736,7 @@ class Cluster(object):
         return self._metadata
 
     def post(self, path, **kwargs):
-        url = self.settings.host + ":" + unicode(self.settings.port) + path
+        url = self.settings.host + ":" + text_type(self.settings.port) + path
 
         try:
             wrap(kwargs).headers["Accept-Encoding"] = "gzip,deflate"
@@ -783,7 +785,7 @@ class Cluster(object):
                 Log.error("Problem with call to {{url}}" + suggestion, url=url, cause=e)
 
     def delete(self, path, **kwargs):
-        url = self.settings.host + ":" + unicode(self.settings.port) + path
+        url = self.settings.host + ":" + text_type(self.settings.port) + path
         try:
             response = http.delete(url, **kwargs)
             if response.status_code not in [200]:
@@ -798,7 +800,7 @@ class Cluster(object):
             Log.error("Problem with call to {{url}}", url=url, cause=e)
 
     def get(self, path, **kwargs):
-        url = self.settings.host + ":" + unicode(self.settings.port) + path
+        url = self.settings.host + ":" + text_type(self.settings.port) + path
         try:
             if self.debug:
                 Log.note("GET {{url}}", url=url)
@@ -815,7 +817,7 @@ class Cluster(object):
             Log.error("Problem with call to {{url}}", url=url, cause=e)
 
     def head(self, path, **kwargs):
-        url = self.settings.host + ":" + unicode(self.settings.port) + path
+        url = self.settings.host + ":" + text_type(self.settings.port) + path
         try:
             response = http.head(url, **kwargs)
             if response.status_code not in [200]:
@@ -833,7 +835,7 @@ class Cluster(object):
             Log.error("Problem with call to {{url}}",  url= url, cause=e)
 
     def put(self, path, **kwargs):
-        url = self.settings.host + ":" + unicode(self.settings.port) + path
+        url = self.settings.host + ":" + text_type(self.settings.port) + path
 
         if self.debug:
             sample = kwargs["data"][:300]
