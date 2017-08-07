@@ -367,9 +367,8 @@ class AggsTable(SetOpTable):
                     else:
                         concat_sql = concat_sql[0] + " AS " + _make_column_name(column_number)
                     
-                    nested_table = False
-                    for t in tables:
-                        if details.nested_path != t[nest]:
+                    nested_table = [t for t in tables if details.nested_path!=t["nest"]]
+                    for t in nested_table:
                             from_sql += (
                                 "\nLEFT JOIN\n" + quote_table(concat_field(base_table, t.nest)) + " " + t.alias +
                                 " ON " + t.alias + "." + PARENT + " = " + previous.alias + "." + UID
