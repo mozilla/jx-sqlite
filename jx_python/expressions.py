@@ -11,6 +11,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
+from future.utils import text_type
 from mo_dots import split_field
 from mo_dots import unwrap
 from mo_json import json2value, quote
@@ -59,7 +60,7 @@ def to_python(self, not_null=False, boolean=False, many=False):
 
 @extend(OffsetOp)
 def to_python(self, not_null=False, boolean=False, many=False):
-    return "row[" + unicode(self.var) + "] if 0<=" + unicode(self.var) + "<len(row) else None"
+    return "row[" + text_type(self.var) + "] if 0<=" + text_type(self.var) + "<len(row) else None"
 
 
 @extend(RowsOp)
@@ -108,7 +109,7 @@ def to_python(self, not_null=False, boolean=False, many=False):
 
 @extend(DateOp)
 def to_python(self, not_null=False, boolean=False, many=False):
-    return unicode(Date(self.value).unix)
+    return text_type(Date(self.value).unix)
 
 
 @extend(TupleOp)
@@ -199,7 +200,7 @@ def to_python(self, not_null=False, boolean=False, many=False):
 def to_python(self, not_null=False, boolean=False, many=False):
     missing = self.term.missing().to_python(boolean=True)
     value = self.term.to_python(not_null=True)
-    return "null if (" + missing + ") else unicode(" + value + ")"
+    return "null if (" + missing + ") else text_type(" + value + ")"
 
 
 @extend(CountOp)

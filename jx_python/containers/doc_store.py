@@ -239,7 +239,7 @@ filters={
 }
 
 _type_map = {
-    unicode: "text",
+    text_type: "text",
     int: "long",
     float: "real",
     datetime: "real",
