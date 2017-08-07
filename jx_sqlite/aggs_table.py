@@ -366,7 +366,7 @@ class AggsTable(SetOpTable):
                         concat_sql = "CONCAT(" + ",".join(concat_sql) + ") AS " + _make_column_name(column_number)
                     else:
                         concat_sql = concat_sql[0] + " AS " + _make_column_name(column_number)
-                    
+
                     query_tables = [t["nest"] for t in tables]
                     if details.nested_path not in query_tables:
                         p = details.nested_path
