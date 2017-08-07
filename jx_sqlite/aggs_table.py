@@ -360,12 +360,20 @@ class AggsTable(SetOpTable):
                     column_number = len(outer_selects)
 
                     for json_type, sql in details.sql.items():
-                        concat_sql.append("GROUP_CONCAT(QUOTE(DISTINCT(" + sql + ")))")
+                        concat_sql.append("GROUP_CONCAT(DISTINCT(QUOTE(" + sql + ")))")
 
                     if len(concat_sql) > 1:
                         concat_sql = "CONCAT(" + ",".join(concat_sql) + ") AS " + _make_column_name(column_number)
                     else:
                         concat_sql = concat_sql[0] + " AS " + _make_column_name(column_number)
+                    
+                    nested_table = False
+                    for t in tables:
+                        if details.nested_path != t[nest]:
+                            from_sql += (
+                                "\nLEFT JOIN\n" + quote_table(concat_field(base_table, t.nest)) + " " + t.alias +
+                                " ON " + t.alias + "." + PARENT + " = " + previous.alias + "." + UID
+                            )
 
                     outer_selects.append(concat_sql)
                     index_to_column[column_number] = ColumnMapping(
