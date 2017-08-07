@@ -139,12 +139,8 @@ class QueryTable(AggsTable):
             if len(query.edges) == 0 and len(query.groupby) == 0:
                 data = {n: Data() for n in column_names}
                 for s in index_to_columns.values():
-                    if not data[s.push_name]:
-                        data[s.push_name] = unwrap(s.pull(result.data[0]))
-                    else:
-                        unwrap(data[s.push_name])
-                        data[s.push_name] += unwrap(s.pull(result.data[0]))
-                        wrap(data[s.push_name])
+                    data[s.push_name] = unwrap(s.pull(result.data[0]))
+
                 if isinstance(query.select, list):
                     select = [{"name": s.name} for s in query.select]
                 else:
@@ -281,10 +277,7 @@ class QueryTable(AggsTable):
                 row = [None for _ in column_names]
                 for s in index_to_columns.values():
                     if s.push_child == ".":
-                        if not row[s.push_column]:                        
-                            row[s.push_column] = s.pull(d)
-                        else:
-                            row[s.push_column] += s.pull(d)
+                        row[s.push_column] = s.pull(d)
                     elif s.num_push_columns:
                         tuple_value = row[s.push_column]
                         if tuple_value == None:
@@ -325,10 +318,7 @@ class QueryTable(AggsTable):
                     data = {}
                     for s in index_to_columns.values():
                         if s.push_child == ".":
-                            if isinstance(data, dict):
-                                data = unwrap(s.pull(result.data[0]))
-                            else:
-                                data += unwrap(s.pull(result.data[0]))
+                            data = unwrap(s.pull(result.data[0]))
                         elif data[s.push_child] == None:
                             data[s.push_child] = s.pull(result.data[0])
                         else:
