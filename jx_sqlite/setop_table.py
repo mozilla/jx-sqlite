@@ -49,6 +49,19 @@ class SetOpTable(InsertTable):
                     if not active:
                         active = active_columns[nest] = []
                     active.append(c)
+
+        for nested_path, s in self.sf.tables.items():
+            for cname, cols in s.schema.items():
+                if not any(startswith_field(cname, c.names[c.nested_path[0]]) for n, cc in active_columns.items() for c in cc):
+                    for c in cols:
+                        if c.type in STRUCT:
+                            continue
+                        nest = c.nested_path[0]
+                        active = active_columns.get(nest)
+                        if not active:
+                            active = active_columns[nest] = []
+                        active.append(c)
+
         # ANY VARS MENTIONED WITH NO COLUMNS?
         for v in vars_:
             if not any(startswith_field(cname, v) for cname in schema.keys()):

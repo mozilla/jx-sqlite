@@ -13,6 +13,7 @@ from __future__ import unicode_literals
 from copy import copy
 from datetime import datetime
 
+from future.utils import text_type
 from mo_dots import wrap, Data, FlatList, literal_field
 from mo_logs import Log
 from pyLibrary import convert
@@ -239,7 +240,7 @@ filters={
 }
 
 _type_map = {
-    unicode: "text",
+    text_type: "text",
     int: "long",
     float: "real",
     datetime: "real",

@@ -17,6 +17,8 @@ import subprocess
 from collections import Mapping
 from datetime import datetime
 
+from future.utils import text_type
+
 import mo_json
 from mo_dots import coalesce, wrap, listwrap, unwrap
 from mo_files import File
@@ -389,7 +391,7 @@ class MySQL(object):
                 stderr=subprocess.STDOUT,
                 bufsize=-1
             )
-            if isinstance(sql, unicode):
+            if isinstance(sql, text_type):
                 sql = sql.encode("utf8")
             (output, _) = proc.communicate(sql)
         except Exception as e:
@@ -397,7 +399,7 @@ class MySQL(object):
 
         if proc.returncode:
             if len(sql) > 10000:
-                sql = "<" + unicode(len(sql)) + " bytes of sql>"
+                sql = "<" + text_type(len(sql)) + " bytes of sql>"
             Log.error("Unable to execute sql: return code {{return_code}}, {{output}}:\n {{sql}}\n",
                 sql=indent(sql),
                 return_code=proc.returncode,
@@ -557,7 +559,7 @@ class MySQL(object):
             elif isinstance(value, Mapping):
                 return SQL(self.db.literal(json_encode(value)))
             elif Math.is_number(value):
-                return SQL(unicode(value))
+                return SQL(text_type(value))
             elif isinstance(value, datetime):
                 return SQL("str_to_date('" + value.strftime("%Y%m%d%H%M%S.%f") + "', '%Y%m%d%H%i%s.%f')")
             elif isinstance(value, Date):
@@ -587,7 +589,7 @@ class MySQL(object):
             elif hasattr(value, '__iter__'):
                 return "(" + ",".join([self.quote_sql(vv) for vv in value]) + ")"
             else:
-                return unicode(value)
+                return text_type(value)
         except Exception as e:
             Log.error("problem quoting SQL", e)
 
@@ -737,7 +739,7 @@ def json_encode(value):
     FOR PUTTING JSON INTO DATABASE (sort_keys=True)
     dicts CAN BE USED AS KEYS
     """
-    return unicode(json_encoder.encode(mo_json.scrub(value)))
+    return text_type(json_encoder.encode(mo_json.scrub(value)))
 
 
 mysql_type_to_json_type = {

@@ -14,6 +14,7 @@ from __future__ import unicode_literals
 from datetime import date
 from datetime import datetime
 
+from future.utils import text_type
 from jx_python import jx, Schema
 from mo_collections import UniqueIndex
 from mo_dots import Data, concat_field, get_attr, listwrap, unwraplist, NullType, FlatList
@@ -325,7 +326,7 @@ _type_to_name = {
     NullType: "undefined",
     bool: "boolean",
     str: "string",
-    unicode: "string",
+    text_type: "string",
     int: "integer",
     long: "long",
     float: "double",

@@ -25,6 +25,7 @@ from mmap import mmap
 from numbers import Number
 from tempfile import TemporaryFile
 
+from future.utils import text_type
 from requests import sessions, Response
 
 import mo_json
@@ -101,7 +102,7 @@ def request(method, url, zip=None, retry=None, **kwargs):
     if zip is None:
         zip = ZIP_REQUEST
 
-    if isinstance(url, unicode):
+    if isinstance(url, text_type):
         # httplib.py WILL **FREAK OUT** IF IT SEES ANY UNICODE
         url = url.encode("ascii")
 
@@ -159,13 +160,13 @@ def _to_ascii_dict(headers):
     if headers is None:
         return
     for k, v in copy(headers).items():
-        if isinstance(k, unicode):
+        if isinstance(k, text_type):
             del headers[k]
-            if isinstance(v, unicode):
+            if isinstance(v, text_type):
                 headers[k.encode("ascii")] = v.encode("ascii")
             else:
                 headers[k.encode("ascii")] = v
-        elif isinstance(v, unicode):
+        elif isinstance(v, text_type):
             headers[k] = v.encode("ascii")
 
 

@@ -12,16 +12,17 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
+from future.utils import text_type
 from mo_logs import Log
 from mo_logs.strings import expand_template
 
 
-class SQL(unicode):
+class SQL(text_type):
     """
     ACTUAL SQL, DO NOT QUOTE THIS STRING
     """
     def __init__(self, template='', param=None):
-        unicode.__init__(self)
+        text_type.__init__(self)
         self.template = template
         self.param = param
 
