@@ -282,7 +282,7 @@ canonical_aggregates = wrap({
 
 
 def _normalize_selects(selects, frum, schema=None, ):
-    if frum == None or isinstance(frum, (list, set, unicode)):
+    if frum == None or isinstance(frum, (list, set, text_type)):
         if isinstance(selects, list):
             if len(selects) == 0:
                 output = Data()
@@ -415,7 +415,7 @@ def _normalize_select_no_context(select, schema=None):
                 output.value = jx_expression(select.value)
     elif isinstance(select.value, (int, float)):
         if not output.name:
-            output.name = unicode(select.value)
+            output.name = text_type(select.value)
         output.value = jx_expression(select.value)
     else:
         output.value = jx_expression(select.value)

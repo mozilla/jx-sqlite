@@ -18,6 +18,7 @@ import sqlite3
 import sys
 from collections import Mapping
 
+from future.utils import text_type
 from mo_dots import Data, coalesce
 from mo_files import File
 from mo_logs import Log
@@ -212,14 +213,14 @@ class Sqlite(DB):
         def regexp(pattern, item):
             reg = re.compile(pattern)
             return reg.search(item) is not None
-        
+
         self.db.create_function("REGEXP", 2, regexp)
 
 _no_need_to_quote = re.compile(r"^\w+$", re.UNICODE)
 
 
 def quote_column(column_name, table=None):
-    if not isinstance(column_name, unicode):
+    if not isinstance(column_name, text_type):
         Log.error("expecting a name")
     if table != None:
         return SQL(quote(table) + "." + quote(column_name))
@@ -239,9 +240,9 @@ def quote_value(value):
     if isinstance(value, (Mapping, list)):
         return "."
     elif isinstance(value, Date):
-        return unicode(value.unix)
+        return text_type(value.unix)
     elif isinstance(value, Duration):
-        return unicode(value.seconds)
+        return text_type(value.seconds)
     elif isinstance(value, basestring):
         return "'" + value.replace("'", "''") + "'"
     elif value == None:
@@ -251,4 +252,4 @@ def quote_value(value):
     elif value is False:
         return "0"
     else:
-        return unicode(value)
+        return text_type(value)

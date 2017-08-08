@@ -16,6 +16,8 @@ from collections import Mapping
 from decimal import Decimal
 
 import operator
+
+from future.utils import text_type
 from mo_dots import coalesce, wrap, set_default, literal_field, Null, split_field, startswith_field
 from mo_dots import Data, join_field, unwraplist, ROOT_PATH, relative_field, unwrap
 from mo_json import json2value, quote
@@ -55,7 +57,7 @@ def jx_expression(expr):
 
     if expr in (True, False, None) or expr == None or isinstance(expr, (float, int, Decimal, Date)):
         return Literal(None, expr)
-    elif isinstance(expr, unicode):
+    elif isinstance(expr, text_type):
         if is_variable_name(expr):
             return Variable(expr)
         elif not expr.strip():
@@ -120,7 +122,7 @@ def jx_expression_to_function(expr):
     RETURN FUNCTION THAT REQUIRES PARAMETERS (row, rownum=None, rows=None):
     """
     if isinstance(expr, Expression):
-        if isinstance(expr, ScriptOp) and not isinstance(expr.script, unicode):
+        if isinstance(expr, ScriptOp) and not isinstance(expr.script, text_type):
             return expr.script
         else:
             return compile_expression(expr.to_python())
@@ -282,7 +284,7 @@ class OffsetOp(Expression):
         return self.var == other
 
     def __unicode__(self):
-        return unicode(self.var)
+        return text_type(self.var)
 
     def __str__(self):
         return str(self.var)
