@@ -25,6 +25,19 @@ There are over 200 tests used to confirm the expected behaviour: They test a var
 still to write:
 These instructions will get you a copy of the project up and running on your local machine for development and testing purposes.
 
+
+## Installation
+
+    $ git clone https://github.com/mozilla/jx-sqlite
+    $ cd jx-sqlite
+    $ python setup.py install
+
+## Running tests
+
+    export PYTHONPATH=.
+    python -m unittest discover -v -s tests
+
+
 ## Design
 
 ### Nomenclature
