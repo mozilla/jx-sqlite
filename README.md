@@ -17,6 +17,14 @@ The most interesting, and most important feature is that we query nested object 
 
 There are over 200 tests used to confirm the expected behaviour: They test a variety of JSON forms, and the queries that can be performed on them. Most tests are further split into three different output formats ( list, table and cube).
 
+
+## Status
+## Code Example
+
+## Getting Started
+still to write:
+These instructions will get you a copy of the project up and running on your local machine for development and testing purposes.
+
 ## Design
 
 ### Nomenclature
