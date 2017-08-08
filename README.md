@@ -109,3 +109,8 @@ Child tables have a `_id` column, plus two others: `_order` so we can reconstruc
 **How to handle arrays of arrays?** I have not seen many examples in the wild yet. Usually, arrays of arrays represent a multidimensional array, where the number of elements in every array is the same. Maybe we can reject JSON that does not conform to a multidimensional interpretation. 
 
 
+## Contributors
+Contributions are always welcome!
+
+## License
+This project is licensed under Mozilla Public License, v. 2.0. If a copy of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
