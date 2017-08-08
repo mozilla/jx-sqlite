@@ -1,6 +1,9 @@
 # jx-sqlite 
 JSON query expressions using SQLite
 
+## Motivation
+JSON is a nice format to store data, and it has become quite prevalent. Unfortunately, databases do not handle it well, often a human is required to declare a schema that can hold the JSON before it can be queried. If we are not overwhelmed by the diversity of JSON now, we soon will be. There will be more JSON, of more different shapes, as the number of connected devices( and the information they generate) continues to increase.
+
 
 ## Design
 
