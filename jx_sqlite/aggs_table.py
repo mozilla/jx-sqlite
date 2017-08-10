@@ -376,8 +376,9 @@ class AggsTable(SetOpTable):
                     column_number = len(outer_selects)
 
                     for json_type, sql in details.sql.items():
-                        concat_sql.append("GROUP_CONCAT(DISTINCT(" + sql + "))")
+                        concat_sql.append("JSON_GROUP_ARRAY(DISTINCT(" + sql + "))")
 
+                    wheres.append(sql + " IS NOT NULL ")
                     if len(concat_sql) > 1:
                         concat_sql = "CONCAT(" + ",".join(concat_sql) + ") AS " + _make_column_name(column_number)
                     else:
