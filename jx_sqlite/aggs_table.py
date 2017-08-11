@@ -14,7 +14,7 @@ from __future__ import division
 from __future__ import unicode_literals
 
 from jx_python import jx
-from jx_sqlite import UID, quote_table, get_column, _make_column_name, sql_text_array_to_set, STATS, sql_aggs, PARENT, ColumnMapping
+from jx_sqlite import UID, quote_table, get_column, _make_column_name, sql_text_array_to_set, STATS, sql_aggs, PARENT, ColumnMapping, untyped_column
 from mo_dots import listwrap, coalesce, split_field, join_field, startswith_field, relative_field, concat_field
 from mo_logs import Log
 from mo_math import Math
@@ -331,6 +331,22 @@ class AggsTable(SetOpTable):
                     pull=get_column(column_number),
                     sql=sql,
                     column_alias=quote_table(s.name),
+                    type=sql_type_to_json_type["n"]
+                )
+            elif s.aggregate == "count" and (not query.edges and not query.groupby):
+                value=s.value.var
+                columns=[c.es_column for c in self.sf.columns if untyped_column(c.es_column)[0]==value]
+                sql = " + ".join("COUNT(" + quote_table(col) + ")" for col in columns)
+                column_number = len(outer_selects)
+                outer_selects.append(sql + " AS " + _make_column_name(column_number))
+                index_to_column[column_number] = ColumnMapping(
+                    push_name=s.name,
+                    push_column_name=s.name,
+                    push_column=si,
+                    push_child=".",
+                    pull=get_column(column_number),
+                    sql=sql,
+                    column_alias=_make_column_name(column_number),
                     type=sql_type_to_json_type["n"]
                 )
             elif s.aggregate == "percentile":
