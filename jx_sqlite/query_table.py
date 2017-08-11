@@ -14,6 +14,7 @@ from __future__ import division
 from __future__ import unicode_literals
 
 import mo_json
+from future.utils import text_type
 from jx_python import jx
 from jx_sqlite import quote_table, sql_aggs, unique_name, untyped_column
 from mo_collections.matrix import Matrix, index_to_coordinate
@@ -433,8 +434,8 @@ class QueryTable(AggsTable):
                    " ORDER BY " + (", ".join(window.edges.sort)) + \
                    ") AS " + quote_table(window.name)
 
-        range_min = unicode(coalesce(window.range.min, "UNBOUNDED"))
-        range_max = unicode(coalesce(window.range.max, "UNBOUNDED"))
+        range_min = text_type(coalesce(window.range.min, "UNBOUNDED"))
+        range_max = text_type(coalesce(window.range.max, "UNBOUNDED"))
 
         return sql_aggs[window.aggregate] + "(" + window.value.to_sql() + ") OVER (" + \
                " PARTITION BY " + (", ".join(window.edges.values)) + \
