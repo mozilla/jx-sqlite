@@ -9,7 +9,7 @@ from jx_sqlite import untyped_column
 from jx_base.queries import get_property_name
 from jx_python import jx
 from jx_python.meta import Column
-from jx_python.containers import STRUCT
+from jx_base import STRUCT
 from pyLibrary.sql.sqlite import quote_column
 
 
@@ -194,7 +194,7 @@ class Snowflake(object):
                 " FROM " + quote_table(tmp_table)
             )
             self.db.execute("DROP TABLE " + quote_table(tmp_table))
-            
+
     def add_table_to_schema(self, nested_path):
         table = Table(nested_path)
         self.tables[table.name] = table
@@ -295,7 +295,7 @@ class Schema(object):
                             origin_dict[c.names[origin]].append(c)
                         else:
                             origin_dict[c.names[origin]] = [c]
-    
+
                         if origin!=c.nested_path[0]:
                             if c.names["."] in fact_dict:
                                 fact_dict[c.names["."]].append(c)
@@ -311,7 +311,7 @@ class Schema(object):
                             if c.names["."] in fact_dict:
                                 fact_dict[concat_field(var, c.names["."])].append(c)
                             else:
-                                fact_dict[concat_field(var, c.names["."])] = [c]                        
+                                fact_dict[concat_field(var, c.names["."])] = [c]
 
         return set_default(origin_dict, fact_dict)
 

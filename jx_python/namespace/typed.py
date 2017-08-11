@@ -19,7 +19,7 @@ from mo_math import Math
 from jx_base.queries import is_variable_name
 from jx_base.expressions import Expression
 from jx_python.namespace import convert_list, Namespace
-from jx_python.query import QueryOp
+from jx_base.query import QueryOp
 from mo_times.dates import Date
 
 

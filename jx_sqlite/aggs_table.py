@@ -13,15 +13,15 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
+from jx_python import jx
+from jx_sqlite import UID, quote_table, get_column, _make_column_name, sql_text_array_to_set, STATS, sql_aggs, PARENT, ColumnMapping
 from mo_dots import listwrap, coalesce, split_field, join_field, startswith_field, relative_field, concat_field
 from mo_logs import Log
 from mo_math import Math
 
-from jx_sqlite import UID, quote_table, get_column, _make_column_name, sql_text_array_to_set, STATS, sql_aggs, PARENT, ColumnMapping
-from jx_sqlite.setop_table import SetOpTable
-from jx_python import jx
-from jx_python.domains import DefaultDomain, TimeDomain, DurationDomain
+from jx_base.domains import DefaultDomain, TimeDomain, DurationDomain
 from jx_sqlite.expressions import Variable, sql_type_to_json_type, TupleOp
+from jx_sqlite.setop_table import SetOpTable
 from pyLibrary.sql.sqlite import quote_value
 
 
