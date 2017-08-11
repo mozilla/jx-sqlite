@@ -7,25 +7,26 @@
 #
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import unicode_literals
-from __future__ import division
 from __future__ import absolute_import
-from collections import Mapping
-import mo_dots as dot
-from mo_math import SUM
-from jx_python.containers import Container
-from jx_python.domains import Domain, ALGEBRAIC, KNOWN
-from mo_dots import Null, coalesce, join_field, split_field, Data
-from mo_dots.lists import FlatList
-from mo_times.timer import Timer
-from mo_logs import Log
-from mo_dots import wrap, listwrap
+from __future__ import division
+from __future__ import unicode_literals
 
+from collections import Mapping
+
+import mo_dots as dot
+from mo_dots import Null, coalesce, join_field, split_field, Data
+from mo_dots import wrap, listwrap
+from mo_dots.lists import FlatList
+from mo_logs import Log
+from mo_math import SUM
+from mo_times.timer import Timer
+
+from jx_base.domains import Domain, ALGEBRAIC, KNOWN
 
 DEFAULT_QUERY_LIMIT = 20
 
 
-class Dimension(Container):
+class Dimension(object):
     __slots__ = ["name", "full_name", "where", "type", "limit", "index", "parent", "edges", "partitions", "fields"]
 
     def __init__(self, dim, parent, jx):

@@ -23,7 +23,7 @@ from jx_base.expressions import Variable, DateOp, TupleOp, LeavesOp, BinaryOp, O
     NeOp, NotOp, LengthOp, NumberOp, StringOp, CountOp, MultiOp, RegExpOp, CoalesceOp, MissingOp, ExistsOp, \
     PrefixOp, UnixOp, FromUnixOp, NotLeftOp, RightOp, NotRightOp, FindOp, BetweenOp, InOp, RangeOp, CaseOp, AndOp, \
     ConcatOp, LeftOp, EqOp, WhenOp
-from jx_python.containers import STRUCT, OBJECT
+from jx_base import STRUCT, OBJECT
 from pyLibrary.sql.sqlite import quote_column, quote_value
 
 
@@ -36,7 +36,7 @@ def to_sql(self, schema, not_null=False, boolean=False):
     acc = {}
     if boolean:
         for col in cols:
-            cname, col = col.items()[0]            
+            cname, col = col.items()[0]
             nested_path = col.nested_path[0]
             if col.type == OBJECT:
                 value = "1"
