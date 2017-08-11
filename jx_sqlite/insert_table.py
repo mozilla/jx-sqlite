@@ -16,6 +16,7 @@ from __future__ import unicode_literals
 from collections import Mapping
 from copy import copy
 
+from future.utils import text_type
 from mo_dots import listwrap, Data, wrap, Null, unwraplist, startswith_field, unwrap, concat_field, literal_field
 from mo_logs import Log
 
@@ -76,7 +77,7 @@ class InsertTable(BaseTable):
                 nested_table_name = concat_field(self.sf.fact, nested_column_name)
                 nested_table = nested_tables[nested_column_name]
                 self_primary_key = ",".join(quote_table(c.es_column) for u in self.uid for c in self.columns[u])
-                extra_key_name = UID_PREFIX + "id" + unicode(len(self.uid))
+                extra_key_name = UID_PREFIX + "id" + text_type(len(self.uid))
                 extra_key = [e for e in nested_table.columns[extra_key_name]][0]
 
                 sql_command = "DELETE FROM " + quote_table(nested_table.name) + \

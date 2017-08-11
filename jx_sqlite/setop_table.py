@@ -13,6 +13,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
+from future.utils import text_type
 from mo_dots import listwrap, Data, unwraplist, split_field, join_field, startswith_field, unwrap, relative_field, concat_field, literal_field, Null
 from mo_math import UNION, MAX
 
@@ -278,7 +279,7 @@ class SetOpTable(InsertTable):
         )
 
         for n, _ in self.sf.tables.items():
-            sorts.append(COLUMN + unicode(index_to_uid[n]))
+            sorts.append(COLUMN + text_type(index_to_uid[n]))
 
         ordered_sql = (
             "SELECT * FROM (\n" +
