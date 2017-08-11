@@ -13,14 +13,13 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
-import re
 from collections import Mapping
 from copy import copy
 
+from future.utils import text_type
 from mo_dots import Data, split_field, join_field, concat_field
-from mo_logs.strings import quote
 from mo_math.randoms import Random
-from mo_times import Date, Duration
+from mo_times import Date
 
 from pyLibrary.meta import DataClass
 from pyLibrary.sql.sqlite import quote_table
@@ -127,7 +126,7 @@ def untyped_column(column_name):
 
 
 def _make_column_name(number):
-    return COLUMN + unicode(number)
+    return COLUMN + text_type(number)
 
 
 sql_aggs = {
@@ -239,19 +238,19 @@ ColumnMapping = DataClass(
         {               # NAME OF THE PROPERTY (USED BY LIST FORMAT ONLY)
             "name": "push_name",
             "nulls": True
-        },    
+        },
         {               # PATH INTO COLUMN WHERE VALUE IS STORED ("." MEANS COLUMN HOLDS PRIMITIVE VALUE)
             "name": "push_child",
             "nulls": True
         },
         {               # THE COLUMN NUMBER
-            "name": "push_column",  
+            "name": "push_column",
             "nulls": True
         },
         {               # THE COLUMN NAME FOR TABLES AND CUBES (WITH NO ESCAPING DOTS, NOT IN LEAF FORM)
-            "name": "push_column_name", 
-            "nulls": True 
-        }, 
+            "name": "push_column_name",
+            "nulls": True
+        },
         {               # A FUNCTION THAT WILL RETURN A VALUE
             "name": "pull",
             "nulls": True
@@ -276,7 +275,7 @@ ColumnMapping = DataClass(
 
 json_types = {
     "TEXT": "string",
-    "REAL": "number", 
+    "REAL": "number",
     "INTEGER": "integer",
     "TINYINT": "boolean",
     "OBJECT": "nested"

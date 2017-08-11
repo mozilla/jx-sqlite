@@ -7,21 +7,22 @@
 #
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import unicode_literals
-from __future__ import division
 from __future__ import absolute_import
+from __future__ import division
+from __future__ import unicode_literals
 
 from collections import Mapping
 from copy import copy
 
-from mo_logs import Log
 from mo_dots import set_default, wrap, coalesce, Data, listwrap, unwraplist
+from mo_logs import Log
 from mo_math import Math
-from jx_python.dimensions import Dimension
+from mo_times.dates import Date
+
+from jx_base.dimensions import Dimension
 from jx_base.queries import is_variable_name
 from jx_python.namespace import Namespace, convert_list
-from jx_python.query import QueryOp
-from mo_times.dates import Date
+from jx_base.query import QueryOp
 
 
 class Rename(Namespace):

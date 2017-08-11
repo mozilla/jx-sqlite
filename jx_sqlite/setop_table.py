@@ -13,13 +13,14 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
+from future.utils import text_type
 from mo_dots import listwrap, Data, unwraplist, split_field, join_field, startswith_field, unwrap, relative_field, concat_field, literal_field, Null
 from mo_math import UNION, MAX
 
 from jx_base.queries import get_property_name
 from jx_sqlite import quote_table, quoted_UID, quoted_GUID, get_column, _make_column_name, ORDER, COLUMN, set_column, quoted_PARENT, ColumnMapping
 from jx_sqlite.insert_table import InsertTable
-from jx_python.containers import STRUCT
+from jx_base import STRUCT
 from jx_sqlite.expressions import sql_type_to_json_type, LeavesOp
 from jx_python.meta import Column
 from pyLibrary.sql.sqlite import quote_value
@@ -278,7 +279,7 @@ class SetOpTable(InsertTable):
         )
 
         for n, _ in self.sf.tables.items():
-            sorts.append(COLUMN + unicode(index_to_uid[n]))
+            sorts.append(COLUMN + text_type(index_to_uid[n]))
 
         ordered_sql = (
             "SELECT * FROM (\n" +

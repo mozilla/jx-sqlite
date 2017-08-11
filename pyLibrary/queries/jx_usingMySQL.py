@@ -58,7 +58,7 @@ class MySQL(object):
         """
         TRANSLATE JSON QUERY EXPRESSION ON SINGLE TABLE TO SQL QUERY
         """
-        from jx_python.query import QueryOp
+        from jx_base.query import QueryOp
 
         query = QueryOp.wrap(query)
 

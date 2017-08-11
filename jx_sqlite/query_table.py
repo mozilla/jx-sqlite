@@ -14,18 +14,20 @@ from __future__ import division
 from __future__ import unicode_literals
 
 import mo_json
-from jx_sqlite import quote_table, sql_aggs, unique_name, untyped_column, typed_column, json_types
+from future.utils import text_type
+from jx_python import jx
+from jx_sqlite import quote_table, sql_aggs, unique_name, untyped_column
 from mo_collections.matrix import Matrix, index_to_coordinate
-from mo_dots import listwrap, coalesce, Data, wrap, startswith_field, unliteral_field, unwrap, split_field, join_field, unwraplist, concat_field, relative_field
+from mo_dots import listwrap, coalesce, Data, wrap, startswith_field, unwrap, unwraplist, concat_field, relative_field
 from mo_logs import Log
 
-from jx_sqlite.aggs_table import AggsTable
-from jx_python import jx
-from jx_python.containers import STRUCT
-from jx_python.domains import SimpleSetDomain
+from jx_base.domains import SimpleSetDomain
 from jx_base.expressions import jx_expression, Variable, TupleOp
-from jx_python.query import QueryOp
+from jx_base import STRUCT
 from jx_python.meta import Column
+from jx_base.query import QueryOp
+from jx_sqlite.aggs_table import AggsTable
+
 
 class QueryTable(AggsTable):
     def get_column_name(self, column):
@@ -147,7 +149,7 @@ class QueryTable(AggsTable):
 
                 return Data(
                     data=unwrap(data),
-                    select=select,                    
+                    select=select,
                     meta={"format": "cube"}
                 )
 
@@ -432,8 +434,8 @@ class QueryTable(AggsTable):
                    " ORDER BY " + (", ".join(window.edges.sort)) + \
                    ") AS " + quote_table(window.name)
 
-        range_min = unicode(coalesce(window.range.min, "UNBOUNDED"))
-        range_max = unicode(coalesce(window.range.max, "UNBOUNDED"))
+        range_min = text_type(coalesce(window.range.min, "UNBOUNDED"))
+        range_max = text_type(coalesce(window.range.max, "UNBOUNDED"))
 
         return sql_aggs[window.aggregate] + "(" + window.value.to_sql() + ") OVER (" + \
                " PARTITION BY " + (", ".join(window.edges.values)) + \
@@ -461,6 +463,6 @@ class QueryTable(AggsTable):
         return output
 
 
-from jx_python.containers import type2container
+from jx_base.container import type2container
 
 type2container["sqlite"] = QueryTable
