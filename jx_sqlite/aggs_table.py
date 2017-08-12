@@ -378,21 +378,21 @@ class AggsTable(SetOpTable):
 
                     for json_type, sql in details.sql.items():
                         concat_sql.append("JSON_GROUP_ARRAY(DISTINCT(" + sql + "))")
+                        query_tables = tables.nest
+                        if details.nested_path not in query_tables:
+                            p = details.nested_path
+                            alias = nest_to_alias[p]
+                            from_sql += (
+                                "\nLEFT JOIN\n (SELECT " + PARENT + ", " + sql + " \nFROM " +
+                                quote_table(concat_field(base_table, p)) + ") " + alias +
+                                " ON " + alias + "." + PARENT + " = " + previous.alias + "." + UID
+                            )
 
                     wheres.append(sql + " IS NOT NULL ")
                     if len(concat_sql) > 1:
                         concat_sql = "CONCAT(" + ",".join(concat_sql) + ") AS " + _make_column_name(column_number)
                     else:
                         concat_sql = concat_sql[0] + " AS " + _make_column_name(column_number)
-
-                    query_tables = tables.nest
-                    if details.nested_path not in query_tables:
-                        p = details.nested_path
-                        alias = nest_to_alias[p]
-                        from_sql += (
-                            "\nLEFT JOIN\n" + quote_table(concat_field(base_table, p)) + " " + alias +
-                            " ON " + alias + "." + PARENT + " = " + previous.alias + "." + UID
-                        )
 
                     outer_selects.append(concat_sql)
                     index_to_column[column_number] = ColumnMapping(
