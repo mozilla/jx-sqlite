@@ -558,7 +558,7 @@ class TestEdge1(BaseTestCase):
                 ]
             },
             "expecting_cube": {
-                "meta": {"format": "value"},
+                "meta": {"format": "cube"},
                 "data": {
                     "c": [2, 3, 4, 5, 6, 7, 8],
                     "a": ["x", "y"]
