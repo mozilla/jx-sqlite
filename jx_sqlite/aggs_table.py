@@ -523,6 +523,9 @@ class AggsTable(SetOpTable):
             for s in e.value.to_sql(schema):
                 column_number = len(selects)
                 sql_type, sql = s.sql.items()[0]
+                if sql == 'NULL'and not e.value.var in schema.keys():
+                    raise Exception('No such column')
+
                 column_alias = _make_column_name(column_number)
                 groupby.append(sql)
                 selects.append(sql + " AS " + column_alias)
@@ -542,6 +545,8 @@ class AggsTable(SetOpTable):
         for i, s in enumerate(listwrap(query.select)):
             column_number = len(selects)
             sql_type, sql = s.value.to_sql(schema)[0].sql.items()[0]
+            if sql == 'NULL'and not s.value.var in schema.keys():
+                raise Exception('No such column' , s.value.var)
 
             if s.value == "." and s.aggregate == "count":
                 selects.append("COUNT(1) AS " + quote_table(s.name))
