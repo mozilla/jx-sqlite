@@ -14,6 +14,7 @@ from __future__ import division
 from __future__ import unicode_literals
 
 from mo_dots import listwrap, coalesce, split_field, join_field, startswith_field, relative_field, concat_field
+from mo_json import json2value
 from mo_logs import Log
 from mo_math import Math
 
@@ -399,7 +400,7 @@ class AggsTable(SetOpTable):
                         push_column_name=s.name,
                         push_column=si,
                         push_child=".",
-                        pull=sql_text_array_to_set(column_number),
+                        pull=lambda row: json2value(row[column_number]),
                         sql=concat_sql,
                         column_alias=_make_column_name(column_number),
                         type=sql_type_to_json_type[json_type]
