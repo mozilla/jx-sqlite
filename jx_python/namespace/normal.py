@@ -14,18 +14,19 @@ from __future__ import unicode_literals
 from collections import Mapping
 from copy import copy
 
-from mo_logs import Log
-from mo_dots import coalesce, Null
-from mo_dots import wrap, listwrap
 from mo_dots import Data
 from mo_dots import FlatList
+from mo_dots import coalesce, Null
+from mo_dots import wrap, listwrap
+from mo_logs import Log
 from mo_math import Math
+
+from jx_base.dimensions import Dimension
+from jx_base.domains import Domain
 from jx_python.containers import Container
-from jx_python.dimensions import Dimension
-from jx_python.domains import Domain
 from jx_python.expressions import TRUE_FILTER
 from jx_python.namespace import Namespace, convert_list
-from jx_python.query import QueryOp, get_all_vars
+from jx_base.query import QueryOp, get_all_vars
 
 DEFAULT_LIMIT = 10
 

@@ -14,6 +14,8 @@ from __future__ import unicode_literals
 from collections import Mapping
 from copy import copy
 
+from future.utils import text_type
+from jx_base import STRUCT
 from mo_dots import Data
 from mo_dots import coalesce, Null, set_default, unwraplist, literal_field
 from mo_dots import wrap, unwrap, listwrap
@@ -22,12 +24,12 @@ from mo_logs import Log
 from mo_math import AND, UNION
 from mo_math import Math
 
-from jx_base.queries import is_variable_name
-from jx_python import Schema, wrap_from
-from jx_python.containers import Container, STRUCT
-from jx_python.dimensions import Dimension
-from jx_python.domains import Domain, SetDomain
+from jx_base.dimensions import Dimension
+from jx_base.domains import Domain, SetDomain
 from jx_base.expressions import jx_expression, TrueOp, Expression, FalseOp, Variable, LeavesOp, ScriptOp, OffsetOp
+from jx_base.queries import is_variable_name
+from jx_base.schema import Schema
+from jx_base.container import Container
 
 DEFAULT_LIMIT = 10
 MAX_LIMIT = 50000
@@ -203,7 +205,10 @@ class QueryOp(Expression):
 
         output = QueryOp("from", None)
         output.format = query.format
+
+        from jx_python import wrap_from
         output.frum = wrap_from(query["from"], schema=schema)
+
         if not schema and isinstance(output.frum, Schema):
             schema = output.frum
         if not schema and hasattr(output.frum, "schema"):

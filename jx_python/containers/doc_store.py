@@ -20,7 +20,7 @@ from pyLibrary import convert
 from jx_python import jx
 from jx_python.containers import Container
 from jx_python.expressions import Variable, Literal
-from jx_python.query import QueryOp
+from jx_base.query import QueryOp
 
 INDEX = "__index__"
 PARENT = "__parent__"

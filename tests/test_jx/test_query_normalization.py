@@ -14,7 +14,7 @@ from __future__ import unicode_literals
 from mo_json import value2json, json2value
 
 from mo_testing.fuzzytestcase import FuzzyTestCase
-from jx_python.query import _normalize_select, _normalize_edges
+from jx_base.query import _normalize_select, _normalize_edges
 
 
 class TestQueryNormalization(FuzzyTestCase):

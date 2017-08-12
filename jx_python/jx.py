@@ -16,7 +16,8 @@ from collections import Mapping
 
 import __builtin__
 from jx_python import expressions as _expressions
-from jx_python import flat_list, query, group_by
+from jx_python import flat_list, group_by
+from jx_base import query
 from mo_dots import listwrap, wrap, unwrap, FlatList
 from mo_dots import set_default, Null, Data, split_field, coalesce, join_field
 from mo_logs import Log
@@ -27,12 +28,12 @@ from types import GeneratorType
 
 import mo_dots
 from jx_base.expressions import TRUE_FILTER, FALSE_FILTER, jx_expression_to_function
-from jx_python.containers import Container
+from jx_base.container import Container
 from jx_python.containers.cube import Cube
 from jx_python.cubes.aggs import cube_aggs
 from jx_python.expression_compiler import compile_expression
 from jx_python.flat_list import PartFlatList
-from jx_python.query import QueryOp, _normalize_selects
+from jx_base.query import QueryOp, _normalize_selects
 from mo_collections.index import Index
 from mo_collections.unique_index import UniqueIndex
 from mo_dots.objects import DataObject

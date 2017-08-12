@@ -16,12 +16,13 @@ from __future__ import unicode_literals
 from collections import Mapping
 from copy import copy
 
+from future.utils import text_type
 from mo_dots import listwrap, Data, wrap, Null, unwraplist, startswith_field, unwrap, concat_field, literal_field
 from mo_logs import Log
 
 from jx_sqlite import typed_column, quote_table, get_type, ORDER, UID, GUID, PARENT, get_if_type
 from jx_sqlite.base_table import BaseTable, generateGuid
-from jx_python.containers import STRUCT
+from jx_base import STRUCT
 from jx_base.expressions import jx_expression
 from jx_python.meta import Column
 from pyLibrary.sql.sqlite import quote_value, quote_column
@@ -76,7 +77,7 @@ class InsertTable(BaseTable):
                 nested_table_name = concat_field(self.sf.fact, nested_column_name)
                 nested_table = nested_tables[nested_column_name]
                 self_primary_key = ",".join(quote_table(c.es_column) for u in self.uid for c in self.columns[u])
-                extra_key_name = UID_PREFIX + "id" + unicode(len(self.uid))
+                extra_key_name = UID_PREFIX + "id" + text_type(len(self.uid))
                 extra_key = [e for e in nested_table.columns[extra_key_name]][0]
 
                 sql_command = "DELETE FROM " + quote_table(nested_table.name) + \
@@ -236,7 +237,7 @@ class InsertTable(BaseTable):
             :param row: we will be filling this
             :return:
             """
-            table=concat_field(self.sf.fact, nested_path[0])            
+            table=concat_field(self.sf.fact, nested_path[0])
             insertion = doc_collection[nested_path[0]]
             if not row:
                 row = {GUID: guid, UID: uid, PARENT: parent_id, ORDER: order}
@@ -286,7 +287,7 @@ class InsertTable(BaseTable):
                     column = c.es_column
                     from_doc.active_columns.remove(c)
                     abs_schema.remove(cname, c)
-                    required_changes.append({"nest": (c, nested_path[0])})                    
+                    required_changes.append({"nest": (c, nested_path[0])})
                     deep_c = Column(
                         names={".": cname},
                         type=value_type,
@@ -302,7 +303,7 @@ class InsertTable(BaseTable):
                         if column in r1:
                             row1 = {UID: self.next_uid(), PARENT: r1["__id__"], ORDER: 0, column: r1[column]}
                             insertion.rows.append(row1)
-                            
+
                 elif len(c.nested_path) > len(nested_path):
                     insertion = doc_collection[c.nested_path[0]]
                     row = {UID: self.next_uid(), PARENT: uid, ORDER: order}

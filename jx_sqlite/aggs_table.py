@@ -13,15 +13,16 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
+from future.utils import text_type
+from jx_python import jx
+from jx_sqlite import UID, quote_table, get_column, _make_column_name, sql_text_array_to_set, STATS, sql_aggs, PARENT, ColumnMapping, untyped_column
 from mo_dots import listwrap, coalesce, split_field, join_field, startswith_field, relative_field, concat_field
 from mo_logs import Log
 from mo_math import Math
 
-from jx_sqlite import UID, quote_table, get_column, _make_column_name, sql_text_array_to_set, STATS, sql_aggs, PARENT, ColumnMapping, untyped_column
-from jx_sqlite.setop_table import SetOpTable
-from jx_python import jx
-from jx_python.domains import DefaultDomain, TimeDomain, DurationDomain
+from jx_base.domains import DefaultDomain, TimeDomain, DurationDomain
 from jx_sqlite.expressions import Variable, sql_type_to_json_type, TupleOp
+from jx_sqlite.setop_table import SetOpTable
 from pyLibrary.sql.sqlite import quote_value
 
 
@@ -67,7 +68,7 @@ class AggsTable(SetOpTable):
         ]
 
         for edge_index, query_edge in enumerate(query.edges):
-            edge_alias = "e" + unicode(edge_index)
+            edge_alias = "e" + text_type(edge_index)
 
             if query_edge.value:
                 edge_values = [p for c in query_edge.value.to_sql(schema).sql for p in c.items()]
@@ -90,7 +91,7 @@ class AggsTable(SetOpTable):
 
             edge_names = []
             for column_index, (json_type, sql) in enumerate(edge_values):
-                sql_name = "e" + unicode(edge_index) + "c" + unicode(column_index)
+                sql_name = "e" + text_type(edge_index) + "c" + text_type(column_index)
                 edge_names.append(sql_name)
 
                 num_sql_columns = len(index_to_column)
@@ -128,7 +129,7 @@ class AggsTable(SetOpTable):
 
             vals = [v for t, v in edge_values]
             if query_edge.domain.type == "set":
-                domain_name = "d" + unicode(edge_index) + "c" + unicode(column_index)
+                domain_name = "d" + text_type(edge_index) + "c" + text_type(column_index)
                 domain_names = [domain_name]
                 if len(edge_names) > 1:
                     Log.error("Do not know how to handle")
@@ -167,7 +168,7 @@ class AggsTable(SetOpTable):
                     )
                     not_on_clause = None
             elif query_edge.domain.type == "range":
-                domain_name = "d" + unicode(edge_index) + "c0"
+                domain_name = "d" + text_type(edge_index) + "c0"
                 domain_names = [domain_name]  # ONLY EVER SEEN ONE DOMAIN VALUE, DOMAIN TUPLES CERTAINLY EXIST
                 d = query_edge.domain
                 if d.max == None or d.min == None or d.min == d.max:
@@ -176,12 +177,12 @@ class AggsTable(SetOpTable):
                     domain = self._make_range_domain(domain=d, column_name=domain_name)
                     limit = Math.min(query.limit, query_edge.domain.limit)
                     domain += "\nORDER BY \n" + ",\n".join(vals) + \
-                              "\nLIMIT " + unicode(limit)
+                              "\nLIMIT " + text_type(limit)
 
                     where = None
                     join_type = "LEFT JOIN" if query_edge.allowNulls else "JOIN"
                     on_clause = " AND ".join(
-                        edge_alias + "." + k + " <= " + v + " AND " + v + " < (" + edge_alias + "." + k + " + " + unicode(
+                        edge_alias + "." + k + " <= " + v + " AND " + v + " < (" + edge_alias + "." + k + " + " + text_type(
                             d.interval) + ")"
                         for k, (t, v) in zip(domain_names, edge_values)
                     )
@@ -191,18 +192,18 @@ class AggsTable(SetOpTable):
                     domain = self._make_range_domain(domain=d, column_name=domain_name)
                     limit = Math.min(query.limit, query_edge.domain.limit)
                     domain += "\nORDER BY \n" + ",\n".join(vals) + \
-                              "\nLIMIT " + unicode(limit)
+                              "\nLIMIT " + text_type(limit)
                     where = None
                     join_type = "LEFT JOIN" if query_edge.allowNulls else "JOIN"
                     on_clause = edge_alias + "." + domain_name + " < " + edge_values[1][1] + " AND " + \
-                                edge_values[0][1] + " < (" + edge_alias + "." + domain_name + " + " + unicode(
+                                edge_values[0][1] + " < (" + edge_alias + "." + domain_name + " + " + text_type(
                         d.interval) + ")"
                     not_on_clause = None
                 else:
                     Log.error("do not know how to handle")
                     # select_clause.extend(v[0] + " " + k for k, v in zip(domain_names, edge_values))
             elif len(edge_names) > 1:
-                domain_names = ["d" + unicode(edge_index) + "c" + unicode(i) for i, _ in enumerate(edge_names)]
+                domain_names = ["d" + text_type(edge_index) + "c" + text_type(i) for i, _ in enumerate(edge_names)]
                 query_edge.allowNulls = False
                 domain = (
                     "\nSELECT " + ",\n".join(g + " AS " + n for n, g in zip(domain_names, vals)) +
@@ -212,7 +213,7 @@ class AggsTable(SetOpTable):
                 limit = Math.min(query.limit, query_edge.domain.limit)
                 domain += (
                     "\nORDER BY COUNT(1) DESC" +
-                    "\nLIMIT " + unicode(limit)
+                    "\nLIMIT " + text_type(limit)
                 )
                 where = None
                 join_type = "LEFT JOIN" if query_edge.allowNulls else "JOIN"
@@ -222,7 +223,7 @@ class AggsTable(SetOpTable):
                 )
                 not_on_clause = None
             elif isinstance(query_edge.domain, DefaultDomain):
-                domain_names = ["d" + unicode(edge_index) + "c" + unicode(i) for i, _ in enumerate(edge_names)]
+                domain_names = ["d" + text_type(edge_index) + "c" + text_type(i) for i, _ in enumerate(edge_names)]
                 domain = (
                     "\nSELECT " + ",".join(domain_names) + " FROM ("
                                                            "\nSELECT " + ",\n".join(
@@ -237,7 +238,7 @@ class AggsTable(SetOpTable):
                 limit = Math.min(query.limit, query_edge.domain.limit)
                 domain += (
                     "\nORDER BY \n" + ",\n".join("COUNT(1) DESC" for g in vals) +
-                    "\nLIMIT " + unicode(limit)
+                    "\nLIMIT " + text_type(limit)
                 )
                 domain += ")"
 
@@ -257,7 +258,7 @@ class AggsTable(SetOpTable):
                 not_on_clause = None
 
             elif isinstance(query_edge.domain, (DurationDomain, TimeDomain)):
-                domain_name = "d" + unicode(edge_index) + "c0"
+                domain_name = "d" + text_type(edge_index) + "c0"
                 domain_names = [domain_name]
                 d = query_edge.domain
                 if d.max == None or d.min == None or d.min == d.max:
@@ -456,7 +457,7 @@ class AggsTable(SetOpTable):
         )
         sources = []
         for edge_index, query_edge in enumerate(query.edges):
-            edge_alias = "e" + unicode(edge_index)
+            edge_alias = "e" + text_type(edge_index)
             domain = domains[edge_index]
             sources.append("(" + domain + ") " + edge_alias)
 
@@ -494,7 +495,7 @@ class AggsTable(SetOpTable):
         if digits == 0:
             value = "a.value"
         else:
-            value = "+".join("1" + ("0" * j) + "*" + unicode(chr(ord(b'a') + j)) + ".value" for j in range(digits + 1))
+            value = "+".join("1" + ("0" * j) + "*" + text_type(chr(ord(b'a') + j)) + ".value" for j in range(digits + 1))
 
         if domain.interval == 1:
             if domain.min == 0:
@@ -513,7 +514,7 @@ class AggsTable(SetOpTable):
                          "\nFROM __digits__ a"
 
         for j in range(digits):
-            domain += "\nJOIN __digits__ " + unicode(chr(ord(b'a') + j + 1)) + " ON 1=1"
+            domain += "\nJOIN __digits__ " + text_type(chr(ord(b'a') + j + 1)) + " ON 1=1"
         domain += "\nWHERE " + value + " < " + quote_value(width)
         return domain
 

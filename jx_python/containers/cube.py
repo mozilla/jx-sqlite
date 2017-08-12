@@ -18,10 +18,10 @@ from mo_dots import Null, Data, FlatList, wrap, wrap_leaves, listwrap
 from mo_logs import Log
 from mo_math import MAX, OR
 from mo_collections.matrix import Matrix
-from jx_python.containers import Container
+from jx_base.container import Container
 from jx_python.cubes.aggs import cube_aggs
 from jx_python.lists.aggs import is_aggs
-from jx_python.query import _normalize_edge
+from jx_base.query import _normalize_edge
 
 
 class Cube(Container):

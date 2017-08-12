@@ -21,7 +21,7 @@ from mo_threads import Lock
 from pyLibrary import convert
 
 from jx_base.expressions import TRUE_FILTER, jx_expression, Expression, TrueOp, jx_expression_to_function, Variable
-from jx_python.containers import Container
+from jx_base.container import Container
 from jx_python.expression_compiler import compile_expression
 from jx_python.lists.aggs import is_aggs, list_aggs
 from jx_python.meta import get_schema_from_list
@@ -232,7 +232,9 @@ def _exec(code):
 
 
 
-from jx_python import Schema, jx
+from jx_base.schema import Schema
+from jx_python import jx
+
 
 DUAL = ListContainer(
     name="dual",

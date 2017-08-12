@@ -18,19 +18,16 @@ from decimal import Decimal
 import operator
 
 from future.utils import text_type
-from mo_dots import coalesce, wrap, set_default, literal_field, Null, split_field, startswith_field
-from mo_dots import Data, join_field, unwraplist, ROOT_PATH, relative_field, unwrap
+from mo_dots import coalesce, wrap, Null, split_field, startswith_field
 from mo_json import json2value, quote
 from mo_logs import Log
 from mo_logs.exceptions import suppress_exception
-from mo_math import Math, OR, MAX
+from mo_math import Math
 from mo_times.dates import Date
 
 from pyLibrary import convert
-from jx_python.containers import STRUCT, OBJECT
 from jx_base.queries import is_variable_name, get_property_name
 from jx_python.expression_compiler import compile_expression
-from pyLibrary.sql.sqlite import quote_column, quote_value
 
 ALLOW_SCRIPTING = False
 TRUE_FILTER = True
@@ -43,7 +40,7 @@ _Query = None
 def _late_import():
     global _Query
 
-    from jx_python.query import QueryOp as _Query
+    from jx_base.query import QueryOp as _Query
 
     _ = _Query
 
