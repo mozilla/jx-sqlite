@@ -546,22 +546,23 @@ class TestEdge1(BaseTestCase):
                 ]
             },
             "expecting_list": {
-                "meta": {"format": "list"},
-                "data": [
-                    {"a": ["x", "y"], "c": [2, 3, 4, 5, 6, 7, 8]},
-                ]},
+                "meta": {"format": "value"},
+                "data": {
+                    "a": {"x", "y"}, "c": {2, 3, 4, 5, 6, 7, 8}
+                }
+            },
             "expecting_table": {
                 "meta": {"format": "table"},
                 "header": ["a", "c"],
                 "data": [
-                    [["x", "y"], [2, 3, 4, 5, 6, 7, 8]]
+                    [{"x", "y"}, {2, 3, 4, 5, 6, 7, 8}]
                 ]
             },
             "expecting_cube": {
                 "meta": {"format": "cube"},
                 "data": {
-                    "c": [2, 3, 4, 5, 6, 7, 8],
-                    "a": ["x", "y"]
+                    "c": {2, 3, 4, 5, 6, 7, 8},
+                    "a": {"x", "y"}
                 }
             }
         }
