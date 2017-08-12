@@ -21,7 +21,7 @@ from mo_times.dates import Date, unicode2Date, unix2Date
 from mo_times.durations import Duration
 from mo_times.timer import Timer
 from pyLibrary import convert
-from pyLibrary.aws.s3 import strip_extension
+from pyLibrary.aws.s3 import strip_extension, KEY_IS_WRONG_FORMAT
 from pyLibrary.env import elasticsearch
 from jx_python import jx
 
@@ -189,7 +189,8 @@ class RolloverIndex(object):
                             Log.note("Ingested {{num}} records from {{key}} in bucket {{bucket}}", num=rownum, key=key, bucket=source.name)
 
                         row, please_stop = fix(rownum, line, source, sample_only_filter, sample_size)
-                        num_keys += 1
+                        if row == None:
+                            continue
 
                         if queue == None:
                             queue = self._get_queue(row)
@@ -197,7 +198,7 @@ class RolloverIndex(object):
                                 pending.append(row)
                                 if len(pending) > 1000:
                                     self._get_queue(row)
-                                    Log.error("first 1000 (key={{key}}) records have no indication what index to put data", key=tuple(keys)[0])
+                                    Log.error("first 1000 (key={{key}}) records for {{alias}} have no indication what index to put data", key=tuple(keys)[0], alias=self.settings.index)
                                 continue
                             elif queue is DATA_TOO_OLD:
                                 break
@@ -205,16 +206,23 @@ class RolloverIndex(object):
                                 queue.extend(pending)
                                 pending = []
 
+                        num_keys += 1
                         queue.add(row)
 
                         if please_stop:
                             break
             except Exception as e:
-                done_copy = None
-                Log.warning("Could not process {{key}} after {{duration|round(places=2)}}seconds", key=key, duration=timer.duration.seconds, cause=e)
+                if KEY_IS_WRONG_FORMAT in e:
+                    Log.warning("Could not process {{key}} becasue bad format. Never trying again.", key=key, cause=e)
+                    pass
+                else:
+                    Log.warning("Could not process {{key}} after {{duration|round(places=2)}}seconds", key=key, duration=timer.duration.seconds, cause=e)
+                    done_copy = None
 
         if done_copy:
             if queue == None:
+                done_copy()
+            elif queue is DATA_TOO_OLD:
                 done_copy()
             else:
                 queue.add(done_copy)
@@ -240,6 +248,13 @@ def fix(rownum, line, source, sample_only_filter, sample_size):
                 suite = mo_json.json2value(suite_json)
                 suite = convert.value2json(coalesce(suite.fullname, suite.name))
                 line = line.replace(suite_json, suite)
+
+    if source.name.startswith("active-data-codecoverage"):
+        d = convert.json2value(line)
+        if d.source.file.total_covered > 0:
+            return {"id": d._id, "json": line}, False
+        else:
+            return None, False
 
     if rownum == 0:
         value = mo_json.json2value(line)

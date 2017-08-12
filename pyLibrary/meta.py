@@ -11,20 +11,20 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
-import mo_json
 from jx_python import expressions as _expressions
 from mo_dots import set_default, wrap, _get_attr, Null, coalesce
 from mo_logs import Log
-from mo_logs.exceptions import Except
-from mo_logs.strings import expand_template
-from mo_math.randoms import Random
 from mo_threads import Lock
-from mo_times.dates import Date
-from mo_times.durations import DAY
 from pyLibrary import convert
 from types import FunctionType
 
+import mo_json
 from jx_base.expressions import jx_expression_to_function, jx_expression
+from mo_logs.exceptions import Except
+from mo_logs.strings import expand_template
+from mo_math.randoms import Random
+from mo_times.dates import Date
+from mo_times.durations import DAY
 
 _ = _expressions
 _ = jx_expression_to_function
@@ -370,3 +370,61 @@ class extenstion_method(object):
             setattr(self.value, func.__name__, func)
             return func
 
+
+class MemorySample(object):
+
+    def __init__(self, description, debug=False, **parameters):
+        self.debug = debug
+        if debug:
+            try:
+                import os
+                import psutil
+                import gc
+
+                self.description = description
+                self.params = parameters
+                self.start_memory = None
+                self.process = psutil.Process(os.getpid())
+            except Exception as e:
+                Log.warning("problem in memory measure", cause=e)
+
+    def __enter__(self):
+        if self.debug:
+            try:
+                gc.collect()
+                self.start_memory = self.process.memory_info().rss
+            except Exception as e:
+                Log.warning("problem in memory measure", cause=e)
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self.debug:
+            try:
+                gc.collect()
+                end_memory = self.process.memory_info().rss
+                net_memory = end_memory-self.start_memory
+                if net_memory > 100 * 1000 * 1000:
+                    Log.warning(
+                        "MEMORY WARNING (additional {{net_memory|comma}}bytes): "+self.description,
+                        default_params=self.params,
+                        net_memory=net_memory
+                    )
+
+                    from pympler import summary
+                    from pympler import muppy
+                    sum1 = sorted(summary.summarize(muppy.get_objects()), key=lambda r: -r[2])[:30]
+                    Log.warning("{{data}}", data=sum1)
+                elif end_memory > 1000*1000*1000:
+                    Log.warning(
+                        "MEMORY WARNING (over {{end_memory|comma}}bytes): "+self.description,
+                        default_params=self.params,
+                        end_memory=end_memory
+                    )
+
+                    from pympler import summary
+                    from pympler import muppy
+                    sum1 = sorted(summary.summarize(muppy.get_objects()), key=lambda r: -r[2])[:30]
+                    Log.warning("{{data}}", data=sum1)
+
+            except Exception as e:
+                Log.warning("problem in memory measure", cause=e)
