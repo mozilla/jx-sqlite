@@ -20,7 +20,8 @@ from mo_logs import Log
 from mo_threads import Lock
 from pyLibrary import convert
 
-from jx_base.expressions import TRUE_FILTER, jx_expression, Expression, TrueOp, jx_expression_to_function, Variable
+from jx_base.expressions import TRUE_FILTER, jx_expression, Expression, TrueOp, Variable
+from jx_python.expressions import jx_expression_to_function
 from jx_base.container import Container
 from jx_python.expression_compiler import compile_expression
 from jx_python.lists.aggs import is_aggs, list_aggs

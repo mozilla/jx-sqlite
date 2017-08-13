@@ -11,38 +11,24 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
-import itertools
+import operator
 from collections import Mapping
 from decimal import Decimal
 
-import operator
-
 from future.utils import text_type
-from mo_dots import coalesce, wrap, Null, split_field, startswith_field
-from mo_json import json2value, quote
+from mo_dots import coalesce, wrap, Null, split_field
+from mo_json import json2value
 from mo_logs import Log
-from mo_logs.exceptions import suppress_exception
 from mo_math import Math
-from mo_times.dates import Date
-
 from pyLibrary import convert
+
 from jx_base.queries import is_variable_name, get_property_name
-from jx_python.expression_compiler import compile_expression
+from mo_times.dates import Date
 
 ALLOW_SCRIPTING = False
 TRUE_FILTER = True
 FALSE_FILTER = False
 EMPTY_DICT = {}
-
-_Query = None
-
-
-def _late_import():
-    global _Query
-
-    from jx_base.query import QueryOp as _Query
-
-    _ = _Query
 
 
 def jx_expression(expr):
@@ -112,20 +98,6 @@ def jx_expression(expr):
             return class_(op, term, **clauses)
         else:
             return class_(op, jx_expression(term), **clauses)
-
-
-def jx_expression_to_function(expr):
-    """
-    RETURN FUNCTION THAT REQUIRES PARAMETERS (row, rownum=None, rows=None):
-    """
-    if isinstance(expr, Expression):
-        if isinstance(expr, ScriptOp) and not isinstance(expr.script, text_type):
-            return expr.script
-        else:
-            return compile_expression(expr.to_python())
-    if expr != None and not isinstance(expr, (Mapping, list)) and hasattr(expr, "__call__"):
-        return expr
-    return compile_expression(jx_expression(expr).to_python())
 
 
 class Expression(object):

@@ -463,5 +463,6 @@ aggregates = {
     "variance": "POWER(STDDEV({{code}}), 2)"
 }
 
-from jx_python.containers import type2container
-type2container["mysql"]=MySQL
+
+from jx_base.container import type2container
+type2container["mysql"] = MySQL

@@ -11,6 +11,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
+from collections import Mapping
+
 from future.utils import text_type
 from mo_dots import split_field
 from mo_dots import unwrap
@@ -22,8 +24,23 @@ from jx_base.expressions import Variable, DateOp, TupleOp, LeavesOp, BinaryOp, O
     InequalityOp, extend, RowsOp, OffsetOp, GetOp, Literal, NullOp, TrueOp, FalseOp, DivOp, FloorOp, \
     EqOp, NeOp, NotOp, LengthOp, NumberOp, StringOp, CountOp, MultiOp, RegExpOp, CoalesceOp, MissingOp, ExistsOp, \
     PrefixOp, NotLeftOp, RightOp, NotRightOp, FindOp, BetweenOp, RangeOp, CaseOp, AndOp, \
-    ConcatOp, InOp
+    ConcatOp, InOp, jx_expression, Expression, WhenOp
+from jx_python.expression_compiler import compile_expression
 from mo_times.dates import Date
+
+
+def jx_expression_to_function(expr):
+    """
+    RETURN FUNCTION THAT REQUIRES PARAMETERS (row, rownum=None, rows=None):
+    """
+    if isinstance(expr, Expression):
+        if isinstance(expr, ScriptOp) and not isinstance(expr.script, text_type):
+            return expr.script
+        else:
+            return compile_expression(expr.to_python())
+    if expr != None and not isinstance(expr, (Mapping, list)) and hasattr(expr, "__call__"):
+        return expr
+    return compile_expression(jx_expression(expr).to_python())
 
 
 @extend(Variable)
@@ -288,3 +305,7 @@ def to_python(self, not_null=False, boolean=False, many=False):
     for w in reversed(self.whens[0:-1]):
         acc = "(" + w.when.to_python(boolean=True) + ") ? (" + w.then.to_python() + ") : (" + acc + ")"
     return acc
+
+@extend(WhenOp)
+def to_python(self, not_null=False, boolean=False, many=False):
+    return "(" + self.when.to_python(boolean=True) + ") ? (" + self.then.to_python() + ") : (" + self.els_.to_python() + ")"

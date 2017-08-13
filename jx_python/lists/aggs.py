@@ -14,15 +14,15 @@ from __future__ import unicode_literals
 import itertools
 
 from jx_python import windows
-from mo_collections.matrix import Matrix
 from mo_dots import listwrap, wrap, coalesce
 from mo_logs import Log
 from mo_math import UNION
-from mo_times.dates import Date
 
 from jx_base.domains import SimpleSetDomain, DefaultDomain
-from jx_base.expressions import jx_expression_to_function
 from jx_python.expression_compiler import compile_expression
+from jx_python.expressions import jx_expression_to_function
+from mo_collections.matrix import Matrix
+from mo_times.dates import Date
 
 _ = Date
 
