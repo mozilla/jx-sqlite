@@ -381,7 +381,7 @@ class AggsTable(SetOpTable):
                         query_tables = tables.nest
                         if details.nested_path not in query_tables:
                             p = details.nested_path
-                            alias = nest_to_alias[p]
+                            alias = "s" + text_type(ssi)
                             from_sql += (
                                 "\nLEFT JOIN\n (SELECT " + PARENT + ", " + sql + " \nFROM " +
                                 quote_table(concat_field(base_table, p)) + ") " + alias +
