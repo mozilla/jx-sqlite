@@ -21,17 +21,17 @@ There are over 200 tests used to confirm the expected behaviour: They test a var
 ## Status
 ## Code Example
 
+## Installation
+Python2.7 required , package can be installed via pypi see below:
+        
+    pip install jx-sqlite
+
 ## Getting Started
-still to write:
 These instructions will get you a copy of the project up and running on your local machine for development and testing purposes.
 
-
-## Installation
-
-    $ git clone https://github.com/mozilla/jx-sqlite
-    $ cd jx-sqlite
-    $ python setup.py install
-
+        $ git clone https://github.com/mozilla/jx-sqlite
+        $ cd jx-sqlite
+   
 ## Running tests
 
     export PYTHONPATH=.
