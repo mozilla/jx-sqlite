@@ -132,7 +132,7 @@ Child tables have a `_id` column, plus two others: `_order` so we can reconstruc
 
 * [Snowflake](https://github.com/mozilla/jx-sqlite/blob/master/docs/Perspective.md)
 * [JSON in Database](https://github.com/mozilla/jx-sqlite/blob/master/docs/JSON%20in%20Database.md)
-
+*
 
 
 ## Open problems
