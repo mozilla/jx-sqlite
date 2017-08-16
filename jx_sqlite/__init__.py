@@ -17,7 +17,8 @@ from collections import Mapping
 from copy import copy
 
 from future.utils import text_type
-from mo_dots import Data, split_field, join_field, concat_field
+from mo_dots import Data, split_field, join_field, concat_field, Null
+from mo_json import json2value
 from mo_math.randoms import Random
 from mo_times import Date
 
@@ -172,8 +173,8 @@ quoted_PARENT = quote_table(PARENT)
 
 def sql_text_array_to_set(column):
     def _convert(row):
-        text = row[column]
-        return set(eval('[' + text.replace("''", "\'") + ']'))
+        text = [t for t in json2value(row[column]) if t!=Null]
+        return set(text)
 
     return _convert
 
