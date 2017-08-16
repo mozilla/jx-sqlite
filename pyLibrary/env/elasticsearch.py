@@ -1129,19 +1129,17 @@ def parse_properties(parent_index_name, parent_name, esProperties):
                 if n == name:
                     # DEFAULT
                     columns.append(Column(
-                        table=index_name,
                         es_index=index_name,
                         es_column=column_name,
-                        name=column_name,
+                        names={".": column_name},
                         nested_path=ROOT_PATH,
                         type=p.type
                     ))
                 else:
                     columns.append(Column(
-                        table=index_name,
                         es_index=index_name,
                         es_column=column_name + "\\." + n,
-                        name=column_name + "\\." + n,
+                        names={".": column_name + "\\." + n},
                         nested_path=ROOT_PATH,
                         type=p.type
                     ))

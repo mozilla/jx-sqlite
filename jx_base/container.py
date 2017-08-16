@@ -25,7 +25,6 @@ _ListContainer = None
 _Cube = None
 _run = None
 _Query = None
-_Normal = None
 
 
 def _delayed_imports():
@@ -34,16 +33,16 @@ def _delayed_imports():
     global _Cube
     global _run
     global _Query
-    global _Normal
 
     from jx_python.containers.list_usingPythonList import ListContainer as _ListContainer
     from jx_python.containers.cube import Cube as _Cube
     from jx_python.jx import run as _run
     from jx_base.query import QueryOp as _Query
 
+    _ = _ListContainer
+    _ = _Cube
     _ = _run
     _ = _Query
-    _ = _Normal
 
 
 class Container(object):
@@ -72,7 +71,7 @@ class Container(object):
         elif isinstance(frum, basestring):
             # USE DEFAULT STORAGE TO FIND Container
             if not config.default.settings:
-                Log.error("expecting jx_python.query.config.default.settings to contain default elasticsearch connection info")
+                Log.error("expecting jx_base.query.config.default.settings to contain default elasticsearch connection info")
 
             settings = set_default(
                 {

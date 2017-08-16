@@ -19,7 +19,7 @@ from future.utils import text_type
 from mo_dots import coalesce, wrap, Null, split_field
 from mo_json import json2value
 from mo_logs import Log
-from mo_math import Math
+from mo_math import Math, MAX
 from pyLibrary import convert
 
 from jx_base.queries import is_variable_name, get_property_name
@@ -805,7 +805,7 @@ class EqOp(Expression):
         rhs = self.rhs.partial_eval()
 
         if isinstance(lhs, Literal) and isinstance(rhs, Literal):
-            output = EqOp("eq", ops["eq"](lhs, rhs))
+            output = Literal(None, ops["eq"](lhs, rhs))
         else:
             output = EqOp(self.op, [lhs, rhs])
 
@@ -839,6 +839,18 @@ class NeOp(Expression):
 
     def missing(self):
         return OrOp("or", [self.lhs.missing(), self.rhs.missing()])
+
+    def partial_eval(self):
+        lhs = self.lhs.partial_eval()
+        rhs = self.rhs.partial_eval()
+
+        if isinstance(lhs, Literal) and isinstance(rhs, Literal):
+            output = Literal(None, ops["ne"](lhs, rhs))
+        else:
+            output = NeOp("ne", [lhs, rhs])
+
+        output.simplified = True
+        return output
 
 
 class NotOp(Expression):
@@ -1043,6 +1055,60 @@ class CountOp(Expression):
 
     def exists(self):
         return TrueOp
+
+
+class MaxOp(Expression):
+    def __init__(self, op, terms):
+        Expression.__init__(self, op, terms)
+        if terms == None:
+            self.terms = []
+        elif isinstance(terms, list):
+            self.terms = terms
+        else:
+            self.terms = [terms]
+
+    def __data__(self):
+        return {"max": [t.__data__() for t in self.terms]}
+
+    def vars(self):
+        output = set()
+        for t in self.terms:
+            output |= t.vars()
+        return output
+
+    def map(self, map_):
+        return MaxOp("max", [t.map(map_) for t in self.terms])
+
+    def missing(self):
+        return False
+
+    def partial_eval(self):
+        if self.simplified:
+            return self
+
+        maximum = None
+        terms = []
+        for t in self.terms:
+            simple = t.partial_eval()
+            if isinstance(simple, NullOp):
+                pass
+            elif isinstance(simple, Literal):
+                maximum = MAX(maximum, simple.value)
+            else:
+                terms.append(simple)
+        if len(terms) == 0:
+            if maximum == None:
+                return NullOp()
+            else:
+                return Literal(None, maximum)
+        else:
+            if maximum == None:
+                output = MaxOp("max", terms)
+            else:
+                output = MaxOp("max", [Literal(None, maximum)] + terms)
+
+        output.simplified = True
+        return output
 
 
 class MultiOp(Expression):
@@ -1416,7 +1482,19 @@ class FindOp(Expression):
         self.start = kwargs.get("start", Literal(None, 0))
 
     def __data__(self):
-        return {"contains": {self.var.var: self.substring}}
+        if isinstance(self.value, Variable) and isinstance(self.find, Literal):
+            output = {
+                "find": {self.value.var, self.find.value},
+                "start":self.start.__data__()
+            }
+        else:
+            output = {
+                "find": [self.value.__data__(), self.find.__data__()],
+                "start":self.start.__data__()
+            }
+        if self.default:
+            output["default"]=self.default.__data__()
+        return output
 
     def vars(self):
         return self.value.vars() | self.find.vars() | self.default.vars() | self.start.vars()
@@ -1445,6 +1523,52 @@ class FindOp(Expression):
 
     def exists(self):
         return TrueOp()
+
+
+class SplitOp(Expression):
+    """
+    RETURN true IF substring CAN BE FOUND IN var, ELSE RETURN false
+    """
+    has_simple_form = True
+
+    def __init__(self, op, term, **kwargs):
+        Expression.__init__(self, op, term)
+        self.value, self.find = term
+
+    def __data__(self):
+        if isinstance(self.value, Variable) and isinstance(self.find, Literal):
+            return {"split": {self.value.var, self.find.value}}
+        else:
+            return {"split": [self.value.__data__(), self.find.__data__()]}
+
+    def vars(self):
+        return self.value.vars() | self.find.vars() | self.default.vars() | self.start.vars()
+
+    def map(self, map_):
+        return FindOp(
+            "find",
+            [self.value.map(map_), self.find.map(map_)],
+            start=self.start.map(map_),
+            default=self.default.map(map_)
+        )
+
+    def missing(self):
+        v = self.value.to_ruby(not_null=True)
+        find = self.find.to_ruby(not_null=True)
+        index = v + ".indexOf(" + find + ", " + self.start.to_ruby() + ")"
+
+        return AndOp("and", [
+            self.default.missing(),
+            OrOp("or", [
+                self.value.missing(),
+                self.find.missing(),
+                EqOp("eq", [ScriptOp("script", index), Literal(None, -1)])
+            ])
+        ])
+
+    def exists(self):
+        return TrueOp()
+
 
 
 class BetweenOp(Expression):
@@ -1647,6 +1771,7 @@ operators = {
     "lt": InequalityOp,
     "lte": InequalityOp,
     "match_all": TrueOp,
+    "max": MaxOp,
     "minus": BinaryOp,
     "missing": MissingOp,
     "mod": BinaryOp,
@@ -1669,6 +1794,7 @@ operators = {
     "right": RightOp,
     "rows": RowsOp,
     "script": ScriptOp,
+    "split": SplitOp,
     "string": StringOp,
     "sub": BinaryOp,
     "subtract": BinaryOp,
@@ -1689,6 +1815,7 @@ def extend(cls):
 
 
 ops={
+    "ne": operator.ne,
     "eq": operator.eq,
     "gte": operator.ge,
     "gt": operator.gt,

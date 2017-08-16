@@ -69,7 +69,7 @@ class ListContainer(Container):
             try:
                 if q.filter != None or q.esfilter != None:
                     Log.error("use 'where' clause")
-            except AttributeError, e:
+            except AttributeError:
                 pass
 
             if q.where is not TRUE_FILTER and not isinstance(q.where, TrueOp):
