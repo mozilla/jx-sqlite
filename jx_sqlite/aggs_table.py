@@ -377,7 +377,16 @@ class AggsTable(SetOpTable):
                     column_number = len(outer_selects)
 
                     for json_type, sql in details.sql.items():
-                        concat_sql.append("GROUP_CONCAT(QUOTE(DISTINCT(" + sql + ")))")
+                        concat_sql.append("JSON_GROUP_ARRAY(DISTINCT(" + sql + "))")
+                        query_tables = tables.nest
+                        if details.nested_path not in query_tables:
+                            p = details.nested_path
+                            alias = "s" + text_type(ssi)
+                            from_sql += (
+                                "\nLEFT JOIN\n (SELECT " + PARENT + ", " + sql + " \nFROM " +
+                                quote_table(concat_field(base_table, p)) + ") " + alias +
+                                " ON " + alias + "." + PARENT + " = " + previous.alias + "." + UID
+                            )
 
                     if len(concat_sql) > 1:
                         concat_sql = "CONCAT(" + ",".join(concat_sql) + ") AS " + _make_column_name(column_number)
