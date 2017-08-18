@@ -285,6 +285,8 @@ class Schema(object):
         RETURN A MAP FROM THE RELATIVE AND ABSOLUTE NAME SPACE TO COLUMNS 
         """
         origin = self.nested_path[0]
+        if startswith_field(var, origin) and origin!=var:
+            var = relative_field(var, origin)
         fact_dict={}
         origin_dict={}
         for k, cs in self.map.items():
