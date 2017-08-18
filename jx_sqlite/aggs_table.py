@@ -554,13 +554,16 @@ class AggsTable(SetOpTable):
                 column_alias = _make_column_name(column_number)
                 groupby.append(sql)
                 selects.append(sql + " AS " + column_alias)
-
+                if s.nested_path ==".":
+                    select_name = s.name
+                else:
+                    select_name = "."
                 index_to_column[column_number] = ColumnMapping(
                     is_edge=True,
                     push_name=e.name,
                     push_column_name=e.name.replace("\\.", "."),
                     push_column=i,
-                    push_child=s.name,
+                    push_child=select_name,
                     pull=get_column(column_number),
                     sql=sql,
                     column_alias=column_alias,
