@@ -224,11 +224,17 @@ class AggsTable(SetOpTable):
                 not_on_clause = None
             elif isinstance(query_edge.domain, DefaultDomain):
                 domain_names = ["d" + text_type(edge_index) + "c" + text_type(i) for i, _ in enumerate(edge_names)]
+                domain_columns = [c for c in self.sf.columns if quote_table(c.es_column) in vals]
+                if domain_columns and path==domain_columns[0].nested_path[0]:
+                    domain_table = quote_table(frum)
+                else:
+                    domain_table = quote_table(self.sf.fact)
+
                 domain = (
                     "\nSELECT " + ",".join(domain_names) + " FROM ("
                                                            "\nSELECT " + ",\n".join(
                         g + " AS " + n for n, g in zip(domain_names, vals)) +
-                    "\nFROM\n" + quote_table(frum) + " " + nest_to_alias["."]
+                    "\nFROM\n" + domain_table + " " + nest_to_alias["."]
                 )
                 if not query_edge.allowNulls:
                     domain +=  "\nWHERE\n" + " AND ".join(g + " IS NOT NULL" for g in vals)
