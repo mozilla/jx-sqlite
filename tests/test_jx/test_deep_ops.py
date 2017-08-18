@@ -775,8 +775,9 @@ class TestDeepOps(BaseTestCase):
             },
             "expecting_cube": {
                 "meta": {"format": "cube"},
+                "select": {"name": "count"},
                 "edges": [
-                    {"name": "o", "value": "o", "domain": {"type": "set", "partitions": [
+                    {"name": "o", "domain": {"type": "set", "partitions": [
                         {"value": 1, "dataIndex": 0},
                         {"value": 2, "dataIndex": 1},
                         {"value": 3, "dataIndex": 2},
