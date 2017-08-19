@@ -205,6 +205,7 @@ class AggsTable(SetOpTable):
             elif len(edge_names) > 1:
                 domain_names = ["d" + text_type(edge_index) + "c" + text_type(i) for i, _ in enumerate(edge_names)]
                 query_edge.allowNulls = False
+                
                 domain = (
                     "\nSELECT " + ",\n".join(g + " AS " + n for n, g in zip(domain_names, vals)) +
                     "\nFROM\n" + quote_table(self.sf.fact) + " " + nest_to_alias["."] +
