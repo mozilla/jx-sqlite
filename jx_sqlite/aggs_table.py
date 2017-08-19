@@ -205,10 +205,15 @@ class AggsTable(SetOpTable):
             elif len(edge_names) > 1:
                 domain_names = ["d" + text_type(edge_index) + "c" + text_type(i) for i, _ in enumerate(edge_names)]
                 query_edge.allowNulls = False
-                
+                domain_columns = [c for c in self.sf.columns if quote_table(c.es_column) in vals]
+                if domain_columns and path==domain_columns[0].nested_path[0]:
+                    domain_table = quote_table(frum)
+                else:
+                    domain_table = quote_table(self.sf.fact)
+
                 domain = (
                     "\nSELECT " + ",\n".join(g + " AS " + n for n, g in zip(domain_names, vals)) +
-                    "\nFROM\n" + quote_table(self.sf.fact) + " " + nest_to_alias["."] +
+                    "\nFROM\n" + domain_table + " " + nest_to_alias["."] +
                     "\nGROUP BY\n" + ",\n".join(vals)
                 )
                 limit = Math.min(query.limit, query_edge.domain.limit)
