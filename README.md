@@ -57,5 +57,6 @@ This project is licensed under Mozilla Public License, v. 2.0. If a copy of the 
 
 
 ## GSOC
-All the commits done by Rohit Kumar in GSoC'17 can be found here:
-* [GSoC work]()
+Work done upto the deadline of GSoC'17:
+* [Link to Pull Requests](https://github.com/mozilla/jx-sqlite/pulls?utf8=%E2%9C%93&q=is%3Apr%20author%3Arohit-rk)
+* [Link to Commits](https://github.com/mozilla/jx-sqlite/commits?author=rohit-rk&before=f8743fed1f716d7b8fe5399c86ba33af660d76a7+35)
