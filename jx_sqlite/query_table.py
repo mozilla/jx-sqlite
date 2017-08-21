@@ -89,22 +89,7 @@ class QueryTable(AggsTable):
             Log.error("Expecting table, or some nested table")
         frum, query['from'] = query['from'], self
         schema = self.sf.tables["."].schema
-        if not query.groupby:
-            query = QueryOp.wrap(query, schema)
-        # TYPE CONFLICTS MUST NOW BE RESOLVED DURING
-        # TYPE-SPECIFIC QUERY NORMALIZATION
-        # vars_ = query.vars(exclude_select=True)
-        # type_map = {
-        #     v: c.es_column
-        #     for v in vars_
-        #     if v in self.columns and len([c for c in self.columns[v] if c.type != "nested"]) == 1
-        #     for c in self.columns[v]
-        #     if c.type != "nested"
-        # }
-        #
-        # sql_query = query.map(type_map)
-        query = query
-
+        query = QueryOp.wrap(query, schema)
         new_table = "temp_" + unique_name()
 
         if query.format == "container":

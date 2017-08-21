@@ -16,11 +16,11 @@ from __future__ import unicode_literals
 from future.utils import text_type
 from jx_python import jx
 from jx_sqlite import UID, quote_table, get_column, _make_column_name, sql_text_array_to_set, STATS, sql_aggs, PARENT, ColumnMapping, untyped_column
-from mo_dots import listwrap, coalesce, split_field, join_field, startswith_field, relative_field, concat_field
+from mo_dots import listwrap, coalesce, split_field, join_field, startswith_field, relative_field, concat_field, Data, wrap
 from mo_logs import Log
 from mo_math import Math
 
-from jx_base.domains import DefaultDomain, TimeDomain, DurationDomain
+from jx_base.domains import DefaultDomain, TimeDomain, DurationDomain, UnitDomain
 from jx_sqlite.expressions import Variable, sql_type_to_json_type, TupleOp
 from jx_sqlite.setop_table import SetOpTable
 from pyLibrary.sql.sqlite import quote_value
@@ -28,6 +28,7 @@ from pyLibrary.sql.sqlite import quote_value
 
 class AggsTable(SetOpTable):
     def _edges_op(self, query, frum):
+        query = query.copy()  # WE WILL BE MARKING UP THE QUERY
         index_to_column = {}  # MAP FROM INDEX TO COLUMN (OR SELECT CLAUSE)
         outer_selects = []  # EVERY SELECT CLAUSE (NOT TO BE USED ON ALL TABLES, OF COURSE)
         frum_path = split_field(frum)
@@ -53,6 +54,8 @@ class AggsTable(SetOpTable):
                 "\nLEFT JOIN\n" + quote_table(concat_field(base_table, t.nest)) + " " + t.alias +
                 " ON " + t.alias + "." + PARENT + " = " + previous.alias + "." + UID
             )
+
+        main_filter = query.where.to_sql(schema, boolean=True)[0].sql.b
 
         # SHIFT THE COLUMN DEFINITIONS BASED ON THE NESTED QUERY DEPTH
         ons = []
@@ -335,8 +338,8 @@ class AggsTable(SetOpTable):
                     type=sql_type_to_json_type["n"]
                 )
             elif s.aggregate == "count" and (not query.edges and not query.groupby):
-                value=s.value.var
-                columns=[c.es_column for c in self.sf.columns if untyped_column(c.es_column)[0]==value]
+                value = s.value.var
+                columns = [c.es_column for c in self.sf.columns if untyped_column(c.es_column)[0] == value]
                 sql = " + ".join("COUNT(" + quote_table(col) + ")" for col in columns)
                 column_number = len(outer_selects)
                 outer_selects.append(sql + " AS " + _make_column_name(column_number))
@@ -372,37 +375,69 @@ class AggsTable(SetOpTable):
                             type=sql_type_to_json_type[json_type]
                         )
             elif s.aggregate == "union":
-                for details in s.value.to_sql(schema):
-                    concat_sql = []
+                for ei, details in enumerate(s.value.to_sql(schema)):
                     column_number = len(outer_selects)
+                    union_table_alias = "t" + text_type(column_number)
 
-                    for json_type, sql in details.sql.items():
-                        concat_sql.append("JSON_GROUP_ARRAY(DISTINCT(" + sql + "))")
-                        query_tables = tables.nest
-                        if details.nested_path not in query_tables:
-                            p = details.nested_path
-                            alias = "s" + text_type(ssi)
-                            from_sql += (
-                                "\nLEFT JOIN\n (SELECT " + PARENT + ", " + sql + " \nFROM " +
-                                quote_table(concat_field(base_table, p)) + ") " + alias +
-                                " ON " + alias + "." + PARENT + " = " + previous.alias + "." + UID
-                            )
+                    union_values = []
 
-                    if len(concat_sql) > 1:
-                        concat_sql = "CONCAT(" + ",".join(concat_sql) + ") AS " + _make_column_name(column_number)
+                    for ci, (json_type, sql) in enumerate(details.sql.items()):
+                        cname = _make_column_name(column_number) + "d" + text_type(ci) + "c" + text_type(ci)
+                        agg = "JSON_GROUP_ARRAY(DISTINCT(" + sql + "))  AS " + cname
+                        union_values.append(cname)
+                        union_join_sql = "SELECT " + ", ".join([agg] + groupby)
+                        union_prev_table = None
+
+                        # TODO: FIX WHATEVER IS SETTING THE nested_path WRONG
+                        nested_path = listwrap(details.nested_path)
+                        if nested_path.last() != ".":
+                            Log.warning("bad nested path")
+                            nested_path.append(".")
+
+                        for p in jx.reverse(nested_path):
+                            union_next_table = quote_table(concat_field(base_table, p))
+                            if p == ".":
+                                union_join_sql += " FROM " + union_next_table + " AS " + union_table_alias
+                            else:
+                                union_join_sql += (
+                                    "\nLEFT JOIN " + union_next_table +
+                                    "\nON " + union_next_table + "." + PARENT + " = " + union_prev_table + "." + UID
+                                )
+                            union_prev_table = union_next_table
+                        union_join_sql += (
+                            "\nWHERE " + main_filter + " AND (" + sql + ") IS NOT NULL" +
+                            ("\nGROUP BY " + ",\n".join(groupby) if groupby else "")
+                        )
+
+                        domains.append("(" + union_join_sql + ") AS " + union_table_alias)
+                        if not groupby:
+                            ons.append("1=1")
+                        else:
+                            ons.append(" AND ".join(union_table_alias + "." + g + "=" + tables[0].alias + "." + g for g in groupby))
+                            # Log.error("do not know how to handle yet")
+                        join_types.append("LEFT JOIN")
+                        if not query.edges:
+                            query.edges = []
+                        query.edges.append(Data(allowNulls=False, domain=UnitDomain()))
+
+                    if len(union_values) > 1:
+                        union_select_sql = "CONCAT('[', " + ", ',', ".join([
+                            "LTRIM(RTRIM(MAX("+cname+"), ']'), '[')"
+                            for cname in union_values
+                        ])+") AS "+_make_column_name(column_number)
                     else:
-                        concat_sql = concat_sql[0] + " AS " + _make_column_name(column_number)
+                        union_select_sql = "MAX("+union_table_alias + "." + _make_column_name(column_number) + "d0c0) AS " + _make_column_name(column_number)
 
-                    outer_selects.append(concat_sql)
+                    outer_selects.append(union_select_sql)
                     index_to_column[column_number] = ColumnMapping(
                         push_name=s.name,
                         push_column_name=s.name,
                         push_column=si,
                         push_child=".",
                         pull=sql_text_array_to_set(column_number),
-                        sql=concat_sql,
+                        sql=union_select_sql,
                         column_alias=_make_column_name(column_number),
-                        type=sql_type_to_json_type[json_type]
+                        type=sql_type_to_json_type["j"]
                     )
 
             elif s.aggregate == "stats":  # THE STATS OBJECT
@@ -444,8 +479,6 @@ class AggsTable(SetOpTable):
         for w in query.window:
             outer_selects.append(self._window_op(self, query, w))
 
-        main_filter = query.where.to_sql(schema, boolean=True)[0].sql.b
-
         all_parts = []
 
         primary = (
@@ -455,26 +488,33 @@ class AggsTable(SetOpTable):
             "\nWHERE " + main_filter +
             ") " + nest_to_alias["."]
         )
-        sources = []
+        edge_sources = []
         for edge_index, query_edge in enumerate(query.edges):
             edge_alias = "e" + text_type(edge_index)
             domain = domains[edge_index]
-            sources.append("(" + domain + ") " + edge_alias)
+            edge_sources.append(Data(
+                isNull = query_edge.allowNulls,
+                sql="(" + domain + ") AS " + edge_alias
+            ))
 
         # COORDINATES OF ALL primary DATA
-        part = "SELECT " + (",\n".join(outer_selects)) + "\nFROM\n" + primary
-        for t, s, j in zip(join_types, sources, ons):
-            part += " " + t + "\n" + s + " ON " + j
+        part = (
+            "SELECT " + (",\n".join(outer_selects)) +
+            "\nFROM\n" + primary
+        )
+        for t, s, j in zip(join_types, edge_sources, ons):
+            part += " " + t + "\n" + s.sql + " ON " + j
         if any(wheres):
             part += "\nWHERE " + " AND ".join("(" + w + ")" for w in wheres if w)
         if groupby:
             part += "\nGROUP BY\n" + ",\n".join(groupby)
         all_parts.append(part)
 
-        if sources:
-            # ALL COORINATES MISSED BY primary DATA
-            part = "SELECT " + (",\n".join(outer_selects)) + "\nFROM\n" + sources[0]
-            for s in sources[1:]:
+        missing_domain = [es.sql for es in edge_sources if es.isNull]
+        if missing_domain:
+            # ALL COORDINATES MISSED BY primary DATA
+            part = "SELECT " + (",\n".join(outer_selects)) + "\nFROM\n" + missing_domain[0]
+            for s in missing_domain[1:]:
                 part += "\nLEFT JOIN\n" + s + "\nON 1=1\n"
             part += "\nLEFT JOIN\n" + primary + "\nON (" + ") AND (".join(ons) + ")"
             part += "\nWHERE " + " AND ".join("(" + w + ")" for w in not_ons if w)

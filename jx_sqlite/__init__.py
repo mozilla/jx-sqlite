@@ -173,8 +173,12 @@ quoted_PARENT = quote_table(PARENT)
 
 def sql_text_array_to_set(column):
     def _convert(row):
-        text = [t for t in json2value(row[column]) if t!=Null]
-        return set(text)
+        text = row[column]
+        if text == None:
+            return set()
+        else:
+            value = json2value(row[column])
+            return set(value)
 
     return _convert
 
