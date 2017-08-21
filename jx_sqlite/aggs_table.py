@@ -206,11 +206,12 @@ class AggsTable(SetOpTable):
                 domain_names = ["d" + text_type(edge_index) + "c" + text_type(i) for i, _ in enumerate(edge_names)]
                 query_edge.allowNulls = False
                 domain_columns = [c for c in self.sf.columns if quote_table(c.es_column) in vals]
-                if domain_columns and path==domain_columns[0].nested_path[0]:
-                    domain_table = quote_table(frum)
+                if not domain_columns:
+                    domain_nested_path = "."
+                    Log.note("expecting a known column")
                 else:
-                    domain_table = quote_table(self.sf.fact)
-
+                    domain_nested_path = domain_columns[0].nested_path
+                domain_table = quote_table(concat_field(self.sf.fact, domain_nested_path[0]))
                 domain = (
                     "\nSELECT " + ",\n".join(g + " AS " + n for n, g in zip(domain_names, vals)) +
                     "\nFROM\n" + domain_table + " " + nest_to_alias["."] +
@@ -231,11 +232,12 @@ class AggsTable(SetOpTable):
             elif isinstance(query_edge.domain, DefaultDomain):
                 domain_names = ["d" + text_type(edge_index) + "c" + text_type(i) for i, _ in enumerate(edge_names)]
                 domain_columns = [c for c in self.sf.columns if quote_table(c.es_column) in vals]
-                if domain_columns and path==domain_columns[0].nested_path[0]:
-                    domain_table = quote_table(frum)
+                if not domain_columns:
+                    domain_nested_path = "."
+                    Log.note("expecting a known column")
                 else:
-                    domain_table = quote_table(self.sf.fact)
-
+                    domain_nested_path = domain_columns[0].nested_path
+                domain_table = quote_table(concat_field(self.sf.fact, domain_nested_path[0]))
                 domain = (
                     "\nSELECT " + ",".join(domain_names) + " FROM ("
                                                            "\nSELECT " + ",\n".join(
