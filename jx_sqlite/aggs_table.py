@@ -525,6 +525,22 @@ class AggsTable(SetOpTable):
             nested_path: "__" + unichr(ord('a') + i) + "__"
             for i, (nested_path, sub_table) in enumerate(self.sf.tables.items())
             }
+        frum_path = split_field(frum)
+        base_table = join_field(frum_path[0:1])
+        path = join_field(frum_path[1:])
+        tables = []
+        for n, a in nest_to_alias.items():
+            if startswith_field(path, n):
+                tables.append({"nest": n, "alias": a})
+        tables = jx.sort(tables, {"value": {"length": "nest"}})
+
+        from_sql = join_field([base_table] + split_field(tables[0].nest)) + " " + tables[0].alias
+        previous = tables[0]
+        for t in tables[1::]:
+            from_sql += (
+                "\nLEFT JOIN\n" + quote_table(concat_field(base_table, t.nest)) + " " + t.alias +
+                " ON " + t.alias + "." + PARENT + " = " + previous.alias + "." + UID
+            )
 
         selects = []
         groupby = []
@@ -538,13 +554,16 @@ class AggsTable(SetOpTable):
                 column_alias = _make_column_name(column_number)
                 groupby.append(sql)
                 selects.append(sql + " AS " + column_alias)
-
+                if s.nested_path ==".":
+                    select_name = s.name
+                else:
+                    select_name = "."
                 index_to_column[column_number] = ColumnMapping(
                     is_edge=True,
                     push_name=e.name,
                     push_column_name=e.name.replace("\\.", "."),
                     push_column=i,
-                    push_child=s.name,
+                    push_child=select_name,
                     pull=get_column(column_number),
                     sql=sql,
                     column_alias=column_alias,
@@ -579,7 +598,7 @@ class AggsTable(SetOpTable):
         where = query.where.to_sql(schema)[0].sql.b
 
         command = "SELECT\n" + (",\n".join(selects)) + \
-                  "\nFROM\n" + quote_table(self.sf.fact) + " " + nest_to_alias["."] + \
+                  "\nFROM\n" + from_sql + \
                   "\nWHERE\n" + where + \
                   "\nGROUP BY\n" + ",\n".join(groupby)
 
