@@ -205,9 +205,16 @@ class AggsTable(SetOpTable):
             elif len(edge_names) > 1:
                 domain_names = ["d" + text_type(edge_index) + "c" + text_type(i) for i, _ in enumerate(edge_names)]
                 query_edge.allowNulls = False
+                domain_columns = [c for c in self.sf.columns if quote_table(c.es_column) in vals]
+                if not domain_columns:
+                    domain_nested_path = "."
+                    Log.note("expecting a known column")
+                else:
+                    domain_nested_path = domain_columns[0].nested_path
+                domain_table = quote_table(concat_field(self.sf.fact, domain_nested_path[0]))
                 domain = (
                     "\nSELECT " + ",\n".join(g + " AS " + n for n, g in zip(domain_names, vals)) +
-                    "\nFROM\n" + quote_table(self.sf.fact) + " " + nest_to_alias["."] +
+                    "\nFROM\n" + domain_table + " " + nest_to_alias["."] +
                     "\nGROUP BY\n" + ",\n".join(vals)
                 )
                 limit = Math.min(query.limit, query_edge.domain.limit)
@@ -224,11 +231,18 @@ class AggsTable(SetOpTable):
                 not_on_clause = None
             elif isinstance(query_edge.domain, DefaultDomain):
                 domain_names = ["d" + text_type(edge_index) + "c" + text_type(i) for i, _ in enumerate(edge_names)]
+                domain_columns = [c for c in self.sf.columns if quote_table(c.es_column) in vals]
+                if not domain_columns:
+                    domain_nested_path = "."
+                    Log.note("expecting a known column")
+                else:
+                    domain_nested_path = domain_columns[0].nested_path
+                domain_table = quote_table(concat_field(self.sf.fact, domain_nested_path[0]))
                 domain = (
                     "\nSELECT " + ",".join(domain_names) + " FROM ("
                                                            "\nSELECT " + ",\n".join(
                         g + " AS " + n for n, g in zip(domain_names, vals)) +
-                    "\nFROM\n" + quote_table(frum) + " " + nest_to_alias["."]
+                    "\nFROM\n" + domain_table + " " + nest_to_alias["."]
                 )
                 if not query_edge.allowNulls:
                     domain +=  "\nWHERE\n" + " AND ".join(g + " IS NOT NULL" for g in vals)
@@ -525,6 +539,22 @@ class AggsTable(SetOpTable):
             nested_path: "__" + unichr(ord('a') + i) + "__"
             for i, (nested_path, sub_table) in enumerate(self.sf.tables.items())
             }
+        frum_path = split_field(frum)
+        base_table = join_field(frum_path[0:1])
+        path = join_field(frum_path[1:])
+        tables = []
+        for n, a in nest_to_alias.items():
+            if startswith_field(path, n):
+                tables.append({"nest": n, "alias": a})
+        tables = jx.sort(tables, {"value": {"length": "nest"}})
+
+        from_sql = join_field([base_table] + split_field(tables[0].nest)) + " " + tables[0].alias
+        previous = tables[0]
+        for t in tables[1::]:
+            from_sql += (
+                "\nLEFT JOIN\n" + quote_table(concat_field(base_table, t.nest)) + " " + t.alias +
+                " ON " + t.alias + "." + PARENT + " = " + previous.alias + "." + UID
+            )
 
         selects = []
         groupby = []
@@ -538,13 +568,16 @@ class AggsTable(SetOpTable):
                 column_alias = _make_column_name(column_number)
                 groupby.append(sql)
                 selects.append(sql + " AS " + column_alias)
-
+                if s.nested_path ==".":
+                    select_name = s.name
+                else:
+                    select_name = "."
                 index_to_column[column_number] = ColumnMapping(
                     is_edge=True,
                     push_name=e.name,
                     push_column_name=e.name.replace("\\.", "."),
                     push_column=i,
-                    push_child=s.name,
+                    push_child=select_name,
                     pull=get_column(column_number),
                     sql=sql,
                     column_alias=column_alias,
@@ -579,7 +612,7 @@ class AggsTable(SetOpTable):
         where = query.where.to_sql(schema)[0].sql.b
 
         command = "SELECT\n" + (",\n".join(selects)) + \
-                  "\nFROM\n" + quote_table(self.sf.fact) + " " + nest_to_alias["."] + \
+                  "\nFROM\n" + from_sql + \
                   "\nWHERE\n" + where + \
                   "\nGROUP BY\n" + ",\n".join(groupby)
 
