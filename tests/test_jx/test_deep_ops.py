@@ -857,7 +857,7 @@ class TestDeepOps(BaseTestCase):
             }
         }
         self.utils.execute_tests(test)
-        
+
     def test_aggs_on_parent_and_child2(self):
         test = {
             "data": [
