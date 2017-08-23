@@ -857,6 +857,80 @@ class TestDeepOps(BaseTestCase):
             }
         }
         self.utils.execute_tests(test)
+        
+    def test_aggs_on_parent_and_child2(self):
+        test = {
+            "data": [
+                {"o": 1, "a": {"_a": [
+                    {"v": "b", "s": False},
+                    {"v": "c"}
+                ]}},
+                {"o": 1, "a": {"_a": {
+                    "v": "b",
+                    "s": False
+                }}},
+                {"o": 2, "a": {"_a": [
+                    {"v": "b", "s": True},
+                ]}},
+                {"o": 2, "a": {"_a": {"s": False}}},
+                {"a": {"_a": {"s": False}}}
+            ],
+            "query": {
+                "from": TEST_TABLE + ".a._a",
+                "edges": ["o", "v"],
+                "select": {"aggregate": "count", "value": "s"}
+            },
+            "expecting_list": {
+                "meta": {"format": "list"},
+                "data": [
+                    {"o": 1, "v": "b", "s": 2},
+                    {"o": 1, "v": "c", "s": 0},
+                    {"o": 1, "v": NULL, "s": 0},
+                    {"o": 2, "v": "b", "s": 1},
+                    {"o": 2, "v": "c", "s": 0},
+                    {"o": 2, "v": NULL, "s": 1},
+                    {"o": NULL, "v":"b", "s": 0},
+                    {"o": NULL, "v":"c", "s": 0},
+                    {"o": NULL, "v":NULL, "s": 1}
+                ]
+            },
+            "expecting_table": {
+                "meta": {"format": "table"},
+                "header": ["o", "v", "s"],
+                "data": [
+                    [1, "b", 2],
+                    [1, "c", 0],
+                    [1, NULL, 0],
+                    [2, "b", 1],
+                    [2, "c", 0],
+                    [2, NULL, 1],
+                    [NULL, "b", 0],
+                    [NULL, "c", 0],
+                    [NULL, NULL, 1]
+                ]
+            },
+            "expecting_cube": {
+                "meta": {"format": "cube"},
+                "edges": [
+                    {"name": "o", "domain": {"type": "set", "partitions": [
+                        {"value": 1, "dataIndex": 0},
+                        {"value": 2, "dataIndex": 1},
+                    ]}},
+                    {"name": "v", "domain": {"type": "set", "partitions": [
+                        {"value": "b", "dataIndex": 0},
+                        {"value": "c", "dataIndex": 1},
+                    ]}}
+                ],
+                "data": {
+                    "s": [
+                        [2, 0, 0],
+                        [1, 0, 1],
+                        [0, 0, 1]
+                    ]
+                }
+            }
+        }
+        self.utils.execute_tests(test)    
 
     def test_deep_edge_using_list(self):
         data = [{"a": {"_b": [
