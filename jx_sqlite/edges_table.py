@@ -25,8 +25,7 @@ from jx_sqlite.expressions import Variable, sql_type_to_json_type, TupleOp
 from jx_sqlite.setop_table import SetOpTable
 from pyLibrary.sql.sqlite import quote_value
 
-
-class AggsTable(SetOpTable):
+class EdgesTable(SetOpTable):
     def _edges_op(self, query, frum):
         index_to_column = {}  # MAP FROM INDEX TO COLUMN (OR SELECT CLAUSE)
         outer_selects = []  # EVERY SELECT CLAUSE (NOT TO BE USED ON ALL TABLES, OF COURSE)
@@ -503,6 +502,7 @@ class AggsTable(SetOpTable):
 
         return command, index_to_column
 
+
     def _make_range_domain(self, domain, column_name):
         width = (domain.max - domain.min) / domain.interval
         digits = Math.floor(Math.log10(width - 1))
@@ -531,99 +531,3 @@ class AggsTable(SetOpTable):
             domain += "\nJOIN __digits__ " + text_type(chr(ord(b'a') + j + 1)) + " ON 1=1"
         domain += "\nWHERE " + value + " < " + quote_value(width)
         return domain
-
-    def _groupby_op(self, query, frum):
-        schema = self.sf.tables[join_field(split_field(frum)[1:])].schema
-        index_to_column = {}
-        nest_to_alias = {
-            nested_path: "__" + unichr(ord('a') + i) + "__"
-            for i, (nested_path, sub_table) in enumerate(self.sf.tables.items())
-            }
-        frum_path = split_field(frum)
-        base_table = join_field(frum_path[0:1])
-        path = join_field(frum_path[1:])
-        tables = []
-        for n, a in nest_to_alias.items():
-            if startswith_field(path, n):
-                tables.append({"nest": n, "alias": a})
-        tables = jx.sort(tables, {"value": {"length": "nest"}})
-
-        from_sql = join_field([base_table] + split_field(tables[0].nest)) + " " + tables[0].alias
-        previous = tables[0]
-        for t in tables[1::]:
-            from_sql += (
-                "\nLEFT JOIN\n" + quote_table(concat_field(base_table, t.nest)) + " " + t.alias +
-                " ON " + t.alias + "." + PARENT + " = " + previous.alias + "." + UID
-            )
-
-        selects = []
-        groupby = []
-        for i, e in enumerate(query.groupby):
-            for s in e.value.to_sql(schema):
-                column_number = len(selects)
-                sql_type, sql = s.sql.items()[0]
-                if sql == 'NULL'and not e.value.var in schema.keys():
-                    Log.error("No such column {{var}}", var=e.value.var)
-
-                column_alias = _make_column_name(column_number)
-                groupby.append(sql)
-                selects.append(sql + " AS " + column_alias)
-                if s.nested_path ==".":
-                    select_name = s.name
-                else:
-                    select_name = "."
-                index_to_column[column_number] = ColumnMapping(
-                    is_edge=True,
-                    push_name=e.name,
-                    push_column_name=e.name.replace("\\.", "."),
-                    push_column=i,
-                    push_child=select_name,
-                    pull=get_column(column_number),
-                    sql=sql,
-                    column_alias=column_alias,
-                    type=sql_type_to_json_type[sql_type]
-                )
-
-        for i, s in enumerate(listwrap(query.select)):
-            column_number = len(selects)
-            sql_type, sql = s.value.to_sql(schema)[0].sql.items()[0]
-            if sql == 'NULL'and not s.value.var in schema.keys():
-                Log.error("No such column {{var}}", var=s.value.var)
-
-            if s.value == "." and s.aggregate == "count":
-                selects.append("COUNT(1) AS " + quote_table(s.name))
-            else:
-                selects.append(sql_aggs[s.aggregate] + "(" + sql + ") AS " + quote_table(s.name))
-
-            index_to_column[column_number] = ColumnMapping(
-                push_name=s.name,
-                push_column_name=s.name,
-                push_column=i+len(query.groupby),
-                push_child=".",
-                pull=get_column(column_number),
-                sql=sql,
-                column_alias=quote_table(s.name),
-                type=sql_type_to_json_type[sql_type]
-            )
-
-        for w in query.window:
-            selects.append(self._window_op(self, query, w))
-
-        where = query.where.to_sql(schema)[0].sql.b
-
-        command = "SELECT\n" + (",\n".join(selects)) + \
-                  "\nFROM\n" + from_sql + \
-                  "\nWHERE\n" + where + \
-                  "\nGROUP BY\n" + ",\n".join(groupby)
-
-        if query.sort:
-            command += "\nORDER BY " + ",\n".join(
-                "(" + sql[t] + ") IS NULL"  + ",\n" +
-                sql[t] + (" DESC" if s.sort == -1 else "")
-                for s, sql in [(s, s.value.to_sql(schema)[0].sql) for s in query.sort]
-                for t in "bns" if sql[t]
-            )
-
-        return command, index_to_column
-
-
