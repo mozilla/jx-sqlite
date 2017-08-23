@@ -53,3 +53,15 @@ Contributions are always welcome!
 
 ## License
 This project is licensed under Mozilla Public License, v. 2.0. If a copy of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+
+
+## GSOC
+Work done upto the deadline of GSoC'17:
+* [Pull Requests](https://github.com/mozilla/jx-sqlite/pulls?utf8=%E2%9C%93&q=is%3Apr%20author%3Arohit-rk)
+* [Commits](https://github.com/mozilla/jx-sqlite/commits?author=rohit-rk)
+
+
+Future Work
+* [Issues](https://github.com/mozilla/jx-sqlite/issues)
+* [The Future](https://github.com/mozilla/jx-sqlite/blob/master/docs/The%20Future.md)
