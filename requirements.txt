@@ -6,7 +6,7 @@ mo-threads
 mo-kwargs
 mo-math
 mo-times
-mo-collections
+mo-collections>=1.2.17235
 mo-testing>=1.0.17168
 mo-json>=1.0.17168
 mo-json-config
