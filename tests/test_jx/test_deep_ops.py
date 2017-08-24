@@ -785,7 +785,7 @@ class TestDeepOps(BaseTestCase):
                     ]}}
                 ],
                 "data": {
-                    "count": [1, 1, 2, 1, 0]
+                    "count": [1, 1, 2, 1]
                 }
             }
         }
@@ -851,7 +851,6 @@ class TestDeepOps(BaseTestCase):
                     "s": [
                         [2, 0, 0],
                         [1, 0, 1],
-                        [0, 0, 0]
                     ]
                 }
             }
@@ -959,10 +958,8 @@ class TestDeepOps(BaseTestCase):
                 "data": [
                     {"o": 1, "v": "b", "s": 2},
                     {"o": 1, "v": "c", "s": 0},
-                    {"o": 1, "v": NULL, "s": 0},
                     {"o": 2, "v": "b", "s": 1},
-                    {"o": 2, "v": "c", "s": 0},
-                    {"o": 2, "v": NULL, "s": 0}
+                    {"o": 2, "v": "c", "s": 0}
                 ]
             },
             "expecting_table": {  # TODO: THIS MAY NOT BE CORRECT
@@ -971,10 +968,8 @@ class TestDeepOps(BaseTestCase):
                 "data": [
                     [1, "b", 2],
                     [1, "c", 0],
-                    [1, NULL, 0],
                     [2, "b", 1],
-                    [2, "c", 0],
-                    [2, NULL, 0]
+                    [2, "c", 0]
                 ]
             },
             "expecting_cube": {
@@ -991,9 +986,8 @@ class TestDeepOps(BaseTestCase):
                 ],
                 "data": {
                     "s": [
-                        [2, 0, 0],
-                        [1, 0, 0],
-                        [0, 0, 0]
+                        [2, 0],
+                        [1, 0]
                     ]
                 }
             }
