@@ -777,7 +777,7 @@ class TestDeepOps(BaseTestCase):
                 "meta": {"format": "cube"},
                 "select": {"name": "count"},
                 "edges": [
-                    {"name": "o", "domain": {"type": "set", "partitions": [
+                    {"name": "o", "allowNulls": False, "domain": {"type": "set", "partitions": [
                         {"value": 1, "dataIndex": 0},
                         {"value": 2, "dataIndex": 1},
                         {"value": 3, "dataIndex": 2},
@@ -838,11 +838,11 @@ class TestDeepOps(BaseTestCase):
             "expecting_cube": {
                 "meta": {"format": "cube"},
                 "edges": [
-                    {"name": "o", "domain": {"type": "set", "partitions": [
+                    {"name": "o", "allowNulls": False, "domain": {"type": "set", "partitions": [
                         {"value": 1, "dataIndex": 0},
                         {"value": 2, "dataIndex": 1},
                     ]}},
-                    {"name": "v", "domain": {"type": "set", "partitions": [
+                    {"name": "v", "allowNulls": True, "domain": {"type": "set", "partitions": [
                         {"value": "b", "dataIndex": 0},
                         {"value": "c", "dataIndex": 1},
                     ]}}
@@ -975,11 +975,11 @@ class TestDeepOps(BaseTestCase):
             "expecting_cube": {
                 "meta": {"format": "cube"},
                 "edges": [
-                    {"name": "o", "domain": {"type": "set", "partitions": [
+                    {"name": "o", "allowNulls": False, "domain": {"type": "set", "partitions": [
                         {"value": 1, "dataIndex": 0},
                         {"value": 2, "dataIndex": 1},
                     ]}},
-                    {"name": "v", "domain": {"type": "set", "partitions": [
+                    {"name": "v", "allowNulls": False, "domain": {"type": "set", "partitions": [
                         {"value": "b", "dataIndex": 0},
                         {"value": "c", "dataIndex": 1},
                     ]}}
