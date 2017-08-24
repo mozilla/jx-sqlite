@@ -225,6 +225,7 @@ class QueryTable(GroupbyTable):
                     parts = set(columns[i])
                     if e.is_groupby and None in parts:
                         allowNulls = True
+
                     if None not in parts:
                         allowNulls = False
                     parts -= {None}
