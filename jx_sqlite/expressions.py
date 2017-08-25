@@ -117,7 +117,6 @@ def to_sql(self, schema, not_null=False, boolean=False):
         Log.error("Can only handle Variable")
     term = self.term.var
     prefix_length = len(split_field(term))
-    a=schema.map_to_sql(term).items()
     db_columns = []
     for n, cols in schema.map_to_sql(term).items():
         for c in cols:
