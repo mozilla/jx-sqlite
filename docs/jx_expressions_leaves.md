@@ -28,7 +28,7 @@ We only need one complicated document to show the selector patterns
 
 ## List format
 
-Only the list formatting proved here. It is hoped the `table` and `cube` are a natural derivation (more below). 
+Only the list formatting is proved here. It is hoped the `table` and `cube` are natural derivations (more below). 
 
 ### Dot Selection
 
@@ -75,8 +75,8 @@ Adding the array forces the names to be used as destination paths. This is the s
 
     "select":[{"name":".",     "value":"."    }] => {"a":{"b":{"c":1,"d":2},"e":{"f":3,"g":4}}}
     "select":[{"name":"a",     "value":"a"    }] => {"a":{"b":{"c":1,"d":2},"e":{"f":3,"g":4}}}
-    "select":[{"name":"a.b",   "value":"a.b"  }] => {"a":{"b":{"c":1,"d":2}                   }
-    "select":[{"name":"a.b.c", "value":"a.b.c"}] => {"a":{"b":{"c":1      } 
+    "select":[{"name":"a.b",   "value":"a.b"  }] => {"a":{"b":{"c":1,"d":2}                  }}
+    "select":[{"name":"a.b.c", "value":"a.b.c"}] => {"a":{"b":{"c":1      }                  }}
 
 **Implicit Dot Object**
 
@@ -84,8 +84,8 @@ If the names are the same as the values, we can leave them out, for the same eff
 
     "select":["."    ] => {"a":{"b":{"c":1,"d":2},"e":{"f":3,"g":4}}}
     "select":["a"    ] => {"a":{"b":{"c":1,"d":2},"e":{"f":3,"g":4}}}
-    "select":["a.b"  ] => {"a":{"b":{"c":1,"d":2}                   }
-    "select":["a.b.c"] => {"a":{"b":{"c":1      }                   }
+    "select":["a.b"  ] => {"a":{"b":{"c":1,"d":2}                  }}
+    "select":["a.b.c"] => {"a":{"b":{"c":1      }                  }}
 
 
 ### Star Selection
