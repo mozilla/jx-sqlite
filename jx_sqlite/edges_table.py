@@ -25,8 +25,7 @@ from jx_sqlite.expressions import Variable, sql_type_to_json_type, TupleOp
 from jx_sqlite.setop_table import SetOpTable
 from pyLibrary.sql.sqlite import quote_value
 
-
-class AggsTable(SetOpTable):
+class EdgesTable(SetOpTable):
     def _edges_op(self, query, frum):
         query = query.copy()  # WE WILL BE MARKING UP THE QUERY
         index_to_column = {}  # MAP FROM INDEX TO COLUMN (OR SELECT CLAUSE)
@@ -208,9 +207,16 @@ class AggsTable(SetOpTable):
             elif len(edge_names) > 1:
                 domain_names = ["d" + text_type(edge_index) + "c" + text_type(i) for i, _ in enumerate(edge_names)]
                 query_edge.allowNulls = False
+                domain_columns = [c for c in self.sf.columns if quote_table(c.es_column) in vals]
+                if not domain_columns:
+                    domain_nested_path = "."
+                    Log.note("expecting a known column")
+                else:
+                    domain_nested_path = domain_columns[0].nested_path
+                domain_table = quote_table(concat_field(self.sf.fact, domain_nested_path[0]))
                 domain = (
                     "\nSELECT " + ",\n".join(g + " AS " + n for n, g in zip(domain_names, vals)) +
-                    "\nFROM\n" + quote_table(self.sf.fact) + " " + nest_to_alias["."] +
+                    "\nFROM\n" + domain_table + " " + nest_to_alias["."] +
                     "\nGROUP BY\n" + ",\n".join(vals)
                 )
                 limit = Math.min(query.limit, query_edge.domain.limit)
@@ -227,11 +233,18 @@ class AggsTable(SetOpTable):
                 not_on_clause = None
             elif isinstance(query_edge.domain, DefaultDomain):
                 domain_names = ["d" + text_type(edge_index) + "c" + text_type(i) for i, _ in enumerate(edge_names)]
+                domain_columns = [c for c in self.sf.columns if quote_table(c.es_column) in vals]
+                if not domain_columns:
+                    domain_nested_path = "."
+                    Log.note("expecting a known column")
+                else:
+                    domain_nested_path = domain_columns[0].nested_path
+                domain_table = quote_table(concat_field(self.sf.fact, domain_nested_path[0]))
                 domain = (
                     "\nSELECT " + ",".join(domain_names) + " FROM ("
                                                            "\nSELECT " + ",\n".join(
                         g + " AS " + n for n, g in zip(domain_names, vals)) +
-                    "\nFROM\n" + quote_table(frum) + " " + nest_to_alias["."]
+                    "\nFROM\n" + domain_table + " " + nest_to_alias["."]
                 )
                 if not query_edge.allowNulls:
                     domain +=  "\nWHERE\n" + " AND ".join(g + " IS NOT NULL" for g in vals)
@@ -529,6 +542,7 @@ class AggsTable(SetOpTable):
 
         return command, index_to_column
 
+
     def _make_range_domain(self, domain, column_name):
         width = (domain.max - domain.min) / domain.interval
         digits = Math.floor(Math.log10(width - 1))
@@ -557,80 +571,3 @@ class AggsTable(SetOpTable):
             domain += "\nJOIN __digits__ " + text_type(chr(ord(b'a') + j + 1)) + " ON 1=1"
         domain += "\nWHERE " + value + " < " + quote_value(width)
         return domain
-
-    def _groupby_op(self, query, frum):
-        schema = self.sf.tables[join_field(split_field(frum)[1:])].schema
-        index_to_column = {}
-        nest_to_alias = {
-            nested_path: "__" + unichr(ord('a') + i) + "__"
-            for i, (nested_path, sub_table) in enumerate(self.sf.tables.items())
-            }
-
-        selects = []
-        groupby = []
-        for i, e in enumerate(query.groupby):
-            for s in e.value.to_sql(schema):
-                column_number = len(selects)
-                sql_type, sql = s.sql.items()[0]
-                if sql == 'NULL'and not e.value.var in schema.keys():
-                    Log.error("No such column {{var}}", var=e.value.var)
-
-                column_alias = _make_column_name(column_number)
-                groupby.append(sql)
-                selects.append(sql + " AS " + column_alias)
-
-                index_to_column[column_number] = ColumnMapping(
-                    is_edge=True,
-                    push_name=e.name,
-                    push_column_name=e.name.replace("\\.", "."),
-                    push_column=i,
-                    push_child=s.name,
-                    pull=get_column(column_number),
-                    sql=sql,
-                    column_alias=column_alias,
-                    type=sql_type_to_json_type[sql_type]
-                )
-
-        for i, s in enumerate(listwrap(query.select)):
-            column_number = len(selects)
-            sql_type, sql = s.value.to_sql(schema)[0].sql.items()[0]
-            if sql == 'NULL'and not s.value.var in schema.keys():
-                Log.error("No such column {{var}}", var=s.value.var)
-
-            if s.value == "." and s.aggregate == "count":
-                selects.append("COUNT(1) AS " + quote_table(s.name))
-            else:
-                selects.append(sql_aggs[s.aggregate] + "(" + sql + ") AS " + quote_table(s.name))
-
-            index_to_column[column_number] = ColumnMapping(
-                push_name=s.name,
-                push_column_name=s.name,
-                push_column=i+len(query.groupby),
-                push_child=".",
-                pull=get_column(column_number),
-                sql=sql,
-                column_alias=quote_table(s.name),
-                type=sql_type_to_json_type[sql_type]
-            )
-
-        for w in query.window:
-            selects.append(self._window_op(self, query, w))
-
-        where = query.where.to_sql(schema)[0].sql.b
-
-        command = "SELECT\n" + (",\n".join(selects)) + \
-                  "\nFROM\n" + quote_table(self.sf.fact) + " " + nest_to_alias["."] + \
-                  "\nWHERE\n" + where + \
-                  "\nGROUP BY\n" + ",\n".join(groupby)
-
-        if query.sort:
-            command += "\nORDER BY " + ",\n".join(
-                "(" + sql[t] + ") IS NULL"  + ",\n" +
-                sql[t] + (" DESC" if s.sort == -1 else "")
-                for s, sql in [(s, s.value.to_sql(schema)[0].sql) for s in query.sort]
-                for t in "bns" if sql[t]
-            )
-
-        return command, index_to_column
-
-

@@ -26,10 +26,10 @@ from jx_base.expressions import jx_expression, Variable, TupleOp
 from jx_base import STRUCT
 from jx_python.meta import Column
 from jx_base.query import QueryOp
-from jx_sqlite.aggs_table import AggsTable
+from jx_sqlite.groupby_table import GroupbyTable
 
 
-class QueryTable(AggsTable):
+class QueryTable(GroupbyTable):
     def get_column_name(self, column):
         return column.names[self.sf.fact]
 
