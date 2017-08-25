@@ -117,14 +117,23 @@ def to_sql(self, schema, not_null=False, boolean=False):
         Log.error("Can only handle Variable")
     term = self.term.var
     prefix_length = len(split_field(term))
-    return wrap([
-        {
-            "name": join_field(split_field(schema.get_column_name(c))[prefix_length:]),
-            "sql": Variable(schema.get_column_name(c)).to_sql(schema)[0].sql
-        }
-        for n, cols in schema.map_to_sql(term).items()
-        for c in cols
-    ])
+    a=schema.map_to_sql(term).items()
+    db_columns = []
+    for n, cols in schema.map_to_sql(term).items():
+        for c in cols:
+            col = schema.get_column_name(c)
+            if startswith_field(col, term):
+                db_columns.append({
+                    "name": join_field(split_field(col)[prefix_length:]),
+                    "sql": Variable(col).to_sql(schema)[0].sql
+                })
+            else:
+                db_columns.append({
+                    "name": col,
+                    "sql": Variable(col).to_sql(schema)[0].sql
+                })                
+    
+    return wrap(db_columns)
 
 
 @extend(EqOp)
