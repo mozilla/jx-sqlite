@@ -18,7 +18,7 @@ We only need one complicated document to show the selector patterns
             "c":1,
             "d":2
         },
-		"e":{
+        "e":{
             "f":3,
             "g":4
         }
