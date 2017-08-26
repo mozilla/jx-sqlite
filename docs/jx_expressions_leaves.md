@@ -98,7 +98,7 @@ Selecting an array will return an object, with named parameters. The star will f
     "select":[{"name":"n", "value":"*"      }] => {"n":{"a.b.c":1, "a.b.d":2, "a.e.f":3, "a.e.g":4}}
     "select":[{"name":"n", "value":"a.*"    }] => {"n":{  "b.c":1,   "b.d":2,   "e.f":3,   "e.g":4}}
     "select":[{"name":"n", "value":"a.b.*"  }] => {"n":{    "c":1,     "d":2                      }}
-    "select":[{"name":"n", "value":"a.b.c.*"}] => {"n":          1                                 }
+    "select":[{"name":"n", "value":"a.b.c.*"}] => {"n":         1                                  }
 
 **Explicit Star Value**
 
@@ -132,18 +132,18 @@ We could give any name we want, they will still be ignored
 Adding the array forces the names to be used as destination paths. This is the same result, but now it is being structured.
 
     "select":[{"name":".",     "value":"*"      }] =>                {"a.b.c":1, "a.b.d":2, "a.e.f":3, "a.e.g":4} 
-    "select":[{"name":"a",     "value":"a.*"    }] => {"a":          {  "b.c":1,   "b.d":2,   "e.f":3,   "e.g":4} }
+    "select":[{"name":"a",     "value":"a.*"    }] => {"a":          {  "b.c":1,   "b.d":2,   "e.f":3,   "e.g":4}  }
     "select":[{"name":"a.b",   "value":"a.b.*"  }] => {"a":{"b":     {    "c":1,     "d":2                      } }}
-    "select":[{"name":"a.b.c", "value":"a.b.c.*"}] => {"a":{"b":{"c":         1                                   }}}
+    "select":[{"name":"a.b.c", "value":"a.b.c.*"}] => {"a":{"b":{"c":         1                                  }}}
 
 **Implicit Star Object**
 
 If the names are the same as the values, we can leave them out, for the same effect
 
     "select":["*"      ] =>                {"a.b.c":1, "a.b.d":2, "a.e.f":3, "a.e.g":4} 
-    "select":["a.*"    ] => {"a":          {  "b.c":1,   "b.d":2,   "e.f":3,   "e.g":4} }
+    "select":["a.*"    ] => {"a":          {  "b.c":1,   "b.d":2,   "e.f":3,   "e.g":4}  }
     "select":["a.b.*"  ] => {"a":{"b":     {    "c":1,     "d":2                      } }}
-    "select":["a.b.c.*"] => {"a":{"b":{"c":         1                                   }}}
+    "select":["a.b.c.*"] => {"a":{"b":{"c":         1                                  }}}
 
 
 ## Table format
