@@ -14,12 +14,15 @@ The most interesting, and most important feature is that we query nested object 
 1. Inner objects `{"a": {"b": 0}}` are a shortcut for nested arrays `{"a": [{"b": 0}]}`, plus
 2. Schemas can be expanded from one-to-one  to one-to-many `{"a": [{"b": 0}, {"b": 1}]}`.
 
+
+## How to Use: Example
+Create a table object from `QueryTable` class. To insert data, use `insert(docs)` method where `docs` is a `list` of documents to be inserted in the table and to query, use `query(your_query)` method where `your_query` is a `dict` object following JSON Query Expressions (see docs on JSON Query Expressions below).
+
 ## Tests
 
 There are over 200 tests used to confirm the expected behaviour: They test a variety of JSON forms, and the queries that can be performed on them. Most tests are further split into three different output formats ( list, table and cube).
 
 
-## Code Example
 
 ## Installation
 Python2.7 required. Package can be installed via pypi see below:
@@ -36,7 +39,7 @@ These instructions will get you a copy of the project up and running on your loc
 
     export PYTHONPATH=.
     python -m unittest discover -v -s tests
-
+    
 
 ## Docs
 
