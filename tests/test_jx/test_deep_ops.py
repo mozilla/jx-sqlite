@@ -356,9 +356,9 @@ class TestDeepOps(BaseTestCase):
             "expecting_list": {
                 "meta": {"format": "list"},
                 "data": [
-                    {"a._t.b.s": 1, "a._t.h.s": "a-a"},
-                    {"a._t.b.s": 2, "a._t.h.s": "a-b"},
-                    {"a._t.b.s": 3, "a._t.h.s": "a-c"}
+                    {"b.s": 1, "h.s": "a-a"},
+                    {"b.s": 2, "h.s": "a-b"},
+                    {"b.s": 3, "h.s": "a-c"}
                 ]},
             "expecting_table": {
                 "meta": {"format": "table"},
