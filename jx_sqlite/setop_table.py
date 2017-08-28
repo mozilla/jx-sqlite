@@ -395,7 +395,7 @@ class SetOpTable(InsertTable):
                             else:
                                 column = temp_data[c.push_column][rownum]
                                 if column is None:
-                                    column = temp_data[c.push_column][rownum] = {}
+                                    column = temp_data[c.push_column][rownum] = Data()
                                 column[c.push_child] = c.pull(d)
                     output = Data(
                         meta={"format": "cube"},
@@ -515,6 +515,8 @@ class SetOpTable(InsertTable):
                                 if not tuple_value:
                                     tuple_value = row[c.push_name] = [None] * c.num_push_columns
                                 tuple_value[c.push_child] = c.pull(d)
+                            elif not isinstance(query.select, list):   # select is value type
+                                row[c.push_child]=c.pull(d)
                             else:
                                 row[c.push_name][c.push_child] = c.pull(d)
 
