@@ -15,6 +15,13 @@ The most interesting, and most important feature is that we query nested object 
 2. Schemas can be expanded from one-to-one  to one-to-many `{"a": [{"b": 0}, {"b": 1}]}`.
 
 
+## Tests
+
+There are over 200 tests used to confirm the expected behaviour: They test a variety of JSON forms, and the queries that can be performed on them. Most tests are further split into three different output formats ( list, table and cube).
+
+
+
+
 ## How to Use: Example
 Create a table object from `QueryTable` class. The two useful methods of `QueryTable` class are `insert()` and `query()`. To insert data, use `insert(docs)` method where `docs` is a `list` of documents to be inserted in the table and to query, use `query(your_query)` method where `your_query` is a `dict` object following JSON Query Expressions (see docs on JSON Query Expressions below). A sample example is shown here for better understanding.
 And yes, don't forget to wrap the query.
@@ -44,9 +51,6 @@ And yes, don't forget to wrap the query.
         result = index.query(deepcopy(wrap(sample_query)))
 
 
-## Tests
-
-There are over 200 tests used to confirm the expected behaviour: They test a variety of JSON forms, and the queries that can be performed on them. Most tests are further split into three different output formats ( list, table and cube).
 
 
 
