@@ -16,7 +16,31 @@ The most interesting, and most important feature is that we query nested object 
 
 
 ## How to Use: Example
-Create a table object from `QueryTable` class. To insert data, use `insert(docs)` method where `docs` is a `list` of documents to be inserted in the table and to query, use `query(your_query)` method where `your_query` is a `dict` object following JSON Query Expressions (see docs on JSON Query Expressions below).
+Create a table object from `QueryTable` class. To insert data, use `insert(docs)` method where `docs` is a `list` of documents to be inserted in the table and to query, use `query(your_query)` method where `your_query` is a `dict` object following JSON Query Expressions (see docs on JSON Query Expressions below). A sample example is shown here for better understanding.
+
+
+        from mo_dots import wrap
+        from copy import deepcopy
+
+        index = QueryTable("dummy_table")
+
+        sample_data = [
+        {"a": "c", "v": 13},
+        {"a": "b", "v": 2},
+                {"v": 3},
+                {"a": "b"},
+        {"a": "c", "v": 7},
+        {"a": "c", "v": 11}
+        ]
+
+        index.insert(sample_data)
+
+        sample_query = {
+        "from": "dummy_table"
+        }
+
+        result = index.query(deepcopy(wrap(sample_query)))
+
 
 ## Tests
 
