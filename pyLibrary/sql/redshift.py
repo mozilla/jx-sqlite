@@ -143,7 +143,7 @@ class Redshift(object):
         if value ==None:
             return SQL("NULL")
         if isinstance(value, list):
-            json = convert.value2json(value)
+            json = value2json(value)
             return self.quote_value(json)
 
         if isinstance(value, basestring) and len(value) > 256:

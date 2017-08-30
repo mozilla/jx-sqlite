@@ -26,19 +26,20 @@ from numbers import Number
 from tempfile import TemporaryFile
 
 from future.utils import text_type
+from jx_python import jx
+from mo_dots import Data, coalesce, wrap, set_default, unwrap
+from mo_json import value2json
+from mo_logs import Log
+from mo_math import Math
+from mo_threads import Lock
+from mo_threads import Till
+from pyLibrary import convert
 from requests import sessions, Response
 
 import mo_json
-from pyLibrary import convert
 from mo_logs.exceptions import Except
-from mo_logs import Log
-from mo_dots import Data, coalesce, wrap, set_default, unwrap
-from pyLibrary.env.big_data import safe_size, ibytes2ilines, icompressed2ibytes
-from mo_math import Math
-from jx_python import jx
-from mo_threads import Thread, Lock
-from mo_threads import Till
 from mo_times.durations import Duration
+from pyLibrary.env.big_data import safe_size, ibytes2ilines, icompressed2ibytes
 
 DEBUG = False
 FILE_SIZE_LIMIT = 100 * 1024 * 1024
@@ -120,7 +121,7 @@ def request(method, url, zip=None, retry=None, **kwargs):
         set_default(retry, {"times": 1, "sleep": 0})
 
     if b'json' in kwargs:
-        kwargs[b'data'] = convert.value2json(kwargs[b'json']).encode("utf8")
+        kwargs[b'data'] = value2json(kwargs[b'json']).encode("utf8")
         del kwargs[b'json']
 
     try:
@@ -210,9 +211,9 @@ def post_json(url, **kwargs):
     ASSUME RESPONSE IN IN JSON
     """
     if b"json" in kwargs:
-        kwargs[b"data"] = convert.unicode2utf8(convert.value2json(kwargs[b"json"]))
+        kwargs[b"data"] = convert.unicode2utf8(value2json(kwargs[b"json"]))
     elif b'data' in kwargs:
-        kwargs[b"data"] = convert.unicode2utf8(convert.value2json(kwargs[b"data"]))
+        kwargs[b"data"] = convert.unicode2utf8(value2json(kwargs[b"data"]))
     else:
         Log.error("Expecting `json` parameter")
 

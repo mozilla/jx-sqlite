@@ -16,27 +16,28 @@ from collections import Mapping
 from copy import deepcopy
 
 from future.utils import text_type
-
-import mo_json
-from mo_logs import Log, strings
-from mo_logs.exceptions import Except
-from mo_logs.strings import utf82unicode
-from mo_threads import Lock
-from mo_dots import coalesce, Null, Data, set_default, join_field, split_field, listwrap, literal_field, \
+from jx_python import jx
+from mo_dots import coalesce, Null, Data, set_default, listwrap, literal_field, \
     ROOT_PATH, concat_field
 from mo_dots import wrap
-from mo_dots.lists import FlatList
-from pyLibrary import convert
-from pyLibrary.env import http
-from mo_json.typed_encoder import json2typed
-from mo_math import Math
-from mo_math.randoms import Random
+from mo_json import value2json
 from mo_kwargs import override
-from jx_python import jx
+from mo_logs import Log, strings
+from mo_math import Math
+from mo_threads import Lock
 from mo_threads import ThreadedQueue
 from mo_threads import Till
+from pyLibrary import convert
+
+import mo_json
+from mo_dots.lists import FlatList
+from mo_json.typed_encoder import json2typed
+from mo_logs.exceptions import Except
+from mo_logs.strings import utf82unicode
+from mo_math.randoms import Random
 from mo_times.dates import Date
 from mo_times.timer import Timer
+from pyLibrary.env import http
 
 ES_STRUCT = ["object", "nested"]
 ES_NUMERIC_TYPES = ["long", "integer", "double", "float"]
@@ -254,7 +255,7 @@ class Index(Features):
 
         result = self.cluster.delete(
             self.path + "/_query",
-            data=convert.value2json(query),
+            data=value2json(query),
             timeout=600,
             params={"consistency": self.settings.consistency}
         )
@@ -286,12 +287,12 @@ class Index(Features):
                 if "json" in r:
                     json_bytes = r["json"].encode("utf8")
                 elif r_value or isinstance(r_value, (dict, Data)):
-                    json_bytes = convert.value2json(r_value).encode("utf8")
+                    json_bytes = value2json(r_value).encode("utf8")
                 else:
                     json_bytes = None
                     Log.error("Expecting every record given to have \"value\" or \"json\" property")
 
-                lines.append(b'{"index":{"_id": ' + convert.value2json(id).encode("utf8") + b'}}')
+                lines.append(b'{"index":{"_id": ' + value2json(id).encode("utf8") + b'}}')
                 if self.settings.tjson:
                     lines.append(json2typed(json_bytes.decode('utf8')).encode('utf8'))
                 else:
@@ -387,7 +388,7 @@ class Index(Features):
         if self.cluster.version.startswith("0.90."):
             response = self.cluster.put(
                 "/" + self.settings.index + "/_settings",
-                data='{"index":{"refresh_interval":' + convert.value2json(interval) + '}}',
+                data='{"index":{"refresh_interval":' + value2json(interval) + '}}',
                 **kwargs
             )
 
@@ -399,7 +400,7 @@ class Index(Features):
         elif any(map(self.cluster.version.startswith, ["1.4.", "1.5.", "1.6.", "1.7."])):
             response = self.cluster.put(
                 "/" + self.settings.index + "/_settings",
-                data=convert.unicode2utf8('{"index":{"refresh_interval":' + convert.value2json(interval) + '}}'),
+                data=convert.unicode2utf8('{"index":{"refresh_interval":' + value2json(interval) + '}}'),
                 **kwargs
             )
 
@@ -639,7 +640,7 @@ class Cluster(object):
         elif isinstance(schema, basestring):
             schema = mo_json.json2value(schema, leaves=True)
         else:
-            schema = mo_json.json2value(convert.value2json(schema), leaves=True)
+            schema = mo_json.json2value(value2json(schema), leaves=True)
 
         if limit_replicas:
             # DO NOT ASK FOR TOO MANY REPLICAS
@@ -745,7 +746,7 @@ class Cluster(object):
             if data == None:
                 pass
             elif isinstance(data, Mapping):
-                kwargs[b'data'] = data =convert.unicode2utf8(convert.value2json(data))
+                kwargs[b'data'] = data =convert.unicode2utf8(value2json(data))
             elif not isinstance(kwargs["data"], str):
                 Log.error("data must be utf8 encoded string")
 
@@ -1035,7 +1036,7 @@ class Alias(Features):
         while keep_trying:
             result = self.cluster.delete(
                 self.path + "/_query",
-                data=convert.value2json(query),
+                data=value2json(query),
                 timeout=60
             )
             keep_trying = False

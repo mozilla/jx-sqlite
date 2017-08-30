@@ -126,7 +126,7 @@ class DocStore(Container):
                 indexed_values[i]=index
                 continue
 
-            function_name = convert.value2json(s.value.__data__(), sort_keys=True)
+            function_name = value2json(s.value.__data__(), sort_keys=True)
             index = self._index.get(function_name, None)
             indexed_values[i]=index
             if index is not None:

@@ -74,7 +74,7 @@ class Fake_ES():
 
         unwrap(self.data).update(records)
 
-        data_as_json = convert.value2json(self.data, pretty=True)
+        data_as_json = value2json(self.data, pretty=True)
 
         File(self.filename).write(data_as_json)
         Log.note("{{num}} documents added",  num= len(records))

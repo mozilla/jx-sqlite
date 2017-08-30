@@ -8,22 +8,24 @@
 #
 from __future__ import unicode_literals
 
-import mo_json
 from activedata_etl import etl2path
 from activedata_etl import key2etl
-from mo_dots import coalesce, wrap, Null, Data
+from jx_python import jx
+from mo_dots import coalesce, wrap, Null
+from mo_json import json2value, value2json, CAN_NOT_DECODE_JSON
 from mo_kwargs import override
 from mo_logs import Log, strings
+from mo_threads import Lock
+
+from mo_hg.hg_mozilla_org import minimize_repo
 from mo_logs.exceptions import suppress_exception
 from mo_math.randoms import Random
-from mo_threads import Lock
+from mo_testing.fuzzytestcase import assertAlmostEqual
 from mo_times.dates import Date, unicode2Date, unix2Date
 from mo_times.durations import Duration
 from mo_times.timer import Timer
-from pyLibrary import convert
 from pyLibrary.aws.s3 import strip_extension, KEY_IS_WRONG_FORMAT
 from pyLibrary.env import elasticsearch
-from jx_python import jx
 
 MAX_RECORD_LENGTH = 400000
 DATA_TOO_OLD = "data is too old to be indexed"
@@ -60,7 +62,7 @@ class RolloverIndex(object):
     def _get_queue(self, row):
         row = wrap(row)
         if row.json:
-            row.value, row.json = mo_json.json2value(row.json), None
+            row.value, row.json = json2value(row.json), None
         timestamp = Date(self.rollover_field(wrap(row).value))
         if timestamp == None:
             return Null
@@ -141,7 +143,7 @@ class RolloverIndex(object):
             return set()
 
     def extend(self, documents, queue=None):
-        i = 0;
+        i = 0
         if queue == None:
             for i, doc in enumerate(documents):
                 queue = self._get_queue(doc)
@@ -213,7 +215,10 @@ class RolloverIndex(object):
                             break
             except Exception as e:
                 if KEY_IS_WRONG_FORMAT in e:
-                    Log.warning("Could not process {{key}} becasue bad format. Never trying again.", key=key, cause=e)
+                    Log.warning("Could not process {{key}} because bad format. Never trying again.", key=key, cause=e)
+                    pass
+                elif CAN_NOT_DECODE_JSON in e:
+                    Log.warning("Could not process {{key}} because of bad JSON. Never trying again.", key=key, cause=e)
                     pass
                 else:
                     Log.warning("Could not process {{key}} after {{duration|round(places=2)}}seconds", key=key, duration=timer.duration.seconds, cause=e)
@@ -235,29 +240,57 @@ class RolloverIndex(object):
 
 
 def fix(rownum, line, source, sample_only_filter, sample_size):
+    _id = coalesce(strings.between(line, '"_id": "', '"'), strings.between(line, '"_id":"', '"'))  # AVOID DECODING JSON
+
+    if _id.startswith("tc.97") or _id.startswith("96") or _id.startswith("bb.27"):
+        # AUG 24, 25 2017 - included full diff with repo; too big to index
+        try:
+            data = json2value(line)
+            repo = data.repo
+            repo.etl = None
+            repo.branch.last_used = None
+            repo.branch.description = None
+            repo.branch.etl = None
+            repo.branch.parent_name = None
+            repo.children = None
+            repo.parents = None
+            if repo.changeset.diff or data.build.repo.changeset.diff:
+                Log.error("no diff allowed")
+            else:
+                assertAlmostEqual(minimize_repo(repo), repo)
+        except Exception as e:
+            if CAN_NOT_DECODE_JSON in e:
+                raise e
+            data.repo = minimize_repo(repo)
+            data.build.repo = minimize_repo(data.build.repo)
+            line = value2json(data)
+    else:
+        pass
+
     # ES SCHEMA IS STRICTLY TYPED, USE "code" FOR TEXT IDS
     line = line.replace('{"id": "bb"}', '{"code": "bb"}').replace('{"id": "tc"}', '{"code": "tc"}')
+    line = line.replace('{"id":"bb"}', '{"code":"bb"}').replace('{"id":"tc"}', '{"code":"tc"}')
 
     # ES SCHEMA IS STRICTLY TYPED, THE SUITE OBJECT CAN NOT BE HANDLED
     if source.name.startswith("active-data-test-result"):
         # "suite": {"flavor": "plain-chunked", "name": "mochitest"}
-        found = strings.between(line, '"suite": {', '}')
-        if found:
-            suite_json = '{' + found + "}"
+        found = coalesce(strings.between(line, '"suite": {"', '}'), strings.between(line, '"suite":{"', '}'))
+        if found != None:
+            suite_json = '{"' + found + '}'
             if suite_json:
-                suite = mo_json.json2value(suite_json)
-                suite = convert.value2json(coalesce(suite.fullname, suite.name))
+                suite = json2value(suite_json)
+                suite = value2json(coalesce(suite.fullname, suite.name))
                 line = line.replace(suite_json, suite)
 
     if source.name.startswith("active-data-codecoverage"):
-        d = convert.json2value(line)
+        d = json2value(line)
         if d.source.file.total_covered > 0:
             return {"id": d._id, "json": line}, False
         else:
             return None, False
 
     if rownum == 0:
-        value = mo_json.json2value(line)
+        value = json2value(line)
         if len(line) > MAX_RECORD_LENGTH:
             _shorten(value, source)
         _id, value = _fix(value)
@@ -268,17 +301,16 @@ def fix(rownum, line, source, sample_only_filter, sample_size):
                 Log.error("Expecting etl.id==0")
             return row, True
     elif len(line) > MAX_RECORD_LENGTH:
-        value = mo_json.json2value(line)
+        value = json2value(line)
         _shorten(value, source)
         _id, value = _fix(value)
         row = {"id": _id, "value": value}
     elif line.find('"resource_usage":') != -1:
-        value = mo_json.json2value(line)
+        value = json2value(line)
         _id, value = _fix(value)
         row = {"id": _id, "value": value}
     else:
         # FAST
-        _id = strings.between(line, "\"_id\": \"", "\"")  # AVOID DECODING JSON
         row = {"id": _id, "json": line}
 
     return row, False
@@ -290,9 +322,9 @@ def _shorten(value, source):
         value.result.missing_subtests = True
         value.repo.changeset.files = None
 
-    shorter_length = len(convert.value2json(value))
+    shorter_length = len(value2json(value))
     if shorter_length > MAX_RECORD_LENGTH:
-        result_size = len(convert.value2json(value.result))
+        result_size = len(value2json(value.result))
         if source.name == "active-data-test-result":
             if result_size > MAX_RECORD_LENGTH:
                 Log.warning("Epic test failure in {{name}} results in big record for {{id}} of length {{length}}", id=value._id, name=source.name, length=shorter_length)
@@ -303,13 +335,16 @@ def _shorten(value, source):
 
 
 def _fix(value):
-    if value.repo._source:
-        value.repo = value.repo._source
-    if not value.build.revision12:
-        value.build.revision12 = value.build.revision[0:12]
-    if value.resource_usage:
-        value.resource_usage = None
+    try:
+        if value.repo._source:
+            value.repo = value.repo._source
+        if not value.build.revision12:
+            value.build.revision12 = value.build.revision[0:12]
+        if value.resource_usage:
+            value.resource_usage = None
 
-    _id = value._id
+        _id = value._id
 
-    return _id, value
+        return _id, value
+    except Exception as e:
+        Log.error("unexpected problem", cause=e)

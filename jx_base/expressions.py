@@ -17,10 +17,9 @@ from decimal import Decimal
 
 from future.utils import text_type
 from mo_dots import coalesce, wrap, Null, split_field
-from mo_json import json2value
+from mo_json import json2value, value2json
 from mo_logs import Log
 from mo_math import Math, MAX
-from pyLibrary import convert
 
 from jx_base.queries import is_variable_name, get_property_name
 from mo_times.dates import Date
@@ -353,7 +352,7 @@ class Literal(Expression):
         if term == "":
             self._json = '""'
         else:
-            self._json = convert.value2json(term)
+            self._json = value2json(term)
 
     def __nonzero__(self):
         return True
