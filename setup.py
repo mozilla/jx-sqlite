@@ -42,7 +42,7 @@ def find_packages(where='.', lib_prefix='', exclude=()):
 
 setup(
     name='jx-sqlite',
-    version='0.9.17206',
+    version='0.10.17242',
     description='JSON query expressions using SQLite',
     long_description=long_desc,
     author='Rohit Kumar, Kyle Lahnakoski',
@@ -50,11 +50,11 @@ setup(
     url='https://github.com/mozilla/jx-sqlite',
     license='MPL 2.0',
     packages=find_packages('.', lib_prefix=''),
-    install_requires=["mo-collections", "mo-dots>=1.5.17188", "mo-files>=1.2", "mo-json-config", "mo-json>=1.0.17168", "mo-kwargs", "mo-logs", "mo-math", "mo-testing>=1.0.17168", "mo-threads", "mo-times"],
+    install_requires=["future", "mo-collections>=1.2.17235", "mo-dots>=1.5.17188", "mo-files>=1.2", "mo-json-config", "mo-json>=1.0.17168", "mo-kwargs", "mo-logs", "mo-math", "mo-testing>=1.0.17168", "mo-threads", "mo-times"],
     include_package_data=True,
     zip_safe=False,
-    classifiers=[  #https://pypi.python.org/pypi?%3Aaction=list_classifiers
-        'Development Status :: 4 - Beta',
+    classifiers=[  # https://pypi.python.org/pypi?%3Aaction=list_classifiers
+        'Development Status :: 3 - Alpha',
         'Topic :: Software Development :: Libraries',
         'Topic :: Software Development :: Libraries :: Python Modules',
         'License :: OSI Approved :: Mozilla Public License 2.0 (MPL 2.0)',
