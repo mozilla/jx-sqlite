@@ -41,11 +41,10 @@ The star selector is not intuitive to implement. This has resulted in wrong test
 
 ## List format
 
-Only the list formatting is proved here. It is hoped the `table` and `cube` are natural derivations (more below). 
 
 ### Dot Selection
 
-We start with the dot selector, and selecting inner objects 
+We review the select clause using simple values as a review
 
 
 **Explicit Dot Object**
@@ -105,6 +104,18 @@ If the names are the same as the values, we can leave them out, for the same eff
 
 ### Star Selection
 
+
+**THIS PART IS STILL OPEN FOR DEBATE**
+
+The whole reason for the star selector is to flatten structures so they behave well in tables.
+
+* Do we even need the star selector?  If objects are automatically flattened, maybe we do not
+* Is the star selector providing a set of named columns?  If so what role does `select.name` play? `"select":{"name":"n", "value":"a.*"}`
+* Considering the above, do we escape the named columns coming from star? The list format would certainly suggest that we do.
+* What is an alternate, but consistent, interpretation of the star selector?
+* If we force all star selectors to be JSON Expressions; force `"select":["a.b.*"]` to read like `"select":[{"value":{"leaves":"a.b"}}]`; we can say the form is invalid, and must be given a name.   
+
+
 We go through the same sequence with the star selector
 
 **Explicit Star Object**
@@ -162,9 +173,25 @@ If the names are the same as the values, we can leave them out, for the same eff
     "select":["a.b.c.*"] => {"a":{"b":{"c":         1                                  }}}
 
 
-
-
 ## Table format
+
+The star selector was created to generalize the SQL star: `SELECT * FROM my_table`. We want a way to declare a column for every primitive value; both to save time declaring all the possible columns, and leverage a dynamic selector that is relevant over a variety of different schema.
+
+The table format uses the **top-level properties for column names only**. Inner properties are used to define the structure of compound columns.
+
+* Define a prefix for the leaves, to avoid namespace collision  `{"prefix":"p", "value":"a.*"}`
+* Put the flattened leaves into a single column as an inner object  `{"name":"n", "value":"a.*"}`
+* 
+
+
+Without a name given to a select clause, we will assume the name is `"."`
+
+    "select":["*"      ] => {"header":["a.b.c", "a.b.d", "a.e.f", "a.e.g"], "data":[[1, 2, 3, 4]]} 
+    "select":["a.*"    ] => {"header":[  "b.c",   "b.d",   "e.f",   "e.g"], "data":[[1, 2, 3, 4]]}
+    "select":["a.b.*"  ] => {"header":[ "a.b.c",   "a.b.d"               ], "data":[[1, 2      ]]}
+    "select":["a.b.c.*"] => {"header":[  "a.b.c"                         ], "data":[[1         ]]}
+
+
 
 The header names in a table are derived from the selector name, implied or not. The names are dot-delimted paths, with escaping is used for explicit dots.  
 
@@ -177,15 +204,6 @@ Adding the array forces the names to be used as destination paths. This is the s
     "select":["a.b.*"  ] => {"header":[  "a.b.c",   "a.b.d"                      ], "data":[[1, 2      ]]}
     "select":["a.b.c.*"] => {"header":[  "a.b.c"                                 ], "data":[[1         ]]}
 
-**THIS PART IS STILL OPEN FOR DEBATE**
-
-The whole reason for the star selector is to flatten structures so they behave well in tables.
-
-* Do we even need the star selector?  If objects are automatically flattened, maybe we do not
-* Is the star selector providing a set of named columns?  If so what role does `select.name` play? `"select":{"name":"n", "value":"a.*"}`
-* Considering the above, do we escape the named columns coming from star? The list format would certainly suggest that we do.
-* What is an alternate, but consistent, interpretation of the star selector?
-* If we force all star selectors to be JSON Expressions; force `"select":["a.b.*"]` to read like `"select":[{"value":{"leaves":"a.b"}}]`; we can say the form is invalid, and must be given a name.   
 
 
 ## Cube format
