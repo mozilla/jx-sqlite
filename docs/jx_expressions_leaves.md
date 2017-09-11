@@ -8,8 +8,6 @@
 This document is a dry attempt to prove the correctness of the star selection pattern. The proof is step-by-step explanation to show it is consistent with the other rules of JSON Query Expressions. It appeals to the reader' sense of pattern matching to be convincing.
 
 
-
-
 ### Data
 
 We only need one complicated document to show the selector patterns
@@ -30,21 +28,69 @@ We only need one complicated document to show the selector patterns
 
 The star selector is not intuitive to implement. This has resulted in wrong tests, which directed the creation of incorrect code.  This is not a big problem right now (Aug2017) because the star selector is not used often. We should get it correct before we build too much with it. 
 
+## Philosophy
+
+The most important feature of the star selector is to flatten object structures to their leaves:
+
+    "select":["*"] => {"a.b.c":1, "a.b.d":2, "a.e.f":3, "a.e.g":4}
+
+this is to mimic the similar SQL feature. Everything else is open for debate.
+
+The complexity of the star selector may come from the fact it is a type of meta-query operator: It changes the number of columns returned based on the database schema. Because it is a meta-query operator, it could be replaced with some query pre-processing; and this should not be problematic because JSON Query Expresssions are assumed to be built by some pre-processor already.  
+
+## Current status
+
+This is the current conclusion for this document. 
+
+**List Format**
+ 
           "select":["*"] => {"a.b.c":1, "a.b.d":2, "a.e.f":3, "a.e.g":4} 
         "select":["a.*"] => {"a":{"b.c":1, "b.d":2, "e.f":3, "e.g":4}}
       "select":["a.b.*"] => {"a":{"b":{"c":1, "d":2}}}
     "select":["a.b.c.*"] => {"a":{"b":{"c":1}}}
 
+**Table Format**
 
+The use of star ("`*`") is now assumed to be the short form of the `leaves()` operator with a name of dot ("`.`"). This is different from a select clause that has an expression; which would require a name. This is also different from the dot selector, which assumes the name is the object selected.
 
+          "select":["*"] => {
+                                "header":["a.b.c", "a.b.d", "a.e.f", "a.e.g"], 
+                                "data":[[1, 2, 3, 4]]
+                            } 
+        "select":["a.*"] => {
+                                "header":["b.c", "b.d", "e.f", "e.g"], 
+                                "data":{[1, 2, 3, 4]]
+                            }
+      "select":["a.b.*"] => {
+                                "header":["c", "d"],
+                                "data":{[1, 2]]
+                            }
+    "select":["a.b.c.*"] => {
+                                "header":["."],
+                                "data":[[1]]
+                            }
 
+The star selector has can avoid namespace collisions using two properties:
+
+* `name` - which is common in all select clauses; it adds to the path of the resulting values. This is not good if you want the flattened structure to show up as additional columns.
+* `prefix` - is a parameter of the `leaves()` operator, and can be given to the select clause: It adds a text prefix to each of the flattened column names. This allows you to define top-level properties, plus avoid namespace collisions.
+
+example 
+
+    "select":[{"value":"a.b.*", "prefix":"p_"}] 
+  
+results in 
+ 
+    {
+        "header":["p_c", "p_d"],
+        "data":{[1, 2]]
+    }
 
 ## List format
 
-
 ### Dot Selection
 
-We review the select clause using simple values as a review
+We review the select clause using simple values to review the effect of naming on a selection. This provides a pattern we can use to review the star selection permutations.
 
 
 **Explicit Dot Object**
@@ -104,19 +150,7 @@ If the names are the same as the values, we can leave them out, for the same eff
 
 ### Star Selection
 
-
-**THIS PART IS STILL OPEN FOR DEBATE**
-
-The whole reason for the star selector is to flatten structures so they behave well in tables.
-
-* Do we even need the star selector?  If objects are automatically flattened, maybe we do not
-* Is the star selector providing a set of named columns?  If so what role does `select.name` play? `"select":{"name":"n", "value":"a.*"}`
-* Considering the above, do we escape the named columns coming from star? The list format would certainly suggest that we do.
-* What is an alternate, but consistent, interpretation of the star selector?
-* If we force all star selectors to be JSON Expressions; force `"select":["a.b.*"]` to read like `"select":[{"value":{"leaves":"a.b"}}]`; we can say the form is invalid, and must be given a name.   
-
-
-We go through the same sequence with the star selector
+We go through the same sequence with the star selector for the list format
 
 **Explicit Star Object**
 
@@ -165,12 +199,12 @@ Adding the array forces the names to be used as destination paths. This is the s
 
 **Implicit Star Object**
 
-If the names are the same as the values, we can leave them out, for the same effect
+**THIS IS DIFFERENT: When the name is left out, it is assumed to be dot ("`.`")**
 
-    "select":["*"      ] =>                {"a.b.c":1, "a.b.d":2, "a.e.f":3, "a.e.g":4} 
-    "select":["a.*"    ] => {"a":          {  "b.c":1,   "b.d":2,   "e.f":3,   "e.g":4}  }
-    "select":["a.b.*"  ] => {"a":{"b":     {    "c":1,     "d":2                      } }}
-    "select":["a.b.c.*"] => {"a":{"b":{"c":         1                                  }}}
+    "select":["*"      ] => {"a.b.c":1, "a.b.d":2, "a.e.f":3, "a.e.g":4}
+    "select":["a.*"    ] => {  "b.c":1,   "b.d":2,   "e.f":3,   "e.g":4}
+    "select":["a.b.*"  ] =>      "c":1,     "d":2                      }
+    "select":["a.b.c.*"] =>          1                                  
 
 
 ## Table format
@@ -181,29 +215,17 @@ The table format uses the **top-level properties for column names only**. Inner 
 
 * Define a prefix for the leaves, to avoid namespace collision  `{"prefix":"p", "value":"a.*"}`
 * Put the flattened leaves into a single column as an inner object  `{"name":"n", "value":"a.*"}`
-* 
 
 
-Without a name given to a select clause, we will assume the name is `"."`
+Without a name given to a select clause, we will assume the name is `"."`. This allows us to declare top-level properties easily.
 
     "select":["*"      ] => {"header":["a.b.c", "a.b.d", "a.e.f", "a.e.g"], "data":[[1, 2, 3, 4]]} 
     "select":["a.*"    ] => {"header":[  "b.c",   "b.d",   "e.f",   "e.g"], "data":[[1, 2, 3, 4]]}
-    "select":["a.b.*"  ] => {"header":[ "a.b.c",   "a.b.d"               ], "data":[[1, 2      ]]}
-    "select":["a.b.c.*"] => {"header":[  "a.b.c"                         ], "data":[[1         ]]}
-
+    "select":["a.b.*"  ] => {"header":[    "c",     "d"                  ], "data":[[1, 2      ]]}
+    "select":["a.b.c.*"] => {"header":[    "."                           ], "data":[[1         ]]}
 
 
 The header names in a table are derived from the selector name, implied or not. The names are dot-delimted paths, with escaping is used for explicit dots.  
-
-**Explicit Star Object**
-
-Adding the array forces the names to be used as destination paths. This is the same result, but now it is being structured.
-
-    "select":["*"      ] => {"header":["a\.b\.c", "a\.b\.d", "a\.e\.f", "a\.e\.g"], "data":[[1, 2, 3, 4]]} 
-    "select":["a.*"    ] => {"header":[ "a.b\.c",  "a.b\.d",  "a.e\.f",  "a.e\.g"], "data":[[1, 2, 3, 4]]}
-    "select":["a.b.*"  ] => {"header":[  "a.b.c",   "a.b.d"                      ], "data":[[1, 2      ]]}
-    "select":["a.b.c.*"] => {"header":[  "a.b.c"                                 ], "data":[[1         ]]}
-
 
 
 ## Cube format
