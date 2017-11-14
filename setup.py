@@ -33,7 +33,7 @@ def find_packages(where='.', lib_prefix='', exclude=()):
             if ('.' not in name and os.path.isdir(fn) and
                 os.path.isfile(os.path.join(fn, '__init__.py'))
             ):
-                out.append(prefix+name); stack.append((fn, prefix+name+'.'))
+                out.append(prefix + name); stack.append((fn, prefix+name + '.'))
     for pat in list(exclude)+['ez_setup', 'distribute_setup']:
         from fnmatch import fnmatchcase
         out = [item for item in out if not fnmatchcase(item, pat)]
@@ -50,9 +50,13 @@ setup(
     url='https://github.com/mozilla/jx-sqlite',
     license='MPL 2.0',
     packages=find_packages('.', lib_prefix=''),
-    install_requires=["future", "mo-collections>=1.2.17235", "mo-dots>=1.5.17188",
-                      "mo-files>=1.2", "mo-json-config", "mo-json>=1.0.17168",
-                      "mo-kwargs", "mo-logs", "mo-math", "mo-testing>=1.0.17168",
+    install_requires=["future",
+                      "mo-collections>=1.2.17235",
+                      "mo-dots>=1.5.17188",
+                      "mo-files>=1.2", "mo-json-config",
+                      "mo-json>=1.0.17168",
+                      "mo-kwargs", "mo-logs", "mo-math",
+                      "mo-testing>=1.0.17168",
                       "mo-threads", "mo-times"],
     include_package_data=True,
     zip_safe=False,
