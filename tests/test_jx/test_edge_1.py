@@ -1146,7 +1146,6 @@ class TestEdge1(BaseTestCase):
                 "edges": [
                     {
                         "name": "k",
-                        "allowNulls": True,
                         "domain": {
                             "type": "set",
                             "key": "value",

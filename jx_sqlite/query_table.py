@@ -225,8 +225,10 @@ class QueryTable(GroupbyTable):
                     parts = set(columns[i])
                     if e.is_groupby and None in parts:
                         allowNulls = True
-                    parts -= {None}
 
+                    if None not in parts:
+                        allowNulls = False
+                    parts -= {None}
                     if query.sort[i].sort==-1:
                         domain = SimpleSetDomain(partitions=wrap(sorted(parts,reverse=True)))
                     else:

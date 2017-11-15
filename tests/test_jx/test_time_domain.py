@@ -199,7 +199,6 @@ class TestTime(BaseTestCase):
                 "data": {"v": [
                     [r.v for r in expected2 if r.a == "x"],
                     [r.v for r in expected2 if r.a == "y"],
-                    [NULL for r in expected2 if r.a == "x"]
                 ]}
             }
         }

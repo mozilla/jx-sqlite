@@ -777,7 +777,7 @@ class TestDeepOps(BaseTestCase):
                 "meta": {"format": "cube"},
                 "select": {"name": "count"},
                 "edges": [
-                    {"name": "o", "domain": {"type": "set", "partitions": [
+                    {"name": "o", "allowNulls": False, "domain": {"type": "set", "partitions": [
                         {"value": 1, "dataIndex": 0},
                         {"value": 2, "dataIndex": 1},
                         {"value": 3, "dataIndex": 2},
@@ -785,7 +785,7 @@ class TestDeepOps(BaseTestCase):
                     ]}}
                 ],
                 "data": {
-                    "count": [1, 1, 2, 1, 0]
+                    "count": [1, 1, 2, 1]
                 }
             }
         }
@@ -838,11 +838,11 @@ class TestDeepOps(BaseTestCase):
             "expecting_cube": {
                 "meta": {"format": "cube"},
                 "edges": [
-                    {"name": "o", "domain": {"type": "set", "partitions": [
+                    {"name": "o", "allowNulls": False, "domain": {"type": "set", "partitions": [
                         {"value": 1, "dataIndex": 0},
                         {"value": 2, "dataIndex": 1},
                     ]}},
-                    {"name": "v", "domain": {"type": "set", "partitions": [
+                    {"name": "v", "allowNulls": True, "domain": {"type": "set", "partitions": [
                         {"value": "b", "dataIndex": 0},
                         {"value": "c", "dataIndex": 1},
                     ]}}
@@ -851,7 +851,6 @@ class TestDeepOps(BaseTestCase):
                     "s": [
                         [2, 0, 0],
                         [1, 0, 1],
-                        [0, 0, 0]
                     ]
                 }
             }
@@ -959,10 +958,8 @@ class TestDeepOps(BaseTestCase):
                 "data": [
                     {"o": 1, "v": "b", "s": 2},
                     {"o": 1, "v": "c", "s": 0},
-                    {"o": 1, "v": NULL, "s": 0},
                     {"o": 2, "v": "b", "s": 1},
-                    {"o": 2, "v": "c", "s": 0},
-                    {"o": 2, "v": NULL, "s": 0}
+                    {"o": 2, "v": "c", "s": 0}
                 ]
             },
             "expecting_table": {  # TODO: THIS MAY NOT BE CORRECT
@@ -971,29 +968,26 @@ class TestDeepOps(BaseTestCase):
                 "data": [
                     [1, "b", 2],
                     [1, "c", 0],
-                    [1, NULL, 0],
                     [2, "b", 1],
-                    [2, "c", 0],
-                    [2, NULL, 0]
+                    [2, "c", 0]
                 ]
             },
             "expecting_cube": {
                 "meta": {"format": "cube"},
                 "edges": [
-                    {"name": "o", "domain": {"type": "set", "partitions": [
+                    {"name": "o", "allowNulls": False, "domain": {"type": "set", "partitions": [
                         {"value": 1, "dataIndex": 0},
                         {"value": 2, "dataIndex": 1},
                     ]}},
-                    {"name": "v", "domain": {"type": "set", "partitions": [
+                    {"name": "v", "allowNulls": False, "domain": {"type": "set", "partitions": [
                         {"value": "b", "dataIndex": 0},
                         {"value": "c", "dataIndex": 1},
                     ]}}
                 ],
                 "data": {
                     "s": [
-                        [2, 0, 0],
-                        [1, 0, 0],
-                        [0, 0, 0]
+                        [2, 0],
+                        [1, 0]
                     ]
                 }
             }
