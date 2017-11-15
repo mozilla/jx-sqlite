@@ -28,7 +28,7 @@ from types import GeneratorType
 
 import mo_dots
 from jx_base.container import Container
-from jx_base.expressions import TRUE_FILTER, FALSE_FILTER
+from jx_base.expressions import TRUE, FALSE
 from jx_base.query import QueryOp, _normalize_selects
 from jx_python.containers.cube import Cube
 from jx_python.cubes.aggs import cube_aggs
@@ -92,7 +92,7 @@ def run(query, frum=Null):
         # except AttributeError:
         #     pass
 
-        if query_op.where is not TRUE_FILTER:
+        if query_op.where is not TRUE:
             frum = filter(frum, query_op.where)
 
         if query_op.sort:
@@ -631,7 +631,7 @@ def filter(data, where):
     """
     where  - a function that accepts (record, rownum, rows) and returns boolean
     """
-    if len(data) == 0 or where == None or where == TRUE_FILTER:
+    if len(data) == 0 or where == None or where == TRUE:
         return data
 
     if isinstance(data, Container):
@@ -697,9 +697,9 @@ def drill_filter(esfilter, data):
         """
         PARTIAL EVALUATE THE filter BASED ON data GIVEN
         """
-        if filter is TRUE_FILTER:
+        if filter is TRUE:
             return True
-        if filter is FALSE_FILTER:
+        if filter is FALSE:
             return False
 
         filter = wrap(filter)

@@ -13,7 +13,8 @@ from __future__ import unicode_literals
 
 from unittest import skipIf
 
-from tests.test_jx import BaseTestCase, TEST_TABLE, global_settings, NULL
+from jx_base.expressions import NULL
+from tests.test_jx import BaseTestCase, TEST_TABLE, global_settings
 
 
 class TestSchemaMerging(BaseTestCase):
@@ -21,7 +22,6 @@ class TestSchemaMerging(BaseTestCase):
     TESTS THAT DEMONSTRATE DIFFERENT SCHEMAS
     """
 
-    @skipIf(global_settings.use == "elasticsearch", "require dynamic typing before overloading objects and primitives")
     def test_select(self):
         test = {
             "data": [

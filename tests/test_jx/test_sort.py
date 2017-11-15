@@ -13,11 +13,11 @@ from __future__ import unicode_literals
 
 from unittest import skipIf
 
+from jx_base.expressions import NULL
 from mo_dots import wrap
 from mo_logs import Log
 from mo_logs.exceptions import extract_stack
-
-from tests.test_jx import BaseTestCase, TEST_TABLE, NULL, global_settings
+from tests.test_jx import BaseTestCase, TEST_TABLE, global_settings
 
 lots_of_data = wrap([{"a": i} for i in range(30)])
 
@@ -94,6 +94,7 @@ class TestSorting(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
+    # @skipIf(global_settings.use in ["travis", "elasticsearch"], "sorting is hard with elasticsearch")
     def test_2edge_and_sort(self):
         test = {
             "data": [
@@ -224,7 +225,7 @@ class TestSorting(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    def test_groupby2_and_sort(self):
+    def test_groupby2a_and_sort(self):
         test = {
             "data": [
                 {"a": "c", "b": 1, "value": 1},
@@ -270,7 +271,6 @@ class TestSorting(BaseTestCase):
             }
         }
         self.utils.execute_tests(test)
-
 
     @skipIf(global_settings.is_travis, "not expected to pass yet")
     def test_groupby2b_and_sort(self):

@@ -11,15 +11,19 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
+from copy import copy
 from datetime import date
 from datetime import datetime
 
 from future.utils import text_type
+from jx_base import STRUCT
+
 from jx_python import jx
 from mo_collections import UniqueIndex
 from mo_dots import Data, concat_field, get_attr, listwrap, unwraplist, NullType, FlatList
 from mo_dots import split_field, join_field, ROOT_PATH
 from mo_dots import wrap
+from mo_json.typed_encoder import untype_path, unnest_path
 from mo_logs import Log
 from mo_threads import Lock
 from types import NoneType
@@ -138,6 +142,7 @@ Column = DataClass(
         {"name": "nested_path", "nulls": True},  # AN ARRAY OF PATHS (FROM DEEPEST TO SHALLOWEST) INDICATING THE JSON SUB-ARRAYS
         {"name": "count", "nulls": True},
         {"name": "cardinality", "nulls": True},
+        {"name": "multi", "nulls": True},
         {"name": "partitions", "nulls": True},
         {"name": "last_updated", "nulls": True}
     ]
@@ -169,7 +174,10 @@ class ColumnList(Container):
 
     def add(self, column):
         columns_for_table = self.data.setdefault(column.es_index, {})
-        _columns = columns_for_table.setdefault(column.names["."], [])
+        abs_cname = column.names["."]
+        _columns = columns_for_table.get(abs_cname)
+        if not _columns:
+            _columns = columns_for_table[abs_cname] = []
         _columns.append(column)
         self.count += 1
 
@@ -193,14 +201,17 @@ class ColumnList(Container):
                 columns = list(self)
                 columns = jx.filter(columns, command.where)
 
-            for col in columns:
+            for col in list(columns):
                 for k in command["clear"]:
-                    col[k] = None
+                    if k == ".":
+                        columns.remove(col)
+                    else:
+                        col[k] = None
 
                 for k, v in command.set.items():
                     col[k] = v
         except Exception as e:
-            Log.error("sould not happen", cause=e)
+            Log.error("should not happen", cause=e)
 
     def query(self, query):
         query.frum = self.__iter__()
@@ -222,30 +233,22 @@ class ColumnList(Container):
         """
         output = [
             {
-                "table": concat_field(c.es_index, table),
-                "name": name,
+                "table": concat_field(c.es_index, untype_path(table)),
+                "name": untype_path(name),
                 "cardinality": c.cardinality,
                 "es_column": c.es_column,
                 "es_index": c.es_index,
                 "last_updated": c.last_updated,
                 "count": c.count,
-                "nested_path": c.nested_path,
+                "nested_path": [unnest_path(n) for n in c.nested_path],
                 "type": c.type
             }
             for tname, css in self.data.items()
             for cname, cs in css.items()
             for c in cs
+            if c.type not in STRUCT # and c.es_column != "_id"
             for table, name in c.names.items()
         ]
-        #+[
-        #     {
-        #         "table": tname,
-        #         "name": "_id",
-        #         "nested_path": ["."],
-        #         "type": "string"
-        #     }
-        #     for tname, _ in self.data.items()
-        # ]
         if not self.meta_schema:
             self.meta_schema = get_schema_from_list("meta\\.columns", output)
 

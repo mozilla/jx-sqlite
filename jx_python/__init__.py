@@ -12,7 +12,6 @@ from __future__ import unicode_literals
 from collections import Mapping
 
 from jx_base import container
-from jx_python import containers
 from mo_dots import Data
 from mo_dots import wrap, set_default, split_field
 from mo_logs import Log
@@ -39,14 +38,11 @@ def _delayed_imports():
         MySQL = None
 
     try:
-        from jx_elasticsearch.jx_usingES import FromES
         from jx_elasticsearch.meta import FromESMetadata
     except Exception:
-        FromES = None
         FromESMetadata = None
 
     set_default(container.type2container, {
-        "elasticsearch": FromES,
         "mysql": MySQL,
         "memory": None,
         "meta": FromESMetadata

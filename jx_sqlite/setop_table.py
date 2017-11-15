@@ -181,7 +181,7 @@ class SetOpTable(InsertTable):
                     try:
                         column_number = len(sql_selects)
                         s.pull = get_column(column_number)
-                        db_columns = s.value.to_sql(schema)
+                        db_columns = s.value.partial_eval().to_sql(schema)
 
                         if isinstance(s.value, LeavesOp):
                             for column in db_columns:

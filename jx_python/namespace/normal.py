@@ -24,7 +24,7 @@ from mo_math import Math
 from jx_base.dimensions import Dimension
 from jx_base.domains import Domain
 from jx_python.containers import Container
-from jx_python.expressions import TRUE_FILTER
+from jx_python.expressions import TRUE
 from jx_python.namespace import Namespace, convert_list
 from jx_base.query import QueryOp, get_all_vars
 
@@ -207,7 +207,7 @@ class Normal(Namespace):
 
     def _convert_where(self, where):
         if where == None:
-            return TRUE_FILTER
+            return TRUE
         return where
 
 

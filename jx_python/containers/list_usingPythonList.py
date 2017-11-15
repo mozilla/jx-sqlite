@@ -20,7 +20,7 @@ from mo_logs import Log
 from mo_threads import Lock
 from pyLibrary import convert
 
-from jx_base.expressions import TRUE_FILTER, jx_expression, Expression, TrueOp, Variable
+from jx_base.expressions import jx_expression, Expression, TrueOp, Variable, TRUE
 from jx_python.expressions import jx_expression_to_function
 from jx_base.container import Container
 from jx_python.expression_compiler import compile_expression
@@ -72,7 +72,7 @@ class ListContainer(Container):
             except AttributeError:
                 pass
 
-            if q.where is not TRUE_FILTER and not isinstance(q.where, TrueOp):
+            if q.where is not TRUE and not q.where is TRUE:
                 frum = frum.filter(q.where)
 
             if q.sort:
@@ -110,7 +110,7 @@ class ListContainer(Container):
     def where(self, where):
         temp = None
         if isinstance(where, Mapping):
-            exec("def temp(row):\n    return "+jx_expression(where).to_python())
+            exec ("def temp(row):\n    return " + jx_expression(where).to_python())
         elif isinstance(where, Expression):
             temp = compile_expression(where.to_python())
         else:

@@ -280,9 +280,18 @@ class Schema(object):
     def columns(self):
         return [c for cs in self.map.values() for c in cs]
 
+    def leaves(self, prefix):
+        return [
+            c
+            for k, cs in self.map.items()
+            if startswith_field(k, prefix)
+            for c in cs
+            if c.type not in STRUCT
+        ]
+
     def map_to_sql(self, var=""):
         """
-        RETURN A MAP FROM THE RELATIVE AND ABSOLUTE NAME SPACE TO COLUMNS 
+        RETURN A MAP FROM THE RELATIVE AND ABSOLUTE NAME SPACE TO COLUMNS
         """
         origin = self.nested_path[0]
         if startswith_field(var, origin) and origin!=var:

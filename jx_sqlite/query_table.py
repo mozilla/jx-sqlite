@@ -303,7 +303,7 @@ class QueryTable(GroupbyTable):
                 else:
                     data = Data()
                     for s in index_to_columns.values():
-                        if data[s.push_child] == None:
+                        if not data[s.push_child]:
                             data[s.push_child] = s.pull(result.data[0])
                         else:
                             data[s.push_child] += [s.pull(result.data[0])]

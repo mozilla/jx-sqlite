@@ -17,9 +17,9 @@ import subprocess
 from collections import Mapping
 from datetime import datetime
 
-from future.utils import text_type
-
 import mo_json
+from future.utils import text_type
+from jx_python import jx
 from mo_dots import coalesce, wrap, listwrap, unwrap
 from mo_files import File
 from mo_kwargs import override
@@ -32,12 +32,12 @@ from mo_math import Math
 from mo_times import Date
 from pymysql import connect, InterfaceError, cursors
 
-from pyLibrary import convert
-from jx_python import jx
 from pyLibrary.sql import SQL
 
 DEBUG = False
 MAX_BATCH_SIZE = 100
+EXECUTE_TIMEOUT = 5*600*1000  # in milliseconds
+
 
 all_db = []
 
@@ -76,7 +76,8 @@ class MySQL(object):
         all_db.append(self)
 
         self.settings = kwargs
-
+        self.cursor = None
+        self.query_cursor = None
         if preamble == None:
             self.preamble = ""
         else:
@@ -96,6 +97,7 @@ class MySQL(object):
                 user=coalesce(self.settings.username, self.settings.user),
                 passwd=coalesce(self.settings.password, self.settings.passwd),
                 db=coalesce(self.settings.schema, self.settings.db),
+                read_timeout=coalesce(self.settings.read_timeout, (EXECUTE_TIMEOUT/1000)-10),
                 charset=u"utf8",
                 use_unicode=True,
                 ssl=coalesce(self.settings.ssl, None),
@@ -156,6 +158,7 @@ class MySQL(object):
             self.cursor = self.db.cursor()
         self.transaction_level += 1
         self.execute("SET TIME_ZONE='+00:00'")
+        self.execute("SET MAX_EXECUTION_TIME=" + text_type(EXECUTE_TIMEOUT))
 
 
     def close(self):
@@ -189,7 +192,8 @@ class MySQL(object):
 
                 Log.error("Commit after nested rollback is not allowed")
             else:
-                if self.cursor: self.cursor.close()
+                if self.cursor:
+                    self.cursor.close()
                 self.cursor = None
                 self.db.commit()
 
@@ -206,7 +210,6 @@ class MySQL(object):
         except Exception as e:
             Log.error("Can not flush", e)
 
-
     def rollback(self):
         self.backlog = []     # YAY! FREE!
         if self.transaction_level == 0:
@@ -222,7 +225,6 @@ class MySQL(object):
             self.partial_rollback = True
             Log.warning("Can not perform partial rollback!")
 
-
     def call(self, proc_name, params):
         self._execute_backlog()
         params = [unwrap(v) for v in params]
@@ -233,20 +235,15 @@ class MySQL(object):
         except Exception as e:
             Log.error("Problem calling procedure " + proc_name, e)
 
-
-    def query(self, sql, param=None):
+    def query(self, sql, param=None, stream=False, row_tuples=False):
         """
         RETURN LIST OF dicts
         """
+        if not self.cursor:  # ALLOW NON-TRANSACTIONAL READS
+            Log.error("must perform all queries inside a transaction")
         self._execute_backlog()
-        try:
-            old_cursor = self.cursor
-            if not old_cursor:  # ALLOW NON-TRANSACTIONAL READS
-                self.cursor = self.db.cursor()
-                self.cursor.execute("SET TIME_ZONE='+00:00'")
-                self.cursor.close()
-                self.cursor = self.db.cursor()
 
+        try:
             if param:
                 sql = expand_template(sql, self.quote_param(param))
             sql = self.preamble + outdent(sql)
@@ -254,13 +251,17 @@ class MySQL(object):
                 Log.note("Execute SQL:\n{{sql}}", sql=indent(sql))
 
             self.cursor.execute(sql)
-            columns = [utf8_to_unicode(d[0]) for d in coalesce(self.cursor.description, [])]
-            fixed = [[utf8_to_unicode(c) for c in row] for row in self.cursor]
-            result = convert.table2list(columns, fixed)
-
-            if not old_cursor:   # CLEANUP AFTER NON-TRANSACTIONAL READS
-                self.cursor.close()
-                self.cursor = None
+            if row_tuples:
+                if stream:
+                    result = self.cursor
+                else:
+                    result = wrap(list(self.cursor))
+            else:
+                columns = [utf8_to_unicode(d[0]) for d in coalesce(self.cursor.description, [])]
+                if stream:
+                    result = (wrap({c: utf8_to_unicode(v) for c, v in zip(columns, row)}) for row in self.cursor)
+                else:
+                    result = wrap([{c: utf8_to_unicode(v) for c, v in zip(columns, row)} for row in self.cursor])
 
             return result
         except Exception as e:
@@ -320,7 +321,7 @@ class MySQL(object):
                 sql = expand_template(sql, self.quote_param(param))
             sql = self.preamble + outdent(sql)
             if self.debug:
-                Log.note("Execute SQL:\n{{sql}}",  sql= indent(sql))
+                Log.note("Execute SQL:\n{{sql}}",  sql=indent(sql))
             self.cursor.execute(sql)
 
             columns = tuple([utf8_to_unicode(d[0]) for d in self.cursor.description])

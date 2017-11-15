@@ -15,24 +15,25 @@ from collections import Mapping
 from copy import copy
 
 from future.utils import text_type
+
 from jx_base import STRUCT
-from mo_dots import Data
+from jx_base.container import Container
+from jx_base.dimensions import Dimension
+from jx_base.domains import Domain, SetDomain, DefaultDomain
+from jx_base.expressions import jx_expression, Expression, Variable, LeavesOp, ScriptOp, OffsetOp, TRUE, FALSE
+from jx_base.queries import is_variable_name
+from jx_base.schema import Schema
+from mo_dots import Data, relative_field, concat_field
 from mo_dots import coalesce, Null, set_default, unwraplist, literal_field
 from mo_dots import wrap, unwrap, listwrap
 from mo_dots.lists import FlatList
+from mo_json.typed_encoder import untype_path
 from mo_logs import Log
 from mo_math import AND, UNION
 from mo_math import Math
 
-from jx_base.dimensions import Dimension
-from jx_base.domains import Domain, SetDomain
-from jx_base.expressions import jx_expression, TrueOp, Expression, FalseOp, Variable, LeavesOp, ScriptOp, OffsetOp
-from jx_base.queries import is_variable_name
-from jx_base.schema import Schema
-from jx_base.container import Container
-
 DEFAULT_LIMIT = 10
-MAX_LIMIT = 50000
+MAX_LIMIT = 10000
 
 _jx = None
 _Column = None
@@ -53,11 +54,11 @@ def _late_import():
 class QueryOp(Expression):
     __slots__ = ["frum", "select", "edges", "groupby", "where", "window", "sort", "limit", "having", "format", "isLean"]
 
-    def __new__(cls, op, frum, select=None, edges=None, groupby=None, window=None, where=None, sort=None, limit=None, format=None):
-        output = object.__new__(cls)
-        for s in QueryOp.__slots__:
-            setattr(output, s, None)
-        return output
+    # def __new__(cls, op=None, frum=None, select=None, edges=None, groupby=None, window=None, where=None, sort=None, limit=None, format=None):
+    #     output = object.__new__(cls)
+    #     for s in QueryOp.__slots__:
+    #         setattr(output, s, None)
+    #     return output
 
     def __init__(self, op, frum, select=None, edges=None, groupby=None, window=None, where=None, sort=None, limit=None, format=None):
         if isinstance(frum, Container):
@@ -73,9 +74,6 @@ class QueryOp(Expression):
         self.sort = sort
         self.limit = limit
         self.format = format
-
-    def to_sql(self, not_null=False, boolean=False):
-        raise Log.error("{{type}} has no `to_sql` method", type=self.__class__.__name__)
 
     def __data__(self):
         def select___data__():
@@ -95,6 +93,19 @@ class QueryOp(Expression):
             "limit": self.limit.__data__()
         }
 
+    def copy(self):
+        return QueryOp(
+            frum=copy(self.frum),
+            select=copy(self.select),
+            edges=copy(self.edges),
+            groupby=copy(self.groupby),
+            window=copy(self.window),
+            where=copy(self.where),
+            sort=copy(self.sort),
+            limit=copy(self.limit),
+            format=copy(self.format)
+        )
+
 
     def vars(self, exclude_where=False, exclude_select=False):
         """
@@ -102,7 +113,7 @@ class QueryOp(Expression):
         """
         def edges_get_all_vars(e):
             output = set()
-            if isinstance(e.value, basestring):
+            if isinstance(e.value, text_type):
                 output.add(e.value)
             if isinstance(e.value, Expression):
                 output |= e.value.vars()
@@ -191,7 +202,7 @@ class QueryOp(Expression):
         )
 
     def missing(self):
-        return FalseOp()
+        return FALSE
 
     @staticmethod
     def wrap(query, schema=None):
@@ -205,6 +216,7 @@ class QueryOp(Expression):
 
         output = QueryOp("from", None)
         output.format = query.format
+        output.limit = Math.min(MAX_LIMIT, coalesce(query.limit, DEFAULT_LIMIT))
 
         from jx_python import wrap_from
         output.frum = wrap_from(query["from"], schema=schema)
@@ -225,11 +237,11 @@ class QueryOp(Expression):
         if query.groupby and query.edges:
             Log.error("You can not use both the `groupby` and `edges` clauses in the same query!")
         elif query.edges:
-            output.edges = _normalize_edges(query.edges, schema=schema)
+            output.edges = _normalize_edges(query.edges, limit=output.limit, schema=schema)
             output.groupby = Null
         elif query.groupby:
             output.edges = Null
-            output.groupby = _normalize_groupby(query.groupby, schema=schema)
+            output.groupby = _normalize_groupby(query.groupby, limit=output.limit, schema=schema)
         else:
             output.edges = Null
             output.groupby = Null
@@ -238,7 +250,6 @@ class QueryOp(Expression):
         output.window = [_normalize_window(w) for w in listwrap(query.window)]
         output.having = None
         output.sort = _normalize_sort(query.sort)
-        output.limit = Math.min(MAX_LIMIT, coalesce(query.limit, DEFAULT_LIMIT))
         if not Math.is_integer(output.limit) or output.limit < 0:
             Log.error("Expecting limit >= 0")
 
@@ -319,7 +330,7 @@ def _normalize_select(select, frum, schema=None):
     if not _Column:
         _late_import()
 
-    if isinstance(select, basestring):
+    if isinstance(select, text_type):
         canonical = select = Data(value=select)
     else:
         select = wrap(select)
@@ -343,18 +354,16 @@ def _normalize_select(select, frum, schema=None):
             )
             for c in frum.get_leaves()
         ])
-    elif isinstance(select.value, basestring):
+    elif isinstance(select.value, text_type):
         if select.value.endswith(".*"):
-            base_name = select.value[:-2]
-            canonical.name = coalesce(select.name, base_name, select.aggregate)
+            canonical.name = coalesce(select.name, ".")
             value = jx_expression(select[:-2])
             if not isinstance(value, Variable):
                 Log.error("`*` over general expression not supported yet")
                 output.append([
                     set_default(
                         {
-                            "name": base_name,
-                            "value": LeavesOp("leaves", value),
+                            "value": LeavesOp("leaves", value, prefix=select.prefix),
                             "format": "dict"  # MARKUP FOR DECODING
                         },
                         canonical
@@ -363,17 +372,7 @@ def _normalize_select(select, frum, schema=None):
                     if c.type not in STRUCT
                 ])
             else:
-                output.extend([
-                    set_default(
-                        {
-                            "name": base_name + "." + literal_field(c.name[len(base_name) + 1:]),
-                            "value": jx_expression(c.name)
-                        },
-                        canonical
-                    )
-                    for c in frum.get_leaves()
-                    if c.name.startswith(base_name+".")
-                ])
+                Log.error("do not know what to do")
         else:
             canonical.name = coalesce(select.name, select.value, select.aggregate)
             canonical.value = jx_expression(select.value)
@@ -392,7 +391,7 @@ def _normalize_select_no_context(select, schema=None):
     if not _Column:
         _late_import()
 
-    if isinstance(select, basestring):
+    if isinstance(select, text_type):
         select = Data(value=select)
     else:
         select = wrap(select)
@@ -404,10 +403,11 @@ def _normalize_select_no_context(select, schema=None):
             output.value = jx_expression(".")
         else:
             return output
-    elif isinstance(select.value, basestring):
+    elif isinstance(select.value, text_type):
         if select.value.endswith(".*"):
-            output.name = coalesce(select.name, select.value[:-2], select.aggregate)
-            output.value = LeavesOp("leaves", Variable(select.value[:-2]))
+            name = select.value[:-2]
+            output.name = coalesce(select.name,  name)
+            output.value = LeavesOp("leaves", Variable(name), prefix=coalesce(select.prefix, name))
         else:
             if select.value == ".":
                 output.name = coalesce(select.name, select.aggregate, ".")
@@ -435,13 +435,13 @@ def _normalize_select_no_context(select, schema=None):
     return output
 
 
-def _normalize_edges(edges, schema=None):
-    return wrap([n for ie, e in enumerate(listwrap(edges)) for n in _normalize_edge(e, ie, schema=schema)])
+def _normalize_edges(edges, limit, schema=None):
+    return wrap([n for ie, e in enumerate(listwrap(edges)) for n in _normalize_edge(e, ie, limit=limit, schema=schema)])
 
 
-def _normalize_edge(edge, dim_index, schema=None):
+def _normalize_edge(edge, dim_index, limit, schema=None):
     """
-    :param edge: Not normalized edge 
+    :param edge: Not normalized edge
     :param dim_index: Dimensions are ordered; this is this edge's index into that order
     :param schema: for context
     :return: a normalized edge
@@ -451,47 +451,53 @@ def _normalize_edge(edge, dim_index, schema=None):
 
     if edge == None:
         Log.error("Edge has no value, or expression is empty")
-    elif isinstance(edge, basestring):
+    elif isinstance(edge, text_type):
         if schema:
-            try:
-                e = schema[edge]
-            except Exception:
-                e = None
-            e = unwraplist(e)
-            if e and not isinstance(e, (_Column, set, list)):
-                if isinstance(e, _Column):
-                    return [Data(
+            leaves = unwraplist(schema.leaves(edge))
+            if not leaves or isinstance(leaves, (list, set)):
+                return [
+                    Data(
                         name=edge,
                         value=jx_expression(edge),
                         allowNulls=True,
-                        dim=dim_index,
-                        domain=_normalize_domain(domain=e, schema=schema)
-                    )]
-                elif isinstance(e.fields, list) and len(e.fields) == 1:
-                    return [Data(
-                        name=e.name,
-                        value=jx_expression(e.fields[0]),
-                        allowNulls=True,
-                        dim=dim_index,
-                        domain=e.getDomain()
-                    )]
-                else:
-                    return [Data(
-                        name=e.name,
-                        allowNulls=True,
-                        dim=dim_index,
-                        domain=e.getDomain()
-                    )]
-        return [Data(
-            name=edge,
-            value=jx_expression(edge),
-            allowNulls=True,
-            dim=dim_index,
-            domain=_normalize_domain(schema=schema)
-        )]
+                        dim=dim_index
+                    )
+                ]
+            elif isinstance(leaves, _Column):
+                return [Data(
+                    name=edge,
+                    value=jx_expression(edge),
+                    allowNulls=True,
+                    dim=dim_index,
+                    domain=_normalize_domain(domain=leaves, limit=limit, schema=schema)
+                )]
+            elif isinstance(leaves.fields, list) and len(leaves.fields) == 1:
+                return [Data(
+                    name=leaves.name,
+                    value=jx_expression(leaves.fields[0]),
+                    allowNulls=True,
+                    dim=dim_index,
+                    domain=leaves.getDomain()
+                )]
+            else:
+                return [Data(
+                    name=leaves.name,
+                    allowNulls=True,
+                    dim=dim_index,
+                    domain=leaves.getDomain()
+                )]
+        else:
+            return [
+                Data(
+                    name=edge,
+                    value=jx_expression(edge),
+                    allowNulls=True,
+                    dim=dim_index
+                )
+            ]
     else:
         edge = wrap(edge)
-        if not edge.name and not isinstance(edge.value, basestring):
+        if not edge.name and not isinstance(edge.value, text_type):
             Log.error("You must name compound and complex edges: {{edge}}", edge=edge)
 
         if isinstance(edge.value, (list, set)) and not edge.domain:
@@ -519,43 +525,42 @@ def _normalize_edge(edge, dim_index, schema=None):
         )]
 
 
-def _normalize_groupby(groupby, schema=None):
+def _normalize_groupby(groupby, limit, schema=None):
     if groupby == None:
         return None
-    output = wrap([n for ie, e in enumerate(listwrap(groupby)) for n in _normalize_group(e, ie, schema=schema) ])
+    output = wrap([n for ie, e in enumerate(listwrap(groupby)) for n in _normalize_group(e, ie, limit, schema=schema) ])
     if any(o==None for o in output):
         Log.error("not expected")
     return output
 
 
-def _normalize_group(edge, dim_index, schema=None):
+def _normalize_group(edge, dim_index, limit, schema=None):
     """
-    :param edge: Not normalized groupby 
+    :param edge: Not normalized groupby
     :param dim_index: Dimensions are ordered; this is this groupby's index into that order
     :param schema: for context
     :return: a normalized groupby
     """
-    if isinstance(edge, basestring):
+    if isinstance(edge, text_type):
         if edge.endswith(".*"):
-            prefix = edge[:-1]
+            prefix = edge[:-2]
             if schema:
                 output = wrap([
                     {
-                        "name": literal_field(k),
-                        "value": jx_expression(k),
+                        "name": concat_field(prefix, literal_field(relative_field(untype_path(c.names["."]), prefix))),
+                        "put": {"name": literal_field(untype_path(c.names["."]))},
+                        "value": jx_expression(c.es_column),
                         "allowNulls": True,
                         "domain": {"type": "default"}
                     }
-                    for k, cs in schema.items()
-                    if k.startswith(prefix)
-                    for c in cs
-                    if c.type not in STRUCT
+                    for c in schema.leaves(prefix)
                 ])
                 return output
             else:
                 return wrap([{
-                    "name": edge[:-2],
-                    "value": jx_expression(edge[:-2]),
+                    "name": untype_path(prefix),
+                    "put": {"name": literal_field(untype_path(prefix))},
+                    "value": jx_expression(prefix),
                     "allowNulls": True,
                     "dim":dim_index,
                     "domain": {"type": "default"}
@@ -573,7 +578,7 @@ def _normalize_group(edge, dim_index, schema=None):
         if (edge.domain and edge.domain.type != "default") or edge.allowNulls != None:
             Log.error("groupby does not accept complicated domains")
 
-        if not edge.name and not isinstance(edge.value, basestring):
+        if not edge.name and not isinstance(edge.value, text_type):
             Log.error("You must name compound edges: {{edge}}",  edge= edge)
 
         return wrap([{
@@ -585,15 +590,17 @@ def _normalize_group(edge, dim_index, schema=None):
         }])
 
 
-def _normalize_domain(domain=None, schema=None):
+def _normalize_domain(domain=None, limit=None, schema=None):
     if not domain:
-        return Domain(type="default")
+        return Domain(type="default", limit=limit)
     elif isinstance(domain, _Column):
         if domain.partitions:
-            return SetDomain(**domain)
+            return SetDomain(partitions=domain.partitions.left(limit))
+        else:
+            return DefaultDomain(type="default", limit=limit)
     elif isinstance(domain, Dimension):
         return domain.getDomain()
-    elif schema and isinstance(domain, basestring) and schema[domain]:
+    elif schema and isinstance(domain, text_type) and schema[domain]:
         return schema[domain].getDomain()
     elif isinstance(domain, Domain):
         return domain
@@ -637,7 +644,7 @@ def _normalize_range(range):
 
 def _normalize_where(where, schema=None):
     if where == None:
-        return TrueOp()
+        return TRUE
     return jx_expression(where)
 
 
@@ -726,7 +733,7 @@ def _where_terms(master, where, schema):
                 if not edge:
                     output.append({"terms": {k: v}})
                 else:
-                    if isinstance(edge, basestring):
+                    if isinstance(edge, text_type):
                         # DIRECT FIELD REFERENCE
                         return {"terms": {edge: v}}
                     try:
@@ -768,7 +775,7 @@ def _normalize_sort(sort=None):
 
     output = FlatList()
     for s in listwrap(sort):
-        if isinstance(s, basestring):
+        if isinstance(s, text_type):
             output.append({"value": jx_expression(s), "sort": 1})
         elif isinstance(s, Expression):
             output.append({"value": s, "sort": 1})

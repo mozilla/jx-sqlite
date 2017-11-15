@@ -15,7 +15,7 @@ import re
 
 from pyLibrary import convert
 from mo_logs import Log
-from mo_dots import coalesce, Data, listwrap
+from mo_dots import coalesce, Data, listwrap, wrap_leaves
 from mo_times.dates import Date
 
 true = True
@@ -41,6 +41,7 @@ def compile_expression(source):
     _ = Data
     _ = EMPTY_DICT
     _ = re
+    _ = wrap_leaves
 
     output = None
     try:

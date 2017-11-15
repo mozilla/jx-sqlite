@@ -14,9 +14,10 @@ from __future__ import unicode_literals
 
 from unittest import skipIf
 
+from jx_base.expressions import NULL
 from mo_dots import wrap
 from mo_math import Math
-from tests.test_jx import BaseTestCase, TEST_TABLE, global_settings, NULL
+from tests.test_jx import BaseTestCase, TEST_TABLE, global_settings
 
 lots_of_data = wrap([{"a": i} for i in range(30)])
 
@@ -203,7 +204,6 @@ class TestDeepOps(BaseTestCase):
 
         self.utils.execute_tests(test)
 
-
     def test_select_whole_document(self):
         test = {
             "data": [
@@ -386,7 +386,6 @@ class TestDeepOps(BaseTestCase):
 
         self.utils.execute_tests(test)
 
-
     def test_deep_names_select_value(self):
         test = {
             "data": [
@@ -434,11 +433,11 @@ class TestDeepOps(BaseTestCase):
                     }
                 ],
                 "data": {
-                    "a._t": [
+                     "a._t": [
                         {"b": {"s": 1}, "h": {"s": "a-a"}},
                         {"b": {"s": 2}, "h": {"s": "a-b"}},
                         {"b": {"s": 3}, "h": {"s": "a-c"}}
-                    ],
+                    ]
                 }
             }
         }
@@ -731,7 +730,6 @@ class TestDeepOps(BaseTestCase):
             }
         }
         self.utils.execute_tests(test)
-
 
     def test_aggs_on_parent(self):
         test = {
@@ -1097,7 +1095,7 @@ class TestDeepOps(BaseTestCase):
                 "select": {"value": "v.u", "aggregate": "sum"},  # TEST RELATIVE NAME IN select
                 "from": TEST_TABLE + ".a._b",
                 "edges": ["r.s"],  # TEST RELATIVE NAME IN edges
-                "where": {"ne": {"r.s": "b"}} # TEST RELATIVE NAME IN where
+                "where": {"ne": {"r.s": "b"}}  # TEST RELATIVE NAME IN where
             },
             "expecting_list": {
                 "meta": {"format": "list"},
@@ -1491,6 +1489,71 @@ class TestDeepOps(BaseTestCase):
                     {"q.a": 0, "x": 1},
                     {"x": 1}
                 ]
+            }
+        }
+        self.utils.execute_tests(test)
+
+    def test_deep_select_dot(self):
+        test = {
+            "data": [
+                {"_a": [
+                    {"b": "x", "v": 2},
+                    {"b": "y", "v": 3}
+                ]},
+                {"_a": {"b": "x", "v": 5}},
+                {"_a": [
+                    {"b": "x", "v": 7},
+                ]},
+                {"c": "x"}
+            ],
+            "query": {
+                "from": TEST_TABLE + "._a",
+                "select": {"value": "."},
+            },
+            "expecting_list": {
+                "meta": {"format": "list"},
+                "data": [
+                    {"b": "x", "v": 2},
+                    {"b": "y", "v": 3},
+                    {"b": "x", "v": 5},
+                    {"b": "x", "v": 7},
+                    {}
+                ]
+            },
+            "expecting_table": {
+                "meta": {"format": "table"},
+                "header": ["."],
+                "data": [
+                    [{"b": "x", "v": 2}],
+                    [{"b": "y", "v": 3}],
+                    [{"b": "x", "v": 5}],
+                    [{"b": "x", "v": 7}],
+                    [{}]
+                ]
+            },
+            "expecting_cube": {
+                "meta": {"format": "cube"},
+                "edges": [
+                    {
+                        "domain": {
+                            "interval": 1,
+                            "max": 5,
+                            "min": 0,
+                            "type": "rownum"
+                        },
+                        "name": "rownum"
+                    }
+                ],
+                "data": {
+                    ".": [
+                        {"b": "x", "v": 2},
+                        {"b": "y", "v": 3},
+                        {"b": "x", "v": 5},
+                        {"b": "x", "v": 7},
+                        {}
+                    ]
+
+                }
             }
         }
         self.utils.execute_tests(test)

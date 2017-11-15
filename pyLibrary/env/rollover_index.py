@@ -127,10 +127,15 @@ class RolloverIndex(object):
     def keys(self, prefix=None):
         path = jx.reverse(etl2path(key2etl(prefix)))
 
+        if self.cluster.version.startswith("5."):
+            stored_fields = "stored_fields"
+        else:
+            stored_fields = "fields"
+
         result = self.es.search({
-            "fields": ["_id"],
+            stored_fields: ["_id"],
             "query": {
-                "filtered": {
+                "bool": {
                     "query": {"match_all": {}},
                     "filter": {"and": [{"term": {"etl" + (".source" * i) + ".id": v}} for i, v in enumerate(path)]}
                 }
@@ -199,7 +204,8 @@ class RolloverIndex(object):
                             if queue == None:
                                 pending.append(row)
                                 if len(pending) > 1000:
-                                    self._get_queue(row)
+                                    if done_copy:
+                                        done_copy()
                                     Log.error("first 1000 (key={{key}}) records for {{alias}} have no indication what index to put data", key=tuple(keys)[0], alias=self.settings.index)
                                 continue
                             elif queue is DATA_TOO_OLD:
@@ -233,7 +239,7 @@ class RolloverIndex(object):
                 queue.add(done_copy)
 
         if pending:
-            Log.error("Did not find an index to place the data for key={{key}}", key=tuple(keys)[0])
+            Log.error("Did not find an index for {{alias}} to place the data for key={{key}}", key=tuple(keys)[0], alias=self.settings.index)
 
         Log.note("{{num}} keys from {{key|json}} added", num=num_keys, key=keys)
         return num_keys

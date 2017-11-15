@@ -15,14 +15,15 @@ import itertools
 from collections import Mapping
 from numbers import Number
 
-from mo_dots import coalesce, Data, set_default, Null, listwrap
-from mo_dots import wrap
-from mo_logs import Log
-from mo_math import MAX, MIN
+from future.utils import text_type
 
 from jx_base.expressions import jx_expression
 from mo_collections.unique_index import UniqueIndex
+from mo_dots import coalesce, Data, set_default, Null, listwrap
+from mo_dots import wrap
 from mo_dots.lists import FlatList
+from mo_logs import Log
+from mo_math import MAX, MIN
 from mo_times.dates import Date
 from mo_times.durations import Duration
 
@@ -36,10 +37,11 @@ class Domain(object):
 
     def __new__(cls, **desc):
         if cls == Domain:
+            type_name = desc.get("type")
             try:
-                return name_to_type[desc.get("type")](**desc)
+                return name_to_type[type_name](**desc)
             except Exception as e:
-                Log.error("Do not know domain of type {{type}}", type=desc.get("type"), cause=e)
+                Log.error("Problem with {\"domain\":{\"type\":{{type|quote}}}}", type=type_name, cause=e)
         else:
             return object.__new__(cls)
 
@@ -92,6 +94,11 @@ class Domain(object):
 
     def getDomain(self):
         Log.error("Not implemented")
+
+    def verify_attributes_not_null(self, attribute_names):
+        for name in attribute_names:
+            if getattr(self, name) == None:
+                Log.error('{{type}} domain expects a {{name|quote}} parameter', type=self.type, name=name)
 
 
 class UnitDomain(Domain):
@@ -220,6 +227,10 @@ class SimpleSetDomain(Domain):
                 self.partitions.append(part)
                 self.map[p] = part
                 self.order[p] = i
+                if isinstance(p, (int, float)):
+                    text_part = text_type(float(p))  # ES CAN NOT HANDLE NUMERIC PARTS
+                    self.map[text_part] = part
+                    self.order[text_part] = i
             self.label = coalesce(self.label, "name")
             self.primitive = True
             return
@@ -444,10 +455,8 @@ class SetDomain(Domain):
         return output
 
 
-
-
 class TimeDomain(Domain):
-    __slots__ = ["max", "min", "interval", "partitions", "NULL"]
+    __slots__ = ["max", "min", "interval", "partitions", "NULL", "sort"]
 
     def __init__(self, **desc):
         Domain.__init__(self, **desc)
@@ -456,6 +465,7 @@ class TimeDomain(Domain):
         self.min = Date(self.min)
         self.max = Date(self.max)
         self.interval = Duration(self.interval)
+        self.sort = Null
 
         if self.partitions:
             # IGNORE THE min, max, interval
@@ -466,9 +476,8 @@ class TimeDomain(Domain):
 
             # VERIFY PARTITIONS DO NOT OVERLAP
             return
-        elif not all([self.min, self.max, self.interval]):
-            Log.error("Can not handle missing parameter")
 
+        self.verify_attributes_not_null(["min", "max", "interval"])
         self.key = "min"
         self.partitions = wrap([
             {"min": v, "max": v + self.interval, "dataIndex": i}
@@ -646,7 +655,7 @@ class RangeDomain(Domain):
             if not self.key:
                 Log.error("Must have a key value")
 
-            parts = listwrap(self.partitions)
+            parts = list(listwrap(self.partitions))
             for i, p in enumerate(parts):
                 self.min = MIN([self.min, p.min])
                 self.max = MAX([self.max, p.max])
@@ -658,7 +667,7 @@ class RangeDomain(Domain):
 
             # VERIFY PARTITIONS DO NOT OVERLAP, HOLES ARE FINE
             for p, q in itertools.product(parts, parts):
-                if p.min <= q.min and q.min < p.max:
+                if p is not q and p.min <= q.min and q.min < p.max:
                     Log.error("partitions overlap!")
 
             self.partitions = parts

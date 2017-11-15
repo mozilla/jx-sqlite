@@ -13,9 +13,9 @@ from __future__ import unicode_literals
 
 from unittest import skipIf
 
+from jx_base.expressions import NULL
 from mo_dots import wrap
-
-from tests.test_jx import BaseTestCase, TEST_TABLE, NULL, global_settings
+from tests.test_jx import BaseTestCase, TEST_TABLE, global_settings
 
 lots_of_data = wrap([{"a": i} for i in range(30)])
 
@@ -179,7 +179,7 @@ class TestSetOps(BaseTestCase):
     def test_concat(self):
         test = {
             "data": [
-                {"v": "hello", "w": NULL},
+                {"v": "hello", "w": None},
                 {"v": "hello", "w": ""},
                 {"v": "hello", "w": "world"}
             ],
@@ -253,7 +253,11 @@ class TestSetOps(BaseTestCase):
             ],
             "query": {
                 "from": TEST_TABLE,
-                "select": ["a", "b", {"name": "io", "value": {"when": {"eq": ["a", "b"]}, "then": 1, "else": 2}}]
+                "select": [
+                    "a",
+                    "b",
+                    {"name": "io", "value": {"when": {"eq": ["a", "b"]}, "then": 1, "else": 2}}
+                ]
             },
             "expecting_list": {
                 "meta": {"format": "list"},
@@ -340,7 +344,7 @@ class TestSetOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    def test_select_mult_w_when(self):
+    def test_select_agg_mult_w_when(self):
         test = {
             "data": [
                 {"a": 0, "b": False},                  # 0*1
@@ -375,6 +379,55 @@ class TestSetOps(BaseTestCase):
             "expecting_list": {
                 "meta": {"format": "value"},
                 "data": 17
+            }
+        }
+        self.utils.execute_tests(test)
+
+    def test_select_mult_w_when(self):
+        test = {
+            "data": [
+                {"a": 0, "b": False},                  # 0*1
+                {"a": 1, "b": False},                  # 1*1 = 1
+                {"a": 2, "b": True},                   # 2*0
+                {"a": 3, "b": False},                  # 3*1 = 3
+                {"a": 4, "b": True},                   # 4*0
+                {"a": 5, "b": False},                  # 5*1 = 5
+                {"a": 6, "b": True},                   # 6*0
+                {"a": 7, "b": True},                   # 7*0
+                {"a": 8},  # COUNTED, "b" IS NOT true  # 8*1 = 8
+                {"b": True},  # NOT COUNTED              null * 0 = null
+                {"b": False}   # NOT COUNTED             null * 1 = null
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "select": [
+                    {"name": "b", "value": {"when": "b", "then": 0, "else": 1}},
+                    {
+                        "name": "ab",
+                        "value": {
+                            "mult": [
+                                "a",
+                                {"when": "b", "then": 0, "else": 1}
+                            ]
+                        }
+                    }
+                ],
+                "limit": 100
+            },
+            "expecting_list": {
+                "data": [
+                    {"ab": 0, "b": 1},
+                    {"ab": 1, "b": 1},
+                    {"ab": 0, "b": 0},
+                    {"ab": 3, "b": 1},
+                    {"ab": 0, "b": 0},
+                    {"ab": 5, "b": 1},
+                    {"ab": 0, "b": 0},
+                    {"ab": 0, "b": 0},
+                    {"ab": 8, "b": 1},
+                    {"ab": NULL, "b": 1},
+                    {"ab": NULL, "b": 0}
+                ]
             }
         }
         self.utils.execute_tests(test)
@@ -771,7 +824,7 @@ class TestSetOps(BaseTestCase):
     def test_param_left(self):
         test = {
             "data": [
-                {"url": NULL},
+                {},
                 {"url": "/"},
                 #        012345678901234567890123456789
                 {"url": "https://hg.mozilla.org/"},
@@ -812,6 +865,66 @@ class TestSetOps(BaseTestCase):
                     {"f": "https://hg.mozilla.org/c", "count": 1},
                     {"f": "https://hg.mozilla.org/d", "count": 1},
                     {"f": "https://hg.mozilla.org/e", "count": 1}
+                ]
+            }
+        }
+
+        self.utils.execute_tests(test)
+
+    def test_not_left(self):
+        test = {
+            "data": [
+                {"url": NULL},
+                {"url": "/"},
+                #        012345678901234567890123456789
+                {"url": "https://hg.mozilla.org/"},
+                {"url": "https://hg.mozilla.org/a/"},
+                {"url": "https://hg.mozilla.org/b/"},
+                {"url": "https://hg.mozilla.org/b/1"},
+                {"url": "https://hg.mozilla.org/b/2"},
+                {"url": "https://hg.mozilla.org/b/3"},
+                {"url": "https://hg.mozilla.org/c/"},
+                {"url": "https://hg.mozilla.org/d"},
+                {"url": "https://hg.mozilla.org/e"}
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "where": {"and":[
+                    {"prefix":{"url": "https://hg.mozilla.org/"}},
+                    {"not": {"find": [{"not_left": {"url": 23}}, {"literal": "/"}]}}
+                ]}
+            },
+            "expecting_list":{
+                "meta": {"format": "list"},
+                "data": [
+                    {"url": "https://hg.mozilla.org/"},
+                    {"url": "https://hg.mozilla.org/d"},
+                    {"url": "https://hg.mozilla.org/e"}
+                ]
+            }
+        }
+
+        self.utils.execute_tests(test)
+
+    def test_date_on_duration(self):
+        test = {
+            "data": [
+                {"data": 0},
+                {"data": 1}
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "select": {
+                    "name": "test",
+                    "value": {"date": "day"}
+                }
+
+            },
+            "expecting_list": {
+                "meta": {"format": "list"},
+                "data": [
+                    86400,
+                    86400
                 ]
             }
         }

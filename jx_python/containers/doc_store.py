@@ -15,6 +15,7 @@ from datetime import datetime
 
 from future.utils import text_type
 from mo_dots import wrap, Data, FlatList, literal_field
+from mo_json.typed_encoder import TYPE_PREFIX
 from mo_logs import Log
 from pyLibrary import convert
 from jx_python import jx
@@ -86,7 +87,7 @@ class DocStore(Container):
                 _type = "object"
                 v = "."
 
-            typed_key = k + ".$" + _type
+            typed_key = k + "." + TYPE_PREFIX + _type
             i = _index.get(typed_key)
             if i is None:
                 i = _index[typed_key] = {}
