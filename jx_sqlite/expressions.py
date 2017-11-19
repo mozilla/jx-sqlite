@@ -187,7 +187,7 @@ def to_sql(self, schema, not_null=False, boolean=False):
     start = self.start
 
     if isinstance(start, Literal) and start.value == 0:
-        return wrap([{"name": ".", "sql": {"n": "INSTR(" + value + "," + find + ")"}}])
+        return wrap([{"name": ".", "sql": {"n": "INSTR(" + value + "," + find + ")-1"}}])
     else:
         start_index = start.to_sql(schema)[0].sql.n
         return wrap([{"name": ".", "sql": {"n": "INSTR(SUBSTR(" + value + "," + start_index + "+1)," + find + ")+" + start_index + "-1"}}])
@@ -329,8 +329,13 @@ def to_sql(self, schema, not_null=False, boolean=False):
 
 @extend(OrOp)
 def to_sql(self, schema, not_null=False, boolean=False):
-    return wrap([{"name": ".",
-                  "sql": {"b": " OR ".join("(" + t.to_sql(schema, boolean=True)[0].sql.b + ")" for t in self.terms)}}])
+    return wrap([{
+        "name": ".",
+        "sql": {"b": " OR ".join(
+            "(" + t.to_sql(schema, boolean=True)[0].sql.b + ")"
+            for t in self.terms
+        )}
+    }])
 
 
 @extend(LengthOp)

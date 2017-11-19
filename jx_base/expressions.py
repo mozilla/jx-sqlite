@@ -2242,7 +2242,7 @@ class FindOp(Expression):
             OrOp("or", [
                 self.value.missing(),
                 self.find.missing(),
-                EqOp("eq", [index, Literal(None, -1)])
+                BasicEqOp("eq", [index, Literal(None, -1)])
             ]),
             **{"then": self.default, "else": index}
         ).partial_eval()
