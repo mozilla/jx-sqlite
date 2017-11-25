@@ -15,7 +15,7 @@ from copy import copy
 from datetime import date
 from datetime import datetime
 
-from future.utils import text_type
+from mo_future import text_type
 from jx_base import STRUCT
 
 from jx_python import jx
@@ -26,7 +26,7 @@ from mo_dots import wrap
 from mo_json.typed_encoder import untype_path, unnest_path
 from mo_logs import Log
 from mo_threads import Lock
-from types import NoneType
+from mo_future import NoneType
 
 from jx_base.container import Container
 from jx_base.schema import Schema

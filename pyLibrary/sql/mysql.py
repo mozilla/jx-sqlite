@@ -18,7 +18,7 @@ from collections import Mapping
 from datetime import datetime
 
 import mo_json
-from future.utils import text_type
+from mo_future import text_type
 from jx_python import jx
 from mo_dots import coalesce, wrap, listwrap, unwrap
 from mo_files import File

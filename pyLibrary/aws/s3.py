@@ -19,7 +19,7 @@ from tempfile import TemporaryFile
 import boto
 from BeautifulSoup import BeautifulSoup
 from boto.s3.connection import Location
-from future.utils import text_type
+from mo_future import text_type
 
 from mo_dots import wrap, Null, coalesce, unwrap, Data
 from mo_kwargs import override

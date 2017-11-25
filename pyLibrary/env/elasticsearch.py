@@ -15,7 +15,8 @@ import re
 from collections import Mapping
 from copy import deepcopy
 
-from future.utils import text_type, binary_type
+from mo_future import text_type, binary_type
+from jx_python.expressions import jx_expression_to_function
 
 import mo_json
 from jx_python import jx
@@ -24,7 +25,7 @@ from mo_dots import coalesce, Null, Data, set_default, listwrap, literal_field, 
 from mo_dots import wrap
 from mo_dots.lists import FlatList
 from mo_json import value2json, json2value
-from mo_json.typed_encoder import EXISTS_TYPE
+from mo_json.typed_encoder import EXISTS_TYPE, BOOLEAN_TYPE, STRING_TYPE, NUMBER_TYPE, NESTED_TYPE, TYPE_PREFIX
 from mo_kwargs import override
 from mo_logs import Log, strings
 from mo_logs.exceptions import Except
@@ -68,6 +69,7 @@ class Index(Features):
     def __init__(
         self,
         index,  # NAME OF THE INDEX, EITHER ALIAS NAME OR FULL VERSION NAME
+        id_column="_id",
         type=None,  # SCHEMA NAME, (DEFAULT TO TYPE IN INDEX, IF ONLY ONE)
         alias=None,
         explore_metadata=True,  # PROBING THE CLUSTER FOR METADATA IS ALLOWED
@@ -126,9 +128,9 @@ class Index(Features):
         if kwargs.tjson:
             from pyLibrary.env.typed_inserter import TypedInserter
 
-            self.encode = TypedInserter(self).typed_encode
+            self.encode = TypedInserter(self, id_column).typed_encode
         else:
-            self.encode = default_encoder
+            self.encode = get_encoder(id_column)
 
 
 
@@ -147,12 +149,13 @@ class Index(Features):
                 return self.get_properties(retry=False)
 
             if not index.mappings[self.settings.type]:
-                Log.error(
+                Log.warning(
                     "ElasticSearch index {{index|quote}} does not have type {{type|quote}} in {{metadata|json}}",
                     index=self.settings.index,
                     type=self.settings.type,
                     metadata=jx.sort(metadata.indices.keys())
                 )
+                return Null
             return index.mappings[self.settings.type].properties
         else:
             mapping = self.cluster.get(self.path + "/_mapping")
@@ -322,7 +325,7 @@ class Index(Features):
                     for i, item in enumerate(items):
                         if not item.index.ok:
                             fails.append(i)
-                elif any(map(self.cluster.version.startswith, ["1.4.", "1.5.", "1.6.", "1.7.", "5."])):
+                elif self.cluster.version.startswith(("1.4.", "1.5.", "1.6.", "1.7.", "5.", "6.")):
                     for i, item in enumerate(items):
                         if item.index.status not in [200, 201]:
                             fails.append(i)
@@ -396,7 +399,7 @@ class Index(Features):
                 Log.error("Can not set refresh interval ({{error}})", {
                     "error": utf82unicode(response.all_content)
                 })
-        elif any(map(self.cluster.version.startswith, ["1.4.", "1.5.", "1.6.", "1.7.", "5."])):
+        elif self.cluster.version.startswith(("1.4.", "1.5.", "1.6.", "1.7.", "5.", "6.")):
             response = self.cluster.put(
                 "/" + self.settings.index + "/_settings",
                 data=convert.unicode2utf8('{"index":{"refresh_interval":' + value2json(interval) + '}}'),
@@ -541,7 +544,7 @@ class Cluster(object):
         meta = self.get_metadata()
         columns = parse_properties(index, ".", meta.indices[index].mappings.values()[0].properties)
         if len(columns) != 0:
-            kwargs.tjson = tjson or any(c.names["."].find(".$") != -1 for c in columns)
+            kwargs.tjson = tjson or any(c.names["."].find("." + TYPE_PREFIX) != -1 for c in columns)
 
         return Index(kwargs)
 
@@ -620,7 +623,7 @@ class Cluster(object):
         schema=None,
         limit_replicas=None,
         read_only=False,
-        tjson=False,
+        tjson=True,
         kwargs=None
     ):
         if not alias:
@@ -637,10 +640,18 @@ class Cluster(object):
             Log.error("Expecting a schema")
         elif isinstance(schema, text_type):
             Log.error("Expecting a schema")
-        elif self.version.startswith("5."):
+        elif self.version.startswith(("5.", "6.")):
             schema = mo_json.json2value(value2json(schema), leaves=True)
         else:
             schema = retro_schema(mo_json.json2value(value2json(schema), leaves=True))
+
+        for n, m in schema.mappings.items():
+            m.dynamic_templates = DEFAULT_DYNAMIC_TEMPLATES + m.dynamic_templates + [{
+                "default_all": {
+                    "mapping": {"store": True},
+                    "match": "*"
+                }
+            }]
 
         if limit_replicas:
             # DO NOT ASK FOR TOO MANY REPLICAS
@@ -1197,22 +1208,36 @@ def parse_properties(parent_index_name, parent_name, esProperties):
 
     return columns
 
-def default_encoder(r):
-    id = r.get("id")
-    r_value = r.get('value')
-    if id == None and isinstance(r_value, Mapping):
-        id = r_value.get('_id')
-    if id == None:
-        id = random_id()
 
-    if "json" in r:
-        json = r["json"]
-    elif r_value or isinstance(r_value, (dict, Data)):
-        json = convert.value2json(r_value)
-    else:
-        raise Log.error("Expecting every record given to have \"value\" or \"json\" property")
+def get_encoder(id_expression="_id"):
+    get_id = jx_expression_to_function(id_expression)
 
-    return {"id":id, "json":json}
+    def _encoder(r):
+        id = r.get("id")
+        r_value = r.get('value')
+        if isinstance(r_value, Mapping):
+            r_id = get_id(r_value)
+            r_value.pop('_id', None)
+            if id == None:
+                id = r_id
+            elif id != r_id and r_id != None:
+                Log.error("Expecting id ({{id}}) and _id ({{_id}}) in the record to match", id=id, _id=r._id)
+        if id == None:
+            id = random_id()
+
+        if "json" in r:
+            Log.error("can not handle pure json inserts anymore")
+            json = r["json"]
+        elif r_value or isinstance(r_value, (dict, Data)):
+            json = convert.value2json(r_value)
+        else:
+            raise Log.error("Expecting every record given to have \"value\" or \"json\" property")
+
+        return {"id": id, "json": json}
+
+    return _encoder
+
+
 
 
 def random_id():
@@ -1250,7 +1275,23 @@ def retro_schema(schema):
     output = wrap({
         "mappings":{
             typename: {
-                "dynamic_templates": [retro_dynamic_template(*(t.items()[0])) for t in details.dynamic_templates],
+                "dynamic_templates": (
+                    [
+                        retro_dynamic_template(*(t.items()[0])) for t in details.dynamic_templates
+                    ] + [
+                        {
+                            "default_strings": {
+                                "mapping": {
+                                    "index": "not_analyzed",
+                                    "type": "keyword",
+                                    "store": True
+                                },
+                                "match_mapping_type": "string",
+                                "match": "*"
+                            }
+                        }
+                    ]
+                ),
                 "properties": retro_properties(details.properties)
             }
             for typename, details in schema.mappings.items()
@@ -1291,6 +1332,38 @@ def retro_properties(properties):
     return output
 
 
+DEFAULT_DYNAMIC_TEMPLATES = wrap([
+    {
+        "default_boolean": {
+            "mapping": {"type": "boolean", "store": True},
+            "match": BOOLEAN_TYPE
+        }
+    },
+    {
+        "default_number": {
+            "mapping": {"type": "double", "store": True},
+            "match": NUMBER_TYPE
+        }
+    },
+    {
+        "default_string": {
+            "mapping": {"type": "keyword", "store": True},
+            "match": STRING_TYPE
+        }
+    },
+    {
+        "default_exist": {
+            "mapping": {"type": "long", "store": True},
+            "match": EXISTS_TYPE
+        }
+    },
+    {
+        "default_nested": {
+            "mapping": {"type": "nested", "store": True},
+            "match": NESTED_TYPE
+        }
+    }
+])
 
 
 es_type_to_json_type = {

@@ -17,7 +17,7 @@ import operator
 from collections import Mapping
 from decimal import Decimal
 
-from future.utils import text_type
+from mo_future import text_type
 
 import mo_json
 from jx_base import OBJECT, python_type_to_json_type, BOOLEAN, NUMBER, INTEGER, STRING
@@ -155,6 +155,13 @@ class Expression(object):
     def name(self):
         return self.__class__.__name__
 
+    @property
+    def many(self):
+        """
+        :return: True IF THE EXPRESSION RETURNS A MULTIVALUE (WHICH IS NOT A LIST OR A TUPLE)
+        """
+        return False
+
     def __data__(self):
         raise NotImplementedError
 
@@ -207,7 +214,7 @@ class Expression(object):
         return self.data_type
 
     def __eq__(self, other):
-        Log.note("this is slow on {{type}}", type=self.__class__.__name__)
+        Log.note("this is slow on {{type}}", type=text_type(self.__class__.__name__))
         if other is None:
             return False
         return self.__data__() == other.__data__()
@@ -235,6 +242,10 @@ class Variable(Expression):
 
     def __data__(self):
         return self.var
+
+    @property
+    def many(self):
+        return True
 
     def vars(self):
         return {self.var}
@@ -444,7 +455,7 @@ def value2json(value):
         return text_type(_json_encoder(scrubbed))
     except Exception as e:
         e = Except.wrap(e)
-        Log.warning("problem serializing {{type}}", type=repr(value), cause=e)
+        Log.warning("problem serializing {{type}}", type=text_type(repr(value)), cause=e)
         raise e
 
 
@@ -1279,7 +1290,7 @@ class FirstOp(Expression):
         term = self.term.partial_eval()
         if isinstance(self.term, FirstOp):
             return term
-        elif term is NULL or self.term.type != OBJECT:
+        elif term.type != OBJECT and not term.many:
             return term
         elif isinstance(term, Literal):
             Log.error("not handled yet")

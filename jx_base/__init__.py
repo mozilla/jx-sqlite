@@ -11,12 +11,10 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
-from types import NoneType
 from uuid import uuid4
 
-from future.utils import text_type
-
 from mo_dots import NullType, Data
+from mo_future import text_type, NoneType
 
 IS_NULL = '0'
 BOOLEAN = 'boolean'

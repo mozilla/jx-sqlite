@@ -25,7 +25,7 @@ from mmap import mmap
 from numbers import Number
 from tempfile import TemporaryFile
 
-from future.utils import text_type
+from mo_future import text_type
 from jx_python import jx
 from mo_dots import Data, coalesce, wrap, set_default, unwrap
 from mo_json import value2json

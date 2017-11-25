@@ -14,7 +14,7 @@ from __future__ import unicode_literals
 from collections import Mapping
 from copy import copy
 
-from future.utils import text_type
+from mo_future import text_type
 
 from jx_base import STRUCT
 from jx_base.container import Container

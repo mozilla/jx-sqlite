@@ -15,7 +15,7 @@ import itertools
 from collections import Mapping
 from numbers import Number
 
-from future.utils import text_type
+from mo_future import text_type
 
 from jx_base.expressions import jx_expression
 from mo_collections.unique_index import UniqueIndex

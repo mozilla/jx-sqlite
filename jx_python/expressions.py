@@ -13,11 +13,12 @@ from __future__ import unicode_literals
 
 from collections import Mapping
 
-from future.utils import text_type
+from mo_future import text_type
 from mo_dots import split_field
 from mo_dots import unwrap
-from mo_json import json2value, quote
+from mo_json import json2value
 from mo_logs import Log
+from mo_logs.strings import quote
 from pyLibrary import convert
 
 from jx_base.expressions import Variable, DateOp, TupleOp, LeavesOp, BinaryOp, OrOp, ScriptOp, \
@@ -117,7 +118,7 @@ def to_python(self, not_null=False, boolean=False, many=False):
 
 @extend(Literal)
 def to_python(self, not_null=False, boolean=False, many=False):
-    return repr(unwrap(json2value(self.json)))
+    return text_type(repr(unwrap(json2value(self.json))))
 
 
 @extend(NullOp)

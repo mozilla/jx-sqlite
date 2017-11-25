@@ -18,7 +18,7 @@ import sqlite3
 import sys
 from collections import Mapping
 
-from future.utils import text_type
+from mo_future import text_type
 from mo_dots import Data, coalesce
 from mo_files import File
 from mo_logs import Log

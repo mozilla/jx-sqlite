@@ -13,7 +13,7 @@ from __future__ import unicode_literals
 from copy import copy
 from datetime import datetime
 
-from future.utils import text_type
+from mo_future import text_type
 from mo_dots import wrap, Data, FlatList, literal_field
 from mo_json.typed_encoder import TYPE_PREFIX
 from mo_logs import Log

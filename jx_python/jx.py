@@ -1040,6 +1040,15 @@ def intervals(_min, _max=None, size=1):
     return output
 
 
+def prefixes(vals):
+    """
+    :param vals: iterable
+    :return: vals[:1], vals[:1], ... , vals[:n]
+    """
+    for i in range(len(vals)):
+        yield vals[:i + 1]
+
+
 def accumulate(vals):
     """
     RETURN PAIRS IN FORM (sum(vals[0:i-1]), vals[i])

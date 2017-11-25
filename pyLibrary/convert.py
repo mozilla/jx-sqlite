@@ -27,14 +27,13 @@ from decimal import Decimal
 from io import BytesIO
 from tempfile import TemporaryFile
 
-from future.utils import text_type
+from mo_future import text_type
 
 import mo_json
 import mo_math
-from mo_json import quote
 from mo_logs import Log
 from mo_logs.exceptions import suppress_exception
-from mo_logs.strings import expand_template
+from mo_logs.strings import expand_template, quote
 from mo_times.dates import Date
 from mo_dots import wrap, unwrap, unwraplist, concat_field
 

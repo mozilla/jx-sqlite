@@ -127,7 +127,7 @@ class RolloverIndex(object):
     def keys(self, prefix=None):
         path = jx.reverse(etl2path(key2etl(prefix)))
 
-        if self.cluster.version.startswith("5."):
+        if self.cluster.version.startswith(("5.", "6.")):
             stored_fields = "stored_fields"
         else:
             stored_fields = "fields"
@@ -246,9 +246,9 @@ class RolloverIndex(object):
 
 
 def fix(rownum, line, source, sample_only_filter, sample_size):
-    _id = coalesce(strings.between(line, '"_id": "', '"'), strings.between(line, '"_id":"', '"'))  # AVOID DECODING JSON
+    value = json2value(line)
 
-    if _id.startswith("tc.97") or _id.startswith("96") or _id.startswith("bb.27"):
+    if value._id.startswith(("tc.97", "96", "bb.27")):
         # AUG 24, 25 2017 - included full diff with repo; too big to index
         try:
             data = json2value(line)
@@ -273,52 +273,23 @@ def fix(rownum, line, source, sample_only_filter, sample_size):
     else:
         pass
 
-    # ES SCHEMA IS STRICTLY TYPED, USE "code" FOR TEXT IDS
-    line = line.replace('{"id": "bb"}', '{"code": "bb"}').replace('{"id": "tc"}', '{"code": "tc"}')
-    line = line.replace('{"id":"bb"}', '{"code":"bb"}').replace('{"id":"tc"}', '{"code":"tc"}')
-
-    # ES SCHEMA IS STRICTLY TYPED, THE SUITE OBJECT CAN NOT BE HANDLED
-    if source.name.startswith("active-data-test-result"):
-        # "suite": {"flavor": "plain-chunked", "name": "mochitest"}
-        found = coalesce(strings.between(line, '"suite": {"', '}'), strings.between(line, '"suite":{"', '}'))
-        if found != None:
-            suite_json = '{"' + found + '}'
-            if suite_json:
-                suite = json2value(suite_json)
-                suite = value2json(coalesce(suite.fullname, suite.name))
-                line = line.replace(suite_json, suite)
-
-    if source.name.startswith("active-data-codecoverage"):
-        d = json2value(line)
-        if d.source.file.total_covered > 0:
-            return {"id": d._id, "json": line}, False
-        else:
-            return None, False
-
     if rownum == 0:
-        value = json2value(line)
         if len(line) > MAX_RECORD_LENGTH:
             _shorten(value, source)
-        _id, value = _fix(value)
-        row = {"id": _id, "value": value}
+        value = _fix(value)
         if sample_only_filter and Random.int(int(1.0/coalesce(sample_size, 0.01))) != 0 and jx.filter([value], sample_only_filter):
             # INDEX etl.id==0, BUT NO MORE
             if value.etl.id != 0:
                 Log.error("Expecting etl.id==0")
+            row = {"value": value}
             return row, True
     elif len(line) > MAX_RECORD_LENGTH:
-        value = json2value(line)
         _shorten(value, source)
-        _id, value = _fix(value)
-        row = {"id": _id, "value": value}
+        value = _fix(value)
     elif line.find('"resource_usage":') != -1:
-        value = json2value(line)
-        _id, value = _fix(value)
-        row = {"id": _id, "value": value}
-    else:
-        # FAST
-        row = {"id": _id, "json": line}
+        value = _fix(value)
 
+    row = {"value": value}
     return row, False
 
 
@@ -349,8 +320,6 @@ def _fix(value):
         if value.resource_usage:
             value.resource_usage = None
 
-        _id = value._id
-
-        return _id, value
+        return value
     except Exception as e:
         Log.error("unexpected problem", cause=e)
