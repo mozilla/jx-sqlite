@@ -1,4 +1,4 @@
-future
+mo-future
 mo-dots>=1.5.17188
 mo-logs
 mo-files>=1.2
