@@ -18,7 +18,7 @@ from collections import Mapping
 from datetime import datetime
 
 import mo_json
-from mo_future import text_type
+from mo_future import text_type, utf8_json_encoder
 from jx_python import jx
 from mo_dots import coalesce, wrap, listwrap, unwrap
 from mo_files import File
@@ -555,7 +555,7 @@ class MySQL(object):
                     return self.quote_sql(value.template)
                 param = {k: self.quote_sql(v) for k, v in value.param.items()}
                 return SQL(expand_template(value.template, param))
-            elif isinstance(value, basestring):
+            elif isinstance(value, text_type):
                 return SQL(self.db.literal(value))
             elif isinstance(value, Mapping):
                 return SQL(self.db.literal(json_encode(value)))
@@ -597,7 +597,7 @@ class MySQL(object):
     def quote_column(self, column_name, table=None):
         if column_name==None:
             Log.error("missing column_name")
-        elif isinstance(column_name, basestring):
+        elif isinstance(column_name, text_type):
             if table:
                 column_name = table + "." + column_name
             return SQL("`" + column_name.replace(".", "`.`") + "`")    # MY SQL QUOTE OF COLUMN NAMES
@@ -722,17 +722,7 @@ class Transaction(object):
             self.db.commit()
 
 
-json_encoder = json.JSONEncoder(
-    skipkeys=False,
-    ensure_ascii=False,  # DIFF FROM DEFAULTS
-    check_circular=True,
-    allow_nan=True,
-    indent=None,
-    separators=None,
-    encoding='utf-8',
-    default=None,
-    sort_keys=True   # <-- IMPORTANT!  sort_keys==True
-)
+json_encoder = utf8_json_encoder
 
 
 def json_encode(value):

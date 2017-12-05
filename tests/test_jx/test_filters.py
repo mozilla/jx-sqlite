@@ -232,6 +232,7 @@ class TestFilters(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
+
     def test_edges_and_null_prefix(self):
         test = {
             "data": [{"v": "test"}],
@@ -245,6 +246,87 @@ class TestFilters(BaseTestCase):
             }
         }
         self.utils.execute_tests(test)
+
+
+    def test_suffix(self):
+        test = {
+            "data": [
+                {"v": "this-is-a-test"},
+                {"v": "this-is-a-vest"},
+                {"v": "test"},
+                {"v": ""},
+                {"v": None}
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "where": {"suffix": {"v": "test"}}
+            },
+            "expecting_list": {
+                "meta": {
+                    "format": "list"},
+                "data": [
+                    {"v": "this-is-a-test"},
+                    {"v": "test"}
+                ]
+            }
+        }
+        self.utils.execute_es_tests(test)
+
+    def test_null_suffix(self):
+        test = {
+            "data": [
+                {"v": "this-is-a-test"},
+                {"v": "this-is-a-vest"},
+                {"v": "test"},
+                {"v": ""},
+                {"v": None}
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "where": {"postfix": {"v": None}}
+            },
+            "expecting_list": {
+                "meta": {
+                    "format": "list"},
+                "data": [
+                    {"v": "this-is-a-test"},
+                    {"v": "this-is-a-vest"},
+                    {"v": "test"},
+                    {"v": ""},
+                    {"v": None}
+                ]
+            }
+        }
+        self.utils.execute_es_tests(test)
+
+    def test_empty_suffix(self):
+        test = {
+            "data": [
+                {"v": "this-is-a-test"},
+                {"v": "this-is-a-vest"},
+                {"v": "test"},
+                {"v": ""},
+                {"v": None}
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "where": {"postfix": {"v": ""}}
+            },
+            "expecting_list": {
+                "meta": {
+                    "format": "list"},
+                "data": [
+                    {"v": "this-is-a-test"},
+                    {"v": "this-is-a-vest"},
+                    {"v": "test"},
+                    {"v": ""},
+                    {"v": None}
+                ]
+            }
+        }
+        self.utils.execute_es_tests(test)
+
+
 
 
 

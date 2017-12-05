@@ -14,6 +14,7 @@ from collections import Mapping
 from jx_base import container
 from mo_dots import Data
 from mo_dots import wrap, set_default, split_field
+from mo_future import text_type
 from mo_logs import Log
 
 config = Data()   # config.default IS EXPECTED TO BE SET BEFORE CALLS ARE MADE
@@ -60,7 +61,7 @@ def wrap_from(frum, schema=None):
 
     frum = wrap(frum)
 
-    if isinstance(frum, basestring):
+    if isinstance(frum, text_type):
         if not container.config.default.settings:
             Log.error("expecting jx_base.query.config.default.settings to contain default elasticsearch connection info")
 

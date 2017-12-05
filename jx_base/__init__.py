@@ -14,7 +14,7 @@ from __future__ import unicode_literals
 from uuid import uuid4
 
 from mo_dots import NullType, Data
-from mo_future import text_type, NoneType
+from mo_future import text_type, none_type
 
 IS_NULL = '0'
 BOOLEAN = 'boolean'
@@ -37,7 +37,7 @@ python_type_to_json_type = {
     None: OBJECT,
     bool: BOOLEAN,
     NullType: OBJECT,
-    NoneType: OBJECT,
+    none_type: OBJECT,
     Data: OBJECT,
     list: NESTED
 }

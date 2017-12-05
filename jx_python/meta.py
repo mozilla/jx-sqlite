@@ -15,7 +15,7 @@ from copy import copy
 from datetime import date
 from datetime import datetime
 
-from mo_future import text_type
+from mo_future import text_type, long
 from jx_base import STRUCT
 
 from jx_python import jx
@@ -26,7 +26,7 @@ from mo_dots import wrap
 from mo_json.typed_encoder import untype_path, unnest_path
 from mo_logs import Log
 from mo_threads import Lock
-from mo_future import NoneType
+from mo_future import none_type
 
 from jx_base.container import Container
 from jx_base.schema import Schema
@@ -326,13 +326,13 @@ def _get_schema_from_list(frum, table_name, prefix_path, nested_path, columns):
 
 
 _type_to_name = {
-    NoneType: "undefined",
+    none_type: "undefined",
     NullType: "undefined",
     bool: "boolean",
     str: "string",
     text_type: "string",
     int: "integer",
-    long: "long",
+    long: "integer",
     float: "double",
     Data: "object",
     dict: "object",

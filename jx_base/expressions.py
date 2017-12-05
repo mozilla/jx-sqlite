@@ -17,7 +17,7 @@ import operator
 from collections import Mapping
 from decimal import Decimal
 
-from mo_future import text_type
+from mo_future import text_type, utf8_json_encoder, get_function_name
 
 import mo_json
 from jx_base import OBJECT, python_type_to_json_type, BOOLEAN, NUMBER, INTEGER, STRING
@@ -40,7 +40,7 @@ def extend(cls):
     :return:
     """
     def extender(func):
-        setattr(cls, func.func_name, func)
+        setattr(cls, get_function_name(func), func)
         return func
     return extender
 
@@ -133,7 +133,7 @@ class Expression(object):
         if term == None:
             return class_(op, [], **clauses)
         elif isinstance(term, list):
-            terms = map(jx_expression, term)
+            terms = list(map(jx_expression, term))
             return class_(op, terms, **clauses)
         elif isinstance(term, Mapping):
             items = term.items()
@@ -436,17 +436,7 @@ class ScriptOp(Expression):
         return str(self.script)
 
 
-_json_encoder = json.JSONEncoder(
-    skipkeys=False,
-    ensure_ascii=False,  # DIFF FROM DEFAULTS
-    check_circular=True,
-    allow_nan=True,
-    indent=None,
-    separators=(COMMA, COLON),
-    encoding='utf8',
-    default=None,
-    sort_keys=True
-).encode
+_json_encoder = utf8_json_encoder
 
 
 def value2json(value):
@@ -474,7 +464,7 @@ class Literal(Expression):
         if isinstance(term, Mapping) and term.date:
             # SPECIAL CASE
             return DateOp(None, term.date)
-        return object.__new__(cls, op, term)
+        return object.__new__(cls)
 
     def __init__(self, op, term):
         Expression.__init__(self, "", None)
@@ -937,7 +927,7 @@ class EqOp(Expression):
 
     def __new__(cls, op, terms):
         if isinstance(terms, list):
-            return object.__new__(cls, op, terms)
+            return object.__new__(cls)
 
         items = terms.items()
         if len(items) == 1:
@@ -1291,6 +1281,8 @@ class FirstOp(Expression):
         if isinstance(self.term, FirstOp):
             return term
         elif term.type != OBJECT and not term.many:
+            return term
+        elif term is NULL:
             return term
         elif isinstance(term, Literal):
             Log.error("not handled yet")
@@ -1779,6 +1771,12 @@ class CoalesceOp(Expression):
     def __data__(self):
         return {"coalesce": [t.__data__() for t in self.terms]}
 
+    def __eq__(self, other):
+        if isinstance(other, CoalesceOp):
+            if len(self.terms) == len(other.terms):
+                return all(s == o for s, o in zip(self.terms, other.terms))
+        return False
+
     def missing(self):
         # RETURN true FOR RECORDS THE WOULD RETURN NULL
         return AndOp("and", [v.missing() for v in self.terms])
@@ -1912,6 +1910,29 @@ class PrefixOp(Expression):
 
     def missing(self):
         return FALSE
+
+
+class SuffixOp(Expression):
+    has_simple_form = True
+
+    def __init__(self, op, term):
+        Expression.__init__(self, op, term)
+        if isinstance(term, Mapping):
+            self.field, self.suffix = term.items()[0]
+        else:
+            self.field, self.suffix = term
+
+    def __data__(self):
+        if isinstance(self.field, Variable) and isinstance(self.suffix, Literal):
+            return {"suffix": {self.field.var: self.suffix.value}}
+        else:
+            return {"suffix": [self.field.__data__(), self.suffix.__data__()]}
+
+    def vars(self):
+        return {self.field.var}
+
+    def map(self, map_):
+        return SuffixOp("suffix", [self.field.map(map_), self.suffix.map(map_)])
 
 
 class ConcatOp(Expression):
@@ -2436,6 +2457,11 @@ class InOp(Expression):
         else:
             return {"in": [self.value.__data__(), self.superset.__data__()]}
 
+    def __eq__(self, other):
+        if isinstance(other, InOp):
+            return self.value == other.value and self.superset == other.superset
+        return False
+
     def vars(self):
         return self.value.vars()
 
@@ -2701,6 +2727,7 @@ operators = {
     "number": NumberOp,
     "offset": OffsetOp,
     "or": OrOp,
+    "postfix": SuffixOp,
     "prefix": PrefixOp,
     "range": RangeOp,
     "regex": RegExpOp,
@@ -2711,6 +2738,7 @@ operators = {
     "select": SelectOp,
     "split": SplitOp,
     "string": StringOp,
+    "suffix": SuffixOp,
     "sub": BinaryOp,
     "subtract": BinaryOp,
     "sum": MultiOp,

@@ -17,10 +17,11 @@ from collections import Mapping
 from datetime import datetime, date, timedelta
 from decimal import Decimal
 
-from mo_future import text_type, binary_type
+from future.utils import text_type, binary_type
 
 from jx_base import python_type_to_json_type, INTEGER, NUMBER
 from mo_dots import Data, FlatList, NullType, unwrap
+from mo_future import utf8_json_encoder, long
 from mo_json import ESCAPE_DCT, float2json, json2value
 from mo_json.encoder import pretty_json, problem_serializing, UnicodeBuilder, COMMA, COLON
 from mo_json.typed_encoder import untype_path, encode_property, BOOLEAN_TYPE, NESTED_TYPE, EXISTS_TYPE, STRING_TYPE, NUMBER_TYPE, TYPE_PREFIX
@@ -34,17 +35,21 @@ append = UnicodeBuilder.append
 
 
 class TypedInserter(object):
-    def __init__(self, es, id_column="_id"):
-        columns = parse_properties(es.settings.alias, ".", es.get_properties()).columns
-        _schema = Data()
-        for c in columns:
-            untyped_path = untype_path(c.names["."])
-            type = c.type
-            _schema[untyped_path][TYPE_PREFIX + type] = c
-        self.schema = unwrap(_schema)
+    def __init__(self, es=None, id_column="_id"):
         self.es = es
         self.id_column = id_column
         self.remove_id = True if id_column == "_id" else False
+
+        if es:
+            columns = parse_properties(es.settings.alias, ".", es.get_properties()).columns
+            _schema = Data()
+            for c in columns:
+                untyped_path = untype_path(c.names["."])
+                type = c.type
+                _schema[untyped_path][TYPE_PREFIX + type] = c
+            self.schema = unwrap(_schema)
+        else:
+            self.schema = {}
 
     def typed_encode(self, r):
         """
@@ -110,19 +115,19 @@ class TypedInserter(object):
     def _typed_encode(self, value, sub_schema, path, net_new_properties, _buffer):
         try:
             if value is None:
-                append(_buffer, u'{}')
+                append(_buffer, '{}')
                 return
             elif value is True:
                 if BOOLEAN_TYPE not in sub_schema:
                     sub_schema[BOOLEAN_TYPE] = {}
                     net_new_properties.append(path+[BOOLEAN_TYPE])
-                append(_buffer, u'{"'+BOOLEAN_TYPE+'": true}')
+                append(_buffer, '{"'+BOOLEAN_TYPE+'"'+COLON+'true}')
                 return
             elif value is False:
                 if BOOLEAN_TYPE not in sub_schema:
                     sub_schema[BOOLEAN_TYPE] = {}
                     net_new_properties.append(path+[BOOLEAN_TYPE])
-                append(_buffer, u'{"'+BOOLEAN_TYPE+'": false}')
+                append(_buffer, '{"'+BOOLEAN_TYPE+'"'+COLON+'false}')
                 return
 
             _type = value.__class__
@@ -130,12 +135,14 @@ class TypedInserter(object):
                 if NESTED_TYPE in sub_schema:
                     # PREFER NESTED, WHEN SEEN BEFORE
                     if value:
-                        append(_buffer, u'{"'+NESTED_TYPE+'": [')
+                        append(_buffer, '{"'+NESTED_TYPE+'"'+COLON+'[')
                         self._dict2json(value, sub_schema[NESTED_TYPE], path + [NESTED_TYPE], net_new_properties, _buffer)
-                        append(_buffer, '], "' + EXISTS_TYPE + '":' + text_type(len(value)) + '}')
+                        append(_buffer, ']'+COMMA+'"' + EXISTS_TYPE + '"'+COLON + text_type(len(value)) + '}')
                     else:
                         # SINGLETON LISTS OF null SHOULD NOT EXIST
-                        pass
+                        from mo_logs import Log
+
+                        Log.error("should not happen")
                 else:
                     if EXISTS_TYPE not in sub_schema:
                         sub_schema[EXISTS_TYPE] = {}
@@ -144,12 +151,12 @@ class TypedInserter(object):
                     if value:
                         self._dict2json(value, sub_schema, path, net_new_properties, _buffer)
                     else:
-                        append(_buffer, u'{"'+EXISTS_TYPE+'": 0}')
+                        append(_buffer, '{"'+EXISTS_TYPE+'"'+COLON+'0}')
             elif _type is binary_type:
                 if STRING_TYPE not in sub_schema:
                     sub_schema[STRING_TYPE] = True
                     net_new_properties.append(path + [STRING_TYPE])
-                append(_buffer, u'{"'+STRING_TYPE+'": "')
+                append(_buffer, '{"'+STRING_TYPE+'"'+COLON+'"')
                 try:
                     v = utf82unicode(value)
                 except Exception as e:
@@ -157,41 +164,41 @@ class TypedInserter(object):
 
                 for c in v:
                     append(_buffer, ESCAPE_DCT.get(c, c))
-                append(_buffer, u'"}')
+                append(_buffer, '"}')
             elif _type is text_type:
                 if STRING_TYPE not in sub_schema:
                     sub_schema[STRING_TYPE] = True
                     net_new_properties.append(path + [STRING_TYPE])
 
-                append(_buffer, u'{"'+STRING_TYPE+'": "')
+                append(_buffer, '{"'+STRING_TYPE+'"'+COLON+'"')
                 for c in value:
                     append(_buffer, ESCAPE_DCT.get(c, c))
-                append(_buffer, u'"}')
+                append(_buffer, '"}')
             elif _type in (int, long, Decimal):
                 if NUMBER_TYPE not in sub_schema:
                     sub_schema[NUMBER_TYPE] = True
                     net_new_properties.append(path + [NUMBER_TYPE])
 
-                append(_buffer, u'{"'+NUMBER_TYPE+'": ')
+                append(_buffer, '{"'+NUMBER_TYPE+'"'+COLON)
                 append(_buffer, float2json(value))
-                append(_buffer, u'}')
+                append(_buffer, '}')
             elif _type is float:
                 if NUMBER_TYPE not in sub_schema:
                     sub_schema[NUMBER_TYPE] = True
                     net_new_properties.append(path + [NUMBER_TYPE])
-                append(_buffer, u'{"'+NUMBER_TYPE+'": ')
+                append(_buffer, '{"'+NUMBER_TYPE+'"'+COLON)
                 append(_buffer, float2json(value))
-                append(_buffer, u'}')
+                append(_buffer, '}')
             elif _type in (set, list, tuple, FlatList):
                 if len(value) == 0:
-                    append(_buffer, u'{"'+NESTED_TYPE+'": []}')
+                    append(_buffer, '{"'+NESTED_TYPE+'"'+COLON+'[]}')
                 elif any(isinstance(v, (Mapping, set, list, tuple, FlatList)) for v in value):
                     if NESTED_TYPE not in sub_schema:
                         sub_schema[NESTED_TYPE] = {}
                         net_new_properties.append(path + [NESTED_TYPE])
-                    append(_buffer, u'{"'+NESTED_TYPE+'": ')
+                    append(_buffer, '{"'+NESTED_TYPE+'"'+COLON)
                     self._list2json(value, sub_schema[NESTED_TYPE], path+[NESTED_TYPE], net_new_properties, _buffer)
-                    append(_buffer, u'}')
+                    append(_buffer, '}')
                 else:
                     # ALLOW PRIMITIVE MULTIVALUES
                     types = list(set(python_type_to_json_type[v.__class__] for v in value))
@@ -206,44 +213,44 @@ class TypedInserter(object):
                     if element_type not in sub_schema:
                         sub_schema[element_type] = True
                         net_new_properties.append(path + [element_type])
-                    append(_buffer, u'{"'+element_type+u'": ')
+                    append(_buffer, '{"'+element_type+'"'+COLON)
                     self._multivalue2json(value, sub_schema[element_type], path+[element_type], net_new_properties, _buffer)
-                    append(_buffer, u'}')
+                    append(_buffer, '}')
             elif _type is date:
                 if NUMBER_TYPE not in sub_schema:
                     sub_schema[NUMBER_TYPE] = True
                     net_new_properties.append(path + [NUMBER_TYPE])
-                append(_buffer, u'{"'+NUMBER_TYPE+'": ')
+                append(_buffer, '{"'+NUMBER_TYPE+'"'+COLON)
                 append(_buffer, float2json(time.mktime(value.timetuple())))
-                append(_buffer, u'}')
+                append(_buffer, '}')
             elif _type is datetime:
                 if NUMBER_TYPE not in sub_schema:
                     sub_schema[NUMBER_TYPE] = True
                     net_new_properties.append(path + [NUMBER_TYPE])
-                append(_buffer, u'{"'+NUMBER_TYPE+'": ')
+                append(_buffer, '{"'+NUMBER_TYPE+'"'+COLON)
                 append(_buffer, float2json(time.mktime(value.timetuple())))
-                append(_buffer, u'}')
+                append(_buffer, '}')
             elif _type is Date:
                 if NUMBER_TYPE not in sub_schema:
                     sub_schema[NUMBER_TYPE] = True
                     net_new_properties.append(path + [NUMBER_TYPE])
-                append(_buffer, u'{"'+NUMBER_TYPE+'": ')
+                append(_buffer, '{"'+NUMBER_TYPE+'"'+COLON)
                 append(_buffer, float2json(value.unix))
-                append(_buffer, u'}')
+                append(_buffer, '}')
             elif _type is timedelta:
                 if NUMBER_TYPE not in sub_schema:
                     sub_schema[NUMBER_TYPE] = True
                     net_new_properties.append(path + [NUMBER_TYPE])
-                append(_buffer, u'{"'+NUMBER_TYPE+'": ')
+                append(_buffer, '{"'+NUMBER_TYPE+'"'+COLON)
                 append(_buffer, float2json(value.total_seconds()))
-                append(_buffer, u'}')
+                append(_buffer, '}')
             elif _type is Duration:
                 if NUMBER_TYPE not in sub_schema:
                     sub_schema[NUMBER_TYPE] = True
                     net_new_properties.append(path + [NUMBER_TYPE])
-                append(_buffer, u'{"'+NUMBER_TYPE+'": ')
+                append(_buffer, '{"'+NUMBER_TYPE+'"'+COLON)
                 append(_buffer, float2json(value.seconds))
-                append(_buffer, u'}')
+                append(_buffer, '}')
             elif _type is NullType:
                 append(_buffer, u"null")
             elif hasattr(value, '__json__'):
@@ -254,17 +261,17 @@ class TypedInserter(object):
                     sub_schema[NESTED_TYPE] = {}
                     net_new_properties.append(path + [NESTED_TYPE])
 
-                append(_buffer, u'{"'+NESTED_TYPE+'": ')
+                append(_buffer, '{"'+NESTED_TYPE+'"'+COLON)
                 self._iter2json(value, sub_schema[NESTED_TYPE], path+[NESTED_TYPE], net_new_properties, _buffer)
-                append(_buffer, u'}')
+                append(_buffer, '}')
             else:
                 from mo_logs import Log
 
-                Log.error(repr(value) + " is not JSON serializable")
+                Log.error(text_type(repr(value)) + " is not JSON serializable")
         except Exception as e:
             from mo_logs import Log
 
-            Log.error(repr(value) + " is not JSON serializable", cause=e)
+            Log.error(text_type(repr(value)) + " is not JSON serializable", cause=e)
 
     def _list2json(self, value, sub_schema, path, net_new_properties, _buffer):
         if not value:
@@ -275,11 +282,13 @@ class TypedInserter(object):
                 append(_buffer, sep)
                 sep = COMMA
                 self._typed_encode(v, sub_schema, path, net_new_properties, _buffer)
-            append(_buffer, u'], "'+EXISTS_TYPE+'":'+text_type(len(value)))
+            append(_buffer, ']'+COMMA+'"'+EXISTS_TYPE+'"'+COLON+text_type(len(value)))
 
     def _multivalue2json(self, value, sub_schema, path, net_new_properties, _buffer):
         if not value:
             append(_buffer, u"[]")
+        elif len(value) == 1:
+            append(_buffer, json_encoder(value[0]))
         else:
             sep = u"["
             for v in value:
@@ -297,15 +306,15 @@ class TypedInserter(object):
             sep = COMMA
             self._typed_encode(v, sub_schema, path, net_new_properties, _buffer)
             count += 1
-        append(_buffer, u'], "'+EXISTS_TYPE+'":' + text_type(count))
+        append(_buffer, ']'+COMMA+'"'+EXISTS_TYPE+'"'+COLON+ + text_type(count))
 
     def _dict2json(self, value, sub_schema, path, net_new_properties, _buffer):
-        prefix = u'{'
-        for k, v in value.iteritems():
+        prefix = '{'
+        for k, v in ((kk, value[kk]) for kk in sorted(value.keys())):
             if v == None or v == "":
                 continue
             append(_buffer, prefix)
-            prefix = u", "
+            prefix = COMMA
             if isinstance(k, binary_type):
                 k = utf82unicode(k)
             if not isinstance(k, text_type):
@@ -314,22 +323,12 @@ class TypedInserter(object):
                 sub_schema[k] = {}
                 net_new_properties.append(path+[k])
             append(_buffer, json.dumps(encode_property(k)))
-            append(_buffer, u": ")
+            append(_buffer, COLON)
             self._typed_encode(v, sub_schema[k], path+[k], net_new_properties, _buffer)
-        if prefix == u", ":
-            append(_buffer, u', "'+EXISTS_TYPE+'": 1}')
+        if prefix == COMMA:
+            append(_buffer, COMMA+'"'+EXISTS_TYPE+'"'+COLON+'1}')
         else:
-            append(_buffer, u'{"'+EXISTS_TYPE+'": 0}')
+            append(_buffer, '{"'+EXISTS_TYPE+'"'+COLON+'0}')
 
 
-json_encoder = json.JSONEncoder(
-    skipkeys=False,
-    ensure_ascii=False,  # DIFF FROM DEFAULTS
-    check_circular=True,
-    allow_nan=True,
-    indent=None,
-    separators=(COMMA, COLON),
-    encoding='utf8',
-    default=None,
-    sort_keys=True
-).encode
+json_encoder = utf8_json_encoder

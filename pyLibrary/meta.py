@@ -11,6 +11,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
+import mo_json
+from mo_future import text_type, get_function_arguments
+
 from mo_dots import set_default, wrap, _get_attr, Null, coalesce
 from mo_json import value2json
 from mo_logs import Log
@@ -129,7 +132,8 @@ class _SimpleCache(object):
 def wrap_function(cache_store, func_):
     attr_name = "_cache_for_" + func_.__name__
 
-    if func_.func_code.co_argcount > 0 and func_.func_code.co_varnames[0] == "self":
+    func_args = get_function_arguments(func_)
+    if len(func_args) > 0 and func_args[0] == "self":
         using_self = True
         func = lambda self, *args: func_(self, *args)
     else:
@@ -217,7 +221,7 @@ def DataClass(name, columns, constraint=True):
     :return: The class that has been created
     """
 
-    columns = wrap([{"name": c, "required": True, "nulls": False, "type": object} if isinstance(c, basestring) else c for c in columns])
+    columns = wrap([{"name": c, "required": True, "nulls": False, "type": object} if isinstance(c, text_type) else c for c in columns])
     slots = columns.name
     required = wrap(filter(lambda c: c.required and not c.nulls and not c.default, columns)).name
     nulls = wrap(filter(lambda c: c.nulls, columns)).name
@@ -304,7 +308,6 @@ class {{class_name}}(Mapping):
     def __str__(self):
         return str({{dict}})
 
-temp = {{class_name}}
 """,
         {
             "class_name": name,
@@ -325,10 +328,10 @@ temp = {{class_name}}
 
 
 def _exec(code, name):
-    temp = None
     try:
-        exec (code)
-        globals()[name] = temp
+        fake_locals = {}
+        exec(code, globals(), fake_locals)
+        temp = fake_locals[name]
         return temp
     except Exception as e:
         Log.error("Can not make class\n{{code}}", code=code, cause=e)
@@ -336,10 +339,10 @@ def _exec(code, name):
 
 def value2quote(value):
     # RETURN PRETTY PYTHON CODE FOR THE SAME
-    if isinstance(value, basestring):
+    if isinstance(value, text_type):
         return mo_json.quote(value)
     else:
-        return repr(value)
+        return text_type(repr(value))
 
 
 class extenstion_method(object):

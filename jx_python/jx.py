@@ -12,23 +12,26 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
+from mo_times import Date
+
+_range = range
+
 from collections import Mapping
 
-import __builtin__
 from jx_base import query
 from jx_python import expressions as _expressions
 from jx_python import flat_list, group_by
-from mo_dots import listwrap, wrap, unwrap, FlatList
+from mo_dots import listwrap, wrap, unwrap, FlatList, NullType
 from mo_dots import set_default, Null, Data, split_field, coalesce, join_field
+from mo_future import text_type, boolean_type, none_type, long, generator_types, sort_using_cmp
 from mo_logs import Log
 from mo_math import Math
 from mo_math import UNION, MIN
 from pyLibrary import convert
-from types import GeneratorType
 
 import mo_dots
 from jx_base.container import Container
-from jx_base.expressions import TRUE, FALSE
+from jx_base.expressions import TRUE, FALSE, NullOp
 from jx_base.query import QueryOp, _normalize_selects
 from jx_python.containers.cube import Cube
 from jx_python.cubes.aggs import cube_aggs
@@ -73,7 +76,7 @@ def run(query, frum=Null):
         return DUAL.query(query_op)
     elif isinstance(frum, Container):
         return frum.query(query_op)
-    elif isinstance(frum, (list, set, GeneratorType)):
+    elif isinstance(frum, (list, set) + generator_types):
         frum = wrap(list(frum))
     elif isinstance(frum, Cube):
         if is_aggs(query_op):
@@ -220,7 +223,7 @@ def tuple(data, field_name):
         field_name = field_name["value"]
 
     # SIMPLE PYTHON ITERABLE ASSUMED
-    if isinstance(field_name, basestring):
+    if isinstance(field_name, text_type):
         if len(split_field(field_name)) == 1:
             return [(d[field_name], ) for d in data]
         else:
@@ -303,7 +306,7 @@ def select(data, field_name):
             field_name = field_name.value
 
     # SIMPLE PYTHON ITERABLE ASSUMED
-    if isinstance(field_name, basestring):
+    if isinstance(field_name, text_type):
         path = split_field(field_name)
         if len(path) == 1:
             return FlatList([d[field_name] for d in data])
@@ -320,9 +323,9 @@ def select(data, field_name):
 
 
 def _select_a_field(field):
-    if isinstance(field, basestring):
+    if isinstance(field, text_type):
         return wrap({"name": field, "value": split_field(field)})
-    elif isinstance(wrap(field).value, basestring):
+    elif isinstance(wrap(field).value, text_type):
         field = wrap(field)
         return wrap({"name": field.name, "value": split_field(field.value)})
     else:
@@ -526,7 +529,7 @@ def sort(data, fieldnames=None, already_normalized=False):
             return Null
 
         if not fieldnames:
-            return wrap(sorted(data, value_compare))
+            return wrap(sort_using_cmp(data, value_compare))
 
         if already_normalized:
             formal = fieldnames
@@ -546,9 +549,9 @@ def sort(data, fieldnames=None, already_normalized=False):
             return 0
 
         if isinstance(data, list):
-            output = FlatList([unwrap(d) for d in sorted(data, cmp=comparer)])
+            output = FlatList([unwrap(d) for d in sort_using_cmp(data, cmp=comparer)])
         elif hasattr(data, "__iter__"):
-            output = FlatList([unwrap(d) for d in sorted(list(data), cmp=comparer)])
+            output = FlatList([unwrap(d) for d in sort_using_cmp(list(data), cmp=comparer)])
         else:
             Log.error("Do not know how to handle")
             output = None
@@ -571,45 +574,66 @@ def value_compare(l, r, ordering=1):
     :return: The return value is negative if x < y, zero if x == y and strictly positive if x > y.
     """
 
-    if l == None:
-        if r == None:
-            return 0
-        else:
-            return ordering
-    elif r == None:
-        return - ordering
+    try:
+        if isinstance(l, list) or isinstance(r, list):
+            for a, b in zip(listwrap(l), listwrap(r)):
+                c = value_compare(a, b) * ordering
+                if c != 0:
+                    return c
 
-    if isinstance(l, list) or isinstance(r, list):
-        for a, b in zip(listwrap(l), listwrap(r)):
-            c = value_compare(a, b) * ordering
-            if c != 0:
-                return c
+            if len(l) < len(r):
+                return - ordering
+            elif len(l) > len(r):
+                return ordering
+            else:
+                return 0
 
-        if len(l) < len(r):
-            return - ordering
-        elif len(l) > len(r):
-            return ordering
-        else:
+        ltype = type(l)
+        rtype = type(r)
+        type_diff = TYPE_ORDER.get(ltype, 10) - TYPE_ORDER.get(rtype, 10)
+        if type_diff != 0:
+            return ordering if type_diff > 0 else -ordering
+
+        if ltype is builtin_tuple:
+            for a, b in zip(l, r):
+                c = value_compare(a, b)
+                if c != 0:
+                    return c * ordering
             return 0
-    elif isinstance(l, builtin_tuple) and isinstance(r, builtin_tuple):
-        for a, b in zip(l, r):
-            c = value_compare(a, b) * ordering
-            if c != 0:
-                return c
-        return 0
-    elif isinstance(l, Mapping):
-        if isinstance(r, Mapping):
+        elif ltype in (dict, Data):
             for k in sorted(set(l.keys()) | set(r.keys())):
                 c = value_compare(l.get(k), r.get(k)) * ordering
                 if c != 0:
                     return c
             return 0
+        elif l > r:
+            return ordering
+        elif l < r:
+            return -ordering
         else:
-            return 1
-    elif isinstance(r, Mapping):
-        return -1
-    else:
-        return cmp(l, r) * ordering
+            return 0
+    except Exception as e:
+        Log.error("Can not compare values {{left}} to {{right}}", left=l, right=r, cause=e)
+
+TYPE_ORDER = {
+    boolean_type: 0,
+    int: 1,
+    long: 1,
+    float: 1,
+    Date: 1,
+    text_type: 2,
+    list: 3,
+    builtin_tuple: 3,
+    dict: 4,
+    Data: 4,
+    none_type: 9,
+    NullType: 9,
+    NullOp: 9
+}
+
+
+
+
 
 
 def pairwise(values):
@@ -646,7 +670,7 @@ def filter(data, where):
 
     try:
         return drill_filter(where, data)
-    except Exception, _:
+    except Exception as _:
         # WOW!  THIS IS INEFFICIENT!
         return wrap([unwrap(d) for d in drill_filter(where, [DataObject(d) for d in data])])
 
@@ -813,7 +837,7 @@ def drill_filter(esfilter, data):
             else:
                 return result
         elif filter.missing:
-            if isinstance(filter.missing, basestring):
+            if isinstance(filter.missing, text_type):
                 field = filter["missing"]
             else:
                 field = filter["missing"]["field"]
@@ -843,7 +867,7 @@ def drill_filter(esfilter, data):
                 return result
 
         elif filter.exists:
-            if isinstance(filter["exists"], basestring):
+            if isinstance(filter["exists"], text_type):
                 field = filter["exists"]
             else:
                 field = filter["exists"]["field"]
@@ -927,7 +951,7 @@ def wrap_function(func):
     """
     RETURN A THREE-PARAMETER WINDOW FUNCTION TO MATCH
     """
-    if isinstance(func, basestring):
+    if isinstance(func, text_type):
         return compile_expression(func)
 
     numarg = func.__code__.co_argcount
@@ -1036,7 +1060,7 @@ def intervals(_min, _max=None, size=1):
     _max = int(Math.ceiling(_max))
     _min = int(Math.floor(_min))
 
-    output = ((x, min(x + size, _max)) for x in __builtin__.range(_min, _max, size))
+    output = ((x, min(x + size, _max)) for x in _range(_min, _max, size))
     return output
 
 

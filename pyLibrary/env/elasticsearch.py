@@ -361,7 +361,7 @@ class Index(Features):
 
         except Exception as e:
             if e.message.startswith("sequence item "):
-                Log.error("problem with {{data}}", data=repr(lines[int(e.message[14:16].strip())]), cause=e)
+                Log.error("problem with {{data}}", data=text_type(repr(lines[int(e.message[14:16].strip())])), cause=e)
             Log.error("problem sending to ES", e)
 
     # RECORDS MUST HAVE id AND json AS A STRING OR

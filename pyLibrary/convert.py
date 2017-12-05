@@ -12,8 +12,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
-import HTMLParser
-import StringIO
 import ast
 import base64
 import cgi
@@ -22,20 +20,18 @@ import gzip
 import hashlib
 import json
 import re
-from collections import Mapping
 from decimal import Decimal
 from io import BytesIO
 from tempfile import TemporaryFile
 
-from mo_future import text_type
-
 import mo_json
 import mo_math
+from mo_dots import wrap, unwrap, unwraplist, concat_field
+from mo_future import text_type, HTMLParser, StringIO, PY3, long
 from mo_logs import Log
 from mo_logs.exceptions import suppress_exception
 from mo_logs.strings import expand_template, quote
 from mo_times.dates import Date
-from mo_dots import wrap, unwrap, unwraplist, concat_field
 
 """
 DUE TO MY POOR MEMORY, THIS IS A LIST OF ALL CONVERSION ROUTINES
@@ -81,7 +77,7 @@ def datetime2unix(d):
         diff = d - epoch
         return Decimal(long(diff.total_seconds() * 1000000)) / 1000000
     except Exception as e:
-        Log.error("Can not convert {{value}}",  value= d, cause=e)
+        Log.error("Can not convert {{value}}", value=d, cause=e)
 
 
 def datetime2milli(d):
@@ -212,10 +208,10 @@ def value2string(value):
 
 def value2quote(value):
     # RETURN PRETTY PYTHON CODE FOR THE SAME
-    if isinstance(value, basestring):
+    if isinstance(value, text_type):
         return string2quote(value)
     else:
-        return repr(value)
+        return text_type(repr(value))
 
 
 def string2quote(value):
@@ -308,7 +304,7 @@ def quote2string(value):
 # RETURN PYTHON CODE FOR THE SAME
 
 def value2code(value):
-    return repr(value)
+    return text_type(repr(value))
 
 
 def DataFrame2string(df, columns=None):
@@ -340,8 +336,12 @@ def int2hex(value, size):
     return (("0" * size) + hex(value)[2:])[-size:]
 
 
-def hex2bytes(value):
-    return value.decode("hex")
+if PY3:
+    def hex2bytes(value):
+        return bytearray.fromhex(value)
+else:
+    def hex2bytes(value):
+        return value.decode("hex")
 
 
 def bytes2hex(value, separator=" "):
@@ -416,7 +416,7 @@ def latin12unicode(value):
     if isinstance(value, text_type):
         Log.error("can not convert unicode from latin1")
     try:
-        return text_type(value.decode('iso-8859-1'))
+        return text_type(value.decode('latin1'))
     except Exception as e:
         Log.error("Can not convert {{value|quote}} to unicode", value=value)
 
@@ -491,9 +491,15 @@ def ini2value(ini_content):
     return wrap(output)
 
 
-_map2url = {chr(i): latin12unicode(chr(i)) for i in range(32, 256)}
-for c in " {}<>;/?:@&=+$,":
-    _map2url[c] = "%" + int2hex(ord(c), 2)
+if PY3:
+    _map2url = {chr(i).encode('latin1'): chr(i) for i in range(32, 256)}
+    for c in " {}<>;/?:@&=+$,":
+        _map2url[c] = "%" + int2hex(ord(c), 2)
+else:
+    _map2url = {chr(i): chr(i).decode('latin1') for i in range(32, 256)}
+    for c in " {}<>;/?:@&=+$,":
+        _map2url[c] = "%" + int2hex(ord(c), 2)
+
 
 
 def _unPipe(value):

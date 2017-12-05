@@ -16,6 +16,7 @@ from collections import Mapping
 
 from mo_collections import UniqueIndex
 from mo_dots import Data, wrap, listwrap, unwraplist, unwrap, Null
+from mo_future import sort_using_key
 from mo_logs import Log
 from mo_threads import Lock
 from pyLibrary import convert
@@ -180,7 +181,7 @@ class ListContainer(Container):
             keys = listwrap(keys)
             get_key = jx_expression_to_function(keys)
             if not contiguous:
-                data = sorted(self.data, key=get_key)
+                data = sort_using_key(self.data, key=get_key)
 
             def _output():
                 for g, v in itertools.groupby(data, get_key):
@@ -226,7 +227,7 @@ class ListContainer(Container):
 def _exec(code):
     try:
         temp = None
-        exec "temp = " + code
+        exec("temp = " + code)
         return temp
     except Exception as e:
         Log.error("Could not execute {{code|quote}}", code=code, cause=e)

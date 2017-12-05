@@ -13,10 +13,10 @@ from __future__ import unicode_literals
 
 from collections import Mapping
 from copy import copy
-from types import GeneratorType
 
 from mo_dots import Data
 from mo_dots import set_default, split_field, wrap, join_field
+from mo_future import generator_types, text_type
 from mo_logs import Log
 
 type2container = Data()
@@ -66,9 +66,9 @@ class Container(object):
             return frum
         elif isinstance(frum, _Query):
             return _run(frum)
-        elif isinstance(frum, (list, set, GeneratorType)):
+        elif isinstance(frum, (list, set) + generator_types):
             return _ListContainer(frum)
-        elif isinstance(frum, basestring):
+        elif isinstance(frum, text_type):
             # USE DEFAULT STORAGE TO FIND Container
             if not config.default.settings:
                 Log.error("expecting jx_base.query.config.default.settings to contain default elasticsearch connection info")

@@ -12,7 +12,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
-from mo_future import text_type
+from mo_future import text_type, PY3
 from mo_logs import Log
 from mo_logs.strings import expand_template
 
@@ -36,10 +36,12 @@ class SQL(text_type):
         else:
             return SQL(self.sql+other.sql)
 
-    def __str__(self):
-        Log.error("do not do this")
-
-
+    if PY3:
+        def __bytes__(self):
+            Log.error("do not do this")
+    else:
+        def __str__(self):
+            Log.error("do not do this")
 
 
 class DB(object):

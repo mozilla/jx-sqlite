@@ -25,7 +25,7 @@ from jx_base.expressions import Variable, DateOp, TupleOp, LeavesOp, BinaryOp, O
     InequalityOp, extend, RowsOp, OffsetOp, GetOp, Literal, NullOp, TrueOp, FalseOp, DivOp, FloorOp, \
     EqOp, NeOp, NotOp, LengthOp, NumberOp, StringOp, CountOp, MultiOp, RegExpOp, CoalesceOp, MissingOp, ExistsOp, \
     PrefixOp, NotLeftOp, RightOp, NotRightOp, FindOp, BetweenOp, RangeOp, CaseOp, AndOp, \
-    ConcatOp, InOp, jx_expression, Expression, WhenOp, MaxOp, SplitOp, NULL, SelectOp
+    ConcatOp, InOp, jx_expression, Expression, WhenOp, MaxOp, SplitOp, NULL, SelectOp, SuffixOp
 from jx_python.expression_compiler import compile_expression
 from mo_times.dates import Date
 
@@ -274,6 +274,11 @@ def to_python(self, not_null=False, boolean=False, many=False):
 @extend(PrefixOp)
 def to_python(self, not_null=False, boolean=False, many=False):
     return "(" + self.field.to_python() + ").startswith(" + self.prefix.to_python() + ")"
+
+
+@extend(SuffixOp)
+def to_python(self, not_null=False, boolean=False, many=False):
+    return "(" + self.field.to_python() + ").endswith(" + self.suffix.to_python() + ")"
 
 
 @extend(ConcatOp)
