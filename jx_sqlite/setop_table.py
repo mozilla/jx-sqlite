@@ -318,7 +318,7 @@ class SetOpTable(InsertTable):
 
                 if doc_id != previous_doc_id:
                     previous_doc_id = doc_id
-                    doc = Null
+                    doc = Data()
                     curr_nested_path = nested_doc_details['nested_path'][0]
                     index_to_column = nested_doc_details['index_to_column'].items()
                     if index_to_column:
@@ -337,9 +337,6 @@ class SetOpTable(InsertTable):
 
                             if relative_path == ".":
                                 doc = value
-                            elif doc is Null:
-                                doc = Data()
-                                doc[relative_path] = value
                             else:
                                 doc[relative_path] = value
 

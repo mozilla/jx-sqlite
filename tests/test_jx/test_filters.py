@@ -12,6 +12,8 @@ from __future__ import division
 from __future__ import unicode_literals
 
 from mo_dots import wrap
+
+from jx_base.expressions import NULL
 from tests.test_jx import BaseTestCase, TEST_TABLE
 
 lots_of_data = wrap([{"a": i} for i in range(30)])
@@ -270,7 +272,7 @@ class TestFilters(BaseTestCase):
                 ]
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_null_suffix(self):
         test = {
@@ -292,12 +294,12 @@ class TestFilters(BaseTestCase):
                     {"v": "this-is-a-test"},
                     {"v": "this-is-a-vest"},
                     {"v": "test"},
-                    {"v": ""},
-                    {"v": None}
+                    {"v": NULL},
+                    {"v": NULL}
                 ]
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
     def test_empty_suffix(self):
         test = {
@@ -319,12 +321,12 @@ class TestFilters(BaseTestCase):
                     {"v": "this-is-a-test"},
                     {"v": "this-is-a-vest"},
                     {"v": "test"},
-                    {"v": ""},
-                    {"v": None}
+                    {},
+                    {}
                 ]
             }
         }
-        self.utils.execute_es_tests(test)
+        self.utils.execute_tests(test)
 
 
 
