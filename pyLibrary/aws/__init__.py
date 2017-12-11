@@ -135,7 +135,6 @@ def capture_termination_signal(please_stop):
     """
     WILL SIGNAL please_stop WHEN THIS AWS INSTANCE IS DUE FOR SHUTDOWN
     """
-
     def worker(please_stop):
         while not please_stop:
             try:
@@ -153,7 +152,7 @@ def capture_termination_signal(please_stop):
                 (Till(seconds=61) | please_stop).wait()
             (Till(seconds=11) | please_stop).wait()
 
-    Thread.run("listen for termination", worker, please_stop=please_stop)
+    Thread.run("listen for termination", worker)
 
 
 def get_instance_metadata(timeout=None):

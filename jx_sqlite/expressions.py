@@ -23,7 +23,7 @@ from jx_base.queries import get_property_name
 from jx_base.expressions import Variable, DateOp, TupleOp, LeavesOp, BinaryOp, OrOp, InequalityOp, extend, Literal, NullOp, TrueOp, FalseOp, DivOp, FloorOp, \
     NeOp, NotOp, LengthOp, NumberOp, StringOp, CountOp, MultiOp, RegExpOp, CoalesceOp, MissingOp, ExistsOp, \
     PrefixOp, UnixOp, FromUnixOp, NotLeftOp, RightOp, NotRightOp, FindOp, BetweenOp, InOp, RangeOp, CaseOp, AndOp, \
-    ConcatOp, LeftOp, EqOp, WhenOp, BasicIndexOfOp, IntegerOp, MaxOp, BasicSubstringOp, BasicEqOp, FALSE, MinOp, BooleanOp
+    ConcatOp, LeftOp, EqOp, WhenOp, BasicIndexOfOp, IntegerOp, MaxOp, BasicSubstringOp, BasicEqOp, FALSE, MinOp, BooleanOp, SuffixOp
 from jx_base import STRUCT, OBJECT
 from pyLibrary.sql.sqlite import quote_column, quote_value
 
@@ -183,7 +183,7 @@ def to_sql(self, schema, not_null=False, boolean=False):
     start = MultiOp("add", [self.start, Literal(None, 1)]).partial_eval().to_sql(schema)[0].sql.n
     length = BinaryOp("subtract", [self.end, self.start]).partial_eval().to_sql(schema)[0].sql.n
 
-    return wrap([{"name": ".", "sql": {"n": "SUBSTR(" + value + "," + start + ", " + length + ")"}}])
+    return wrap([{"name": ".", "sql": {"s": "SUBSTR(" + value + "," + start + ", " + length + ")"}}])
 
 
 @extend(BinaryOp)
@@ -501,7 +501,7 @@ def to_sql(self, schema, not_null=False, boolean=False):
 
 @extend(MissingOp)
 def to_sql(self, schema, not_null=False, boolean=False):
-    field = self.expr.to_sql(schema)
+    field = self.expr.partial_eval().to_sql(schema)
 
     if len(field) > 1:
         return wrap([{"name": ".", "sql": {"b": "0"}}])
@@ -561,9 +561,28 @@ def to_sql(self, schema, not_null=False, boolean=False):
 
 @extend(PrefixOp)
 def to_sql(self, schema, not_null=False, boolean=False):
-    return wrap([{"name": ".", "sql": {
-        "b": "INSTR(" + self.field.to_sql(schema)[0].sql.s + ", " + self.prefix.to_sql(schema)[0].sql.s + ")==1"
-    }}])
+    if not self.field:
+        return wrap([{"name": ".", "sql": {"b": "1"}}])
+    else:
+        return wrap([{"name": ".", "sql": {
+            "b": "INSTR(" + self.field.to_sql(schema)[0].sql.s + ", " + self.prefix.to_sql(schema)[0].sql.s + ")==1"
+        }}])
+
+
+@extend(SuffixOp)
+def to_sql(self, schema, not_null=False, boolean=False):
+    if not self.field:
+        return wrap([{"name": ".", "sql": {"b": "1"}}])
+    elif isinstance(self.suffix, Literal) and not self.suffix.value:
+        return wrap([{"name": ".", "sql": {"b": "1"}}])
+    else:
+        return EqOp(
+            "eq",
+            [
+                RightOp("right", [self.field, LengthOp("length", self.suffix)]),
+                self.suffix
+            ]
+        ).partial_eval().to_sql(schema)
 
 
 @extend(ConcatOp)

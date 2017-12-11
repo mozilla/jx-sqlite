@@ -125,8 +125,8 @@ def request(method, url, zip=None, retry=None, **kwargs):
         del kwargs[b'json']
 
     try:
-        headers = kwargs[b"headers"] = unwrap(coalesce(wrap(kwargs)[b"headers"], {}))
-        set_default(headers, {b"accept-encoding": b"compress, gzip"})
+        headers = kwargs[b"headers"] = unwrap(coalesce(kwargs.get(b'headers'), {}))
+        set_default(headers, {b"Accept-Encoding": b"compress, gzip"})
 
         if zip and len(coalesce(kwargs.get(b"data"))) > 1000:
             compressed = convert.bytes2zip(kwargs[b"data"])

@@ -520,7 +520,7 @@ class Literal(Expression):
         return self
 
     def missing(self):
-        if self.term in [None, Null, ""]:
+        if self.term in [None, Null]:
             return TRUE
         return FALSE
 
@@ -1917,7 +1917,10 @@ class SuffixOp(Expression):
 
     def __init__(self, op, term):
         Expression.__init__(self, op, term)
-        if isinstance(term, Mapping):
+        if not term:
+            self.field = None
+            self.suffix = None
+        elif isinstance(term, Mapping):
             self.field, self.suffix = term.items()[0]
         else:
             self.field, self.suffix = term
