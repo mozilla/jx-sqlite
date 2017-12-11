@@ -14,32 +14,35 @@ The most interesting, and most important feature is that we query nested object 
 1. Inner objects `{"a": {"b": 0}}` are a shortcut for nested arrays `{"a": [{"b": 0}]}`, plus
 2. Schemas can be expanded from one-to-one  to one-to-many `{"a": [{"b": 0}, {"b": 1}]}`.
 
-## Tests
-
-There are over 200 tests used to confirm the expected behaviour: They test a variety of JSON forms, and the queries that can be performed on them. Most tests are further split into three different output formats ( list, table and cube).
-
-
-## Status
-## Code Example
 
 ## Installation
 Python2.7 required. Package can be installed via pypi see below:
         
     pip install jx-sqlite
 
-## Getting Started
+
+
+## Code Example
+
+
+
+## Contributing
+
+Contributions are always welcome! ([Issues](https://github.com/mozilla/jx-sqlite/issues))
+
 These instructions will get you a copy of the project up and running on your local machine for development and testing purposes.
 
-        $ git clone https://github.com/mozilla/jx-sqlite
-        $ cd jx-sqlite
-   
-## Running tests
+    $ git clone https://github.com/mozilla/jx-sqlite
+    $ cd jx-sqlite
+
+### Running tests
+
+There are over 200 tests used to confirm the expected behaviour: They test a variety of JSON forms, and the queries that can be performed on them. Most tests are further split into three different output formats ( list, table and cube).
 
     export PYTHONPATH=.
     python -m unittest discover -v -s tests
 
-
-## Docs
+### Technical Docs
 
 * [Json Query Expression](https://github.com/klahnakoski/ActiveData/blob/dev/docs/jx.md)
 * [Nomenclature](https://github.com/mozilla/jx-sqlite/blob/master/docs/Nomenclature.md)
@@ -48,20 +51,24 @@ These instructions will get you a copy of the project up and running on your loc
 * [The Future](https://github.com/mozilla/jx-sqlite/blob/master/docs/The%20Future.md)
 
 
-## Contributors
-Contributions are always welcome!
-
 ## License
 This project is licensed under Mozilla Public License, v. 2.0. If a copy of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 
+## History
+
+*Dec 2017* - A number of tests were added, but they do not pass.
+
+*Sep 2017* - GSoC work completed, all but a few tests pass.
+ 
 
 ## GSOC
+
 Work done upto the deadline of GSoC'17:
 * [Pull Requests](https://github.com/mozilla/jx-sqlite/pulls?utf8=%E2%9C%93&q=is%3Apr%20author%3Arohit-rk)
 * [Commits](https://github.com/mozilla/jx-sqlite/commits?author=rohit-rk)
 
 
-Future Work
-* [Issues](https://github.com/mozilla/jx-sqlite/issues)
+## More Documentation
+
 * [The Future](https://github.com/mozilla/jx-sqlite/blob/master/docs/The%20Future.md)
