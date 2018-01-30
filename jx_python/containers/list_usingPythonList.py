@@ -63,9 +63,9 @@ class ListContainer(Container):
 
     def query(self, q):
         q = wrap(q)
-        frum = self
+        output = self
         if is_aggs(q):
-            frum = list_aggs(frum.data, q)
+            output = list_aggs(output.data, q)
         else:  # SETOP
             try:
                 if q.filter != None or q.esfilter != None:
@@ -74,18 +74,31 @@ class ListContainer(Container):
                 pass
 
             if q.where is not TRUE and not q.where is TRUE:
-                frum = frum.filter(q.where)
+                output = output.filter(q.where)
 
             if q.sort:
-                frum = frum.sort(q.sort)
+                output = output.sort(q.sort)
 
             if q.select:
-                frum = frum.select(q.select)
+                output = output.select(q.select)
         #TODO: ADD EXTRA COLUMN DESCRIPTIONS TO RESULTING SCHEMA
         for param in q.window:
-            frum.window(param)
+            output.window(param)
 
-        return frum
+        if q.format:
+            if q.format == "list":
+                return Data(data=output.data)
+            elif q.format == "table":
+                head = list(set(k for r in output.data for k in r.keys()))
+                data = [
+                    (r[h] for h in head)
+                    for r in output.data
+                ]
+                return Data(header=head, data=data)
+            else:
+                Log.error("unknown format {{format}}", format=q.format)
+        else:
+            return output
 
     def update(self, command):
         """

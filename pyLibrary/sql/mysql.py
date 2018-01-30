@@ -12,16 +12,17 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
-import json
 import subprocess
 from collections import Mapping
 from datetime import datetime
 
+from pymysql import connect, InterfaceError, cursors
+
 import mo_json
-from mo_future import text_type, utf8_json_encoder
 from jx_python import jx
 from mo_dots import coalesce, wrap, listwrap, unwrap
 from mo_files import File
+from mo_future import text_type, utf8_json_encoder
 from mo_kwargs import override
 from mo_logs import Log
 from mo_logs.exceptions import Except, suppress_exception
@@ -30,8 +31,6 @@ from mo_logs.strings import indent
 from mo_logs.strings import outdent
 from mo_math import Math
 from mo_times import Date
-from pymysql import connect, InterfaceError, cursors
-
 from pyLibrary.sql import SQL
 
 DEBUG = False
@@ -116,7 +115,8 @@ class MySQL(object):
         self.partial_rollback = False
         self.transaction_level = 0
         self.backlog = []     # accumulate the write commands so they are sent at once
-
+        if self.readonly:
+            self.begin()
 
     def __enter__(self):
         if not self.readonly:
@@ -163,7 +163,10 @@ class MySQL(object):
 
     def close(self):
         if self.transaction_level > 0:
-            Log.error("expecting commit() or rollback() before close")
+            if self.readonly:
+                self.commit()  # AUTO-COMMIT
+            else:
+                Log.error("expecting commit() or rollback() before close")
         self.cursor = None  # NOT NEEDED
         try:
             self.db.close()
@@ -173,7 +176,10 @@ class MySQL(object):
 
             Log.warning("can not close()", e)
         finally:
-            all_db.remove(self)
+            try:
+                all_db.remove(self)
+            except Exception as e:
+                Log.error("not expected", cause=e)
 
     def commit(self):
         try:
@@ -351,10 +357,6 @@ class MySQL(object):
             self._execute_backlog()
 
 
-    def execute_file(self, filename, param=None):
-        content = File(filename).read()
-        self.execute(content, param)
-
     @staticmethod
     @override
     def execute_sql(
@@ -464,12 +466,13 @@ class MySQL(object):
         keys = record.keys()
 
         try:
-            command = "INSERT INTO " + self.quote_column(table_name) + "(" + \
-                      ",".join([self.quote_column(k) for k in keys]) + \
-                      ") VALUES (" + \
-                      ",".join([self.quote_value(record[k]) for k in keys]) + \
-                      ")"
-
+            command = (
+                "INSERT INTO " + self.quote_column(table_name) + "(" +
+                SQL(",").join([self.quote_column(k) for k in keys]) +
+                ") VALUES (" +
+                SQL(",").join([self.quote_value(record[k]) for k in keys]) +
+                ")"
+            )
             self.execute(command)
         except Exception as e:
             Log.error("problem with record: {{record}}",  record= record, cause=e)
@@ -480,12 +483,14 @@ class MySQL(object):
         candidate_key = listwrap(candidate_key)
 
         condition = " AND\n".join([self.quote_column(k) + "=" + self.quote_value(new_record[k]) if new_record[k] != None else self.quote_column(k) + " IS Null" for k in candidate_key])
-        command = "INSERT INTO " + self.quote_column(table_name) + " (" + \
-                  ",".join([self.quote_column(k) for k in new_record.keys()]) + \
-                  ")\n" + \
-                  "SELECT a.* FROM (SELECT " + ",".join([self.quote_value(v) + " " + self.quote_column(k) for k, v in new_record.items()]) + " FROM DUAL) a\n" + \
-                  "LEFT JOIN " + \
-                  "(SELECT 'dummy' exist FROM " + self.quote_column(table_name) + " WHERE " + condition + " LIMIT 1) b ON 1=1 WHERE exist IS Null"
+        command = (
+            "INSERT INTO " + self.quote_column(table_name) + " (" +
+            ",".join([self.quote_column(k) for k in new_record.keys()]) +
+            ")\n" +
+            "SELECT a.* FROM (SELECT " + ",".join([self.quote_value(v) + " " + self.quote_column(k) for k, v in new_record.items()]) + " FROM DUAL) a\n" +
+            "LEFT JOIN " +
+            "(SELECT 'dummy' exist FROM " + self.quote_column(table_name) + " WHERE " + condition + " LIMIT 1) b ON 1=1 WHERE exist IS Null"
+        )
         self.execute(command, {})
 
 
@@ -505,13 +510,14 @@ class MySQL(object):
         keys = jx.sort(keys)
 
         try:
-            command = \
-                "INSERT INTO " + self.quote_column(table_name) + "(" + \
-                ",".join([self.quote_column(k) for k in keys]) + \
+            command = (
+                "INSERT INTO " + self.quote_column(table_name) + "(" +
+                ",".join([self.quote_column(k) for k in keys]) +
                 ") VALUES " + ",\n".join([
                     "(" + ",".join([self.quote_value(r[k]) for k in keys]) + ")"
                     for r in records
                 ])
+            )
             self.execute(command)
         except Exception as e:
             Log.error("problem with record: {{record}}",  record= records, cause=e)
@@ -530,11 +536,13 @@ class MySQL(object):
             for k, v in where_slice.items()
         ])
 
-        command = "UPDATE " + self.quote_column(table_name) + "\n" + \
-                  "SET " + \
-                  ",\n".join([self.quote_column(k) + "=" + v for k, v in new_values.items()]) + "\n" + \
-                  "WHERE " + \
-                  where_clause
+        command = (
+            "UPDATE " + self.quote_column(table_name) + "\n" +
+            "SET " +
+            ",\n".join([self.quote_column(k) + "=" + v for k, v in new_values.items()]) + "\n" +
+            "WHERE " +
+            where_clause
+        )
         self.execute(command, {})
 
 
@@ -583,7 +591,7 @@ class MySQL(object):
                     return value
                 param = {k: self.quote_sql(v) for k, v in param.items()}
                 return expand_template(value, param)
-            elif isinstance(value, basestring):
+            elif isinstance(value, text_type):
                 return value
             elif isinstance(value, Mapping):
                 return self.db.literal(json_encode(value))
@@ -722,15 +730,12 @@ class Transaction(object):
             self.db.commit()
 
 
-json_encoder = utf8_json_encoder
-
-
 def json_encode(value):
     """
     FOR PUTTING JSON INTO DATABASE (sort_keys=True)
     dicts CAN BE USED AS KEYS
     """
-    return text_type(json_encoder.encode(mo_json.scrub(value)))
+    return text_type(utf8_json_encoder(mo_json.scrub(value)))
 
 
 mysql_type_to_json_type = {

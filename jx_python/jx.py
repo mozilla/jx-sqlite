@@ -23,7 +23,7 @@ from jx_python import expressions as _expressions
 from jx_python import flat_list, group_by
 from mo_dots import listwrap, wrap, unwrap, FlatList, NullType
 from mo_dots import set_default, Null, Data, split_field, coalesce, join_field
-from mo_future import text_type, boolean_type, none_type, long, generator_types, sort_using_cmp
+from mo_future import text_type, boolean_type, none_type, long, generator_types, sort_using_cmp, PY2
 from mo_logs import Log
 from mo_math import Math
 from mo_math import UNION, MIN
@@ -565,60 +565,61 @@ def count(values):
     return sum((1 if v!=None else 0) for v in values)
 
 
-def value_compare(l, r, ordering=1):
+def value_compare(left, right, ordering=1):
     """
     SORT VALUES, NULL IS THE LEAST VALUE
-    :param l: LHS
-    :param r: RHS
+    :param left: LHS
+    :param right: RHS
     :param ordering: (-1, 0, 0) TO AFFECT SORT ORDER
     :return: The return value is negative if x < y, zero if x == y and strictly positive if x > y.
     """
 
     try:
-        if isinstance(l, list) or isinstance(r, list):
-            for a, b in zip(listwrap(l), listwrap(r)):
+        if isinstance(left, list) or isinstance(right, list):
+            left = listwrap(left)
+            right = listwrap(right)
+            for a, b in zip(left, right):
                 c = value_compare(a, b) * ordering
                 if c != 0:
                     return c
 
-            if len(l) < len(r):
+            if len(left) < len(right):
                 return - ordering
-            elif len(l) > len(r):
+            elif len(left) > len(right):
                 return ordering
             else:
                 return 0
 
-        ltype = type(l)
-        rtype = type(r)
+        ltype = type(left)
+        rtype = type(right)
         type_diff = TYPE_ORDER.get(ltype, 10) - TYPE_ORDER.get(rtype, 10)
         if type_diff != 0:
             return ordering if type_diff > 0 else -ordering
 
         if ltype is builtin_tuple:
-            for a, b in zip(l, r):
+            for a, b in zip(left, right):
                 c = value_compare(a, b)
                 if c != 0:
                     return c * ordering
             return 0
         elif ltype in (dict, Data):
-            for k in sorted(set(l.keys()) | set(r.keys())):
-                c = value_compare(l.get(k), r.get(k)) * ordering
+            for k in sorted(set(left.keys()) | set(right.keys())):
+                c = value_compare(left.get(k), right.get(k)) * ordering
                 if c != 0:
                     return c
             return 0
-        elif l > r:
+        elif left > right:
             return ordering
-        elif l < r:
+        elif left < right:
             return -ordering
         else:
             return 0
     except Exception as e:
-        Log.error("Can not compare values {{left}} to {{right}}", left=l, right=r, cause=e)
+        Log.error("Can not compare values {{left}} to {{right}}", left=left, right=right, cause=e)
 
 TYPE_ORDER = {
     boolean_type: 0,
     int: 1,
-    long: 1,
     float: 1,
     Date: 1,
     text_type: 2,
@@ -631,9 +632,8 @@ TYPE_ORDER = {
     NullOp: 9
 }
 
-
-
-
+if PY2:
+    TYPE_ORDER[long] = 1
 
 
 def pairwise(values):

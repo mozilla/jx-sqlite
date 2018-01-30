@@ -73,7 +73,7 @@ class Index(Features):
         alias=None,
         explore_metadata=True,  # PROBING THE CLUSTER FOR METADATA IS ALLOWED
         read_only=True,
-        tjson=False,  # STORED AS TYPED JSON
+        tjson=None,  # STORED AS TYPED JSON
         timeout=None,  # NUMBER OF SECONDS TO WAIT FOR RESPONSE, OR SECONDS TO WAIT FOR DOWNLOAD (PASSED TO requests)
         consistency="one",  # ES WRITE CONSISTENCY (https://www.elastic.co/guide/en/elasticsearch/reference/1.7/docs-index_.html#index-consistency)
         debug=False,  # DO NOT SHOW THE DEBUG STATEMENTS
@@ -82,8 +82,8 @@ class Index(Features):
     ):
         if index==None:
             Log.error("not allowed")
-        if index == alias:
-            Log.error("must have a unique index name")
+        # if index == alias:
+        #     Log.error("must have a unique index name")
 
         self.cluster_state = None
         self.debug = debug
@@ -124,12 +124,14 @@ class Index(Features):
         if self.debug:
             Log.alert("elasticsearch debugging for {{url}} is on", url=self.url)
 
-        if kwargs.tjson:
+        if tjson:
             from pyLibrary.env.typed_inserter import TypedInserter
 
             self.encode = TypedInserter(self, id_column).typed_encode
         else:
-            Log.warning("{{index}} is not typed", index=self.settings.index)
+            if tjson is None and not read_only:
+                kwargs.tjson = False
+                Log.warning("{{index}} is not typed", index=self.settings.index)
             self.encode = get_encoder(id_column)
 
     @property
@@ -191,6 +193,7 @@ class Index(Features):
             },
             timeout=coalesce(self.settings.timeout, 30)
         )
+        self.settings.alias = alias
 
         # WAIT FOR ALIAS TO APPEAR
         while True:
@@ -199,6 +202,8 @@ class Index(Features):
                 return
             Log.note("Waiting for alias {{alias}} to appear", alias=alias)
             Till(seconds=1).wait()
+
+
 
     def get_index(self, alias):
         """
@@ -400,16 +405,15 @@ class Index(Features):
                     "error": utf82unicode(response.all_content)
                 })
         elif self.cluster.version.startswith(("1.4.", "1.5.", "1.6.", "1.7.", "5.", "6.")):
-            response = self.cluster.put(
+            result = self.cluster.put(
                 "/" + self.settings.index + "/_settings",
                 data=convert.unicode2utf8('{"index":{"refresh_interval":' + value2json(interval) + '}}'),
                 **kwargs
             )
 
-            result = mo_json.json2value(utf82unicode(response.all_content))
             if not result.acknowledged:
                 Log.error("Can not set refresh interval ({{error}})", {
-                    "error": utf82unicode(response.all_content)
+                    "error": result
                 })
         else:
             Log.error("Do not know how to handle ES version {{version}}", version=self.cluster.version)
@@ -526,7 +530,7 @@ class Cluster(object):
         schema=None,
         limit_replicas=None,
         read_only=False,
-        tjson=False,
+        tjson=None,
         kwargs=None
     ):
         best = self._get_best(kwargs)
@@ -543,14 +547,18 @@ class Cluster(object):
         index = kwargs.index
         meta = self.get_metadata()
         columns = parse_properties(index, ".", meta.indices[index].mappings.values()[0].properties)
+
+        tjson = kwargs.tjson
         if len(columns) != 0:
             kwargs.tjson = tjson or any(
                 c.names["."].startswith(TYPE_PREFIX) or
                 c.names["."].find("." + TYPE_PREFIX) != -1
                 for c in columns
             )
+        if tjson is None and not kwargs.tjson:
+            Log.warning("Not typed index, columns are:\n{{columns|json}}", columns=columns)
 
-        return Index(kwargs)
+        return Index(kwargs=kwargs, cluster=self)
 
     def _get_best(self, settings):
         aliases = self.get_aliases()
@@ -564,7 +572,7 @@ class Cluster(object):
         return indexes.last()
 
     @override
-    def get_index(self, index, type=None, alias=None, read_only=True, kwargs=None):
+    def get_index(self, index, type=None, alias=None, tjson=None, read_only=True, kwargs=None):
         """
         TESTS THAT THE INDEX EXISTS BEFORE RETURNING A HANDLE
         """
@@ -572,13 +580,14 @@ class Cluster(object):
             # GET EXACT MATCH, OR ALIAS
             aliases = self.get_aliases()
             if index in aliases.index:
-                return Index(kwargs)
-            if index in aliases.alias:
+                pass
+            elif index in aliases.alias:
                 match = [a for a in aliases if a.alias == index][0]
                 kwargs.alias = match.alias
                 kwargs.index = match.index
-                return Index(kwargs)
-            Log.error("Can not find index {{index_name}}", index_name=kwargs.index)
+            else:
+                Log.error("Can not find index {{index_name}}", index_name=kwargs.index)
+            return Index(kwargs=kwargs, cluster=self)
         else:
             # GET BEST MATCH, INCLUDING PROTOTYPE
             best = self._get_best(kwargs)
@@ -591,7 +600,12 @@ class Cluster(object):
             elif kwargs.alias == None:
                 kwargs.alias = kwargs.index
                 kwargs.index = best.index
-            return Index(kwargs)
+
+            if tjson is None:
+                metadata = self.get_metadata()
+                metadata[kwargs.index]
+
+            return Index(kwargs=kwargs, cluster=self)
 
     def get_alias(self, alias):
         """
@@ -603,7 +617,7 @@ class Cluster(object):
             settings = self.settings.copy()
             settings.alias = alias
             settings.index = alias
-            return Index(read_only=True, kwargs=settings)
+            return Index(read_only=True, kwargs=settings, cluster=self)
         Log.error("Can not find any index with alias {{alias_name}}",  alias_name= alias)
 
     def get_prototype(self, alias):
@@ -626,6 +640,7 @@ class Cluster(object):
         create_timestamp=None,
         schema=None,
         limit_replicas=None,
+        limit_replicas_warning=True,
         read_only=False,
         tjson=True,
         kwargs=None
@@ -644,7 +659,10 @@ class Cluster(object):
             Log.error("Expecting a schema")
         elif isinstance(schema, text_type):
             Log.error("Expecting a schema")
-        elif self.version.startswith(("5.", "6.")):
+        elif self.version.startswith("5."):
+            schema.settings.index.max_inner_result_window = None  # NOT ACCEPTED BY ES5
+            schema = mo_json.json2value(value2json(schema), leaves=True)
+        elif self.version.startswith("6."):
             schema = mo_json.json2value(value2json(schema), leaves=True)
         else:
             schema = retro_schema(mo_json.json2value(value2json(schema), leaves=True))
@@ -663,11 +681,12 @@ class Cluster(object):
             # DO NOT ASK FOR TOO MANY REPLICAS
             health = self.get("/_cluster/health")
             if schema.settings.index.number_of_replicas >= health.number_of_nodes:
-                Log.warning(
-                    "Reduced number of replicas: {{from}} requested, {{to}} realized",
-                    {"from": schema.settings.index.number_of_replicas},
-                    to=health.number_of_nodes - 1
-                )
+                if limit_replicas_warning:
+                    Log.warning(
+                        "Reduced number of replicas: {{from}} requested, {{to}} realized",
+                        {"from": schema.settings.index.number_of_replicas},
+                        to=health.number_of_nodes - 1
+                    )
                 schema.settings.index.number_of_replicas = health.number_of_nodes - 1
 
         self.put(
@@ -689,7 +708,7 @@ class Cluster(object):
             Till(seconds=1).wait()
         Log.alert("Made new index {{index|quote}}", index=index)
 
-        es = Index(kwargs=kwargs)
+        es = Index(kwargs=kwargs, cluster=self)
         return es
 
     def delete_index(self, index_name):
@@ -1166,27 +1185,9 @@ def parse_properties(parent_index_name, parent_name, esProperties):
             continue
         if not property.type:
             continue
-        if property.type == "multi_field":
-            property.type = property.fields[name].type  # PULL DEFAULT TYPE
-            for i, (n, p) in enumerate(property.fields.items()):
-                if n == name:
-                    # DEFAULT
-                    columns.append(Column(
-                        es_index=index_name,
-                        es_column=column_name,
-                        names={".": jx_name},
-                        nested_path=ROOT_PATH,
-                        type=p.type
-                    ))
-                else:
-                    columns.append(Column(
-                        es_index=index_name,
-                        es_column=column_name + "\\." + n,
-                        names={".": jx_name + "\\." + n},
-                        nested_path=ROOT_PATH,
-                        type=p.type
-                    ))
-            continue
+        if property.fields:
+            child_columns = parse_properties(index_name, column_name, property.fields)
+            columns.extend(child_columns)
 
         if property.type in es_type_to_json_type.keys():
             columns.append(Column(

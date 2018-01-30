@@ -374,15 +374,16 @@ def bytes2sha1(value):
 
 def value2intlist(value):
     if value == None:
-        return None
+        return []
     elif hasattr(value, '__iter__'):
         output = [int(d) for d in value if d != "" and d != None]
         return output
+    elif isinstance(value, int):
+        return [value]
     elif value.strip() == "":
         return None
     else:
         return [int(value)]
-
 
 def value2int(value):
     if value == None:

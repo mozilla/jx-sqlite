@@ -16,6 +16,8 @@ from tempfile import TemporaryFile
 import zipfile
 import zlib
 
+from mo_future import text_type, PY3
+
 from mo_logs.exceptions import suppress_exception
 from mo_logs import Log
 from mo_math import Math
@@ -27,7 +29,7 @@ DEBUG = False
 MIN_READ_SIZE = 8 * 1024
 MAX_STRING_SIZE = 1 * 1024 * 1024
 
-class FileString(object):
+class FileString(text_type):
     """
     ACTS LIKE A STRING, BUT IS A FILE
     """
@@ -95,15 +97,26 @@ class FileString(object):
         self.file.seek(0)
         return self.file
 
-    def __unicode__(self):
-        if self.encoding == "utf8":
-            temp = self.file.tell()
-            self.file.seek(0, 2)
-            file_length = self.file.tell()
-            self.file.seek(0)
-            output = self.file.read(file_length).decode(self.encoding)
-            self.file.seek(temp)
-            return output
+    if PY3:
+        def __str__(self):
+            if self.encoding == "utf8":
+                temp = self.file.tell()
+                self.file.seek(0, 2)
+                file_length = self.file.tell()
+                self.file.seek(0)
+                output = self.file.read(file_length).decode(self.encoding)
+                self.file.seek(temp)
+                return output
+    else:
+        def __unicode__(self):
+            if self.encoding == "utf8":
+                temp = self.file.tell()
+                self.file.seek(0, 2)
+                file_length = self.file.tell()
+                self.file.seek(0)
+                output = self.file.read(file_length).decode(self.encoding)
+                self.file.seek(temp)
+                return output
 
 
 def safe_size(source):

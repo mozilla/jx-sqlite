@@ -12,22 +12,19 @@ from __future__ import division
 from __future__ import unicode_literals
 
 import itertools
-import json
 import operator
 from collections import Mapping
 from decimal import Decimal
-
-from mo_future import text_type, utf8_json_encoder, get_function_name
 
 import mo_json
 from jx_base import OBJECT, python_type_to_json_type, BOOLEAN, NUMBER, INTEGER, STRING
 from jx_base.queries import is_variable_name, get_property_name
 from mo_dots import coalesce, wrap, Null, split_field
+from mo_future import text_type, utf8_json_encoder, get_function_name
 from mo_json import scrub
-from mo_json.encoder import COLON, COMMA
 from mo_logs import Log, Except
 from mo_math import Math, MAX, MIN, UNION
-from mo_times.dates import Date, parse_time_expression, unicode2Date
+from mo_times.dates import Date, unicode2Date
 
 ALLOW_SCRIPTING = False
 EMPTY_DICT = {}
@@ -522,6 +519,8 @@ class Literal(Expression):
     def missing(self):
         if self.term in [None, Null]:
             return TRUE
+        if self.value == '':
+            return TRUE
         return FALSE
 
     def __call__(self, row=None, rownum=None, rows=None):
@@ -560,6 +559,22 @@ class NullOp(Literal):
 
     def __eq__(self, other):
         return other == None
+
+    def __gt__(self, other):
+        return False
+
+    def __lt__(self, other):
+        return False
+
+    def __ge__(self, other):
+        if other == None:
+            return True
+        return False
+
+    def __le__(self, other):
+        if other == None:
+            return True
+        return False
 
     def __data__(self):
         return {"null": {}}
@@ -1918,15 +1933,16 @@ class SuffixOp(Expression):
     def __init__(self, op, term):
         Expression.__init__(self, op, term)
         if not term:
-            self.field = None
-            self.suffix = None
+            self.field = self.suffix = None
         elif isinstance(term, Mapping):
             self.field, self.suffix = term.items()[0]
         else:
             self.field, self.suffix = term
 
     def __data__(self):
-        if isinstance(self.field, Variable) and isinstance(self.suffix, Literal):
+        if self.field is None:
+            return {"suffix": {}}
+        elif isinstance(self.field, Variable) and isinstance(self.suffix, Literal):
             return {"suffix": {self.field.var: self.suffix.value}}
         else:
             return {"suffix": [self.field.__data__(), self.suffix.__data__()]}
@@ -1935,7 +1951,10 @@ class SuffixOp(Expression):
         return {self.field.var}
 
     def map(self, map_):
-        return SuffixOp("suffix", [self.field.map(map_), self.suffix.map(map_)])
+        if self.field is None:
+            return TRUE
+        else:
+            return SuffixOp("suffix", [self.field.map(map_), self.suffix.map(map_)])
 
 
 class ConcatOp(Expression):

@@ -30,24 +30,33 @@ def make_test_instance(name, settings):
 
 def open_test_instance(name, settings):
     if settings.filename:
-        Log.note("Using {{filename}} as {{type}}",
-            filename= settings.filename,
-            type= name)
-        return Fake_ES(settings)
+        Log.note(
+            "Using {{filename}} as {{type}}",
+            filename=settings.filename,
+            type=name
+        )
+        return FakeES(settings)
     else:
-        Log.note("Using ES cluster at {{host}} as {{type}}",
-            host= settings.host,
-            type= name)
+        Log.note(
+            "Using ES cluster at {{host}} as {{type}}",
+            host=settings.host,
+            type=name
+        )
+        cluster = Cluster(settings)
+        try:
+            old_index = cluster.get_index(kwargs=settings)
+            old_index.delete()
+        except Exception as e:
+            if "Can not find index" not in e:
+                Log.error("unexpected", cause=e)
 
-        Index(read_only=False, kwargs=settings).delete()
-
-        es = Cluster(settings).create_index(settings, limit_replicas=True)
+        es = cluster.create_index(limit_replicas=True, limit_replicas_warning=False, kwargs=settings)
+        es.delete_all_but_self()
+        es.add_alias(settings.index)
         return es
 
 
-
-
-class Fake_ES():
+class FakeES():
     @override
     def __init__(self, filename, host="fake", index="fake", kwargs=None):
         self.settings = kwargs
@@ -74,7 +83,7 @@ class Fake_ES():
 
         unwrap(self.data).update(records)
 
-        data_as_json = value2json(self.data, pretty=True)
+        data_as_json = mo_json.value2json(self.data, pretty=True)
 
         File(self.filename).write(data_as_json)
         Log.note("{{num}} documents added",  num= len(records))

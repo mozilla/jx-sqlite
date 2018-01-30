@@ -17,9 +17,10 @@ from collections import Mapping
 from datetime import datetime, date, timedelta
 from decimal import Decimal
 
-from future.utils import text_type, binary_type
+from mo_future import text_type, binary_type
+from jx_python.meta import Column
 
-from jx_base import python_type_to_json_type, INTEGER, NUMBER, EXISTS, NESTED, STRING, BOOLEAN
+from jx_base import python_type_to_json_type, INTEGER, NUMBER, EXISTS, NESTED, STRING, BOOLEAN, STRUCT, OBJECT
 from mo_dots import Data, FlatList, NullType, unwrap
 from mo_future import utf8_json_encoder, long
 from mo_json import ESCAPE_DCT, float2json, json2value
@@ -29,7 +30,7 @@ from mo_logs import Log
 from mo_logs.strings import utf82unicode, quote
 from mo_times.dates import Date
 from mo_times.durations import Duration
-from pyLibrary.env.elasticsearch import parse_properties, random_id
+from pyLibrary.env.elasticsearch import parse_properties, random_id, es_type_to_json_type
 
 append = UnicodeBuilder.append
 
@@ -50,6 +51,7 @@ json_type_to_inserter_type = {
 }
 
 
+
 class TypedInserter(object):
     def __init__(self, es=None, id_column="_id"):
         self.es = es
@@ -57,10 +59,10 @@ class TypedInserter(object):
         self.remove_id = True if id_column == "_id" else False
 
         if es:
-            columns = parse_properties(es.settings.alias, ".", es.get_properties())
             _schema = Data()
-            for c in columns:
-                _schema[c.names["."]] = c
+            for c in parse_properties(es.settings.alias, ".", es.get_properties()):
+                if c.type not in (OBJECT, NESTED):
+                    _schema[c.names["."]] = c
             self.schema = unwrap(_schema)
         else:
             self.schema = {}
@@ -120,14 +122,23 @@ class TypedInserter(object):
             # THE PRETTY JSON WILL PROVIDE MORE DETAIL ABOUT THE SERIALIZATION CONCERNS
             from mo_logs import Log
 
-            Log.warning("Serialization of JSON problems", e)
-            try:
-                return pretty_json(r)
-            except Exception as f:
-                Log.error("problem serializing object", f)
+            Log.error("Serialization of JSON problems", cause=e)
 
     def _typed_encode(self, value, sub_schema, path, net_new_properties, _buffer):
         try:
+            if isinstance(sub_schema, Column):
+                value_json_type = python_type_to_json_type[value.__class__]
+                column_json_type = es_type_to_json_type[sub_schema.type]
+
+                if value_json_type == column_json_type:
+                    pass  # ok
+                else:
+                    from mo_logs import Log
+
+                    Log.error("Can not store {{value}} in {{column|quote}}", value=value, column=sub_schema.names['.'])
+
+                sub_schema = {json_type_to_inserter_type[value_json_type]: sub_schema}
+
             if value is None:
                 append(_buffer, '{}')
                 return
@@ -146,6 +157,10 @@ class TypedInserter(object):
 
             _type = value.__class__
             if _type in (dict, Data):
+                if isinstance(sub_schema, Column):
+                    from mo_logs import Log
+                    Log.error("Can not handle {{column|json}}", column=sub_schema)
+
                 if NESTED_TYPE in sub_schema:
                     # PREFER NESTED, WHEN SEEN BEFORE
                     if value:

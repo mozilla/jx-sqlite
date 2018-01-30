@@ -205,7 +205,7 @@ class QueryOp(Expression):
         return FALSE
 
     @staticmethod
-    def wrap(query, schema=None):
+    def wrap(query, table=None, schema=None):
         """
         NORMALIZE QUERY SO IT CAN STILL BE JSON
         """
@@ -218,9 +218,17 @@ class QueryOp(Expression):
         output.format = query.format
         output.limit = Math.min(MAX_LIMIT, coalesce(query.limit, DEFAULT_LIMIT))
 
-        from jx_python import wrap_from
-        output.frum = wrap_from(query["from"], schema=schema)
+        # ENSURE from IS A REAL TABLE
+        if isinstance(table, Container):
+            if table.name != query['from']:
+                Log.error("Expecting table to match the 'from' clause")
+            output.frum = table
+            schema = table.schema
+        else:
+            from jx_python import wrap_from
+            output.frum = wrap_from(query["from"], schema=schema)
 
+        # FIND A SCHEMA IF THERE IS NONE YET
         if not schema and isinstance(output.frum, Schema):
             schema = output.frum
         if not schema and hasattr(output.frum, "schema"):

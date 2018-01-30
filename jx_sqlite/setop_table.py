@@ -305,7 +305,7 @@ class SetOpTable(InsertTable):
             :return: the nested property (usually an array)
             """
             previous_doc_id = None
-            doc = Null
+            doc = Data()
             output = []
             id_coord = nested_doc_details['id_coord']
 
@@ -324,20 +324,18 @@ class SetOpTable(InsertTable):
                     if index_to_column:
                         for i, c in index_to_column:
                             value = row[i]
-                            if value == None:
-                                continue
-                            if value == '':
-                                continue
-
                             if isinstance(query.select, list) or isinstance(query.select.value, LeavesOp):
                                 # ASSIGN INNER PROPERTIES
-                                relative_path=join_field([c.push_name]+split_field(c.push_child))
-                            else:           # FACT IS EXPECTED TO BE A SINGLE VALUE, NOT AN OBJECT
-                                relative_path=c.push_child
+                                relative_path = join_field([c.push_name] + split_field(c.push_child))
+                            else:  # FACT IS EXPECTED TO BE A SINGLE VALUE, NOT AN OBJECT
+                                relative_path = c.push_child
 
                             if relative_path == ".":
-                                doc = value
-                            else:
+                                if value == '':
+                                    doc = Null
+                                else:
+                                    doc = value
+                            elif value != None and value != '':
                                 doc[relative_path] = value
 
                 for child_details in nested_doc_details['children']:
@@ -356,10 +354,7 @@ class SetOpTable(InsertTable):
                             if relative_path == "." and doc is Null:
                                 doc = nested_value
                             elif relative_path == ".":
-                                doc[push_name] = unwraplist([v[push_name] for v in nested_value])
-                            elif doc is Null:
-                                doc = Data()
-                                doc[relative_path] = unwraplist(nested_value)
+                                doc = unwraplist(nested_value)
                             else:
                                 doc[relative_path] = unwraplist(nested_value)
 

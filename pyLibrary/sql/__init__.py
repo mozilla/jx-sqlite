@@ -32,9 +32,24 @@ class SQL(text_type):
 
     def __add__(self, other):
         if not isinstance(other, SQL):
+            if isinstance(other, text_type) and all(c not in other for c in ('"', '\'', '`')):
+               return SQL(self.sql + other)
             Log.error("Can only concat other SQL")
         else:
             return SQL(self.sql+other.sql)
+
+    def __radd__(self, other):
+        if not isinstance(other, SQL):
+            if isinstance(other, text_type) and all(c not in other for c in ('"', '\'', '`')):
+                return SQL(other + self.sql)
+            Log.error("Can only concat other SQL")
+        else:
+            return SQL(other.sql + self.sql)
+
+    def join(self, list):
+        if not all(isinstance(s, SQL) for s in list):
+            Log.error("Can only join other SQL")
+        return SQL(self.sql.join(list))
 
     if PY3:
         def __bytes__(self):

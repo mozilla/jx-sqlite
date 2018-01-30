@@ -72,7 +72,7 @@ def to_sql(self, schema, not_null=False, boolean=False):
 
 @extend(Literal)
 def to_sql(self, schema, not_null=False, boolean=False):
-    value = json2value(self.json)
+    value = self.value
     v = sql_quote(value)
     if v == None:
         return wrap([{"name": "."}])
@@ -342,7 +342,7 @@ def to_sql(self, schema, not_null=False, boolean=False):
 @extend(LengthOp)
 def to_sql(self, schema, not_null=False, boolean=False):
     if isinstance(self.term, Literal):
-        val = json2value(self.term)
+        val = self.term.value
         if isinstance(val, unicode):
             return wrap([{"name": ".", "sql": {"n": convert.value2json(len(val))}}])
         elif isinstance(val, (float, int)):
@@ -595,7 +595,7 @@ def to_sql(self, schema, not_null=False, boolean=False):
 
     acc = []
     for t in self.terms:
-        missing = t.missing()
+        missing = t.missing().partial_eval()
 
         term = t.to_sql(schema, not_null=True)[0].sql
         term_sql = coalesce(
@@ -607,8 +607,13 @@ def to_sql(self, schema, not_null=False, boolean=False):
         if isinstance(missing, TrueOp):
             acc.append("''")
         elif missing:
-            acc.append("CASE WHEN (" + missing.to_sql(schema, boolean=True)[
-                0].sql.b + ") THEN '' ELSE  ((" + sep + ") || (" + term_sql + ")) END")
+            acc.append(
+                "CASE" +
+                " WHEN (" + missing.to_sql(schema, boolean=True)[0].sql.b + ")" +
+                " THEN ''" +
+                " ELSE ((" + sep + ") || (" + term_sql + "))" +
+                " END"
+            )
         else:
             acc.append("(" + sep + ") || (" + term_sql + ")")
 
