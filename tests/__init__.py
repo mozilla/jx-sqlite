@@ -79,7 +79,7 @@ class SQLiteUtils(object):
             Log.error("can not load {{data}} into container", {"data":subtest.data}, e)
 
         frum = subtest.query['from']
-        if isinstance(frum, basestring):
+        if isinstance(frum, text_type):
             subtest.query["from"] = frum.replace(test_jx.TEST_TABLE, self._index.sf.fact)
         else:
             Log.error("Do not know how to handle")
@@ -114,7 +114,7 @@ class SQLiteUtils(object):
                     "name": subtest.name
                 })
         except Exception as e:
-            Log.error("Failed test {{name|quote}}", {"name": subtest.name}, e)
+            Log.error("Failed test {{name|quote}}", name=subtest.name, cause=e)
 
     def execute_query(self, query):
         try:
@@ -139,14 +139,14 @@ def compare_to_expected(query, result, expect):
         assertAlmostEqual(set(result.header), set(expect.header))
 
         # MAP FROM expected COLUMN TO result COLUMN
-        mapping = zip(*zip(*filter(
+        mapping = list(zip(*list(zip(*filter(
             lambda v: v[0][1] == v[1][1],
             itertools.product(enumerate(expect.header), enumerate(result.header))
-        ))[1])[0]
+        )))[1]))[0]
         result.header = [result.header[m] for m in mapping]
 
         if result.data:
-            columns = zip(*unwrap(result.data))
+            columns = list(zip(*unwrap(result.data)))
             result.data = zip(*[columns[m] for m in mapping])
 
         if not query.sort:
@@ -281,6 +281,6 @@ try:
 
     Log.start(test_jx.global_settings.debug)
     test_jx.utils = SQLiteUtils(test_jx.global_settings)
-except Exception, e:
+except Exception as e:
     Log.warning("problem", e)
 

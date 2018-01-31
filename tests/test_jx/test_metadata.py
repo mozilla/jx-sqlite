@@ -157,7 +157,6 @@ class TestMetadata(BaseTestCase):
 
         @extenstion_method(TestClass)
         def my_func(self, print_me):
-            print(print_me)
             return print_me, self.value
 
         self.assertEqual(a.my_func("testing"), ("testing", "test_value"), "Expecting method to be run")

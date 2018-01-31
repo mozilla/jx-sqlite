@@ -89,7 +89,7 @@ class QueryTable(GroupbyTable):
             Log.error("Expecting table, or some nested table")
         frum, query['from'] = query['from'], self
         schema = self.sf.tables["."].schema
-        query = QueryOp.wrap(query, schema)
+        query = QueryOp.wrap(query, schema=schema)
         new_table = "temp_" + unique_name()
 
         if query.format == "container":

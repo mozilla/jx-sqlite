@@ -1,15 +1,26 @@
+# encoding: utf-8
+#
+#
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this file,
+# You can obtain one at http:# mozilla.org/MPL/2.0/.
+#
+
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import unicode_literals
+
 from collections import OrderedDict
 from copy import copy
 
-from mo_dots import relative_field, listwrap, split_field, join_field, wrap, startswith_field, concat_field, Null, coalesce, set_default
-from mo_logs import Log
-
-from jx_sqlite import quote_table, typed_column, UID, quoted_UID, quoted_GUID,sql_types, quoted_PARENT, ORDER, quoted_ORDER
-from jx_sqlite import untyped_column
+from jx_base import STRUCT
 from jx_base.queries import get_property_name
 from jx_python import jx
 from jx_python.meta import Column
-from jx_base import STRUCT
+from jx_sqlite import quote_table, typed_column, UID, quoted_UID, quoted_GUID, sql_types, quoted_PARENT, quoted_ORDER
+from jx_sqlite import untyped_column
+from mo_dots import relative_field, listwrap, split_field, join_field, wrap, startswith_field, concat_field, Null, coalesce, set_default
+from mo_logs import Log
 from pyLibrary.sql.sqlite import quote_column
 
 

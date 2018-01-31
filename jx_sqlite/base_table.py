@@ -65,4 +65,6 @@ class BaseTable(Container):
             self.db.execute("CREATE TABLE __digits__(value INTEGER)")
             self.db.execute("INSERT INTO __digits__ " + "\nUNION ALL ".join("SELECT " + text_type(i) for i in range(10)))
 
-
+    @property
+    def schema(self):
+        return self.sf.tables['.'].schema

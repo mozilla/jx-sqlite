@@ -11,6 +11,7 @@
 from __future__ import division
 from __future__ import unicode_literals
 
+from jx_base.expressions import NULL
 from mo_dots import wrap
 
 from jx_base.expressions import NULL
@@ -321,8 +322,8 @@ class TestFilters(BaseTestCase):
                     {"v": "this-is-a-test"},
                     {"v": "this-is-a-vest"},
                     {"v": "test"},
-                    {},
-                    {}
+                    {"v": NULL},
+                    {"v": NULL}
                 ]
             }
         }

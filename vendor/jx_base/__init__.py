@@ -15,7 +15,7 @@ from collections import Mapping
 from uuid import uuid4
 
 from mo_dots import NullType, Data
-from mo_future import text_type, none_type, PY2
+from mo_future import text_type, none_type, PY2, long
 from mo_times import Date
 
 IS_NULL = '0'
@@ -49,8 +49,9 @@ python_type_to_json_type = {
 }
 
 if PY2:
-    python_type_to_json_type[str]=STRING
-    python_type_to_json_type[long]=NUMBER
+    python_type_to_json_type[str] = STRING
+    python_type_to_json_type[long] = NUMBER
+
 
 def generateGuid():
     """Gets a random GUID.
@@ -65,4 +66,4 @@ def generateGuid():
     print uuid.UUID(a).hex
 
     """
-    return str(uuid4())
+    return text_type(uuid4())

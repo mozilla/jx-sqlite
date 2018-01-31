@@ -44,7 +44,7 @@ def column_key(k, v):
         return None
     elif isinstance(v, bool):
         return k, "boolean"
-    elif isinstance(v, basestring):
+    elif isinstance(v, text_type):
         return k, "string"
     elif isinstance(v, list):
         return k, None
@@ -61,7 +61,7 @@ def get_type(v):
         return None
     elif isinstance(v, bool):
         return "boolean"
-    elif isinstance(v, basestring):
+    elif isinstance(v, text_type):
         return "string"
     elif isinstance(v, Mapping):
         return "object"
@@ -97,7 +97,7 @@ def get_if_type(value, type):
 def is_type(value, type):
     if value == None:
         return False
-    elif isinstance(value, basestring) and type == "string":
+    elif isinstance(value, text_type) and type == "string":
         return value
     elif isinstance(value, list):
         return False
