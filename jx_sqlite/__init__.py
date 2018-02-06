@@ -23,6 +23,7 @@ from mo_math.randoms import Random
 from mo_times import Date
 
 from pyLibrary.meta import DataClass
+from pyLibrary.sql import SQL
 from pyLibrary.sql.sqlite import quote_table
 
 GUID = "_id"
@@ -127,7 +128,7 @@ def untyped_column(column_name):
 
 
 def _make_column_name(number):
-    return COLUMN + text_type(number)
+    return SQL(COLUMN + text_type(number))
 
 
 sql_aggs = {

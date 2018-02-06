@@ -21,6 +21,7 @@ from jx_sqlite import quote_table, typed_column, UID, quoted_UID, quoted_GUID, s
 from jx_sqlite import untyped_column
 from mo_dots import relative_field, listwrap, split_field, join_field, wrap, startswith_field, concat_field, Null, coalesce, set_default
 from mo_logs import Log
+from pyLibrary.sql import SQL, SQL_COMMA
 from pyLibrary.sql.sqlite import quote_column
 
 
@@ -103,13 +104,13 @@ class Snowflake(object):
 
         command = (
             "CREATE TABLE " + quote_table(self.fact) + "(" +
-            (",".join(
+            (SQL_COMMA.join(
                 [quoted_GUID + " TEXT "] +
                 [quoted_UID + " INTEGER"] +
                 [quote_column(c.es_column) + " " + sql_types[c.type] for c in self.tables["."].schema.columns]
             )) +
             ", PRIMARY KEY (" +
-            (", ".join(
+            (SQL_COMMA.join(
                 [quoted_GUID] +
                 [quoted_UID] +
                 [quote_column(c.es_column) for c in self.tables["."].schema.columns]
@@ -170,7 +171,7 @@ class Snowflake(object):
         if not details.data:
             command = (
                 "CREATE TABLE " + quote_table(destination_table) + "(" +
-                (",".join(
+                (SQL_COMMA.join(
                     [quoted_UID + " INTEGER", quoted_PARENT + " INTEGER", quoted_ORDER+" INTEGER"]
                 )) +
                 ", PRIMARY KEY (" + quoted_UID + ")" +
@@ -201,7 +202,7 @@ class Snowflake(object):
             )
             self.db.execute(
                 "CREATE TABLE " + quote_table(existing_table) +
-                " AS SELECT " + (", ".join([quote_table(c) for c in columns if c!=column])) +
+                " AS SELECT " + (SQL_COMMA.join([quote_table(c) for c in columns if c!=column])) +
                 " FROM " + quote_table(tmp_table)
             )
             self.db.execute("DROP TABLE " + quote_table(tmp_table))

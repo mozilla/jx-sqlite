@@ -69,12 +69,12 @@ class QueryTable(GroupbyTable):
             else:
                 select.append(
                     "coalesce(" +
-                    ",".join(quote_table(c.es_column) for c in cs) +
+                    SQL_COMMA.join(quote_table(c.es_column) for c in cs) +
                     ") " + quote_table(c.name)
                 )
 
         result = self.db.query(
-            " SELECT " + "\n,".join(select) +
+            " SELECT " + SQL("\n,").join(select) +
             " FROM " + quote_table(self.sf.fact) +
             " WHERE " + jx_expression(filter).to_sql()
         )
@@ -415,16 +415,16 @@ class QueryTable(GroupbyTable):
         # http://www2.sqlite.org/cvstrac/wiki?p=UnsupportedSqlAnalyticalFunctions
         if window.value == "rownum":
             return "ROW_NUMBER()-1 OVER (" + \
-                   " PARTITION BY " + (", ".join(window.edges.values)) + \
-                   " ORDER BY " + (", ".join(window.edges.sort)) + \
+                   " PARTITION BY " + (SQL_COMMA.join(window.edges.values)) + \
+                   " ORDER BY " + (SQL_COMMA.join(window.edges.sort)) + \
                    ") AS " + quote_table(window.name)
 
         range_min = text_type(coalesce(window.range.min, "UNBOUNDED"))
         range_max = text_type(coalesce(window.range.max, "UNBOUNDED"))
 
         return sql_aggs[window.aggregate] + "(" + window.value.to_sql() + ") OVER (" + \
-               " PARTITION BY " + (", ".join(window.edges.values)) + \
-               " ORDER BY " + (", ".join(window.edges.sort)) + \
+               " PARTITION BY " + (SQL_COMMA.join(window.edges.values)) + \
+               " ORDER BY " + (SQL_COMMA.join(window.edges.sort)) + \
                " ROWS BETWEEN " + range_min + " PRECEDING AND " + range_max + " FOLLOWING " + \
                ") AS " + quote_table(window.name)
 

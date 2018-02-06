@@ -105,13 +105,13 @@ class GroupbyTable(EdgesTable):
 
         where = query.where.to_sql(schema)[0].sql.b
 
-        command = "SELECT\n" + (",\n".join(selects)) + \
+        command = "SELECT\n" + (SQL_COMMA.join(selects)) + \
                   "\nFROM\n" + from_sql + \
                   "\nWHERE\n" + where + \
-                  "\nGROUP BY\n" + ",\n".join(groupby)
+                  "\nGROUP BY\n" + SQL_COMMA.join(groupby)
 
         if query.sort:
-            command += "\nORDER BY " + ",\n".join(
+            command += "\nORDER BY " + SQL_COMMA.join(
                 "(" + sql[t] + ") IS NULL"  + ",\n" +
                 sql[t] + (" DESC" if s.sort == -1 else "")
                 for s, sql in [(s, s.value.to_sql(schema)[0].sql) for s in query.sort]

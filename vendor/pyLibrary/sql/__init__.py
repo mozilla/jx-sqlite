@@ -46,10 +46,11 @@ class SQL(text_type):
         else:
             return SQL(other.sql + self.sql)
 
-    def join(self, list):
-        if not all(isinstance(s, SQL) for s in list):
+    def join(self, list_):
+        list_ = list(list_)
+        if not all(isinstance(s, SQL) for s in list_):
             Log.error("Can only join other SQL")
-        return SQL(self.sql.join(list))
+        return SQL(self.sql.join(list_))
 
     if PY3:
         def __bytes__(self):
@@ -57,6 +58,13 @@ class SQL(text_type):
     else:
         def __str__(self):
             Log.error("do not do this")
+
+
+SQL_AND = SQL(" AND ")
+SQL_OR = SQL(" OR ")
+SQL_COMMA = SQL(", ")
+SQL_UNION_ALL = SQL("\nUNION ALL\n")
+SQL_EMPTY_STRING = SQL('')
 
 
 class DB(object):

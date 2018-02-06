@@ -468,9 +468,9 @@ class MySQL(object):
         try:
             command = (
                 "INSERT INTO " + self.quote_column(table_name) + "(" +
-                SQL(",").join([self.quote_column(k) for k in keys]) +
+                SQL_COMMA.join([self.quote_column(k) for k in keys]) +
                 ") VALUES (" +
-                SQL(",").join([self.quote_value(record[k]) for k in keys]) +
+                SQL_COMMA.join([self.quote_value(record[k]) for k in keys]) +
                 ")"
             )
             self.execute(command)

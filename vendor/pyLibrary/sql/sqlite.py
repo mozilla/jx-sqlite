@@ -34,7 +34,7 @@ from pyLibrary import convert
 from pyLibrary.sql import DB, SQL
 
 
-DEBUG = False
+DEBUG = True
 TRACE = True
 DEBUG_EXECUTE = True
 DEBUG_INSERT = False
@@ -245,24 +245,26 @@ def quote_column(column_name, table=None):
 
 def quote_table(column):
     if _no_need_to_quote.match(column):
-        return column
-    return quote(column)
+        return SQL(column)
+    return SQL(quote(column))
 
 
 def quote_value(value):
     if isinstance(value, (Mapping, list)):
-        return "."
+        return SQL(".")
     elif isinstance(value, Date):
-        return text_type(value.unix)
+        return SQL(text_type(value.unix))
     elif isinstance(value, Duration):
-        return text_type(value.seconds)
+        return SQL(text_type(value.seconds))
     elif isinstance(value, text_type):
-        return "'" + value.replace("'", "''") + "'"
+        return SQL("'" + value.replace("'", "''") + "'")
     elif value == None:
-        return "NULL"
+        return SQL("NULL")
     elif value is True:
-        return "1"
+        return SQL("1")
     elif value is False:
-        return "0"
+        return SQL("0")
     else:
-        return text_type(value)
+        return SQL(text_type(value))
+
+

@@ -285,7 +285,7 @@ class SetOpTable(InsertTable):
             "SELECT * FROM (\n" +
             unsorted_sql +
             "\n)" +
-            "\nORDER BY\n" + ",\n".join(sorts) +
+            "\nORDER BY\n" + SQL_COMMA.join(sorts) +
             "\nLIMIT " + quote_value(query.limit)
         )
         self.db.create_new_functions()  #creating new functions: regexp
@@ -628,8 +628,8 @@ class SetOpTable(InsertTable):
                 continue
 
 
-        sql = "\nUNION ALL\n".join(
-            ["SELECT\n" + ",\n".join(select_clause) + from_clause + "\nWHERE\n" + where_clause] +
+        sql = SQL_UNION_ALL.join(
+            ["SELECT\n" + SQL_COMMA.join(select_clause) + from_clause + "\nWHERE\n" + where_clause] +
             children_sql
         )
 

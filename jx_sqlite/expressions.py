@@ -25,6 +25,7 @@ from jx_base.expressions import Variable, DateOp, TupleOp, LeavesOp, BinaryOp, O
     PrefixOp, UnixOp, FromUnixOp, NotLeftOp, RightOp, NotRightOp, FindOp, BetweenOp, InOp, RangeOp, CaseOp, AndOp, \
     ConcatOp, LeftOp, EqOp, WhenOp, BasicIndexOfOp, IntegerOp, MaxOp, BasicSubstringOp, BasicEqOp, FALSE, MinOp, BooleanOp, SuffixOp
 from jx_base import STRUCT, OBJECT
+from pyLibrary.sql import SQL, SQL_AND, SQL_EMPTY_STRING, SQL_OR, SQL_COMMA
 from pyLibrary.sql.sqlite import quote_column, quote_value
 
 
@@ -42,9 +43,9 @@ def to_sql(self, schema, not_null=False, boolean=False):
             if col.type == OBJECT:
                 value = "1"
             elif col.type == "boolean":
-                value = quote_column(col.es_column).sql
+                value = quote_column(col.es_column)
             else:
-                value = "(" + quote_column(col.es_column).sql + ") IS NOT NULL"
+                value = "(" + quote_column(col.es_column) + ") IS NOT NULL"
             tempa = acc.setdefault(nested_path, {})
             tempb = tempa.setdefault(get_property_name(cname), {})
             tempb['b'] = value
@@ -58,12 +59,12 @@ def to_sql(self, schema, not_null=False, boolean=False):
                         for child_col in cs:
                             tempa = acc.setdefault(child_col.nested_path[0], {})
                             tempb = tempa.setdefault(get_property_name(cname), {})
-                            tempb[json_type_to_sql_type[col.type]] = quote_column(child_col.es_column).sql
+                            tempb[json_type_to_sql_type[col.type]] = quote_column(child_col.es_column)
             else:
                 nested_path = col.nested_path[0]
                 tempa = acc.setdefault(nested_path, {})
                 tempb = tempa.setdefault(get_property_name(cname), {})
-                tempb[json_type_to_sql_type[col.type]] = quote_column(col.es_column).sql
+                tempb[json_type_to_sql_type[col.type]] = quote_column(col.es_column)
 
     return wrap([
         {"name": relative_field(cname, self.var), "sql": types, "nested_path": nested_path}
@@ -73,17 +74,17 @@ def to_sql(self, schema, not_null=False, boolean=False):
 @extend(Literal)
 def to_sql(self, schema, not_null=False, boolean=False):
     value = self.value
-    v = sql_quote(value)
+    v = quote_value(value)
     if v == None:
         return wrap([{"name": "."}])
-    elif isinstance(value, unicode):
-        return wrap([{"name": ".", "sql": {"s": sql_quote(value)}}])
+    elif isinstance(value, text_type):
+        return wrap([{"name": ".", "sql": {"s": quote_value(value)}}])
     elif Math.is_number(v):
-        return wrap([{"name": ".", "sql": {"n": sql_quote(value)}}])
+        return wrap([{"name": ".", "sql": {"n": quote_value(value)}}])
     elif v in [True, False]:
-        return wrap([{"name": ".", "sql": {"b": sql_quote(value)}}])
+        return wrap([{"name": ".", "sql": {"b": quote_value(value)}}])
     else:
-        return wrap([{"name": ".", "sql": {"j": sql_quote(self.json)}}])
+        return wrap([{"name": ".", "sql": {"j": quote_value(self.json)}}])
 
 
 @extend(NullOp)
@@ -103,7 +104,7 @@ def to_sql(self, schema, not_null=False, boolean=False):
 
 @extend(DateOp)
 def to_sql(self, schema, not_null=False, boolean=False):
-    return wrap([{"name": ".", "sql": {"n": sql_quote(json2value(self.json))}}])
+    return wrap([{"name": ".", "sql": {"n": quote_value(json2value(self.json))}}])
 
 
 @extend(TupleOp)
@@ -160,7 +161,7 @@ def to_sql(self, schema, not_null=False, boolean=False):
     if not acc:
         return FALSE.to_sql(schema)
     else:
-        return wrap([{"name": ".", "sql": {"b": " OR ".join(acc)}}])
+        return wrap([{"name": ".", "sql": {"b": SQL_OR.join(acc)}}])
 
 
 
@@ -197,13 +198,13 @@ def to_sql(self, schema, not_null=False, boolean=False):
 @extend(MinOp)
 def to_sql(self, schema, not_null=False, boolean=False):
     terms = [t.partial_eval().to_sql(schema)[0].sql.n for t in self.terms]
-    return wrap([{"name": ".", "sql": {"n": "min(" + (", ".join(terms)) + ")"}}])
+    return wrap([{"name": ".", "sql": {"n": "min(" + (SQL_COMMA.join(terms)) + ")"}}])
 
 
 @extend(MaxOp)
 def to_sql(self, schema, not_null=False, boolean=False):
     terms = [t.partial_eval().to_sql(schema)[0].sql.n for t in self.terms]
-    return wrap([{"name": ".", "sql": {"n": "max(" + (", ".join(terms)) + ")"}}])
+    return wrap([{"name": ".", "sql": {"n": "max(" + (SQL_COMMA.join(terms)) + ")"}}])
 
 
 
@@ -239,7 +240,7 @@ def to_sql(self, schema, not_null=False, boolean=False):
                 ors.append(
                     "(" + lhs_exists[l] + ") AND (" + rhs_exists[r] + ")"
                 )
-    sql = "(" + ") OR (".join(ors) + ")"
+    sql = "(" + SQL(") OR (").join(ors) + ")"
 
     return wrap([{"name": ".", "sql": {"b": sql}}])
 
@@ -288,7 +289,7 @@ def to_sql(self, schema, not_null=False, boolean=False):
     if not acc:
         return FALSE.to_sql(schema)
     else:
-        return wrap([{"name": ".", "sql": {"b": " OR ".join(acc)}}])
+        return wrap([{"name": ".", "sql": {"b": SQL_OR.join(acc)}}])
 
 
 # @extend(NeOp)
@@ -322,7 +323,7 @@ def to_sql(self, schema, not_null=False, boolean=False):
         return wrap([{"name": ".", "sql": {"b": "1"}}])
     elif all(self.terms):
         return wrap([{"name": ".", "sql": {
-            "b": " AND ".join(["(" + t.to_sql(schema, boolean=True)[0].sql.b + ")" for t in self.terms])
+            "b": SQL_AND.join(["(" + t.to_sql(schema, boolean=True)[0].sql.b + ")" for t in self.terms])
         }}])
     else:
         return wrap([{"name": ".", "sql": {"b": "0"}}])
@@ -332,7 +333,7 @@ def to_sql(self, schema, not_null=False, boolean=False):
 def to_sql(self, schema, not_null=False, boolean=False):
     return wrap([{
         "name": ".",
-        "sql": {"b": " OR ".join(
+        "sql": {"b": SQL_OR.join(
             "(" + t.to_sql(schema, boolean=True)[0].sql.b + ")"
             for t in self.terms
         )}
@@ -343,7 +344,7 @@ def to_sql(self, schema, not_null=False, boolean=False):
 def to_sql(self, schema, not_null=False, boolean=False):
     if isinstance(self.term, Literal):
         val = self.term.value
-        if isinstance(val, unicode):
+        if isinstance(val, text_type):
             return wrap([{"name": ".", "sql": {"n": convert.value2json(len(val))}}])
         elif isinstance(val, (float, int)):
             return wrap([{"name": ".", "sql": {"n": convert.value2json(len(convert.value2json(val)))}}])
@@ -369,7 +370,7 @@ def to_sql(self, schema, not_null=False, boolean=False):
     elif len(acc) == 1:
         return wrap([{"name": ".", "sql": {"n": acc[0]}}])
     else:
-        return wrap([{"name": ".", "sql": {"n": "COALESCE(" + ",".join(acc) + ")"}}])
+        return wrap([{"name": ".", "sql": {"n": "COALESCE(" + SQL_COMMA.join(acc) + ")"}}])
 
 
 
@@ -389,7 +390,7 @@ def to_sql(self, schema, not_null=False, boolean=False):
     elif len(acc) == 1:
         return wrap([{"name": ".", "sql": {"n": acc}}])
     else:
-        return wrap([{"name": ".", "sql": {"n": "COALESCE(" + ",".join(acc) + ")"}}])
+        return wrap([{"name": ".", "sql": {"n": "COALESCE(" + SQL_COMMA.join(acc) + ")"}}])
 
 
 @extend(StringOp)
@@ -409,7 +410,7 @@ def to_sql(self, schema, not_null=False, boolean=False):
     elif len(acc) == 1:
         return wrap([{"name": ".", "sql": {"s": acc[0]}}])
     else:
-        return wrap([{"name": ".", "sql": {"s": "COALESCE(" + ",".join(acc) + ")"}}])
+        return wrap([{"name": ".", "sql": {"s": "COALESCE(" + SQL_COMMA.join(acc) + ")"}}])
 
 
 @extend(CountOp)
@@ -429,7 +430,7 @@ def to_sql(self, schema, not_null=False, boolean=False):
     if not acc:
         return wrap([{}])
     else:
-        return wrap([{"nanme": ".", "sql": {"n": "+".join(acc)}}])
+        return wrap([{"nanme": ".", "sql": {"n": SQL("+").join(acc)}}])
 
 
 @extend(MultiOp)
@@ -450,7 +451,7 @@ def to_sql(self, schema, not_null=False, boolean=False):
     if self.nulls.json == "true":
         sql = (
             " CASE " +
-            " WHEN " + " AND ".join("((" + s + ") IS NULL)" for s in sql_terms) +
+            " WHEN " + SQL_AND.join("((" + s + ") IS NULL)" for s in sql_terms) +
             " THEN " + default +
             " ELSE " + op.join("COALESCE(" + s + ", 0)" for s in sql_terms) +
             " END"
@@ -459,7 +460,7 @@ def to_sql(self, schema, not_null=False, boolean=False):
     else:
         sql = (
             " CASE " +
-            " WHEN " + " OR ".join("((" + s + ") IS NULL)" for s in sql_terms) +
+            " WHEN " + SQL_OR.join("((" + s + ") IS NULL)" for s in sql_terms) +
             " THEN " + default +
             " ELSE " + op.join("(" + s + ")" for s in sql_terms) +
             " END"
@@ -495,7 +496,7 @@ def to_sql(self, schema, not_null=False, boolean=False):
         elif len(terms) == 1:
             output[t] = terms[0]
         else:
-            output[t] = "COALESCE(" + ",".join(terms) + ")"
+            output[t] = "COALESCE(" + SQL_COMMA.join(terms) + ")"
     return wrap([{"name": ".", "sql": output}])
 
 
@@ -512,14 +513,14 @@ def to_sql(self, schema, not_null=False, boolean=False):
             if t == "b":
                 acc.append("(" + v + ") IS NULL")
             if t == "s":
-                acc.append("((" + v + ") IS NULL OR " + v + "='')")
+                acc.append("((" + v + ") IS NULL OR " + v + "=" + SQL_EMPTY_STRING + ")")
             if t == "n":
                 acc.append("(" + v + ") IS NULL")
 
     if not acc:
         return wrap([{"name": ".", "sql": {"b": "1"}}])
     else:
-        return wrap([{"name": ".", "sql": {"b": " AND ".join(acc)}}])
+        return wrap([{"name": ".", "sql": {"b": SQL_AND.join(acc)}}])
 
 
 @extend(WhenOp)
@@ -556,7 +557,7 @@ def to_sql(self, schema, not_null=False, boolean=False):
     if not acc:
         return wrap([{"name": ".", "sql": {"b": "0"}}])
     else:
-        return wrap([{"name": ".", "sql": {"b": " OR ".join(acc)}}])
+        return wrap([{"name": ".", "sql": {"b": SQL_OR.join(acc)}}])
 
 
 @extend(PrefixOp)
@@ -605,19 +606,19 @@ def to_sql(self, schema, not_null=False, boolean=False):
         )
 
         if isinstance(missing, TrueOp):
-            acc.append("''")
+            acc.append(SQL_EMPTY_STRING)
         elif missing:
             acc.append(
                 "CASE" +
                 " WHEN (" + missing.to_sql(schema, boolean=True)[0].sql.b + ")" +
-                " THEN ''" +
+                " THEN " + SQL_EMPTY_STRING +
                 " ELSE ((" + sep + ") || (" + term_sql + "))" +
                 " END"
             )
         else:
             acc.append("(" + sep + ") || (" + term_sql + ")")
 
-    expr_ = "substr(" + " || ".join(acc) + ", " + LengthOp(None, self.separator).to_sql(schema)[0].sql.n + "+1)"
+    expr_ = "substr(" + SQL(" || ").join(acc) + ", " + LengthOp(None, self.separator).to_sql(schema)[0].sql.n + "+1)"
 
     missing = self.missing()
     if not missing:
@@ -725,7 +726,7 @@ def to_sql(self, schema, not_null=False, boolean=False):
     j_value = json2value(self.superset.json)
     if j_value:
         var = self.value.to_sql(schema)
-        return " OR ".join("(" + var + "==" + sql_quote(v) + ")" for v in j_value)
+        return SQL_OR.join("(" + var + "==" + quote_value(v) + ")" for v in j_value)
     else:
         return wrap([{"name": ".", "sql": {"b": "0"}}])
 
@@ -766,19 +767,6 @@ def to_sql(self, schema, not_null=False, boolean=False):
             acc = " WHEN " + w.when.to_sql(schema, boolean=True)[0].sql.b + " THEN " + coalesce(w.then.to_sql(schema)[0].sql[t], "NULL") + acc
         output[t] = "CASE" + acc
     return wrap([{"name": ".", "sql": output}])
-
-
-def sql_quote(value):
-    if value == Null:
-        return "NULL"
-    elif value is True:
-        return "0"
-    elif value is False:
-        return "1"
-    elif isinstance(value, unicode):
-        return "'" + value.replace("'", "''") + "'"
-    else:
-        return text_type(value)
 
 
 json_type_to_sql_type = {

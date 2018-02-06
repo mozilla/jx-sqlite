@@ -21,6 +21,7 @@ from jx_sqlite import UID, GUID
 from jx_sqlite.snowflake import Snowflake
 from jx_python import jx
 from jx_base.container import Container
+from pyLibrary.sql import SQL, SQL_UNION_ALL
 from pyLibrary.sql.sqlite import Sqlite
 
 _config=None
@@ -63,7 +64,7 @@ class BaseTable(Container):
         existence = self.db.query("PRAGMA table_info(__digits__)")
         if not existence.data:
             self.db.execute("CREATE TABLE __digits__(value INTEGER)")
-            self.db.execute("INSERT INTO __digits__ " + "\nUNION ALL ".join("SELECT " + text_type(i) for i in range(10)))
+            self.db.execute("INSERT INTO __digits__ " + SQL_UNION_ALL.join("SELECT " + SQL(text_type(i)) for i in range(10)))
 
     @property
     def schema(self):

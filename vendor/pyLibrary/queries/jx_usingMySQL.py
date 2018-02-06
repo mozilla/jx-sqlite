@@ -402,9 +402,9 @@ def _esfilter2sqlwhere(db, esfilter):
             max = coalesce(r["lte"], r["<="])
             if min != None and max != None:
                 # SPECIAL CASE (BETWEEN)
-                sql = db.quote_column(col) + SQL(" BETWEEN ") + db.quote_value(min) + SQL(" AND ") + db.quote_value(max)
+                sql = db.quote_column(col) + SQL(" BETWEEN ") + db.quote_value(min) + SQL_AND + db.quote_value(max)
             else:
-                sql = SQL(" AND ").join(
+                sql = SQL_AND.join(
                     db.quote_column(col) + name2sign[sign] + db.quote_value(value)
                     for sign, value in r.items()
                 )

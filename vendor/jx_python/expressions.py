@@ -28,6 +28,7 @@ from jx_base.expressions import Variable, DateOp, TupleOp, LeavesOp, BinaryOp, O
     ConcatOp, InOp, jx_expression, Expression, WhenOp, MaxOp, SplitOp, NULL, SelectOp, SuffixOp
 from jx_python.expression_compiler import compile_expression
 from mo_times.dates import Date
+from pyLibrary.sql import SQL, SQL_COMMA
 
 
 def jx_expression_to_function(expr):
@@ -104,7 +105,7 @@ def to_python(self, not_null=False, boolean=False, many=False):
 def to_python(self, not_null=False, boolean=False, many=False):
     return (
         "wrap_leaves({" +
-        ",\n".join(
+        SQL_COMMA.join(
             quote(t['name']) + ":" + t['value'].to_python() for t in self.terms
         ) +
         "})"
@@ -148,7 +149,7 @@ def to_python(self, not_null=False, boolean=False, many=False):
     elif len(self.terms) == 1:
         return "(" + self.terms[0].to_python() + ",)"
     else:
-        return "(" + (",".join(t.to_python() for t in self.terms)) + ")"
+        return "(" + (SQL_COMMA.join(t.to_python() for t in self.terms)) + ")"
 
 
 @extend(LeavesOp)
@@ -209,7 +210,7 @@ def to_python(self, not_null=False, boolean=False, many=False):
 
 @extend(OrOp)
 def to_python(self, not_null=False, boolean=False, many=False):
-    return " or ".join("(" + t.to_python() + ")" for t in self.terms)
+    return SQL_OR.join("(" + t.to_python() + ")" for t in self.terms)
 
 
 @extend(LengthOp)
@@ -234,12 +235,12 @@ def to_python(self, not_null=False, boolean=False, many=False):
 
 @extend(CountOp)
 def to_python(self, not_null=False, boolean=False, many=False):
-    return "+".join("(0 if (" + t.missing().to_python(boolean=True) + ") else 1)" for t in self.terms)
+    return SQL("+").join("(0 if (" + t.missing().to_python(boolean=True) + ") else 1)" for t in self.terms)
 
 
 @extend(MaxOp)
 def to_python(self, not_null=False, boolean=False, many=False):
-    return "max(["+(",".join(t.to_python() for t in self.terms))+"])"
+    return "max(["+(SQL_COMMA.join(t.to_python() for t in self.terms))+"])"
 
 
 @extend(MultiOp)
@@ -258,7 +259,7 @@ def to_python(self, not_null=False, boolean=False, many=False):
 
 @extend(CoalesceOp)
 def to_python(self, not_null=False, boolean=False, many=False):
-    return "coalesce(" + (",".join(t.to_python() for t in self.terms)) + ")"
+    return "coalesce(" + (SQL_COMMA.join(t.to_python() for t in self.terms)) + ")"
 
 
 @extend(MissingOp)

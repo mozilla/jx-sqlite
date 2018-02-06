@@ -25,6 +25,7 @@ from jx_sqlite.base_table import BaseTable, generateGuid
 from jx_base import STRUCT
 from jx_base.expressions import jx_expression
 from jx_python.meta import Column
+from pyLibrary.sql import SQL, SQL_COMMA, SQL_AND, SQL_UNION_ALL
 from pyLibrary.sql.sqlite import quote_value, quote_column
 
 
@@ -76,7 +77,7 @@ class InsertTable(BaseTable):
             if get_type(nested_value) == "nested":
                 nested_table_name = concat_field(self.sf.fact, nested_column_name)
                 nested_table = nested_tables[nested_column_name]
-                self_primary_key = ",".join(quote_table(c.es_column) for u in self.uid for c in self.columns[u])
+                self_primary_key = SQL_COMMA.join(quote_table(c.es_column) for u in self.uid for c in self.columns[u])
                 extra_key_name = UID_PREFIX + "id" + text_type(len(self.uid))
                 extra_key = [e for e in nested_table.columns[extra_key_name]][0]
 
@@ -89,7 +90,7 @@ class InsertTable(BaseTable):
                               "\nFROM " + quote_table(self.sf.fact) + \
                               "\nWHERE " + where_sql + \
                               "\n) t ON " + \
-                              " AND ".join(
+                              SQL_AND.join(
                                   "t." + quote_table(c.es_column) + " = n." + quote_table(c.es_column)
                                   for u in self.uid
                                   for c in self.columns[u]
@@ -109,7 +110,7 @@ class InsertTable(BaseTable):
                          "(" + \
                          self_primary_key + "," + \
                          quote_column(extra_key) + "," + \
-                         ",".join(
+                         SQL_COMMA.join(
                              quote_table(c.es_column)
                              for c in doc_collection.get(".", Null).active_columns
                          ) + ")"
@@ -121,10 +122,10 @@ class InsertTable(BaseTable):
                          "\nWHERE " + jx_expression(command.where).to_sql()
 
                 # BUILD THE RECORDS
-                children = " UNION ALL ".join(
+                children = SQL_UNION_ALL.join(
                     "\nSELECT " +
                     quote_value(i) + " " + quote_table(extra_key.es_column) + "," +
-                    ",".join(
+                    SQL_COMMA.join(
                         quote_value(row[c.name]) + " " + quote_table(c.es_column)
                         for c in doc_collection.get(".", Null).active_columns
                     )
@@ -133,12 +134,12 @@ class InsertTable(BaseTable):
 
                 sql_command = prefix + \
                               "\nSELECT " + \
-                              ",".join(
+                              SQL_COMMA.join(
                                   "p." + quote_table(c.es_column)
                                   for u in self.uid for c in self.columns[u]
                               ) + "," + \
                               "c." + quote_column(extra_key) + "," + \
-                              ",".join(
+                              SQL_COMMA.join(
                                   "c." + quote_table(c.es_column)
                                   for c in doc_collection.get(".", Null).active_columns
                               ) + \
@@ -166,7 +167,7 @@ class InsertTable(BaseTable):
 
         command = (
             "UPDATE " + quote_table(self.sf.fact) + " SET " +
-            ",\n".join(
+            SQL_COMMA.join(
                 [
                     quote_column(c) + "=" + quote_value(get_if_type(v, c.type))
                     for k, v in command.set.items()
@@ -357,11 +358,11 @@ class InsertTable(BaseTable):
             all_columns = meta_columns + active_columns.es_column
 
             prefix = "INSERT INTO " + quote_table(table_name) + \
-                     "(" + ",".join(map(quote_table, all_columns)) + ")"
+                     "(" + SQL_COMMA.join(map(quote_table, all_columns)) + ")"
 
             # BUILD THE RECORDS
-            records = " UNION ALL ".join(
-                "\nSELECT " + ",".join(quote_value(row.get(c)) for c in all_columns)
+            records = SQL_UNION_ALL.join(
+                "\nSELECT " + SQL_COMMA.join(quote_value(row.get(c)) for c in all_columns)
                 for row in unwrap(rows)
             )
 
