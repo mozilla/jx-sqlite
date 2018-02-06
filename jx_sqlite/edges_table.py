@@ -22,7 +22,7 @@ from mo_dots import listwrap, coalesce, split_field, join_field, startswith_fiel
 from mo_future import text_type, unichr
 from mo_logs import Log
 from mo_math import Math
-from pyLibrary.sql import SQL, SQL_AND, SQL_COMMA, SQL_OR, SQL_UNION_ALL, SQL_LEFT_JOIN
+from pyLibrary.sql import SQL, SQL_AND, SQL_COMMA, SQL_OR, SQL_UNION_ALL, SQL_LEFT_JOIN, SQL_INNER_JOIN
 from pyLibrary.sql.sqlite import quote_value, quote_column
 
 
@@ -146,7 +146,7 @@ class EdgesTable(SetOpTable):
                         domain += "\nUNION ALL\nSELECT " + quote_value(
                             len(query_edge.domain.partitions)) + " AS rownum, NULL AS " + domain_name
                     where = None
-                    join_type = SQL_LEFT_JOIN if query_edge.allowNulls else "JOIN"
+                    join_type = SQL_LEFT_JOIN if query_edge.allowNulls else SQL_INNER_JOIN
                     on_clause = (
                         SQL_OR.join(
                             edge_alias + "." + k + " = " + v
@@ -164,7 +164,7 @@ class EdgesTable(SetOpTable):
                         enumerate(query_edge.domain.partitions)
                     )
                     where = None
-                    join_type = SQL_LEFT_JOIN if query_edge.allowNulls else "JOIN"
+                    join_type = SQL_LEFT_JOIN if query_edge.allowNulls else SQL_INNER_JOIN
                     on_clause = SQL_AND.join(
                         edge_alias + "." + k + " = " + sql
                         for k, (t, sql) in zip(domain_names, edge_values)
@@ -185,7 +185,7 @@ class EdgesTable(SetOpTable):
                     )
 
                     where = None
-                    join_type = SQL_LEFT_JOIN if query_edge.allowNulls else "JOIN"
+                    join_type = SQL_LEFT_JOIN if query_edge.allowNulls else SQL_INNER_JOIN
                     on_clause = SQL_AND.join(
                         edge_alias + "." + k + " <= " + v + " AND " + v + " < (" + edge_alias + "." + k + " + " + text_type(
                             d.interval) + ")"
@@ -201,7 +201,7 @@ class EdgesTable(SetOpTable):
                         "\nLIMIT " + text_type(limit)
                     )
                     where = None
-                    join_type = SQL_LEFT_JOIN if query_edge.allowNulls else "JOIN"
+                    join_type = SQL_LEFT_JOIN if query_edge.allowNulls else SQL_INNER_JOIN
                     on_clause = (
                         edge_alias + "." + domain_name + " < " + edge_values[1][1] + " AND " +
                         edge_values[0][1] + " < (" + edge_alias + "." + domain_name + " + " + text_type(d.interval) + ")"
@@ -231,7 +231,7 @@ class EdgesTable(SetOpTable):
                     "\nLIMIT " + text_type(limit)
                 )
                 where = None
-                join_type = SQL_LEFT_JOIN if query_edge.allowNulls else "JOIN"
+                join_type = SQL_LEFT_JOIN if query_edge.allowNulls else SQL_INNER_JOIN
                 on_clause = SQL_AND.join(
                     "((" + edge_alias + "." + k + " IS NULL AND " + v + " IS NULL) OR " + edge_alias + "." + k + " = " + v + ")"
                     for k, v in zip(domain_names, vals)
@@ -266,7 +266,7 @@ class EdgesTable(SetOpTable):
                 domain += ")"
 
                 where = None
-                join_type = SQL_LEFT_JOIN if query_edge.allowNulls else "JOIN"
+                join_type = SQL_LEFT_JOIN if query_edge.allowNulls else SQL_INNER_JOIN
                 on_clause = (
                     # "__exists__ AND " +
                     SQL_OR.join(  # "OR" IS FOR MATCHING DIFFERENT TYPES OF SAME NAME
@@ -302,7 +302,7 @@ class EdgesTable(SetOpTable):
                         ) + ")"
                     )
                     where = None
-                    join_type = SQL_LEFT_JOIN if query_edge.allowNulls else "JOIN"
+                    join_type = SQL_LEFT_JOIN if query_edge.allowNulls else SQL_INNER_JOIN
                     if query_edge.allowNulls:
                         not_on_clause = None
                     else:
@@ -395,70 +395,20 @@ class EdgesTable(SetOpTable):
                             type=sql_type_to_json_type[json_type]
                         )
             elif s.aggregate == "union":
-                for ei, details in enumerate(s.value.to_sql(schema)):
-                    column_number = len(outer_selects)
-                    union_table_alias = "t" + text_type(column_number)
-
-                    union_values = []
-
-                    for ci, (json_type, sql) in enumerate(details.sql.items()):
-                        cname = _make_column_name(column_number) + "d" + text_type(ci) + "c" + text_type(ci)
-                        agg = "JSON_GROUP_ARRAY(DISTINCT(" + sql + "))  AS " + cname
-                        union_values.append(cname)
-                        union_join_sql = "SELECT " + SQL_COMMA.join([agg] + groupby)
-                        union_prev_table = None
-
-                        # TODO: FIX WHATEVER IS SETTING THE nested_path WRONG
-                        nested_path = listwrap(details.nested_path)
-                        if nested_path.last() != ".":
-                            Log.warning("bad nested path")
-                            nested_path.append(".")
-
-                        for p in jx.reverse(nested_path):
-                            union_next_table = quote_table(concat_field(base_table, p))
-                            if p == ".":
-                                union_join_sql += " FROM " + union_next_table + " AS " + union_table_alias
-                            else:
-                                union_join_sql += (
-                                    SQL_LEFT_JOIN + union_next_table +
-                                    "\nON " + union_next_table + "." + PARENT + " = " + union_prev_table + "." + UID
-                                )
-                            union_prev_table = union_next_table
-                        union_join_sql += (
-                            "\nWHERE " + main_filter + " AND (" + sql + ") IS NOT NULL" +
-                            ("\nGROUP BY " + SQL_COMMA.join(groupby) if groupby else "")
+                for details in s.value.to_sql(schema):
+                    for sql_type, sql in details.sql.items():
+                        column_number = len(outer_selects)
+                        outer_selects.append("JSON_GROUP_ARRAY(DISTINCT(" + sql + "))  AS " + _make_column_name(column_number))
+                        index_to_column[column_number] = ColumnMapping(
+                            push_name=s.name,
+                            push_column_name=s.name,
+                            push_column=si,
+                            push_child=".",  # join_field(split_field(details.name)[1::]),
+                            pull=sql_text_array_to_set(column_number),
+                            sql=sql,
+                            column_alias=_make_column_name(column_number),
+                            type=sql_type_to_json_type[sql_type]
                         )
-
-                        domains.append("(" + union_join_sql + ") AS " + union_table_alias)
-                        if not groupby:
-                            ons.append("1=1")
-                        else:
-                            ons.append(SQL_AND.join(union_table_alias + "." + g + "=" + tables[0].alias + "." + g for g in groupby))
-                            # Log.error("do not know how to handle yet")
-                        join_types.append(SQL_LEFT_JOIN)
-                        if not query.edges:
-                            query.edges = []
-                        query.edges.append(Data(allowNulls=False, domain=UnitDomain()))
-
-                    if len(union_values) > 1:
-                        union_select_sql = "CONCAT('[', " + SQL(", ',', ").join([
-                            "LTRIM(RTRIM(MAX("+cname+"), ']'), '[')"
-                            for cname in union_values
-                        ])+") AS "+_make_column_name(column_number)
-                    else:
-                        union_select_sql = "MAX("+union_table_alias + "." + _make_column_name(column_number) + "d0c0) AS " + _make_column_name(column_number)
-
-                    outer_selects.append(union_select_sql)
-                    index_to_column[column_number] = ColumnMapping(
-                        push_name=s.name,
-                        push_column_name=s.name,
-                        push_column=si,
-                        push_child=".",
-                        pull=sql_text_array_to_set(column_number),
-                        sql=union_select_sql,
-                        column_alias=_make_column_name(column_number),
-                        type=sql_type_to_json_type["j"]
-                    )
 
             elif s.aggregate == "stats":  # THE STATS OBJECT
                 for details in s.value.to_sql(schema):
@@ -523,7 +473,7 @@ class EdgesTable(SetOpTable):
             "\nFROM\n" + primary
         )
         for t, s, j in zip(join_types, edge_sources, ons):
-            part += " " + t + "\n" + s.sql + " ON " + j
+            part += " " + t + s.sql + " ON " + j
         if any(wheres):
             part += "\nWHERE " + SQL_AND.join("(" + w + ")" for w in wheres if w)
         if groupby:
@@ -582,6 +532,6 @@ class EdgesTable(SetOpTable):
                 )
 
         for j in range(digits):
-            domain += "\nJOIN __digits__ " + text_type(chr(ord(b'a') + j + 1)) + " ON 1=1"
+            domain += SQL_INNER_JOIN+"__digits__ " + text_type(chr(ord(b'a') + j + 1)) + " ON 1=1"
         domain += "\nWHERE " + value + " < " + quote_value(width)
         return domain

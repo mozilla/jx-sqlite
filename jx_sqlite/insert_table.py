@@ -25,7 +25,7 @@ from jx_sqlite.base_table import BaseTable, generateGuid
 from jx_base import STRUCT
 from jx_base.expressions import jx_expression
 from jx_python.meta import Column
-from pyLibrary.sql import SQL, SQL_COMMA, SQL_AND, SQL_UNION_ALL
+from pyLibrary.sql import SQL, SQL_COMMA, SQL_AND, SQL_UNION_ALL, SQL_INNER_JOIN
 from pyLibrary.sql.sqlite import quote_value, quote_column
 
 
@@ -86,7 +86,7 @@ class InsertTable(BaseTable):
                     "\nWHERE EXISTS (" +
                     "\nSELECT 1 " +
                     "\nFROM " + quote_table(nested_table.name) + " n" +
-                    "\nJOIN (" +
+                    SQL_INNER_JOIN+"(" +
                     "\nSELECT " + self_primary_key +
                     "\nFROM " + quote_table(self.sf.fact) +
                     "\nWHERE " + where_sql +
@@ -150,7 +150,7 @@ class InsertTable(BaseTable):
                         for c in doc_collection.get(".", Null).active_columns
                     ) +
                     "\nFROM (" + parent + ") p " +
-                    "\nJOIN (" + children +
+                    SQL_INNER_JOIN+"(" + children +
                     "\n) c on 1=1"
                 )
 

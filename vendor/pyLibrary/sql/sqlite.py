@@ -50,11 +50,11 @@ def _upgrade():
     try:
         import sys
 
-        sqlite_dll = File.new_instance(sys.exec_prefix, "dlls/sqlite3.dll")
-        python_dll = File("vendor/pyLibrary/vendor/sqlite/sqlite3.dll")
-        if not all(a==b for a, b in zip_longest(python_dll.read_bytes(), sqlite_dll.read_bytes())):
-            backup = sqlite_dll.backup()
-            File.copy(python_dll, sqlite_dll)
+        original_dll = File.new_instance(sys.exec_prefix, "dlls/sqlite3.dll")
+        source_dll = File("vendor/pyLibrary/vendor/sqlite/sqlite3.dll")
+        if not all(a==b for a, b in zip_longest(source_dll.read_bytes(), original_dll.read_bytes())):
+            backup = original_dll.backup()
+            File.copy(source_dll, original_dll)
     except Exception as e:
         Log.warning("could not upgrade python's sqlite", cause=e)
 
