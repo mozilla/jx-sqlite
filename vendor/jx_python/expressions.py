@@ -28,7 +28,6 @@ from jx_base.expressions import Variable, DateOp, TupleOp, LeavesOp, BinaryOp, O
     ConcatOp, InOp, jx_expression, Expression, WhenOp, MaxOp, SplitOp, NULL, SelectOp, SuffixOp
 from jx_python.expression_compiler import compile_expression
 from mo_times.dates import Date
-from pyLibrary.sql import SQL, SQL_COMMA
 
 
 def jx_expression_to_function(expr):
@@ -105,7 +104,7 @@ def to_python(self, not_null=False, boolean=False, many=False):
 def to_python(self, not_null=False, boolean=False, many=False):
     return (
         "wrap_leaves({" +
-        SQL_COMMA.join(
+        ','.join(
             quote(t['name']) + ":" + t['value'].to_python() for t in self.terms
         ) +
         "})"
@@ -149,7 +148,7 @@ def to_python(self, not_null=False, boolean=False, many=False):
     elif len(self.terms) == 1:
         return "(" + self.terms[0].to_python() + ",)"
     else:
-        return "(" + (SQL_COMMA.join(t.to_python() for t in self.terms)) + ")"
+        return "(" + (','.join(t.to_python() for t in self.terms)) + ")"
 
 
 @extend(LeavesOp)
@@ -210,7 +209,7 @@ def to_python(self, not_null=False, boolean=False, many=False):
 
 @extend(OrOp)
 def to_python(self, not_null=False, boolean=False, many=False):
-    return SQL_OR.join("(" + t.to_python() + ")" for t in self.terms)
+    return " or ".join("(" + t.to_python() + ")" for t in self.terms)
 
 
 @extend(LengthOp)
@@ -235,12 +234,23 @@ def to_python(self, not_null=False, boolean=False, many=False):
 
 @extend(CountOp)
 def to_python(self, not_null=False, boolean=False, many=False):
-    return SQL("+").join("(0 if (" + t.missing().to_python(boolean=True) + ") else 1)" for t in self.terms)
+    return "+".join("(0 if (" + t.missing().to_python(boolean=True) + ") else 1)" for t in self.terms)
 
 
 @extend(MaxOp)
 def to_python(self, not_null=False, boolean=False, many=False):
-    return "max(["+(SQL_COMMA.join(t.to_python() for t in self.terms))+"])"
+    return "max(["+(','.join(t.to_python() for t in self.terms))+"])"
+
+
+
+_python_operators = {
+    "add": (" + ", "0"),  # (operator, zero-array default value) PAIR
+    "sum": (" + ", "0"),
+    "mul": (" * ", "1"),
+    "mult": (" * ", "1"),
+    "multiply": (" * ", "1")
+}
+
 
 
 @extend(MultiOp)
@@ -248,9 +258,9 @@ def to_python(self, not_null=False, boolean=False, many=False):
     if len(self.terms) == 0:
         return self.default.to_python()
     elif self.default is NULL:
-        return MultiOp.operators[self.op][0].join("(" + t.to_python() + ")" for t in self.terms)
+        return _python_operators[self.op][0].join("(" + t.to_python() + ")" for t in self.terms)
     else:
-        return "coalesce(" + MultiOp.operators[self.op][0].join("(" + t.to_python() + ")" for t in self.terms) + ", " + self.default.to_python() + ")"
+        return "coalesce(" + _python_operators[self.op][0].join("(" + t.to_python() + ")" for t in self.terms) + ", " + self.default.to_python() + ")"
 
 @extend(RegExpOp)
 def to_python(self, not_null=False, boolean=False, many=False):
@@ -259,7 +269,7 @@ def to_python(self, not_null=False, boolean=False, many=False):
 
 @extend(CoalesceOp)
 def to_python(self, not_null=False, boolean=False, many=False):
-    return "coalesce(" + (SQL_COMMA.join(t.to_python() for t in self.terms)) + ")"
+    return "coalesce(" + (', '.join(t.to_python() for t in self.terms)) + ")"
 
 
 @extend(MissingOp)

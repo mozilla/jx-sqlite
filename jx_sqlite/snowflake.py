@@ -14,6 +14,7 @@ from collections import OrderedDict
 from copy import copy
 
 from jx_base import STRUCT
+from jx_base.container import Container
 from jx_base.queries import get_property_name
 from jx_python import jx
 from jx_python.meta import Column
@@ -21,7 +22,7 @@ from jx_sqlite import quote_table, typed_column, UID, quoted_UID, quoted_GUID, s
 from jx_sqlite import untyped_column
 from mo_dots import relative_field, listwrap, split_field, join_field, wrap, startswith_field, concat_field, Null, coalesce, set_default
 from mo_logs import Log
-from pyLibrary.sql import SQL, SQL_COMMA
+from pyLibrary.sql import SQL_COMMA
 from pyLibrary.sql.sqlite import quote_column
 
 
@@ -226,11 +227,11 @@ class Snowflake(object):
             table.schema.add(rel_name, column)
 
 
-class Table(object):
+class Table(Container):
 
     def __init__(self, nested_path):
         self.nested_path = nested_path
-        self.schema = Schema(nested_path)  # MAP FROM RELATIVE NAME TO LIST OF COLUMNS
+        self._schema = Schema(nested_path)
 
     @property
     def name(self):
@@ -239,6 +240,9 @@ class Table(object):
         """
         return self.nested_path[0]
 
+    @property
+    def schema(self):
+        return self._schema
 
 class Schema(object):
     """

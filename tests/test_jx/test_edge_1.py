@@ -875,7 +875,7 @@ class TestEdge1(BaseTestCase):
             "query": {
                 "from": TEST_TABLE,
                 "select": {},
-                "edges": {"name":".", "value":"a"}
+                "edges": {"name": ".", "value": "a"}
             },
             "expecting_list": {
                 "meta": {"format": "list"},

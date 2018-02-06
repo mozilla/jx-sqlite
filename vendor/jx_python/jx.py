@@ -89,12 +89,6 @@ def run(query, frum=Null):
     if is_aggs(query_op):
         frum = list_aggs(frum, query_op)
     else:  # SETOP
-        # try:
-        #     if query.filter != None or query.esfilter != None:
-        #         Log.error("use 'where' clause")
-        # except AttributeError:
-        #     pass
-
         if query_op.where is not TRUE:
             frum = filter(frum, query_op.where)
 

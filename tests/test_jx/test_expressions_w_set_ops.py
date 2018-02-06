@@ -357,7 +357,7 @@ class TestSetOps(BaseTestCase):
                 {"a": 7, "b": True},                   # 7*0
                 {"a": 8},  # COUNTED, "b" IS NOT true  # 8*1 = 8
                 {"b": True},  # NOT COUNTED              null * 0 = null
-                {"b": False},  # NOT COUNTED             null * 1 = null
+                {"b": False},  # COUNTED                 null * 1 = null
             ],
             "query": {
                 "from": TEST_TABLE,

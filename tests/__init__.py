@@ -156,7 +156,7 @@ def compare_to_expected(query, result, expect):
         if query["from"].startswith("meta."):
             pass
         else:
-            query = QueryOp.wrap(query)
+            query = QueryOp.wrap(query, table=query.frum, schema=query.schema)
 
         if not query.sort:
             try:

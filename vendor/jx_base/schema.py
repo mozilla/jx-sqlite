@@ -22,7 +22,7 @@ from mo_logs import Log
 def _indexer(columns, query_path):
     all_names = set(unnest_path(n) for c in columns for n in c.names.values()) | {"."}
 
-    lookup_leaves = {}
+    lookup_leaves = {}  # ALL LEAF VARIABLES
     for full_name in all_names:
         for c in columns:
             cname = c.names[query_path]
@@ -30,12 +30,27 @@ def _indexer(columns, query_path):
             if (
                 startswith_field(nfp, full_name) and
                 c.type not in [EXISTS, OBJECT, NESTED] and
-                (c.es_column != "_id" or full_name == "_id") and
-                startswith_field(nfp, full_name)
+                (c.es_column != "_id" or full_name == "_id")
             ):
                 cs = lookup_leaves.setdefault(full_name, set())
                 cs.add(c)
                 cs = lookup_leaves.setdefault(untype_path(full_name), set())
+                cs.add(c)
+
+    lookup_variables = {}  # ALL NOT-NESTED VARIABLES
+    for full_name in all_names:
+        for c in columns:
+            cname = c.names[query_path]
+            nfp = unnest_path(cname)
+            if (
+                startswith_field(nfp, full_name) and
+                c.type not in [EXISTS, OBJECT] and
+                (c.es_column != "_id" or full_name == "_id") and
+                startswith_field(c.nested_path[0], query_path)
+            ):
+                cs = lookup_variables.setdefault(full_name, set())
+                cs.add(c)
+                cs = lookup_variables.setdefault(untype_path(full_name), set())
                 cs.add(c)
 
     relative_lookup = {}
@@ -52,15 +67,19 @@ def _indexer(columns, query_path):
             Log.error("Should not happen", cause=e)
 
     if query_path != ".":
-        absolute_lookup, more_leaves = _indexer(columns, ".")
+        # ADD ABSOLUTE NAMES TO THE NAMESAPCE
+        absolute_lookup, more_leaves, more_variables = _indexer(columns, ".")
         for k, cs in absolute_lookup.items():
             if k not in relative_lookup:
                 relative_lookup[k] = cs
         for k, cs in more_leaves.items():
             if k not in lookup_leaves:
                 lookup_leaves[k] = cs
+        for k, cs in more_variables.items():
+            if k not in lookup_variables:
+                lookup_variables[k] = cs
 
-    return relative_lookup, lookup_leaves
+    return relative_lookup, lookup_leaves, lookup_variables
 
 
 class Schema(object):
@@ -83,7 +102,7 @@ class Schema(object):
         else:
             query_path += "."+NESTED_TYPE
             self.query_path = [c for c in columns if c.type == NESTED and c.names["."] == query_path][0].es_column
-        self.lookup, self.lookup_leaves = _indexer(columns, self.query_path)
+        self.lookup, self.lookup_leaves, self.lookup_variables = _indexer(columns, self.query_path)
 
     def __getitem__(self, column_name):
         cs = self.lookup.get(column_name)
@@ -112,12 +131,7 @@ class Schema(object):
         :param name:
         :return:
         """
-        full_name = unnest_path(name)
-        return list(set([
-            c
-            for c in self.lookup.get(full_name, Null)
-            if c.type in PRIMITIVE and (c.es_column != "_id")  # MULTIVALUES ARE LEGIT, SO NESTED IS FINE: and self.query_path == c.nested_path[0]
-        ]))
+        return list(self.lookup_variables.get(unnest_path(name), Null))
 
     def leaves(self, name, meta=False):
         """

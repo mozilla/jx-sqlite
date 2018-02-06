@@ -18,8 +18,7 @@ from mo_collections.unique_index import UniqueIndex
 from mo_dots import coalesce, literal_field, unwrap, wrap
 from mo_future import text_type
 from mo_future import zip_longest
-from mo_logs import Log
-from mo_logs.exceptions import suppress_exception, Except
+from mo_logs import Log, Except, suppress_exception
 from mo_logs.strings import expand_template
 from mo_math import Math
 

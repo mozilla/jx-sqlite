@@ -95,16 +95,6 @@ class Container(object):
         else:
             Log.error("Do not know how to handle {{type}}", type=frum.__class__.__name__)
 
-
-    def __init__(self, frum, schema=None):
-        object.__init__(self)
-        if not type2container:
-            _delayed_imports()
-
-        self.data = frum
-        if isinstance(schema, list):
-            Log.error("expecting map from es_column to column object")
-
     def query(self, query):
         if query.frum != self:
             Log.error("not expected")

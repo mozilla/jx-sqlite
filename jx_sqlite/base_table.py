@@ -37,7 +37,6 @@ class BaseTable(Container):
         :return: HANDLE FOR TABLE IN db
         """
         global _config
-        Container.__init__(self, frum=None)
         if db:
             self.db = db
         else:

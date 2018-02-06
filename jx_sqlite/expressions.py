@@ -25,7 +25,7 @@ from mo_json import json2value
 from mo_logs import Log
 from mo_math import Math
 from pyLibrary import convert
-from pyLibrary.sql import SQL, SQL_AND, SQL_EMPTY_STRING, SQL_OR, SQL_COMMA, SQL_TRUE, SQL_ZERO, SQL_FALSE, SQL_NULL
+from pyLibrary.sql import SQL, SQL_AND, SQL_EMPTY_STRING, SQL_OR, SQL_COMMA, SQL_TRUE, SQL_ZERO, SQL_FALSE, SQL_NULL, SQL_ONE
 from pyLibrary.sql.sqlite import quote_column, quote_value
 
 
@@ -433,12 +433,21 @@ def to_sql(self, schema, not_null=False, boolean=False):
         return wrap([{"nanme": ".", "sql": {"n": SQL("+").join(acc)}}])
 
 
+_sql_operators = {
+    "add": (SQL(" + "), SQL_ZERO),  # (operator, zero-array default value) PAIR
+    "sum": (SQL(" + "), SQL_ZERO),
+    "mul": (SQL(" * "), SQL_ONE),
+    "mult": (SQL(" * "), SQL_ONE),
+    "multiply": (SQL(" * "), SQL_ONE)
+}
+
+
 @extend(MultiOp)
 def to_sql(self, schema, not_null=False, boolean=False):
     terms = [t.to_sql(schema) for t in self.terms]
     default = coalesce(self.default.to_sql(schema)[0].sql.n, SQL_NULL)
 
-    op, identity = MultiOp.operators[self.op]
+    op, identity = _sql_operators[self.op]
     sql_terms = []
     for t in terms:
         if len(t) > 1:

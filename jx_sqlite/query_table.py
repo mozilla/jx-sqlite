@@ -89,8 +89,9 @@ class QueryTable(GroupbyTable):
         if not startswith_field(query['from'], self.sf.fact):
             Log.error("Expecting table, or some nested table")
         frum, query['from'] = query['from'], self
-        schema = self.sf.tables["."].schema
-        query = QueryOp.wrap(query, schema=schema)
+        table = self.sf.tables[relative_field(frum, self.sf.fact)]
+        schema = table.schema
+        query = QueryOp.wrap(query, table=table, schema=schema)
         new_table = "temp_" + unique_name()
 
         if query.format == "container":

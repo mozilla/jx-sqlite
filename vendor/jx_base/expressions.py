@@ -1342,7 +1342,7 @@ class BooleanOp(Expression):
             if term.type in [INTEGER, NUMBER, STRING]:
                 return TRUE
         else:
-            return NotOp("not", is_missing).partial_eval()
+            return BooleanOp("boolean", term)
 
 
 class IsBooleanOp(Expression):
@@ -1662,14 +1662,6 @@ class MinOp(Expression):
 class MultiOp(Expression):
     has_simple_form = True
     data_type = NUMBER
-
-    operators = {
-        "add": (SQL(" + "), SQL_ZERO),  # (operator, zero-array default value) PAIR
-        "sum": (SQL(" + "), SQL_ZERO),
-        "mul": (SQL(" * "), SQL_ONE),
-        "mult": (SQL(" * "), SQL_ONE),
-        "multiply": (SQL(" * "), SQL_ONE)
-    }
 
     def __init__(self, op, terms, **clauses):
         Expression.__init__(self, op, terms)

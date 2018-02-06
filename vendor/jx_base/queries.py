@@ -11,6 +11,8 @@ from __future__ import unicode_literals
 
 import re
 
+from mo_future import text_type
+
 from mo_logs import Log
 
 keyword_pattern = re.compile(r"(\w|[\\.,$])+(?:\.(\w|[\\.,$])+)*")
