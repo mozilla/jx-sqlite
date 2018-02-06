@@ -18,7 +18,7 @@ from future.utils import text_type
 from jx_python import jx
 from jx_sqlite import quote_table, sql_aggs, unique_name, untyped_column
 from mo_collections.matrix import Matrix, index_to_coordinate
-from mo_dots import listwrap, coalesce, Data, wrap, startswith_field, unwrap, unwraplist, concat_field, relative_field
+from mo_dots import listwrap, coalesce, Data, wrap, startswith_field, unwrap, unwraplist, concat_field, relative_field, Null
 from mo_logs import Log
 
 from jx_base.domains import SimpleSetDomain
@@ -100,7 +100,6 @@ class QueryTable(GroupbyTable):
             create_table = ""
 
         if query.groupby and query.format != "cube":
-            query = QueryOp.wrap(query, schema)
             op, index_to_columns = self._groupby_op(query, frum)
             command = create_table + op
         elif query.groupby:
@@ -245,7 +244,9 @@ class QueryTable(GroupbyTable):
                     else:
                         data_cubes[s.push_name][coord][s.push_child] = s.pull(row)
 
-            if isinstance(query.select, list):
+            if query.select == None:
+                select = Null
+            elif isinstance(query.select, list):
                 select = [{"name": s.name} for s in query.select]
             else:
                 select = {"name": query.select.name}

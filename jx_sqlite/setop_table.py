@@ -271,7 +271,7 @@ class SetOpTable(InsertTable):
                         nested_path=nested_path
                     )
 
-        where_clause = query.where.to_sql(schema, boolean=True)[0].sql.b
+        where_clause = query.where.partial_eval().to_sql(schema, boolean=True)[0].sql.b
         unsorted_sql = self._make_sql_for_one_nest_in_set_op(
             ".",
             sql_selects,

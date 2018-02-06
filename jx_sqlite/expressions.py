@@ -13,7 +13,7 @@ from __future__ import unicode_literals
 
 from future.utils import text_type
 
-from jx_base import OBJECT
+from jx_base import OBJECT, BOOLEAN
 from jx_base.expressions import Variable, DateOp, TupleOp, LeavesOp, BinaryOp, OrOp, InequalityOp, extend, Literal, NullOp, TrueOp, FalseOp, DivOp, FloorOp, \
     NeOp, NotOp, LengthOp, NumberOp, StringOp, CountOp, MultiOp, RegExpOp, CoalesceOp, MissingOp, ExistsOp, \
     PrefixOp, UnixOp, FromUnixOp, NotLeftOp, RightOp, NotRightOp, FindOp, InOp, RangeOp, CaseOp, AndOp, \
@@ -42,7 +42,7 @@ def to_sql(self, schema, not_null=False, boolean=False):
             nested_path = col.nested_path[0]
             if col.type == OBJECT:
                 value = SQL_TRUE
-            elif col.type == "boolean":
+            elif col.type == BOOLEAN:
                 value = quote_column(col.es_column)
             else:
                 value = "(" + quote_column(col.es_column) + ") IS NOT NULL"
@@ -135,7 +135,7 @@ def to_sql(self, schema, not_null=False, boolean=False):
 
 @extend(NeOp)
 def to_sql(self, schema, not_null=False, boolean=False):
-    return NotOp("not", self).partial_eval().to_sql(schema)
+    return NotOp('not', EqOp('eq', self.terms).partial_eval()).partial_eval().to_sql(schema)
 
 
 @extend(BasicEqOp)
@@ -308,13 +308,13 @@ def to_sql(self, schema, not_null=False, boolean=False):
 
 @extend(BooleanOp)
 def to_sql(self, schema, not_null=False, boolean=False):
-    sql = BooleanOp("boolean", self.term).partial_eval().to_sql(schema)[0].sql
-    return wrap([{"name": ".", "sql": {
-        "0": SQL_TRUE,
-        "b": sql.b,
-        "n": "(" + sql.n + ") IS NOT NULL",
-        "s": "(" + sql.s + ") IS NOT NULL"
-    }}])
+    term = self.term.partial_eval()
+    if term.type == "boolean":
+        sql = term.to_sql(schema)
+        return sql
+    else:
+        sql = term.exists().partial_eval().to_sql(schema)
+        return sql
 
 
 @extend(AndOp)

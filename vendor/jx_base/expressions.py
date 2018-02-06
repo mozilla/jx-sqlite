@@ -991,13 +991,13 @@ class EqOp(Expression):
         if isinstance(lhs, Literal) and isinstance(rhs, Literal):
             return TRUE if builtin_ops["eq"](lhs.value, rhs.value) else FALSE
         else:
-            return WhenOp(
-                "when",
-                lhs.missing(),
-                **{
-                    "then": rhs.missing(),
-                    "else": BasicEqOp("eq", [lhs, rhs])
-                }
+            return CaseOp(
+                "case",
+                [
+                    WhenOp("when", lhs.missing(), **{"then": rhs.missing()}),
+                    WhenOp("when", rhs.missing(), **{"then": FALSE}),
+                    BasicEqOp("eq", [lhs, rhs])
+                ]
             ).partial_eval()
 
 
@@ -1031,13 +1031,7 @@ class NeOp(Expression):
 
     @simplified
     def partial_eval(self):
-        lhs = self.lhs.partial_eval()
-        rhs = self.rhs.partial_eval()
-
-        if isinstance(lhs, Literal) and isinstance(rhs, Literal):
-            return Literal(None, builtin_ops["ne"](lhs, rhs))
-
-        output = NeOp("ne", [lhs, rhs])
+        output = NotOp("not", EqOp("eq", [self.lhs, self.rhs])).partial_eval()
         return output
 
 
@@ -1082,6 +1076,14 @@ class NotOp(Expression):
                     term.when,
                     **{"then": inverse(term.then), "else": inverse(term.els_)}
                 ).partial_eval()
+            elif isinstance(term, CaseOp):
+                output = CaseOp(
+                    "case",
+                    [
+                        WhenOp("when", w.when, **{"then": inverse(w.then)}) if isinstance(w, WhenOp) else inverse(w)
+                        for w in term.whens
+                    ]
+                ).partial_eval()
             elif isinstance(term, AndOp):
                 output = OrOp("or", [inverse(t) for t in term.terms]).partial_eval()
             elif isinstance(term, OrOp):
@@ -1094,8 +1096,6 @@ class NotOp(Expression):
                 output = term.term.partial_eval()
             elif isinstance(term, NeOp):
                 output = EqOp("eq", [term.lhs, term.rhs]).partial_eval()
-            elif isinstance(term, EqOp):
-                output = NeOp("ne", [term.lhs, term.rhs]).partial_eval()
             elif isinstance(term, (BasicIndexOfOp, BasicSubstringOp)):
                 return FALSE
             else:
@@ -2575,17 +2575,17 @@ class WhenOp(Expression):
 
 
 class CaseOp(Expression):
-    def __init__(self, op, term, **clauses):
-        if not isinstance(term, (list, tuple)):
+    def __init__(self, op, terms, **clauses):
+        if not isinstance(terms, (list, tuple)):
             Log.error("case expression requires a list of `when` sub-clauses")
-        Expression.__init__(self, op, term)
-        if len(term) <= 1:
+        Expression.__init__(self, op, terms)
+        if len(terms) <= 1:
             Log.error("Expecting at least two clauses")
         else:
-            for w in term[:-1]:
+            for w in terms[:-1]:
                 if not isinstance(w, WhenOp) or w.els_:
                     Log.error("case expression does not allow `else` clause in `when` sub-clause")
-            self.whens = term
+            self.whens = terms
 
     def __data__(self):
         return {"case": [w.__data__() for w in self.whens]}
@@ -2630,6 +2630,14 @@ class CaseOp(Expression):
             return whens[0]
         else:
             return CaseOp("case", whens)
+
+    @property
+    def type(self):
+        types = set(w.then.type if isinstance(w, WhenOp) else w.type for w in self.whens)
+        if len(types) > 1:
+            return OBJECT
+        else:
+            return list(types)[0]
 
 
 

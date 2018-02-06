@@ -294,7 +294,7 @@ def _normalize_selects(selects, frum, schema=None, ):
     if frum == None or isinstance(frum, (list, set, text_type)):
         if isinstance(selects, list):
             if len(selects) == 0:
-                return None
+                return Null
             else:
                 output = [_normalize_select_no_context(s, schema=schema) for s in selects]
         else:
@@ -394,7 +394,7 @@ def _normalize_select_no_context(select, schema=None):
         if output.name:
             output.value = jx_expression(".")
         else:
-            return None
+            return Null
     elif isinstance(select.value, text_type):
         if select.value.endswith(".*"):
             name = select.value[:-2]
