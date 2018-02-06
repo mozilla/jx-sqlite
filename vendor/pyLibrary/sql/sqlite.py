@@ -31,8 +31,7 @@ from mo_times import Date, Duration
 from mo_times.timer import Timer
 
 from pyLibrary import convert
-from pyLibrary.sql import DB, SQL
-
+from pyLibrary.sql import DB, SQL, SQL_TRUE, SQL_FALSE, SQL_NULL
 
 DEBUG = True
 TRACE = True
@@ -259,11 +258,11 @@ def quote_value(value):
     elif isinstance(value, text_type):
         return SQL("'" + value.replace("'", "''") + "'")
     elif value == None:
-        return SQL("NULL")
+        return SQL_NULL
     elif value is True:
-        return SQL("1")
+        return SQL_TRUE
     elif value is False:
-        return SQL("0")
+        return SQL_FALSE
     else:
         return SQL(text_type(value))
 

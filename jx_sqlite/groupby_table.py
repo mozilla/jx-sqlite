@@ -23,6 +23,7 @@ from mo_math import Math
 from jx_base.domains import DefaultDomain, TimeDomain, DurationDomain
 from jx_sqlite.expressions import Variable, sql_type_to_json_type, TupleOp
 from jx_sqlite.edges_table import EdgesTable
+from pyLibrary.sql import SQL_COMMA
 from pyLibrary.sql.sqlite import quote_value
 
 class GroupbyTable(EdgesTable):

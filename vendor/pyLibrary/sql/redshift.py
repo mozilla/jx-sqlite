@@ -141,7 +141,7 @@ class Redshift(object):
 
     def quote_value(self, value):
         if value ==None:
-            return SQL("NULL")
+            return SQL_NULL
         if isinstance(value, list):
             json = value2json(value)
             return self.quote_value(json)

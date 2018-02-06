@@ -556,7 +556,7 @@ class MySQL(object):
         """
         try:
             if value == None:
-                return SQL("NULL")
+                return SQL_NULL
             elif isinstance(value, SQL):
                 if not value.param:
                     # value.template CAN BE MORE THAN A TEMPLATE STRING

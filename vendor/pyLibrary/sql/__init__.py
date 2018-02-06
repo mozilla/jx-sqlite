@@ -64,8 +64,12 @@ SQL_AND = SQL(" AND ")
 SQL_OR = SQL(" OR ")
 SQL_COMMA = SQL(", ")
 SQL_UNION_ALL = SQL("\nUNION ALL\n")
-SQL_EMPTY_STRING = SQL('')
-
+SQL_EMPTY_STRING = SQL("''")
+SQL_TRUE = SQL("1")
+SQL_FALSE = SQL("0")
+SQL_ONE = SQL("1")
+SQL_ZERO = SQL("0")
+SQL_NULL = SQL("NULL")
 
 class DB(object):
 

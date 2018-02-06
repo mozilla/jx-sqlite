@@ -12,20 +12,20 @@ from __future__ import division
 from __future__ import unicode_literals
 
 from future.utils import text_type
-from mo_dots import coalesce, wrap, Null, split_field, startswith_field
+
+from jx_base import OBJECT
+from jx_base.expressions import Variable, DateOp, TupleOp, LeavesOp, BinaryOp, OrOp, InequalityOp, extend, Literal, NullOp, TrueOp, FalseOp, DivOp, FloorOp, \
+    NeOp, NotOp, LengthOp, NumberOp, StringOp, CountOp, MultiOp, RegExpOp, CoalesceOp, MissingOp, ExistsOp, \
+    PrefixOp, UnixOp, FromUnixOp, NotLeftOp, RightOp, NotRightOp, FindOp, InOp, RangeOp, CaseOp, AndOp, \
+    ConcatOp, LeftOp, EqOp, WhenOp, BasicIndexOfOp, IntegerOp, MaxOp, BasicSubstringOp, BasicEqOp, FALSE, MinOp, BooleanOp, SuffixOp
+from jx_base.queries import get_property_name
+from mo_dots import coalesce, wrap, Null, split_field
 from mo_dots import join_field, ROOT_PATH, relative_field, Data
 from mo_json import json2value
 from mo_logs import Log
 from mo_math import Math
 from pyLibrary import convert
-
-from jx_base.queries import get_property_name
-from jx_base.expressions import Variable, DateOp, TupleOp, LeavesOp, BinaryOp, OrOp, InequalityOp, extend, Literal, NullOp, TrueOp, FalseOp, DivOp, FloorOp, \
-    NeOp, NotOp, LengthOp, NumberOp, StringOp, CountOp, MultiOp, RegExpOp, CoalesceOp, MissingOp, ExistsOp, \
-    PrefixOp, UnixOp, FromUnixOp, NotLeftOp, RightOp, NotRightOp, FindOp, BetweenOp, InOp, RangeOp, CaseOp, AndOp, \
-    ConcatOp, LeftOp, EqOp, WhenOp, BasicIndexOfOp, IntegerOp, MaxOp, BasicSubstringOp, BasicEqOp, FALSE, MinOp, BooleanOp, SuffixOp
-from jx_base import STRUCT, OBJECT
-from pyLibrary.sql import SQL, SQL_AND, SQL_EMPTY_STRING, SQL_OR, SQL_COMMA
+from pyLibrary.sql import SQL, SQL_AND, SQL_EMPTY_STRING, SQL_OR, SQL_COMMA, SQL_TRUE, SQL_ZERO, SQL_FALSE, SQL_NULL
 from pyLibrary.sql.sqlite import quote_column, quote_value
 
 
@@ -34,14 +34,14 @@ def to_sql(self, schema, not_null=False, boolean=False):
     cols = [Data({cname: c}) for cname, cs in schema.map_to_sql(self.var).items() for c in cs]
     if not cols:
         # DOES NOT EXIST
-        return wrap([{"name": ".", "sql": {"0": "NULL"}, "nested_path": ROOT_PATH}])
+        return wrap([{"name": ".", "sql": {"0": SQL_NULL}, "nested_path": ROOT_PATH}])
     acc = {}
     if boolean:
         for col in cols:
             cname, col = col.items()[0]
             nested_path = col.nested_path[0]
             if col.type == OBJECT:
-                value = "1"
+                value = SQL_TRUE
             elif col.type == "boolean":
                 value = quote_column(col.es_column)
             else:
@@ -94,12 +94,12 @@ def to_sql(self, schema, not_null=False, boolean=False):
 
 @extend(TrueOp)
 def to_sql(self, schema, not_null=False, boolean=False):
-    return wrap([{"name": ".", "sql": {"b": "1"}}])
+    return wrap([{"name": ".", "sql": {"b": SQL_TRUE}}])
 
 
 @extend(FalseOp)
 def to_sql(self, schema, not_null=False, boolean=False):
-    return wrap([{"name": ".", "sql": {"b": "0"}}])
+    return wrap([{"name": ".", "sql": {"b": SQL_FALSE}}])
 
 
 @extend(DateOp)
@@ -310,7 +310,7 @@ def to_sql(self, schema, not_null=False, boolean=False):
 def to_sql(self, schema, not_null=False, boolean=False):
     sql = BooleanOp("boolean", self.term).partial_eval().to_sql(schema)[0].sql
     return wrap([{"name": ".", "sql": {
-        "0": "1",
+        "0": SQL_TRUE,
         "b": sql.b,
         "n": "(" + sql.n + ") IS NOT NULL",
         "s": "(" + sql.s + ") IS NOT NULL"
@@ -320,13 +320,13 @@ def to_sql(self, schema, not_null=False, boolean=False):
 @extend(AndOp)
 def to_sql(self, schema, not_null=False, boolean=False):
     if not self.terms:
-        return wrap([{"name": ".", "sql": {"b": "1"}}])
+        return wrap([{"name": ".", "sql": {"b": SQL_TRUE}}])
     elif all(self.terms):
         return wrap([{"name": ".", "sql": {
             "b": SQL_AND.join(["(" + t.to_sql(schema, boolean=True)[0].sql.b + ")" for t in self.terms])
         }}])
     else:
-        return wrap([{"name": ".", "sql": {"b": "0"}}])
+        return wrap([{"name": ".", "sql": {"b": SQL_FALSE}}])
 
 
 @extend(OrOp)
@@ -404,7 +404,7 @@ def to_sql(self, schema, not_null=False, boolean=False):
         elif t == "s":
             acc.append(v)
         else:
-            acc.append("CASE WHEN (" + test + ") THEN NULL ELSE RTRIM(RTRIM(CAST(" + v + " as TEXT), '0'), '.') END")
+            acc.append("CASE WHEN (" + test + ") THEN NULL ELSE RTRIM(RTRIM(CAST(" + v + " as TEXT), " + SQL_ZERO + "), " + quote_value('.') + ") END")
     if not acc:
         return wrap([{}])
     elif len(acc) == 1:
@@ -419,13 +419,13 @@ def to_sql(self, schema, not_null=False, boolean=False):
     for term in self.terms:
         sqls = term.to_sql(schema)
         if len(sqls) > 1:
-            acc.append("1")
+            acc.append(SQL_TRUE)
         else:
             for t, v in sqls[0].sql.items():
                 if t in ["b", "s", "n"]:
                     acc.append("CASE WHEN (" + v + ") IS NULL THEN 0 ELSE 1 END")
                 else:
-                    acc.append("1")
+                    acc.append(SQL_TRUE)
 
     if not acc:
         return wrap([{}])
@@ -436,16 +436,16 @@ def to_sql(self, schema, not_null=False, boolean=False):
 @extend(MultiOp)
 def to_sql(self, schema, not_null=False, boolean=False):
     terms = [t.to_sql(schema) for t in self.terms]
-    default = coalesce(self.default.to_sql(schema)[0].sql.n, "NULL")
+    default = coalesce(self.default.to_sql(schema)[0].sql.n, SQL_NULL)
 
     op, identity = MultiOp.operators[self.op]
     sql_terms = []
     for t in terms:
         if len(t) > 1:
-            return wrap([{"name": ".", "sql": {"0": "NULL"}}])
+            return wrap([{"name": ".", "sql": {"0": SQL_NULL}}])
         sql = t[0].sql.n
         if not sql:
-            return wrap([{"name": ".", "sql": {"0": "NULL"}}])
+            return wrap([{"name": ".", "sql": {"0": SQL_NULL}}])
         sql_terms.append(sql)
 
     if self.nulls.json == "true":
@@ -505,7 +505,7 @@ def to_sql(self, schema, not_null=False, boolean=False):
     field = self.expr.partial_eval().to_sql(schema)
 
     if len(field) > 1:
-        return wrap([{"name": ".", "sql": {"b": "0"}}])
+        return wrap([{"name": ".", "sql": {"b": SQL_FALSE}}])
 
     acc = []
     for c in field:
@@ -518,7 +518,7 @@ def to_sql(self, schema, not_null=False, boolean=False):
                 acc.append("(" + v + ") IS NULL")
 
     if not acc:
-        return wrap([{"name": ".", "sql": {"b": "1"}}])
+        return wrap([{"name": ".", "sql": {"b": SQL_TRUE}}])
     else:
         return wrap([{"name": ".", "sql": {"b": SQL_AND.join(acc)}}])
 
@@ -541,7 +541,7 @@ def to_sql(self, schema, not_null=False, boolean=False):
             else:
                 output[t] = "CASE WHEN " + when.b + " THEN " + then[t] + " ELSE " + els_[t] + " END"
     if not output:
-        return wrap([{"name": ".", "sql": {"0": "NULL"}}])
+        return wrap([{"name": ".", "sql": {"0": SQL_NULL}}])
     else:
         return wrap([{"name": ".", "sql": output}])
 
@@ -555,7 +555,7 @@ def to_sql(self, schema, not_null=False, boolean=False):
             acc.append("(" + v + " IS NOT NULL)")
 
     if not acc:
-        return wrap([{"name": ".", "sql": {"b": "0"}}])
+        return wrap([{"name": ".", "sql": {"b": SQL_FALSE}}])
     else:
         return wrap([{"name": ".", "sql": {"b": SQL_OR.join(acc)}}])
 
@@ -563,7 +563,7 @@ def to_sql(self, schema, not_null=False, boolean=False):
 @extend(PrefixOp)
 def to_sql(self, schema, not_null=False, boolean=False):
     if not self.field:
-        return wrap([{"name": ".", "sql": {"b": "1"}}])
+        return wrap([{"name": ".", "sql": {"b": SQL_TRUE}}])
     else:
         return wrap([{"name": ".", "sql": {
             "b": "INSTR(" + self.field.to_sql(schema)[0].sql.s + ", " + self.prefix.to_sql(schema)[0].sql.s + ")==1"
@@ -573,9 +573,9 @@ def to_sql(self, schema, not_null=False, boolean=False):
 @extend(SuffixOp)
 def to_sql(self, schema, not_null=False, boolean=False):
     if not self.field:
-        return wrap([{"name": ".", "sql": {"b": "1"}}])
+        return wrap([{"name": ".", "sql": {"b": SQL_TRUE}}])
     elif isinstance(self.suffix, Literal) and not self.suffix.value:
-        return wrap([{"name": ".", "sql": {"b": "1"}}])
+        return wrap([{"name": ".", "sql": {"b": SQL_TRUE}}])
     else:
         return EqOp(
             "eq",
@@ -591,7 +591,7 @@ def to_sql(self, schema, not_null=False, boolean=False):
     defult = self.default.to_sql(schema)
     if len(self.terms) == 0:
         return defult
-    defult = coalesce(defult[0].sql, "NULL")
+    defult = coalesce(defult[0].sql, SQL_NULL)
     sep = self.separator.to_sql(schema)[0].sql.s
 
     acc = []
@@ -708,7 +708,7 @@ def to_sql(self, schema, not_null=False, boolean=False):
                 "b": "INSTR(SUBSTR(" + value + "," + start_index + "+1)," + find + ")"
             }}])
     else:
-        default = self.default.to_sql(schema, not_null=True)[0].sql.n if self.default else "NULL"
+        default = self.default.to_sql(schema, not_null=True)[0].sql.n if self.default else SQL_NULL
         test = self.to_sql(schema, boolean=True)[0].sql.b
         if start_index == "0":
             index = "INSTR(" + value + "," + find + ")-1"
@@ -728,7 +728,7 @@ def to_sql(self, schema, not_null=False, boolean=False):
         var = self.value.to_sql(schema)
         return SQL_OR.join("(" + var + "==" + quote_value(v) + ")" for v in j_value)
     else:
-        return wrap([{"name": ".", "sql": {"b": "0"}}])
+        return wrap([{"name": ".", "sql": {"b": SQL_FALSE}}])
 
 
 @extend(RangeOp)
@@ -749,7 +749,7 @@ def to_sql(self, schema, not_null=False, boolean=False):
             else:
                 output[t] = "CASE WHEN " + when.b + " THEN " + then[t] + " ELSE " + els_[t] + " END"
     if not output:
-        return wrap([{"name": ".", "sql": {"0": "NULL"}}])
+        return wrap([{"name": ".", "sql": {"0": SQL_NULL}}])
     else:
         return wrap([{"name": ".", "sql": output}])
 
@@ -761,10 +761,10 @@ def to_sql(self, schema, not_null=False, boolean=False):
 
     output = {}
     for t in "bsn":  # EXPENSIVE LOOP to_sql() RUN 3 TIMES
-        els_ = coalesce(self.whens[-1].to_sql(schema)[0].sql[t], "NULL")
+        els_ = coalesce(self.whens[-1].to_sql(schema)[0].sql[t], SQL_NULL)
         acc = " ELSE " + els_ + " END"
         for w in reversed(self.whens[0:-1]):
-            acc = " WHEN " + w.when.to_sql(schema, boolean=True)[0].sql.b + " THEN " + coalesce(w.then.to_sql(schema)[0].sql[t], "NULL") + acc
+            acc = " WHEN " + w.when.to_sql(schema, boolean=True)[0].sql.b + " THEN " + coalesce(w.then.to_sql(schema)[0].sql[t], SQL_NULL) + acc
         output[t] = "CASE" + acc
     return wrap([{"name": ".", "sql": output}])
 
