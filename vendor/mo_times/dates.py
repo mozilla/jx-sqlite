@@ -18,9 +18,8 @@ from datetime import datetime, date, timedelta
 from decimal import Decimal
 from time import time as _time
 
-from mo_future import text_type, PY3, long
-
 from mo_dots import Null
+from mo_future import unichr, text_type, long
 from mo_logs import Except
 from mo_logs.strings import deformat
 
@@ -440,19 +439,12 @@ def _unix2Date(unix):
     return output
 
 
-if PY3:
-    delchars = "".join(c for c in map(chr, range(256)) if not c.isalnum())
-else:
-    delchars = "".join(c.decode("latin1") for c in map(chr, range(256)) if not c.decode("latin1").isalnum())
+delchars = "".join(c for c in map(unichr, range(256)) if not c.isalnum())
 
 
 def deformat(value):
     """
     REMOVE NON-ALPHANUMERIC CHARACTERS
-
-    FOR SOME REASON translate CAN NOT BE CALLED:
-        ERROR: translate() takes exactly one argument (2 given)
-        File "C:\\Python27\\lib\\string.py", line 493, in translate
     """
     output = []
     for c in value:

@@ -67,14 +67,14 @@ def float2json(value):
         int_exp = int(str_exp)
         digits = _snap_to_base_10(mantissa)
         if int_exp > 15:
-            return sign + digits[0] + '.' + digits[1:].rstrip('0') + u"e" + text_type(int_exp)
+            return sign + digits[0] + '.' + (digits[1:].rstrip('0') or '0') + u"e" + text_type(int_exp)
         elif int_exp >= 0:
             return sign + (digits[:1 + int_exp] + '.' + digits[1 + int_exp:].rstrip('0')).rstrip('.')
         elif -4 < int_exp:
             digits = ("0" * (-int_exp)) + digits
             return sign + (digits[:1] + '.' + digits[1:].rstrip('0')).rstrip('.')
         else:
-            return sign + digits[0] + '.' + digits[1:].rstrip('0') + u"e" + text_type(int_exp)
+            return sign + digits[0] + '.' + (digits[1:].rstrip('0') or '0') + u"e" + text_type(int_exp)
     except Exception as e:
         from mo_logs import Log
         Log.error("not expected", e)

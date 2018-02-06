@@ -86,11 +86,13 @@ class Redshift(object):
         keys = record.keys()
 
         try:
-            command = "INSERT INTO " + self.quote_column(table_name) + "(" + \
-                      ",".join([self.quote_column(k) for k in keys]) + \
-                      ") VALUES (" + \
-                      ",".join([self.quote_value(record[k]) for k in keys]) + \
-                      ")"
+            command = (
+                "INSERT INTO " + self.quote_column(table_name) + "(" +
+                ",".join([self.quote_column(k) for k in keys]) +
+                ") VALUES (" +
+                ",".join([self.quote_value(record[k]) for k in keys]) +
+                ")"
+            )
 
             self.execute(command)
         except Exception as e:
@@ -112,13 +114,14 @@ class Redshift(object):
                 {"ids": self.quote_column([r["_id"] for r in records])}
             )
 
-            command = \
-                "INSERT INTO " + self.quote_column(table_name) + "(" + \
-                ",".join([self.quote_column(k) for k in columns]) + \
+            command = (
+                "INSERT INTO " + self.quote_column(table_name) + "(" +
+                ",".join([self.quote_column(k) for k in columns]) +
                 ") VALUES " + ",\n".join([
-                    "(" + ",".join([self.quote_value(r.get(k, None)) for k in columns]) + ")"
-                    for r in records
-                ])
+                "(" + ",".join([self.quote_value(r.get(k, None)) for k in columns]) + ")"
+                for r in records
+            ])
+            )
             self.execute(command)
         except Exception as e:
             Log.error("problem with insert", e)

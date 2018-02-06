@@ -488,7 +488,7 @@ class MySQL(object):
             ",".join([self.quote_column(k) for k in new_record.keys()]) +
             ")\n" +
             "SELECT a.* FROM (SELECT " + ",".join([self.quote_value(v) + " " + self.quote_column(k) for k, v in new_record.items()]) + " FROM DUAL) a\n" +
-            "LEFT JOIN " +
+            SQL_LEFT_JOIN +
             "(SELECT 'dummy' exist FROM " + self.quote_column(table_name) + " WHERE " + condition + " LIMIT 1) b ON 1=1 WHERE exist IS Null"
         )
         self.execute(command, {})

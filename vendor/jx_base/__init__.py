@@ -14,7 +14,7 @@ from __future__ import unicode_literals
 from collections import Mapping
 from uuid import uuid4
 
-from mo_dots import NullType, Data
+from mo_dots import NullType, Data, FlatList
 from mo_future import text_type, none_type, PY2, long
 from mo_times import Date
 
@@ -45,6 +45,7 @@ python_type_to_json_type = {
     object: OBJECT,
     Mapping: OBJECT,
     list: NESTED,
+    FlatList: NESTED,
     Date: NUMBER
 }
 

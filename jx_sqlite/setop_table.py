@@ -24,7 +24,7 @@ from jx_sqlite.insert_table import InsertTable
 from jx_base import STRUCT
 from jx_sqlite.expressions import sql_type_to_json_type, LeavesOp
 from jx_python.meta import Column
-from pyLibrary.sql import SQL_COMMA, SQL_UNION_ALL
+from pyLibrary.sql import SQL_COMMA, SQL_UNION_ALL, SQL_LEFT_JOIN
 from pyLibrary.sql.sqlite import quote_value, quote_column
 
 
@@ -591,8 +591,10 @@ class SetOpTable(InsertTable):
                 if nested_path == ".":
                     from_clause += "\nFROM " + quote_table(self.sf.fact) + " " + alias + "\n"
                 else:
-                    from_clause += "\nLEFT JOIN " + quote_table(concat_field(self.sf.fact,sub_table.name)) + " " + alias + "\n" \
-                                                                                                " ON " + alias + "." + quoted_PARENT + " = " + parent_alias + "." + quoted_UID + "\n"
+                    from_clause += (
+                        SQL_LEFT_JOIN + quote_table(concat_field(self.sf.fact, sub_table.name)) + " " + alias + "\n" +
+                        " ON " + alias + "." + quoted_PARENT + " = " + parent_alias + "." + quoted_UID + "\n"
+                    )
                     where_clause = "(" + where_clause + ") AND " + alias + "." + quote_table(ORDER) + " > 0\n"
                 parent_alias = alias
 
@@ -603,17 +605,21 @@ class SetOpTable(InsertTable):
                     from_clause += "\nFROM " + quote_table(self.sf.fact) + " " + alias + "\n"
                 else:
                     parent_alias = alias = unichr(ord('a') + i - 1)
-                    from_clause += "\nLEFT JOIN " + quote_table(concat_field(self.sf.fact,sub_table.name)) + " " + alias + \
-                                   " ON " + alias + "." + quoted_PARENT + " = " + parent_alias + "." + quoted_UID
+                    from_clause += (
+                        SQL_LEFT_JOIN + quote_table(concat_field(self.sf.fact, sub_table.name)) + " " + alias +
+                        " ON " + alias + "." + quoted_PARENT + " = " + parent_alias + "." + quoted_UID
+                    )
                     where_clause = "(" + where_clause + ") AND " + parent_alias + "." + quote_table(ORDER) + " > 0\n"
                 parent_alias = alias
 
             elif startswith_field(nested_path, primary_nested_path):
                 # CHILD TABLE
                 # GET FIRST ROW FOR EACH NESTED TABLE
-                from_clause += "\nLEFT JOIN " + quote_table(concat_field(self.sf.fact,sub_table.name)) + " " + alias + \
-                               " ON " + alias + "." + quoted_PARENT + " = " + parent_alias + "." + quoted_UID + \
-                               " AND " + alias + "." + quote_table(ORDER) + " = 0\n"
+                from_clause += (
+                    SQL_LEFT_JOIN + quote_table(concat_field(self.sf.fact, sub_table.name)) + " " + alias +
+                    " ON " + alias + "." + quoted_PARENT + " = " + parent_alias + "." + quoted_UID +
+                    " AND " + alias + "." + quote_table(ORDER) + " = 0\n"
+                )
 
                 # IMMEDIATE CHILDREN ONLY
                 done.append(nested_path)

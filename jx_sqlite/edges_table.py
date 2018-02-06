@@ -22,7 +22,7 @@ from mo_dots import listwrap, coalesce, split_field, join_field, startswith_fiel
 from mo_future import text_type, unichr
 from mo_logs import Log
 from mo_math import Math
-from pyLibrary.sql import SQL, SQL_AND, SQL_COMMA, SQL_OR, SQL_UNION_ALL
+from pyLibrary.sql import SQL, SQL_AND, SQL_COMMA, SQL_OR, SQL_UNION_ALL, SQL_LEFT_JOIN
 from pyLibrary.sql.sqlite import quote_value, quote_column
 
 
@@ -51,7 +51,7 @@ class EdgesTable(SetOpTable):
         previous = tables[0]
         for t in tables[1::]:
             from_sql += (
-                "\nLEFT JOIN\n" + quote_table(concat_field(base_table, t.nest)) + " " + t.alias +
+                SQL_LEFT_JOIN + quote_table(concat_field(base_table, t.nest)) + " " + t.alias +
                 " ON " + t.alias + "." + PARENT + " = " + previous.alias + "." + UID
             )
 
@@ -146,7 +146,7 @@ class EdgesTable(SetOpTable):
                         domain += "\nUNION ALL\nSELECT " + quote_value(
                             len(query_edge.domain.partitions)) + " AS rownum, NULL AS " + domain_name
                     where = None
-                    join_type = "LEFT JOIN" if query_edge.allowNulls else "JOIN"
+                    join_type = SQL_LEFT_JOIN if query_edge.allowNulls else "JOIN"
                     on_clause = (
                         SQL_OR.join(
                             edge_alias + "." + k + " = " + v
@@ -164,7 +164,7 @@ class EdgesTable(SetOpTable):
                         enumerate(query_edge.domain.partitions)
                     )
                     where = None
-                    join_type = "LEFT JOIN" if query_edge.allowNulls else "JOIN"
+                    join_type = SQL_LEFT_JOIN if query_edge.allowNulls else "JOIN"
                     on_clause = SQL_AND.join(
                         edge_alias + "." + k + " = " + sql
                         for k, (t, sql) in zip(domain_names, edge_values)
@@ -179,11 +179,13 @@ class EdgesTable(SetOpTable):
                 if len(edge_names) == 1:
                     domain = self._make_range_domain(domain=d, column_name=domain_name)
                     limit = Math.min(query.limit, query_edge.domain.limit)
-                    domain += "\nORDER BY \n" + SQL_COMMA.join(vals) + \
-                              "\nLIMIT " + text_type(limit)
+                    domain += (
+                        "\nORDER BY \n" + SQL_COMMA.join(vals) +
+                        "\nLIMIT " + text_type(limit)
+                    )
 
                     where = None
-                    join_type = "LEFT JOIN" if query_edge.allowNulls else "JOIN"
+                    join_type = SQL_LEFT_JOIN if query_edge.allowNulls else "JOIN"
                     on_clause = SQL_AND.join(
                         edge_alias + "." + k + " <= " + v + " AND " + v + " < (" + edge_alias + "." + k + " + " + text_type(
                             d.interval) + ")"
@@ -194,13 +196,16 @@ class EdgesTable(SetOpTable):
                     query_edge.allowNulls = False
                     domain = self._make_range_domain(domain=d, column_name=domain_name)
                     limit = Math.min(query.limit, query_edge.domain.limit)
-                    domain += "\nORDER BY \n" + SQL_COMMA.join(vals) + \
-                              "\nLIMIT " + text_type(limit)
+                    domain += (
+                        "\nORDER BY \n" + SQL_COMMA.join(vals) +
+                        "\nLIMIT " + text_type(limit)
+                    )
                     where = None
-                    join_type = "LEFT JOIN" if query_edge.allowNulls else "JOIN"
-                    on_clause = edge_alias + "." + domain_name + " < " + edge_values[1][1] + " AND " + \
-                                edge_values[0][1] + " < (" + edge_alias + "." + domain_name + " + " + text_type(
-                        d.interval) + ")"
+                    join_type = SQL_LEFT_JOIN if query_edge.allowNulls else "JOIN"
+                    on_clause = (
+                        edge_alias + "." + domain_name + " < " + edge_values[1][1] + " AND " +
+                        edge_values[0][1] + " < (" + edge_alias + "." + domain_name + " + " + text_type(d.interval) + ")"
+                    )
                     not_on_clause = None
                 else:
                     Log.error("do not know how to handle")
@@ -226,7 +231,7 @@ class EdgesTable(SetOpTable):
                     "\nLIMIT " + text_type(limit)
                 )
                 where = None
-                join_type = "LEFT JOIN" if query_edge.allowNulls else "JOIN"
+                join_type = SQL_LEFT_JOIN if query_edge.allowNulls else "JOIN"
                 on_clause = SQL_AND.join(
                     "((" + edge_alias + "." + k + " IS NULL AND " + v + " IS NULL) OR " + edge_alias + "." + k + " = " + v + ")"
                     for k, v in zip(domain_names, vals)
@@ -261,7 +266,7 @@ class EdgesTable(SetOpTable):
                 domain += ")"
 
                 where = None
-                join_type = "LEFT JOIN" if query_edge.allowNulls else "JOIN"
+                join_type = SQL_LEFT_JOIN if query_edge.allowNulls else "JOIN"
                 on_clause = (
                     # "__exists__ AND " +
                     SQL_OR.join(  # "OR" IS FOR MATCHING DIFFERENT TYPES OF SAME NAME
@@ -297,7 +302,7 @@ class EdgesTable(SetOpTable):
                         ) + ")"
                     )
                     where = None
-                    join_type = "LEFT JOIN" if query_edge.allowNulls else "JOIN"
+                    join_type = SQL_LEFT_JOIN if query_edge.allowNulls else "JOIN"
                     if query_edge.allowNulls:
                         not_on_clause = None
                     else:
@@ -415,7 +420,7 @@ class EdgesTable(SetOpTable):
                                 union_join_sql += " FROM " + union_next_table + " AS " + union_table_alias
                             else:
                                 union_join_sql += (
-                                    "\nLEFT JOIN " + union_next_table +
+                                    SQL_LEFT_JOIN + union_next_table +
                                     "\nON " + union_next_table + "." + PARENT + " = " + union_prev_table + "." + UID
                                 )
                             union_prev_table = union_next_table
@@ -430,7 +435,7 @@ class EdgesTable(SetOpTable):
                         else:
                             ons.append(SQL_AND.join(union_table_alias + "." + g + "=" + tables[0].alias + "." + g for g in groupby))
                             # Log.error("do not know how to handle yet")
-                        join_types.append("LEFT JOIN")
+                        join_types.append(SQL_LEFT_JOIN)
                         if not query.edges:
                             query.edges = []
                         query.edges.append(Data(allowNulls=False, domain=UnitDomain()))
@@ -530,8 +535,8 @@ class EdgesTable(SetOpTable):
             # ALL COORDINATES MISSED BY primary DATA
             part = "SELECT " + (SQL_COMMA.join(outer_selects)) + "\nFROM\n" + missing_domain[0]
             for s in missing_domain[1:]:
-                part += "\nLEFT JOIN\n" + s + "\nON 1=1\n"
-            part += "\nLEFT JOIN\n" + primary + "\nON (" + SQL(") AND (").join(ons) + ")"
+                part += SQL_LEFT_JOIN + s + "\nON 1=1\n"
+            part += SQL_LEFT_JOIN + primary + "\nON (" + SQL(") AND (").join(ons) + ")"
             part += "\nWHERE " + SQL_AND.join("(" + w + ")" for w in not_ons if w)
             if groupby:
                 part += "\nGROUP BY\n" + SQL_COMMA.join(groupby)
@@ -555,19 +560,26 @@ class EdgesTable(SetOpTable):
 
         if domain.interval == 1:
             if domain.min == 0:
-                domain = "SELECT " + value + " " + column_name + \
-                         "\nFROM __digits__ a"
+                domain = (
+                    "SELECT " + value + " " + column_name +
+                    "\nFROM __digits__ a"
+                )
             else:
-                domain = "SELECT (" + value + ") + " + quote_value(domain.min) + " " + column_name + \
-                         "\nFROM __digits__ a"
+                domain = (
+                    "SELECT (" + value + ") + " + quote_value(domain.min) + " " + column_name +
+                    "\nFROM __digits__ a"
+                )
         else:
             if domain.min == 0:
-                domain = "SELECT " + value + " * " + quote_value(domain.interval) + " " + column_name + \
-                         "\nFROM __digits__ a"
+                domain = (
+                    "SELECT " + value + " * " + quote_value(domain.interval) + " " + column_name +
+                    "\nFROM __digits__ a"
+                )
             else:
-                domain = "SELECT (" + value + " * " + quote_value(domain.interval) + ") + " + quote_value(
-                    domain.min) + " " + column_name + \
-                         "\nFROM __digits__ a"
+                domain = (
+                    "SELECT (" + value + " * " + quote_value(domain.interval) + ") + " + quote_value(domain.min) + " " + column_name +
+                    "\nFROM __digits__ a"
+                )
 
         for j in range(digits):
             domain += "\nJOIN __digits__ " + text_type(chr(ord(b'a') + j + 1)) + " ON 1=1"

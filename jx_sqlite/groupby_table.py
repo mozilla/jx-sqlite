@@ -23,7 +23,7 @@ from mo_math import Math
 from jx_base.domains import DefaultDomain, TimeDomain, DurationDomain
 from jx_sqlite.expressions import Variable, sql_type_to_json_type, TupleOp
 from jx_sqlite.edges_table import EdgesTable
-from pyLibrary.sql import SQL_COMMA
+from pyLibrary.sql import SQL_COMMA, SQL_LEFT_JOIN
 from pyLibrary.sql.sqlite import quote_value
 
 class GroupbyTable(EdgesTable):
@@ -47,7 +47,7 @@ class GroupbyTable(EdgesTable):
         previous = tables[0]
         for t in tables[1::]:
             from_sql += (
-                "\nLEFT JOIN\n" + quote_table(concat_field(base_table, t.nest)) + " " + t.alias +
+                SQL_LEFT_JOIN + quote_table(concat_field(base_table, t.nest)) + " " + t.alias +
                 " ON " + t.alias + "." + PARENT + " = " + previous.alias + "." + UID
             )
 
@@ -106,10 +106,12 @@ class GroupbyTable(EdgesTable):
 
         where = query.where.to_sql(schema)[0].sql.b
 
-        command = "SELECT\n" + (SQL_COMMA.join(selects)) + \
-                  "\nFROM\n" + from_sql + \
-                  "\nWHERE\n" + where + \
-                  "\nGROUP BY\n" + SQL_COMMA.join(groupby)
+        command = (
+            "SELECT\n" + (SQL_COMMA.join(selects)) +
+            "\nFROM\n" + from_sql +
+            "\nWHERE\n" + where +
+            "\nGROUP BY\n" + SQL_COMMA.join(groupby)
+        )
 
         if query.sort:
             command += "\nORDER BY " + SQL_COMMA.join(

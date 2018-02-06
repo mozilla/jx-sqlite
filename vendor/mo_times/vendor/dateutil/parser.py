@@ -9,21 +9,17 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
-__license__ = "Simplified BSD"
-
-
+import collections
 import datetime
 import string
 import time
-import collections
 
-
-from mo_future import text_type, StringIO, integer_types, binary_type
+from mo_future import text_type, integer_types, binary_type, StringIO
 
 from . import relativedelta
 from . import tz
 
-
+__license__ = "Simplified BSD"
 __all__ = ["parse", "parserinfo"]
 
 

@@ -182,8 +182,15 @@ def get_json(url, **kwargs):
     ASSUME RESPONSE IN IN JSON
     """
     response = get(url, **kwargs)
-    c = response.all_content
-    return mo_json.json2value(convert.utf82unicode(c))
+    try:
+        c = response.all_content
+        return mo_json.json2value(convert.utf82unicode(c))
+    except Exception as e:
+        if Math.round(response.status_code, decimal=-2) not in [400, 500]:
+            Log.error("Good GET requests, but bad JSON", cause=e)
+        else:
+            Log.error("Bad GET response: {{code}}", code=response.status_code)
+
 
 def options(url, **kwargs):
     kwargs.setdefault(b'allow_redirects', True)

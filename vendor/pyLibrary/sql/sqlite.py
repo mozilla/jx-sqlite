@@ -14,7 +14,6 @@ from __future__ import unicode_literals
 
 import os
 import re
-import sqlite3
 import sys
 from collections import Mapping
 
@@ -38,23 +37,30 @@ TRACE = True
 DEBUG_EXECUTE = True
 DEBUG_INSERT = False
 
+sqlite3 = None
+
 _load_extension_warning_sent = False
 _upgraded = False
 
 
 def _upgrade():
     global _upgraded
-    _upgraded = True
+    global sqlite3
+
     try:
         import sys
 
         sqlite_dll = File.new_instance(sys.exec_prefix, "dlls/sqlite3.dll")
         python_dll = File("vendor/pyLibrary/vendor/sqlite/sqlite3.dll")
-        if all(a==b for a, b in zip_longest(python_dll.read_bytes(), sqlite_dll.read_bytes())):
+        if not all(a==b for a, b in zip_longest(python_dll.read_bytes(), sqlite_dll.read_bytes())):
             backup = sqlite_dll.backup()
             File.copy(python_dll, sqlite_dll)
     except Exception as e:
         Log.warning("could not upgrade python's sqlite", cause=e)
+
+    import sqlite3
+    _ = sqlite3
+    _upgraded = True
 
 
 class Sqlite(DB):

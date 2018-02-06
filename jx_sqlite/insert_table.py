@@ -81,21 +81,23 @@ class InsertTable(BaseTable):
                 extra_key_name = UID_PREFIX + "id" + text_type(len(self.uid))
                 extra_key = [e for e in nested_table.columns[extra_key_name]][0]
 
-                sql_command = "DELETE FROM " + quote_table(nested_table.name) + \
-                              "\nWHERE EXISTS (" + \
-                              "\nSELECT 1 " + \
-                              "\nFROM " + quote_table(nested_table.name) + " n" + \
-                              "\nJOIN (" + \
-                              "\nSELECT " + self_primary_key + \
-                              "\nFROM " + quote_table(self.sf.fact) + \
-                              "\nWHERE " + where_sql + \
-                              "\n) t ON " + \
-                              SQL_AND.join(
-                                  "t." + quote_table(c.es_column) + " = n." + quote_table(c.es_column)
-                                  for u in self.uid
-                                  for c in self.columns[u]
-                              ) + \
-                              ")"
+                sql_command = (
+                    "DELETE FROM " + quote_table(nested_table.name) +
+                    "\nWHERE EXISTS (" +
+                    "\nSELECT 1 " +
+                    "\nFROM " + quote_table(nested_table.name) + " n" +
+                    "\nJOIN (" +
+                    "\nSELECT " + self_primary_key +
+                    "\nFROM " + quote_table(self.sf.fact) +
+                    "\nWHERE " + where_sql +
+                    "\n) t ON " +
+                    SQL_AND.join(
+                        "t." + quote_table(c.es_column) + " = n." + quote_table(c.es_column)
+                        for u in self.uid
+                        for c in self.columns[u]
+                    ) +
+                    ")"
+                )
                 self.db.execute(sql_command)
 
                 # INSERT NEW RECORDS
@@ -106,20 +108,23 @@ class InsertTable(BaseTable):
                 for d in listwrap(nested_value):
                     nested_table.flatten(d, Data(), doc_collection, path=nested_column_name)
 
-                prefix = "INSERT INTO " + quote_table(nested_table.name) + \
-                         "(" + \
-                         self_primary_key + "," + \
-                         quote_column(extra_key) + "," + \
-                         SQL_COMMA.join(
-                             quote_table(c.es_column)
-                             for c in doc_collection.get(".", Null).active_columns
-                         ) + ")"
+                prefix = (
+                    "INSERT INTO " + quote_table(nested_table.name) + "(" +
+                    self_primary_key + "," +
+                    quote_column(extra_key) + "," +
+                    SQL_COMMA.join(
+                        quote_table(c.es_column)
+                        for c in doc_collection.get(".", Null).active_columns
+                    ) +
+                    ")"
+                )
 
                 # BUILD THE PARENT TABLES
-                parent = "\nSELECT " + \
-                         self_primary_key + \
-                         "\nFROM " + quote_table(self.sf.fact) + \
-                         "\nWHERE " + jx_expression(command.where).to_sql()
+                parent = (
+                    "\nSELECT " + self_primary_key +
+                    "\nFROM " + quote_table(self.sf.fact) +
+                    "\nWHERE " + jx_expression(command.where).to_sql()
+                )
 
                 # BUILD THE RECORDS
                 children = SQL_UNION_ALL.join(
@@ -132,20 +137,22 @@ class InsertTable(BaseTable):
                     for i, row in enumerate(doc_collection.get(".", Null).rows)
                 )
 
-                sql_command = prefix + \
-                              "\nSELECT " + \
-                              SQL_COMMA.join(
-                                  "p." + quote_table(c.es_column)
-                                  for u in self.uid for c in self.columns[u]
-                              ) + "," + \
-                              "c." + quote_column(extra_key) + "," + \
-                              SQL_COMMA.join(
-                                  "c." + quote_table(c.es_column)
-                                  for c in doc_collection.get(".", Null).active_columns
-                              ) + \
-                              "\nFROM (" + parent + ") p " + \
-                              "\nJOIN (" + children + \
-                              "\n) c on 1=1"
+                sql_command = (
+                    prefix +
+                    "\nSELECT " +
+                    SQL_COMMA.join(
+                        "p." + quote_table(c.es_column)
+                        for u in self.uid for c in self.columns[u]
+                    ) + "," +
+                    "c." + quote_column(extra_key) + "," +
+                    SQL_COMMA.join(
+                        "c." + quote_table(c.es_column)
+                        for c in doc_collection.get(".", Null).active_columns
+                    ) +
+                    "\nFROM (" + parent + ") p " +
+                    "\nJOIN (" + children +
+                    "\n) c on 1=1"
+                )
 
                 self.db.execute(sql_command)
 
@@ -357,8 +364,10 @@ class InsertTable(BaseTable):
 
             all_columns = meta_columns + active_columns.es_column
 
-            prefix = "INSERT INTO " + quote_table(table_name) + \
-                     "(" + SQL_COMMA.join(map(quote_table, all_columns)) + ")"
+            prefix = (
+                "INSERT INTO " + quote_table(table_name) +
+                "(" + SQL_COMMA.join(map(quote_table, all_columns)) + ")"
+            )
 
             # BUILD THE RECORDS
             records = SQL_UNION_ALL.join(

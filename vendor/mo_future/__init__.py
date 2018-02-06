@@ -34,6 +34,7 @@ if PY3:
     integer_types = int
     number_types = (int, float)
     long = int
+    unichr = chr
 
     xrange = range
     filter_type = type(filter(lambda x: True, []))
@@ -92,6 +93,7 @@ else:
     integer_types = (int, long)
     number_types = (int, long, float)
     long = __builtin__.long
+    unichr = __builtin__.unichr
 
     xrange = __builtin__.xrange
     generator_types = (GeneratorType,)

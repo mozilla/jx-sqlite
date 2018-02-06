@@ -27,6 +27,7 @@ from jx_base import STRUCT
 from jx_python.meta import Column
 from jx_base.query import QueryOp
 from jx_sqlite.groupby_table import GroupbyTable
+from pyLibrary.sql import SQL_COMMA
 
 
 class QueryTable(GroupbyTable):
@@ -414,19 +415,23 @@ class QueryTable(GroupbyTable):
     def _window_op(self, query, window):
         # http://www2.sqlite.org/cvstrac/wiki?p=UnsupportedSqlAnalyticalFunctions
         if window.value == "rownum":
-            return "ROW_NUMBER()-1 OVER (" + \
-                   " PARTITION BY " + (SQL_COMMA.join(window.edges.values)) + \
-                   " ORDER BY " + (SQL_COMMA.join(window.edges.sort)) + \
-                   ") AS " + quote_table(window.name)
+            return (
+                "ROW_NUMBER()-1 OVER (" +
+                " PARTITION BY " + (SQL_COMMA.join(window.edges.values)) +
+                " ORDER BY " + (SQL_COMMA.join(window.edges.sort)) +
+                ") AS " + quote_table(window.name)
+            )
 
         range_min = text_type(coalesce(window.range.min, "UNBOUNDED"))
         range_max = text_type(coalesce(window.range.max, "UNBOUNDED"))
 
-        return sql_aggs[window.aggregate] + "(" + window.value.to_sql() + ") OVER (" + \
-               " PARTITION BY " + (SQL_COMMA.join(window.edges.values)) + \
-               " ORDER BY " + (SQL_COMMA.join(window.edges.sort)) + \
-               " ROWS BETWEEN " + range_min + " PRECEDING AND " + range_max + " FOLLOWING " + \
-               ") AS " + quote_table(window.name)
+        return (
+            sql_aggs[window.aggregate] + "(" + window.value.to_sql() + ") OVER (" +
+            " PARTITION BY " + (SQL_COMMA.join(window.edges.values)) +
+            " ORDER BY " + (SQL_COMMA.join(window.edges.sort)) +
+            " ROWS BETWEEN " + range_min + " PRECEDING AND " + range_max + " FOLLOWING " +
+            ") AS " + quote_table(window.name)
+        )
 
     def _normalize_select(self, select):
         output = []
