@@ -62,6 +62,7 @@ class SQL(text_type):
 
 SQL_AND = SQL(" AND ")
 SQL_OR = SQL(" OR ")
+SQL_ON = SQL(" ON ")
 SQL_COMMA = SQL(", ")
 SQL_UNION_ALL = SQL("\nUNION ALL\n")
 SQL_LEFT_JOIN = SQL("\nLEFT JOIN\n")

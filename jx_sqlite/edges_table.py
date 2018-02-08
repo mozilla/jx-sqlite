@@ -13,16 +13,16 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
-from jx_base.domains import DefaultDomain, TimeDomain, DurationDomain, UnitDomain
+from jx_base.domains import DefaultDomain, TimeDomain, DurationDomain
 from jx_python import jx
 from jx_sqlite import UID, quote_table, get_column, _make_column_name, sql_text_array_to_set, STATS, sql_aggs, PARENT, ColumnMapping, untyped_column
 from jx_sqlite.expressions import Variable, sql_type_to_json_type, TupleOp
 from jx_sqlite.setop_table import SetOpTable
-from mo_dots import listwrap, coalesce, split_field, join_field, startswith_field, relative_field, concat_field, Data
+from mo_dots import listwrap, coalesce, split_field, join_field, startswith_field, relative_field, concat_field
 from mo_future import text_type, unichr
 from mo_logs import Log
 from mo_math import Math
-from pyLibrary.sql import SQL, SQL_AND, SQL_COMMA, SQL_OR, SQL_UNION_ALL, SQL_LEFT_JOIN, SQL_INNER_JOIN, SQL_GROUPBY, SQL_WHERE, SQL_FROM, SQL_SELECT, SQL_LIMIT, SQL_ORDERBY
+from pyLibrary.sql import SQL, SQL_AND, SQL_COMMA, SQL_OR, SQL_UNION_ALL, SQL_LEFT_JOIN, SQL_INNER_JOIN, SQL_GROUPBY, SQL_WHERE, SQL_FROM, SQL_SELECT, SQL_LIMIT, SQL_ORDERBY, SQL_ON
 from pyLibrary.sql.sqlite import quote_value, quote_column
 
 
@@ -52,7 +52,7 @@ class EdgesTable(SetOpTable):
         for t in tables[1::]:
             from_sql += (
                 SQL_LEFT_JOIN + quote_table(concat_field(base_table, t.nest)) + " " + t.alias +
-                " ON " + t.alias + "." + PARENT + " = " + previous.alias + "." + UID
+                SQL_ON + t.alias + "." + PARENT + " = " + previous.alias + "." + UID
             )
 
         main_filter = query.where.to_sql(schema, boolean=True)[0].sql.b
@@ -82,7 +82,7 @@ class EdgesTable(SetOpTable):
                     w = p.where.to_sql(schema)[0].sql.b
                     t = quote_value(pp)
                     case += " WHEN " + w + " THEN " + t
-                case += " ELSE NULL END "   # quote value with length of partitions
+                case += " ELSE NULL END "  # quote value with length of partitions
                 edge_values = [("n", case)]
 
             elif query_edge.range:
@@ -155,7 +155,7 @@ class EdgesTable(SetOpTable):
                             edge_alias + "." + k + " = " + v
                             for k, v in zip(domain_names, vals)
                         ) +
-                        " OR (" +
+                        SQL_OR + "(" +
                         edge_alias + "." + domain_names[0] + " IS NULL AND " +
                         SQL_AND.join(v + " IS NULL" for v in vals) +
                         ")"
@@ -190,7 +190,8 @@ class EdgesTable(SetOpTable):
                     where = None
                     join_type = SQL_LEFT_JOIN if query_edge.allowNulls else SQL_INNER_JOIN
                     on_clause = SQL_AND.join(
-                        edge_alias + "." + k + " <= " + v + " AND " + v + " < (" + edge_alias + "." + k + " + " + text_type(
+                        edge_alias + "." + k + " <= " + v + SQL_AND +
+                        v + " < (" + edge_alias + "." + k + " + " + text_type(
                             d.interval) + ")"
                         for k, (t, v) in zip(domain_names, edge_values)
                     )
@@ -206,7 +207,7 @@ class EdgesTable(SetOpTable):
                     where = None
                     join_type = SQL_LEFT_JOIN if query_edge.allowNulls else SQL_INNER_JOIN
                     on_clause = (
-                        edge_alias + "." + domain_name + " < " + edge_values[1][1] + " AND " +
+                        edge_alias + "." + domain_name + " < " + edge_values[1][1] + SQL_AND +
                         edge_values[0][1] + " < (" + edge_alias + "." + domain_name + " + " + text_type(d.interval) + ")"
                     )
                     null_on_clause = None
@@ -250,10 +251,10 @@ class EdgesTable(SetOpTable):
                     domain_nested_path = domain_columns[0].nested_path
                 domain_table = quote_table(concat_field(self.sf.fact, domain_nested_path[0]))
                 domain = (
-                    SQL_SELECT + SQL_COMMA.join(domain_names) + SQL_FROM+"(" +
+                    SQL_SELECT + SQL_COMMA.join(domain_names) + SQL_FROM + "(" +
                     SQL_SELECT + SQL_COMMA.join(
-                        g + " AS " + n for n, g in zip(domain_names, vals)
-                    ) +
+                    g + " AS " + n for n, g in zip(domain_names, vals)
+                ) +
                     SQL_FROM + domain_table + " " + nest_to_alias["."]
                 )
                 if not query_edge.allowNulls:
@@ -276,7 +277,7 @@ class EdgesTable(SetOpTable):
                         edge_alias + "." + k + " = " + v
                         for k, v in zip(domain_names, vals)
                     ) +
-                    " OR (" +
+                    SQL_OR + "(" +
                     edge_alias + "." + domain_names[0] + " IS NULL AND " +
                     SQL_AND.join(v + " IS NULL" for v in vals) +
                     ")"
@@ -292,14 +293,14 @@ class EdgesTable(SetOpTable):
                 if len(edge_names) == 1:
                     domain = self._make_range_domain(domain=d, column_name=domain_name)
                     if query_edge.allowNulls:
-                        domain += SQL_UNION_ALL+SQL_SELECT+"NULL AS " + domain_name + "\n"
+                        domain += SQL_UNION_ALL + SQL_SELECT + "NULL AS " + domain_name + "\n"
                     on_clause = (
                         SQL_AND.join(
-                            edge_alias + "." + k + " <= " + v + " AND " +
+                            edge_alias + "." + k + " <= " + v + SQL_AND +
                             v + " < (" + edge_alias + "." + k + " + " + quote_value(d.interval) + ")"
                             for k, (t, v) in zip(domain_names, edge_values)
                         ) +
-                        " OR (" + SQL_AND.join(
+                        SQL_OR + "(" + SQL_AND.join(
                             edge_alias + "." + k + " IS NULL AND " + v + " IS NULL"
                             for k, v in zip(domain_names, vals)
                         ) + ")"
@@ -312,10 +313,10 @@ class EdgesTable(SetOpTable):
                         null_on_clause = SQL_AND.join(edge_alias + "." + k + " IS NOT NULL" for k in domain_names)
                 elif query_edge.range:
                     domain = self._make_range_domain(domain=d, column_name=domain_name)
-                    on_clause = edge_alias + "." + domain_name + " < " + edge_values[1][1] + " AND " + \
-                                edge_values[0][1] + " < (" + edge_alias + "." + domain_name + " + " + quote_value(
-                        d.interval) + ")"
-                    # null_on_clause = "__exists__ IS NULL"
+                    on_clause = (
+                        edge_alias + "." + domain_name + " < " + edge_values[1][1] + SQL_AND +
+                        edge_values[0][1] + " < (" + edge_alias + "." + domain_name + " + " + quote_value(d.interval) + ")"
+                    )
                 else:
                     Log.error("do not know how to handle")
             else:
@@ -455,7 +456,7 @@ class EdgesTable(SetOpTable):
 
         primary = (
             "(" +
-            SQL_SELECT + SQL_COMMA.join(select_clause) + ",\n" + "*" +
+            SQL_SELECT + SQL_COMMA.join(select_clause) + "," + "*" +
             SQL_FROM + from_sql +
             SQL_WHERE + main_filter +
             ") " + nest_to_alias["."]
@@ -472,7 +473,7 @@ class EdgesTable(SetOpTable):
             SQL_FROM + primary
         )
         for t, s, j in zip(join_types, edge_sql, ons):
-            part += " " + t + s + " ON " + j
+            part += " " + t + s + SQL_ON + j
         if any(wheres):
             part += SQL_WHERE + SQL_AND.join("(" + w + ")" for w in wheres if w)
         all_parts.append(part)
@@ -481,12 +482,12 @@ class EdgesTable(SetOpTable):
         if query.edges:
             part = SQL_SELECT + (SQL_COMMA.join(outer_selects)) + SQL_FROM + edge_sql[0]
             for s in edge_sql[1:]:
-                part += SQL_LEFT_JOIN + s + "\nON\n1=1\n"
-            part += SQL_LEFT_JOIN + primary + "\nON\n" + SQL_AND.join("(" + o + ")" for o in ons)
+                part += SQL_LEFT_JOIN + s + SQL_ON + "1=1\n"
+            part += SQL_LEFT_JOIN + primary + SQL_ON + SQL_AND.join("(" + o + ")" for o in ons)
             part += SQL_WHERE + SQL_AND.join("(" + w + ")" for w in null_ons if w)
             all_parts.append(part)
 
-        command = SQL_SELECT+"*"+SQL_FROM+"(" + SQL_UNION_ALL.join(all_parts) + ")"
+        command = SQL_SELECT + "*" + SQL_FROM + "(" + SQL_UNION_ALL.join(all_parts) + ")"
 
         if groupby:
             command += SQL_GROUPBY + SQL_COMMA.join(groupby)
@@ -494,7 +495,6 @@ class EdgesTable(SetOpTable):
             command += SQL_ORDERBY + SQL_COMMA.join(orderby)
 
         return command, index_to_column
-
 
     def _make_range_domain(self, domain, column_name):
         width = (domain.max - domain.min) / domain.interval
@@ -508,26 +508,26 @@ class EdgesTable(SetOpTable):
             if domain.min == 0:
                 domain = (
                     SQL_SELECT + value + " " + column_name +
-                    SQL_FROM+"__digits__ a"
+                    SQL_FROM + "__digits__ a"
                 )
             else:
                 domain = (
-                    SQL_SELECT+"(" + value + ") + " + quote_value(domain.min) + " " + column_name +
-                    SQL_FROM+"__digits__ a"
+                    SQL_SELECT + "(" + value + ") + " + quote_value(domain.min) + " " + column_name +
+                    SQL_FROM + "__digits__ a"
                 )
         else:
             if domain.min == 0:
                 domain = (
                     SQL_SELECT + value + " * " + quote_value(domain.interval) + " " + column_name +
-                    SQL_FROM+"__digits__ a"
+                    SQL_FROM + "__digits__ a"
                 )
             else:
                 domain = (
-                    SQL_SELECT+"(" + value + " * " + quote_value(domain.interval) + ") + " + quote_value(domain.min) + " " + column_name +
-                    SQL_FROM+"__digits__ a"
+                    SQL_SELECT + "(" + value + " * " + quote_value(domain.interval) + ") + " + quote_value(domain.min) + " " + column_name +
+                    SQL_FROM + "__digits__ a"
                 )
 
         for j in range(digits):
-            domain += SQL_INNER_JOIN+"__digits__ " + text_type(chr(ord(b'a') + j + 1)) + " ON 1=1"
+            domain += SQL_INNER_JOIN + "__digits__ " + text_type(chr(ord(b'a') + j + 1)) + " ON 1=1"
         domain += SQL_WHERE + value + " < " + quote_value(width)
         return domain
