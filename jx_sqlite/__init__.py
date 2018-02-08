@@ -16,7 +16,7 @@ from __future__ import unicode_literals
 from collections import Mapping
 from copy import copy
 
-from future.utils import text_type
+from mo_future import text_type
 from mo_dots import Data, split_field, join_field, concat_field, Null
 from mo_json import json2value
 from mo_math.randoms import Random

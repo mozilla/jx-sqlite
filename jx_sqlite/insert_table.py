@@ -16,7 +16,7 @@ from __future__ import unicode_literals
 from collections import Mapping
 from copy import copy
 
-from future.utils import text_type
+from mo_future import text_type
 from mo_dots import listwrap, Data, wrap, Null, unwraplist, startswith_field, unwrap, concat_field, literal_field
 from mo_logs import Log
 
@@ -25,7 +25,7 @@ from jx_sqlite.base_table import BaseTable, generateGuid
 from jx_base import STRUCT
 from jx_base.expressions import jx_expression
 from jx_python.meta import Column
-from pyLibrary.sql import SQL, SQL_COMMA, SQL_AND, SQL_UNION_ALL, SQL_INNER_JOIN
+from pyLibrary.sql import SQL, SQL_COMMA, SQL_AND, SQL_UNION_ALL, SQL_INNER_JOIN, SQL_WHERE, SQL_FROM, SQL_SELECT
 from pyLibrary.sql.sqlite import quote_value, quote_column
 
 
@@ -82,14 +82,14 @@ class InsertTable(BaseTable):
                 extra_key = [e for e in nested_table.columns[extra_key_name]][0]
 
                 sql_command = (
-                    "DELETE FROM " + quote_table(nested_table.name) +
-                    "\nWHERE EXISTS (" +
+                    "DELETE"+SQL_FROM + quote_table(nested_table.name) +
+                    SQL_WHERE+"EXISTS (" +
                     "\nSELECT 1 " +
-                    "\nFROM " + quote_table(nested_table.name) + " n" +
+                    SQL_FROM + quote_table(nested_table.name) + " n" +
                     SQL_INNER_JOIN+"(" +
-                    "\nSELECT " + self_primary_key +
-                    "\nFROM " + quote_table(self.sf.fact) +
-                    "\nWHERE " + where_sql +
+                    SQL_SELECT + self_primary_key +
+                    SQL_FROM + quote_table(self.sf.fact) +
+                    SQL_WHERE + where_sql +
                     "\n) t ON " +
                     SQL_AND.join(
                         "t." + quote_table(c.es_column) + " = n." + quote_table(c.es_column)
@@ -121,14 +121,14 @@ class InsertTable(BaseTable):
 
                 # BUILD THE PARENT TABLES
                 parent = (
-                    "\nSELECT " + self_primary_key +
-                    "\nFROM " + quote_table(self.sf.fact) +
-                    "\nWHERE " + jx_expression(command.where).to_sql()
+                    SQL_SELECT + self_primary_key +
+                    SQL_FROM + quote_table(self.sf.fact) +
+                    SQL_WHERE + jx_expression(command.where).to_sql()
                 )
 
                 # BUILD THE RECORDS
                 children = SQL_UNION_ALL.join(
-                    "\nSELECT " +
+                    SQL_SELECT +
                     quote_value(i) + " " + quote_table(extra_key.es_column) + "," +
                     SQL_COMMA.join(
                         quote_value(row[c.name]) + " " + quote_table(c.es_column)
@@ -139,7 +139,7 @@ class InsertTable(BaseTable):
 
                 sql_command = (
                     prefix +
-                    "\nSELECT " +
+                    SQL_SELECT +
                     SQL_COMMA.join(
                         "p." + quote_table(c.es_column)
                         for u in self.uid for c in self.columns[u]
@@ -149,7 +149,7 @@ class InsertTable(BaseTable):
                         "c." + quote_table(c.es_column)
                         for c in doc_collection.get(".", Null).active_columns
                     ) +
-                    "\nFROM (" + parent + ") p " +
+                    SQL_FROM+"(" + parent + ") p " +
                     SQL_INNER_JOIN+"(" + children +
                     "\n) c on 1=1"
                 )
@@ -190,7 +190,7 @@ class InsertTable(BaseTable):
                     if c.type != "nested" and len(c.nested_path) == 1
                     ]
             ) +
-            " WHERE " + where_sql
+            SQL_WHERE + where_sql
         )
 
         self.db.execute(command)
@@ -371,7 +371,7 @@ class InsertTable(BaseTable):
 
             # BUILD THE RECORDS
             records = SQL_UNION_ALL.join(
-                "\nSELECT " + SQL_COMMA.join(quote_value(row.get(c)) for c in all_columns)
+                SQL_SELECT + SQL_COMMA.join(quote_value(row.get(c)) for c in all_columns)
                 for row in unwrap(rows)
             )
 

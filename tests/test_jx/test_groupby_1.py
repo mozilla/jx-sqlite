@@ -13,7 +13,7 @@ from __future__ import unicode_literals
 
 from unittest import skipIf
 
-from future.utils import text_type
+from mo_future import text_type
 
 from jx_base.expressions import NULL
 from mo_dots import wrap, set_default

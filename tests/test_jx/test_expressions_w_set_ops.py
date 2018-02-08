@@ -821,6 +821,31 @@ class TestSetOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
+    def test_lack_of_eval(self):
+        test = {
+            "data": [
+                {"v": "/this/is/a/directory"},
+                {"v": "/"}
+            ],
+            "query": {
+                "select": [
+                    {"name": "b", "value": {"case": [
+                        {"when": {"missing": {"literal": "/this/"}}, "then": 0},
+                        {"find": {"v": "/this/"}, "start": 0}
+                    ]}}
+                ],
+                "from": TEST_TABLE
+            },
+            "expecting_list": {
+                "meta": {"format": "list"},
+                "data": [
+                    {"b": 0},
+                    {"b": NULL}
+                ]
+            }
+        }
+        self.utils.execute_tests(test)
+
     def test_param_left(self):
         test = {
             "data": [

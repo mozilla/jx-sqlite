@@ -13,18 +13,16 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
-from future.utils import text_type
-from jx_python import jx
-from jx_sqlite import UID, quote_table, get_column, _make_column_name, sql_text_array_to_set, STATS, sql_aggs, PARENT, ColumnMapping, untyped_column
-from mo_dots import listwrap, coalesce, split_field, join_field, startswith_field, relative_field, concat_field
-from mo_logs import Log
-from mo_math import Math
+from mo_future import unichr
 
-from jx_base.domains import DefaultDomain, TimeDomain, DurationDomain
-from jx_sqlite.expressions import Variable, sql_type_to_json_type, TupleOp
+from jx_python import jx
+from jx_sqlite import UID, quote_table, get_column, _make_column_name, sql_aggs, PARENT, ColumnMapping
 from jx_sqlite.edges_table import EdgesTable
-from pyLibrary.sql import SQL_COMMA, SQL_LEFT_JOIN
-from pyLibrary.sql.sqlite import quote_value
+from jx_sqlite.expressions import sql_type_to_json_type
+from mo_dots import listwrap, split_field, join_field, startswith_field, concat_field
+from mo_logs import Log
+from pyLibrary.sql import SQL_COMMA, SQL_LEFT_JOIN, SQL_WHERE, SQL_GROUPBY, SQL_SELECT, SQL_FROM
+
 
 class GroupbyTable(EdgesTable):
     def _groupby_op(self, query, frum):
@@ -107,10 +105,10 @@ class GroupbyTable(EdgesTable):
         where = query.where.to_sql(schema)[0].sql.b
 
         command = (
-            "SELECT\n" + (SQL_COMMA.join(selects)) +
-            "\nFROM\n" + from_sql +
-            "\nWHERE\n" + where +
-            "\nGROUP BY\n" + SQL_COMMA.join(groupby)
+            SQL_SELECT + (SQL_COMMA.join(selects)) +
+            SQL_FROM + from_sql +
+            SQL_WHERE + where +
+            SQL_GROUPBY + SQL_COMMA.join(groupby)
         )
 
         if query.sort:

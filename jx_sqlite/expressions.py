@@ -11,13 +11,13 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
-from future.utils import text_type
+from mo_future import text_type
 
 from jx_base import OBJECT, BOOLEAN
 from jx_base.expressions import Variable, DateOp, TupleOp, LeavesOp, BinaryOp, OrOp, InequalityOp, extend, Literal, NullOp, TrueOp, FalseOp, DivOp, FloorOp, \
     NeOp, NotOp, LengthOp, NumberOp, StringOp, CountOp, MultiOp, RegExpOp, CoalesceOp, MissingOp, ExistsOp, \
     PrefixOp, UnixOp, FromUnixOp, NotLeftOp, RightOp, NotRightOp, FindOp, InOp, RangeOp, CaseOp, AndOp, \
-    ConcatOp, LeftOp, EqOp, WhenOp, BasicIndexOfOp, IntegerOp, MaxOp, BasicSubstringOp, BasicEqOp, FALSE, MinOp, BooleanOp, SuffixOp
+    ConcatOp, LeftOp, EqOp, WhenOp, BasicIndexOfOp, IntegerOp, MaxOp, BasicSubstringOp, BasicEqOp, FALSE, MinOp, BooleanOp, SuffixOp, BetweenOp
 from jx_base.queries import get_property_name
 from mo_dots import coalesce, wrap, Null, split_field
 from mo_dots import join_field, ROOT_PATH, relative_field, Data
@@ -571,17 +571,17 @@ def to_sql(self, schema, not_null=False, boolean=False):
 
 @extend(PrefixOp)
 def to_sql(self, schema, not_null=False, boolean=False):
-    if not self.field:
+    if not self.expr:
         return wrap([{"name": ".", "sql": {"b": SQL_TRUE}}])
     else:
         return wrap([{"name": ".", "sql": {
-            "b": "INSTR(" + self.field.to_sql(schema)[0].sql.s + ", " + self.prefix.to_sql(schema)[0].sql.s + ")==1"
+            "b": "INSTR(" + self.expr.to_sql(schema)[0].sql.s + ", " + self.prefix.to_sql(schema)[0].sql.s + ")==1"
         }}])
 
 
 @extend(SuffixOp)
 def to_sql(self, schema, not_null=False, boolean=False):
-    if not self.field:
+    if not self.term:
         return wrap([{"name": ".", "sql": {"b": SQL_TRUE}}])
     elif isinstance(self.suffix, Literal) and not self.suffix.value:
         return wrap([{"name": ".", "sql": {"b": SQL_TRUE}}])
@@ -589,7 +589,7 @@ def to_sql(self, schema, not_null=False, boolean=False):
         return EqOp(
             "eq",
             [
-                RightOp("right", [self.field, LengthOp("length", self.suffix)]),
+                RightOp("right", [self.term, LengthOp("length", self.suffix)]),
                 self.suffix
             ]
         ).partial_eval().to_sql(schema)
@@ -726,6 +726,11 @@ def to_sql(self, schema, not_null=False, boolean=False):
 
         sql = "CASE WHEN (" + test + ") THEN (" + index + ") ELSE (" + default + ") END"
         return wrap([{"name": ".", "sql": {"n": sql}}])
+
+
+@extend(BetweenOp)
+def to_sql(self, schema, not_null=False, boolean=False):
+    return self.partial_eval().to_sql(schema)
 
 
 @extend(InOp)

@@ -25,7 +25,6 @@ from mo_json import scrub
 from mo_logs import Log, Except
 from mo_math import Math, MAX, MIN, UNION
 from mo_times.dates import Date, unicode2Date
-from pyLibrary.sql import SQL, SQL_TRUE, SQL_FALSE, SQL_ONE, SQL_ZERO
 
 ALLOW_SCRIPTING = False
 EMPTY_DICT = {}
@@ -54,7 +53,19 @@ def simplified(func):
     return mark_as_simple
 
 
-def jx_expression(expr):
+def jx_expression(expr, schema=None):
+    # UPDATE THE VARIABLE WITH THIER KNOWN TYPES
+    output = _jx_expression(expr)
+    if not schema:
+        return output
+    for v in output.vars():
+        leaves = schema.leaves(v.var)
+        if len(leaves) == 1:
+            v.data_type = leaves[0].type
+    return output
+
+
+def _jx_expression(expr):
     """
     WRAP A JSON EXPRESSION WITH OBJECT REPRESENTATION
     """
@@ -131,7 +142,7 @@ class Expression(object):
         if term == None:
             return class_(op, [], **clauses)
         elif isinstance(term, list):
-            terms = list(map(jx_expression, term))
+            terms = list(map(_jx_expression, term))
             return class_(op, terms, **clauses)
         elif isinstance(term, Mapping):
             items = term.items()
@@ -147,7 +158,7 @@ class Expression(object):
             if op in ["literal", "date", "offset"]:
                 return class_(op, term, **clauses)
             else:
-                return class_(op, jx_expression(term), **clauses)
+                return class_(op, _jx_expression(term), **clauses)
 
     @property
     def name(self):
@@ -246,7 +257,7 @@ class Variable(Expression):
         return True
 
     def vars(self):
-        return {self.var}
+        return {self}
 
     def map(self, map_):
         if not isinstance(map_, Mapping):
@@ -1335,14 +1346,8 @@ class BooleanOp(Expression):
         elif term.type == BOOLEAN:
             return term
 
-        is_missing = term.missing().partial_eval()
-        if is_missing is TRUE:
-            return FALSE
-        elif is_missing is FALSE:
-            if term.type in [INTEGER, NUMBER, STRING]:
-                return TRUE
-        else:
-            return BooleanOp("boolean", term)
+        is_missing = NotOp("not", term.missing()).partial_eval()
+        return is_missing
 
 
 class IsBooleanOp(Expression):
@@ -1757,7 +1762,7 @@ class RegExpOp(Expression):
         return {"regexp": {self.var.var: self.pattern}}
 
     def vars(self):
-        return {self.var.var}
+        return {self.var}
 
     def map(self, map_):
         return RegExpOp("regex", [self.var.map(map_), self.pattern])
@@ -1849,8 +1854,16 @@ class MissingOp(Expression):
 
     @simplified
     def partial_eval(self):
-        if isinstance(self.expr, Variable) and self.expr.var == "_id":
+        expr = self.expr.partial_eval()
+        if isinstance(expr, Variable) and expr.var == "_id":
             return FALSE
+        if isinstance(expr, Literal):
+            if expr is NULL:
+                return TRUE
+            elif expr.value == None:
+                Log.error("not expected")
+            else:
+                return FALSE
         self.simplified = True
         return self
 
@@ -1889,32 +1902,31 @@ class PrefixOp(Expression):
     def __init__(self, op, term):
         Expression.__init__(self, op, term)
         if not term:
-            self.field = None
+            self.expr = None
             self.prefix=None
         elif isinstance(term, Mapping):
-            self.field, self.prefix = term.items()[0]
+            self.expr, self.prefix = term.items()[0]
         else:
-            self.field, self.prefix = term
+            self.expr, self.prefix = term
 
     def __data__(self):
-        if not self.field:
+        if not self.expr:
             return {"prefix": {}}
-        elif isinstance(self.field, Variable) and isinstance(self.prefix, Literal):
-            return {"prefix": {self.field.var: self.prefix.value}}
+        elif isinstance(self.expr, Variable) and isinstance(self.prefix, Literal):
+            return {"prefix": {self.expr.var: self.prefix.value}}
         else:
-            return {"prefix": [self.field.__data__(), self.prefix.__data__()]}
+            return {"prefix": [self.expr.__data__(), self.prefix.__data__()]}
 
     def vars(self):
-        if not self.field:
+        if not self.expr:
             return set()
-        else:
-            return {self.field.var}
+        return self.expr.vars() | self.prefix.vars()
 
     def map(self, map_):
-        if not self.field:
+        if not self.expr:
             return self
         else:
-            return PrefixOp("prefix", [self.field.map(map_), self.prefix.map(map_)])
+            return PrefixOp("prefix", [self.expr.map(map_), self.prefix.map(map_)])
 
     def missing(self):
         return FALSE
@@ -1926,28 +1938,30 @@ class SuffixOp(Expression):
     def __init__(self, op, term):
         Expression.__init__(self, op, term)
         if not term:
-            self.field = self.suffix = None
+            self.term = self.suffix = None
         elif isinstance(term, Mapping):
-            self.field, self.suffix = term.items()[0]
+            self.term, self.suffix = term.items()[0]
         else:
-            self.field, self.suffix = term
+            self.term, self.suffix = term
 
     def __data__(self):
-        if self.field is None:
+        if self.term is None:
             return {"suffix": {}}
-        elif isinstance(self.field, Variable) and isinstance(self.suffix, Literal):
-            return {"suffix": {self.field.var: self.suffix.value}}
+        elif isinstance(self.term, Variable) and isinstance(self.suffix, Literal):
+            return {"suffix": {self.term.var: self.suffix.value}}
         else:
-            return {"suffix": [self.field.__data__(), self.suffix.__data__()]}
+            return {"suffix": [self.term.__data__(), self.suffix.__data__()]}
 
     def vars(self):
-        return {self.field.var}
+        if self.term is None:
+            return set()
+        return self.term.vars() | self.suffix.vars()
 
     def map(self, map_):
-        if self.field is None:
+        if self.term is None:
             return TRUE
         else:
-            return SuffixOp("suffix", [self.field.map(map_), self.suffix.map(map_)])
+            return SuffixOp("suffix", [self.term.map(map_), self.suffix.map(map_)])
 
 
 class ConcatOp(Expression):
@@ -2444,7 +2458,7 @@ class BetweenOp(Expression):
         ).partial_eval()
 
         start_index = MultiOp("add", [start_index, len_prefix]).partial_eval()
-        substring = BasicSubstringOp("subtring", [value, start_index, end_index]).partial_eval()
+        substring = BasicSubstringOp("substring", [value, start_index, end_index]).partial_eval()
 
         between = WhenOp(
             "when",

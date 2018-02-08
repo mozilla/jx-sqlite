@@ -22,7 +22,7 @@ from jx_sqlite import quote_table, typed_column, UID, quoted_UID, quoted_GUID, s
 from jx_sqlite import untyped_column
 from mo_dots import relative_field, listwrap, split_field, join_field, wrap, startswith_field, concat_field, Null, coalesce, set_default
 from mo_logs import Log
-from pyLibrary.sql import SQL_COMMA
+from pyLibrary.sql import SQL_COMMA, SQL_SELECT, SQL_FROM
 from pyLibrary.sql.sqlite import quote_column
 
 
@@ -204,7 +204,7 @@ class Snowflake(object):
             self.db.execute(
                 "CREATE TABLE " + quote_table(existing_table) +
                 " AS SELECT " + (SQL_COMMA.join([quote_table(c) for c in columns if c!=column])) +
-                " FROM " + quote_table(tmp_table)
+                SQL_FROM + quote_table(tmp_table)
             )
             self.db.execute("DROP TABLE " + quote_table(tmp_table))
 

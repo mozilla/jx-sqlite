@@ -18,7 +18,7 @@ import subprocess
 from copy import deepcopy
 
 import mo_json_config
-from future.utils import text_type
+from mo_future import text_type
 from mo_dots import wrap, coalesce, unwrap, listwrap, Data, startswith_field
 from mo_kwargs import override
 from mo_logs import Log, Except, constants
@@ -162,8 +162,8 @@ def compare_to_expected(query, result, expect):
             try:
                 #result.data MAY BE A LIST OF VALUES, NOT OBJECTS
                 data_columns = jx.sort(set(jx.get_columns(result.data, leaves=True)) | set(jx.get_columns(expect.data, leaves=True)), "name")
-            except Exception:
-                data_columns = [{"name":"."}]
+            except Exception as _:
+                data_columns = [{"name": "."}]
 
             sort_order = listwrap(coalesce(query.edges, query.groupby)) + data_columns
 

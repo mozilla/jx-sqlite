@@ -13,7 +13,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
-from future.utils import text_type
+from mo_future import text_type
+from jx_base.expressions import BooleanOp
+
 from mo_dots import listwrap, Data, unwraplist, split_field, join_field, startswith_field, unwrap, relative_field, concat_field, literal_field, Null
 from mo_future import unichr
 from mo_math import UNION, MAX
@@ -24,7 +26,7 @@ from jx_sqlite.insert_table import InsertTable
 from jx_base import STRUCT
 from jx_sqlite.expressions import sql_type_to_json_type, LeavesOp
 from jx_python.meta import Column
-from pyLibrary.sql import SQL_COMMA, SQL_UNION_ALL, SQL_LEFT_JOIN
+from pyLibrary.sql import SQL_COMMA, SQL_UNION_ALL, SQL_LEFT_JOIN, SQL_FROM, SQL_WHERE, SQL_SELECT
 from pyLibrary.sql.sqlite import quote_value, quote_column
 
 
@@ -33,7 +35,7 @@ class SetOpTable(InsertTable):
         # GET LIST OF COLUMNS
         frum_path = split_field(frum)
         primary_nested_path = join_field(frum_path[1:])
-        vars_ = UNION([s.value.vars() for s in listwrap(query.select)])
+        vars_ = UNION([v.var for s in listwrap(query.select) for v in s.value.vars()])
         schema = self.sf.tables[primary_nested_path].schema
 
         nest_to_alias = {
@@ -271,7 +273,7 @@ class SetOpTable(InsertTable):
                         nested_path=nested_path
                     )
 
-        where_clause = query.where.partial_eval().to_sql(schema, boolean=True)[0].sql.b
+        where_clause = BooleanOp("boolean", query.where).partial_eval().to_sql(schema, boolean=True)[0].sql.b
         unsorted_sql = self._make_sql_for_one_nest_in_set_op(
             ".",
             sql_selects,
@@ -284,7 +286,7 @@ class SetOpTable(InsertTable):
             sorts.append(quote_column(COLUMN + text_type(index_to_uid[n])))
 
         ordered_sql = (
-            "SELECT * FROM (\n" +
+            SQL_SELECT+"*"+SQL_FROM+"(\n" +
             unsorted_sql +
             "\n)" +
             "\nORDER BY\n" + SQL_COMMA.join(sorts) +
@@ -589,7 +591,7 @@ class SetOpTable(InsertTable):
                         select_clause.append("NULL AS " + sql_select.column_alias)
 
                 if nested_path == ".":
-                    from_clause += "\nFROM " + quote_table(self.sf.fact) + " " + alias + "\n"
+                    from_clause += SQL_FROM + quote_table(self.sf.fact) + " " + alias + "\n"
                 else:
                     from_clause += (
                         SQL_LEFT_JOIN + quote_table(concat_field(self.sf.fact, sub_table.name)) + " " + alias + "\n" +
@@ -602,7 +604,7 @@ class SetOpTable(InsertTable):
                 # PARENT TABLE
                 # NO NEED TO INCLUDE COLUMNS, BUT WILL INCLUDE ID AND ORDER
                 if nested_path == ".":
-                    from_clause += "\nFROM " + quote_table(self.sf.fact) + " " + alias + "\n"
+                    from_clause += SQL_FROM + quote_table(self.sf.fact) + " " + alias + "\n"
                 else:
                     parent_alias = alias = unichr(ord('a') + i - 1)
                     from_clause += (
@@ -637,7 +639,7 @@ class SetOpTable(InsertTable):
 
 
         sql = SQL_UNION_ALL.join(
-            ["SELECT\n" + SQL_COMMA.join(select_clause) + from_clause + "\nWHERE\n" + where_clause] +
+            [SQL_SELECT + SQL_COMMA.join(select_clause) + from_clause + SQL_WHERE + where_clause] +
             children_sql
         )
 

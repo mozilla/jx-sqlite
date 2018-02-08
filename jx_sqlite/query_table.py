@@ -14,20 +14,19 @@ from __future__ import division
 from __future__ import unicode_literals
 
 import mo_json
-from future.utils import text_type
-from jx_python import jx
-from jx_sqlite import quote_table, sql_aggs, unique_name, untyped_column
-from mo_collections.matrix import Matrix, index_to_coordinate
-from mo_dots import listwrap, coalesce, Data, wrap, startswith_field, unwrap, unwraplist, concat_field, relative_field, Null
-from mo_logs import Log
-
+from jx_base import STRUCT
 from jx_base.domains import SimpleSetDomain
 from jx_base.expressions import jx_expression, Variable, TupleOp
-from jx_base import STRUCT
-from jx_python.meta import Column
 from jx_base.query import QueryOp
+from jx_python import jx
+from jx_python.meta import Column
+from jx_sqlite import quote_table, sql_aggs, unique_name, untyped_column
 from jx_sqlite.groupby_table import GroupbyTable
-from pyLibrary.sql import SQL_COMMA
+from mo_collections.matrix import Matrix, index_to_coordinate
+from mo_dots import listwrap, coalesce, Data, wrap, startswith_field, unwrap, unwraplist, concat_field, relative_field, Null
+from mo_future import text_type
+from mo_logs import Log
+from pyLibrary.sql import SQL_COMMA, SQL, SQL_WHERE, SQL_FROM, SQL_SELECT
 
 
 class QueryTable(GroupbyTable):
@@ -35,16 +34,16 @@ class QueryTable(GroupbyTable):
         return column.names[self.sf.fact]
 
     def __len__(self):
-        counter = self.db.query("SELECT COUNT(*) FROM " + quote_table(self.sf.fact))[0][0]
+        counter = self.db.query(SQL_SELECT+"COUNT(*)"+SQL_FROM + quote_table(self.sf.fact))[0][0]
         return counter
 
     def __nonzero__(self):
-        counter = self.db.query("SELECT COUNT(*) FROM " + quote_table(self.sf.fact))[0][0]
+        counter = self.db.query(SQL_SELECT+"COUNT(*)"+SQL_FROM + quote_table(self.sf.fact))[0][0]
         return bool(counter)
 
     def delete(self, where):
         filter = where.to_sql()
-        self.db.execute("DELETE FROM " + quote_table(self.sf.fact) + " WHERE " + filter)
+        self.db.execute("DELETE"+SQL_FROM + quote_table(self.sf.fact) + SQL_WHERE + filter)
 
     def vars(self):
         return set(self.columns.keys())
@@ -75,9 +74,9 @@ class QueryTable(GroupbyTable):
                 )
 
         result = self.db.query(
-            " SELECT " + SQL("\n,").join(select) +
-            " FROM " + quote_table(self.sf.fact) +
-            " WHERE " + jx_expression(filter).to_sql()
+            SQL_SELECT + SQL("\n,").join(select) +
+            SQL_FROM + quote_table(self.sf.fact) +
+            SQL_WHERE + jx_expression(filter).to_sql()
         )
         return wrap([{c: v for c, v in zip(column_names, r)} for r in result.data])
 
@@ -104,7 +103,6 @@ class QueryTable(GroupbyTable):
             command = create_table + op
         elif query.groupby:
             query.edges, query.groupby = query.groupby, query.edges
-            query = QueryOp.wrap(query, schema)
             op, index_to_columns = self._edges_op(query, frum)
             command = create_table + op
             query.edges, query.groupby = query.groupby, query.edges

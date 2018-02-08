@@ -31,7 +31,7 @@ from mo_logs.strings import indent
 from mo_logs.strings import outdent
 from mo_math import Math
 from mo_times import Date
-from pyLibrary.sql import SQL
+from pyLibrary.sql import SQL, SQL_NULL
 
 DEBUG = False
 MAX_BATCH_SIZE = 100
@@ -487,9 +487,9 @@ class MySQL(object):
             "INSERT INTO " + self.quote_column(table_name) + " (" +
             ",".join([self.quote_column(k) for k in new_record.keys()]) +
             ")\n" +
-            "SELECT a.* FROM (SELECT " + ",".join([self.quote_value(v) + " " + self.quote_column(k) for k, v in new_record.items()]) + " FROM DUAL) a\n" +
+            SQL_SELECT+"a.* FROM (SELECT " + ",".join([self.quote_value(v) + " " + self.quote_column(k) for k, v in new_record.items()]) + " FROM DUAL) a\n" +
             SQL_LEFT_JOIN +
-            "(SELECT 'dummy' exist FROM " + self.quote_column(table_name) + " WHERE " + condition + " LIMIT 1) b ON 1=1 WHERE exist IS Null"
+            "(SELECT 'dummy' exist FROM " + self.quote_column(table_name) + SQL_WHERE + condition + " LIMIT 1) b ON 1=1 WHERE exist IS Null"
         )
         self.execute(command, {})
 
@@ -540,7 +540,7 @@ class MySQL(object):
             "UPDATE " + self.quote_column(table_name) + "\n" +
             "SET " +
             ",\n".join([self.quote_column(k) + "=" + v for k, v in new_values.items()]) + "\n" +
-            "WHERE " +
+            SQL_WHERE +
             where_clause
         )
         self.execute(command, {})
