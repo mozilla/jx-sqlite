@@ -113,6 +113,40 @@ class QueryTable(GroupbyTable):
             op = self._set_op(query, frum)
             return op
 
+        # command = """
+        #
+        # 	SELECT e0.d0c0 AS d0c0
+        # 		,COUNT(__exists__) AS count
+        # 	FROM (
+        # 		SELECT 0 AS rownum
+        # 			,0.0 AS d0c0
+        #
+        # 		UNION ALL
+        #
+        # 		SELECT 1 AS rownum
+        # 			,3.0 AS d0c0
+        #
+        # 		UNION ALL
+        #
+        # 		SELECT 2 AS rownum
+        # 			,6.0 AS d0c0
+        #
+        # 		UNION ALL
+        #
+        # 		SELECT 3 AS rownum
+        # 			,NULL AS d0c0
+        # 		) AS e0
+        # 	LEFT JOIN (
+        # 		SELECT 1 __exists__
+        # 			,*
+        # 		FROM testing __a__
+        # 		WHERE 1
+        # 		) __a__ ON (e0.d0c0 = ("v.$number") - ("b.d.$number"))
+        # 	WHERE (
+        # 			__a__.__exists__ IS NULL
+        # 			OR d0c0 IS NULL
+        # 			)
+        # 	GROUP BY e0.d0c0"""
         result = self.db.query(command)
 
         if query.format == "container":
@@ -418,7 +452,7 @@ class QueryTable(GroupbyTable):
             return (
                 "ROW_NUMBER()-1 OVER (" +
                 " PARTITION BY " + (SQL_COMMA.join(window.edges.values)) +
-                " ORDER BY " + (SQL_COMMA.join(window.edges.sort)) +
+                SQL_ORDERBY + (SQL_COMMA.join(window.edges.sort)) +
                 ") AS " + quote_table(window.name)
             )
 
@@ -428,7 +462,7 @@ class QueryTable(GroupbyTable):
         return (
             sql_aggs[window.aggregate] + "(" + window.value.to_sql() + ") OVER (" +
             " PARTITION BY " + (SQL_COMMA.join(window.edges.values)) +
-            " ORDER BY " + (SQL_COMMA.join(window.edges.sort)) +
+            SQL_ORDERBY + (SQL_COMMA.join(window.edges.sort)) +
             " ROWS BETWEEN " + range_min + " PRECEDING AND " + range_max + " FOLLOWING " +
             ") AS " + quote_table(window.name)
         )

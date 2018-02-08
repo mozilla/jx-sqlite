@@ -316,10 +316,10 @@ class MySQL(object):
         """
         if not sort:
             return ""
-        return SQL("ORDER BY " + ",\n".join([self.db.quote_column(o.field) + (" DESC" if o.sort == -1 else "") for o in sort]))
+        return SQL(SQL_ORDERBY + ",\n".join([self.db.quote_column(o.field) + (" DESC" if o.sort == -1 else "") for o in sort]))
 
     def _limit2sql(self, limit):
-        return SQL("" if not limit else "LIMIT " + str(limit))
+        return SQL("" if not limit else SQL_LIMIT + str(limit))
 
 
     def _where2sql(self, where):

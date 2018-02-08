@@ -196,7 +196,7 @@ class Snowflake(object):
         for col in moving_columns:
             column = col.es_column
             tmp_table = "tmp_" + existing_table
-            columns = self.db.query("select * from " + quote_table(existing_table) + " LIMIT 0").header
+            columns = self.db.query("select * from " + quote_table(existing_table) + SQL_LIMIT+"0").header
             self.db.execute(
                 "ALTER TABLE " + quote_table(existing_table) +
                 " RENAME TO " + quote_table(tmp_table)

@@ -289,8 +289,8 @@ class SetOpTable(InsertTable):
             SQL_SELECT+"*"+SQL_FROM+"(\n" +
             unsorted_sql +
             "\n)" +
-            "\nORDER BY\n" + SQL_COMMA.join(sorts) +
-            "\nLIMIT " + quote_value(query.limit)
+            SQL_ORDERBY + SQL_COMMA.join(sorts) +
+            SQL_LIMIT + quote_value(query.limit)
         )
         self.db.create_new_functions()  #creating new functions: regexp
         result = self.db.query(ordered_sql)

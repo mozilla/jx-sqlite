@@ -112,7 +112,7 @@ class GroupbyTable(EdgesTable):
         )
 
         if query.sort:
-            command += "\nORDER BY " + SQL_COMMA.join(
+            command += SQL_ORDERBY + SQL_COMMA.join(
                 "(" + sql[t] + ") IS NULL"  + ",\n" +
                 sql[t] + (" DESC" if s.sort == -1 else "")
                 for s, sql in [(s, s.value.to_sql(schema)[0].sql) for s in query.sort]

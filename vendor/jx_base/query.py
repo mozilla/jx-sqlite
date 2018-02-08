@@ -628,8 +628,8 @@ def _normalize_range(range):
         return None
 
     return Data(
-        min=None if range.min == None else jx_expression(range.min, schema=schema),
-        max=None if range.max == None else jx_expression(range.max, schema=schema),
+        min=None if range.min == None else jx_expression(range.min),
+        max=None if range.max == None else jx_expression(range.max),
         mode=range.mode
     )
 
