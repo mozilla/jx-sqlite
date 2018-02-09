@@ -30,27 +30,28 @@ from pyLibrary.sql.sqlite import quote_column, quote_value
 
 @extend(Variable)
 def to_sql(self, schema, not_null=False, boolean=False):
-    cols = [Data({cname: c}) for cname, cs in schema.map_to_sql(self.var).items() for c in cs]
+    # cols = [Data({cname: c}) for cname, cs in schema.map_to_sql(self.var).items() for c in cs]
+    cols = schema.leaves(self.var)
     if not cols:
         # DOES NOT EXIST
         return wrap([{"name": ".", "sql": {"0": SQL_NULL}, "nested_path": ROOT_PATH}])
     acc = {}
     if boolean:
         for col in cols:
-            cname, col = col.items()[0]
+            cname, col = col.names[col.nested_path[0]], col
             nested_path = col.nested_path[0]
             if col.type == OBJECT:
                 value = SQL_TRUE
             elif col.type == BOOLEAN:
                 value = quote_column(col.es_column)
             else:
-                value = sql_iso(quote_column(col.es_column)) + SQL_IS_NOT_NULL
+                value = quote_column(col.es_column) + SQL_IS_NOT_NULL
             tempa = acc.setdefault(nested_path, {})
             tempb = tempa.setdefault(get_property_name(cname), {})
             tempb['b'] = value
     else:
         for col in cols:
-            cname, col = col.items()[0]
+            cname, col = col.names[col.nested_path[0]], col
             if col.type == OBJECT:
                 prefix = self.var + "."
                 for cn, cs in schema.items():

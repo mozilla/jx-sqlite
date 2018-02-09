@@ -445,7 +445,7 @@ def _normalize_edge(edge, dim_index, limit, schema=None):
         Log.error("Edge has no value, or expression is empty")
     elif isinstance(edge, text_type):
         if schema:
-            leaves = unwraplist(schema.leaves(edge))
+            leaves = unwraplist(list(schema.leaves(edge)))
             if not leaves or isinstance(leaves, (list, set)):
                 return [
                     Data(
