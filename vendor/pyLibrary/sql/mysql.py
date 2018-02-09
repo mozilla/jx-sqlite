@@ -31,7 +31,7 @@ from mo_logs.strings import indent
 from mo_logs.strings import outdent
 from mo_math import Math
 from mo_times import Date
-from pyLibrary.sql import SQL, SQL_NULL, SQL_SELECT, SQL_LIMIT, SQL_WHERE, SQL_LEFT_JOIN, SQL_COMMA, SQL_FROM, SQL_AND, sql_list, sql_iso, SQL_ASC
+from pyLibrary.sql import SQL, SQL_NULL, SQL_SELECT, SQL_LIMIT, SQL_WHERE, SQL_LEFT_JOIN, SQL_COMMA, SQL_FROM, SQL_AND, sql_list, sql_iso, SQL_ASC, SQL_TRUE, SQL_ONE
 from pyLibrary.sql.sqlite import join_column
 
 DEBUG = False
@@ -477,19 +477,19 @@ class MySQL(object):
 
         condition = SQL_AND.join([self.quote_column(k) + "=" + self.quote_value(new_record[k]) if new_record[k] != None else self.quote_column(k) + " IS NULL" for k in candidate_key])
         command = (
-            "INSERT INTO " + self.quote_column(table_name) + " (" +
-            sql_list([self.quote_column(k) for k in new_record.keys()]) +
-            ")\n" +
-            SQL_SELECT + "a.*" + SQL_FROM + "(" + (
+            "INSERT INTO " + self.quote_column(table_name) + sql_iso(sql_list(
+                self.quote_column(k) for k in new_record.keys()
+            )) +
+            SQL_SELECT + "a.*" + SQL_FROM + sql_iso(
                 SQL_SELECT + sql_list([self.quote_value(v) + " " + self.quote_column(k) for k, v in new_record.items()]) +
                 SQL_FROM + "DUAL"
-            ) + ") a" +
-            SQL_LEFT_JOIN + "(" + (
+            ) + " a" +
+            SQL_LEFT_JOIN + sql_iso(
                 SQL_SELECT + "'dummy' exist " +
                 SQL_FROM + self.quote_column(table_name) +
                 SQL_WHERE + condition +
-                SQL_LIMIT + "1"
-            ) + ") b ON 1=1 WHERE exist IS NULL"
+                SQL_LIMIT + SQL_ONE
+            ) + " b ON " + SQL_TRUE + SQL_WHERE + " exist IS NULL"
         )
         self.execute(command, {})
 

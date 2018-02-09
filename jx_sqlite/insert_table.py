@@ -24,8 +24,8 @@ from jx_sqlite.base_table import BaseTable, generateGuid
 from mo_dots import listwrap, Data, wrap, Null, unwraplist, startswith_field, unwrap, concat_field, literal_field
 from mo_future import text_type
 from mo_logs import Log
-from pyLibrary.sql import SQL_AND, SQL_UNION_ALL, SQL_INNER_JOIN, SQL_WHERE, SQL_FROM, SQL_SELECT, SQL_NULL, sql_list, sql_iso
-from pyLibrary.sql.sqlite import quote_value, quote_column
+from pyLibrary.sql import SQL_AND, SQL_UNION_ALL, SQL_INNER_JOIN, SQL_WHERE, SQL_FROM, SQL_SELECT, SQL_NULL, sql_list, sql_iso, SQL_TRUE
+from pyLibrary.sql.sqlite import quote_value, quote_column, join_column
 
 
 class InsertTable(BaseTable):
@@ -138,17 +138,12 @@ class InsertTable(BaseTable):
                     prefix +
                     SQL_SELECT +
                     sql_list(
-                        "p." + quote_column(c.es_column)
-                        for u in self.uid for c in self.columns[u]
-                    ) + "," +
-                    "c." + quote_column(extra_key) + "," +
-                    sql_list(
-                        "c." + quote_column(c.es_column)
-                        for c in doc_collection.get(".", Null).active_columns
+                        [join_column("p", c.es_column) for u in self.uid for c in self.columns[u]] +
+                        [join_column("c", extra_key)] +
+                        [join_column("c", c.es_column) for c in doc_collection.get(".", Null).active_columns]
                     ) +
-                    SQL_FROM + sql_iso(parent) + " p " +
-                    SQL_INNER_JOIN + "(" + children +
-                    "\n) c on 1=1"
+                    SQL_FROM + sql_iso(parent) + " p" +
+                    SQL_INNER_JOIN + sql_iso(children) + " c" + " ON " + SQL_TRUE
                 )
 
                 self.db.execute(sql_command)

@@ -13,6 +13,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
+from jx_base import IS_NULL
+
 from jx_base.domains import DefaultDomain, TimeDomain, DurationDomain
 from jx_python import jx
 from jx_sqlite import get_column, _make_column_name, sql_text_array_to_set, STATS, sql_aggs, ColumnMapping, untyped_column, quoted_PARENT, quoted_UID
@@ -22,7 +24,7 @@ from mo_dots import listwrap, coalesce, split_field, join_field, startswith_fiel
 from mo_future import text_type, unichr
 from mo_logs import Log
 from mo_math import Math
-from pyLibrary.sql import SQL, SQL_AND, SQL_COMMA, SQL_OR, SQL_UNION_ALL, SQL_LEFT_JOIN, SQL_INNER_JOIN, SQL_GROUPBY, SQL_WHERE, SQL_FROM, SQL_SELECT, SQL_LIMIT, SQL_ORDERBY, SQL_ON, SQL_NULL, SQL_IS_NULL, SQL_IS_NOT_NULL, sql_list, sql_iso, SQL_END, SQL_ELSE, SQL_THEN, SQL_WHEN, SQL_CASE, SQL_ONE, sql_count, SQL_DESC, SQL_STAR
+from pyLibrary.sql import SQL, SQL_AND, SQL_COMMA, SQL_OR, SQL_UNION_ALL, SQL_LEFT_JOIN, SQL_INNER_JOIN, SQL_GROUPBY, SQL_WHERE, SQL_FROM, SQL_SELECT, SQL_LIMIT, SQL_ORDERBY, SQL_ON, SQL_NULL, SQL_IS_NULL, SQL_IS_NOT_NULL, sql_list, sql_iso, SQL_END, SQL_ELSE, SQL_THEN, SQL_WHEN, SQL_CASE, SQL_ONE, sql_count, SQL_DESC, SQL_STAR, SQL_TRUE, SQL_UNION
 from pyLibrary.sql.sqlite import quote_value, quote_column, join_column
 
 EXISTS_COLUMN = quote_column("__exists__")
@@ -156,9 +158,9 @@ class EdgesTable(SetOpTable):
                             for k, v in zip(domain_names, vals)
                         ) +
                         SQL_OR + sql_iso(
-                        join_column(edge_alias, domain_names)[0] + SQL_IS_NULL + SQL_AND +
-                        SQL_AND.join(v + SQL_IS_NULL for v in vals)
-                    )
+                            join_column(edge_alias, domain_names)[0] + SQL_IS_NULL + SQL_AND +
+                            SQL_AND.join(v + SQL_IS_NULL for v in vals)
+                        )
                     )
                     null_on_clause = None
                 else:
@@ -250,19 +252,12 @@ class EdgesTable(SetOpTable):
                 else:
                     domain_nested_path = domain_columns[0].nested_path
                 domain_table = quote_column(concat_field(self.sf.fact, domain_nested_path[0]))
-                domain = (
-                    SQL_SELECT + sql_list(
-                    g + " AS " + n for n, g in zip(domain_names, vals)
-                ) +
-                    SQL_FROM + domain_table + " " + nest_to_alias["."]
-                )
-                if not query_edge.allowNulls:
-                    domain += SQL_WHERE + SQL_AND.join(g + SQL_IS_NOT_NULL for g in vals)
-
-                domain += SQL_GROUPBY + sql_list(g for g in vals)
-
                 limit = Math.min(query.limit, query_edge.domain.limit)
-                domain += (
+                domain = (
+                    SQL_SELECT + sql_list(g + " AS " + n for n, g in zip(domain_names, vals)) +
+                    SQL_FROM + domain_table + " " + nest_to_alias["."] +
+                    SQL_WHERE + SQL_AND.join(g + SQL_IS_NOT_NULL for g in vals) +
+                    SQL_GROUPBY + sql_list(g for g in vals) +
                     SQL_ORDERBY + sql_list(sql_count(SQL_ONE) + SQL_DESC for _ in vals) +
                     SQL_LIMIT + quote_value(limit)
                 )
@@ -271,6 +266,11 @@ class EdgesTable(SetOpTable):
                     SQL_SELECT + sql_list(domain_names) +
                     SQL_FROM + sql_iso(domain)
                 )
+                if query_edge.allowNulls:
+                    domain += (
+                        SQL_UNION_ALL +
+                        SQL_SELECT + sql_list(SQL_NULL + " AS " + n for n in domain_names)
+                    )
 
                 where = None
                 join_type = SQL_LEFT_JOIN if query_edge.allowNulls else SQL_INNER_JOIN
@@ -486,7 +486,7 @@ class EdgesTable(SetOpTable):
         if query.edges:
             part = SQL_SELECT + sql_list(outer_selects) + SQL_FROM + edge_sql[0]
             for s in edge_sql[1:]:
-                part += SQL_LEFT_JOIN + s + SQL_ON + "1=1"
+                part += SQL_LEFT_JOIN + s + SQL_ON + SQL_TRUE
             part += SQL_LEFT_JOIN + primary + SQL_ON + SQL_AND.join(sql_iso(o) for o in ons)
             part += SQL_WHERE + SQL_AND.join(sql_iso(w) for w in null_ons if w)
             if groupby:

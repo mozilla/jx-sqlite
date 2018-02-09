@@ -26,7 +26,7 @@ from mo_dots.lists import FlatList
 from pyLibrary import convert
 from mo_collections.matrix import Matrix
 from mo_kwargs import override
-from pyLibrary.sql import SQL, SQL_IS_NULL, SQL_AND, SQL_IS_NOT_NULL, SQL_ORDERBY, SQL_LIMIT, SQL_COMMA, sql_iso, sql_list
+from pyLibrary.sql import SQL, SQL_IS_NULL, SQL_AND, SQL_IS_NOT_NULL, SQL_ORDERBY, SQL_LIMIT, SQL_COMMA, sql_iso, sql_list, SQL_TRUE
 from pyLibrary.sql.mysql import int_list_packer
 
 
@@ -356,7 +356,7 @@ def _esfilter2sqlwhere(db, esfilter):
     esfilter = wrap(esfilter)
 
     if esfilter is True:
-        return "1=1"
+        return SQL_TRUE
     elif esfilter["and"]:
         return _isolate(SQL_AND, [esfilter2sqlwhere(db, a) for a in esfilter["and"]])
     elif esfilter["or"]:
@@ -425,7 +425,7 @@ def _esfilter2sqlwhere(db, esfilter):
         else:
             return sql_iso(db.quote_column(esfilter.exists.field) + SQL_IS_NOT_NULL)
     elif esfilter.match_all:
-        return "1=1"
+        return SQL_TRUE
     elif esfilter.instr:
         return _isolate(SQL_AND, ["instr" + sql_iso(db.quote_column(col) + ", " + db.quote_value(val)) + ">0" for col, val in esfilter.instr.items()])
     else:

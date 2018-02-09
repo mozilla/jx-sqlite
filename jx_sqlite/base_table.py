@@ -22,7 +22,7 @@ from jx_sqlite import UID
 from jx_sqlite.snowflake import Snowflake
 from mo_kwargs import override
 from pyLibrary.sql import SQL, SQL_UNION_ALL, SQL_SELECT
-from pyLibrary.sql.sqlite import Sqlite
+from pyLibrary.sql.sqlite import Sqlite, quote_value
 
 _config=None
 
@@ -63,7 +63,7 @@ class BaseTable(Container):
         existence = self.db.query("PRAGMA table_info(__digits__)")
         if not existence.data:
             self.db.execute("CREATE TABLE __digits__(value INTEGER)")
-            self.db.execute("INSERT INTO __digits__ " + SQL_UNION_ALL.join(SQL_SELECT + SQL(text_type(i)) for i in range(10)))
+            self.db.execute("INSERT INTO __digits__ " + SQL_UNION_ALL.join(SQL_SELECT + SQL(quote_value(i)) for i in range(10)))
 
     @property
     def schema(self):
