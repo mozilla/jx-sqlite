@@ -31,7 +31,7 @@ from mo_logs.strings import indent
 from mo_logs.strings import outdent
 from mo_math import Math
 from mo_times import Date
-from pyLibrary.sql import SQL, SQL_NULL, SQL_SELECT, SQL_LIMIT, SQL_WHERE, SQL_LEFT_JOIN, SQL_COMMA, SQL_FROM, SQL_AND, sql_list, sql_iso, SQL_ASC, SQL_TRUE, SQL_ONE
+from pyLibrary.sql import SQL, SQL_NULL, SQL_SELECT, SQL_LIMIT, SQL_WHERE, SQL_LEFT_JOIN, SQL_COMMA, SQL_FROM, SQL_AND, sql_list, sql_iso, SQL_ASC, SQL_TRUE, SQL_ONE, SQL_DESC
 from pyLibrary.sql.sqlite import join_column
 
 DEBUG = False
@@ -610,7 +610,7 @@ class MySQL(object):
             return sql_list(self.quote_column(c) for c in column_name)
         else:
             # ASSUME {"name":name, "value":value} FORM
-            return SQL(column_name.value + " AS " + self.quote_column(column_name.name))
+            return SQL(sql_alias(column_name.value, self.quote_column(column_name.name)))
 
     def sort2sqlorderby(self, sort):
         sort = jx.normalize_sort_parameters(sort)

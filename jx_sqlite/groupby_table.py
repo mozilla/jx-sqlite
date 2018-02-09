@@ -20,7 +20,7 @@ from jx_sqlite.expressions import sql_type_to_json_type
 from mo_dots import listwrap, split_field, join_field, startswith_field, concat_field
 from mo_future import unichr
 from mo_logs import Log
-from pyLibrary.sql import SQL_LEFT_JOIN, SQL_WHERE, SQL_GROUPBY, SQL_SELECT, SQL_FROM, SQL_ORDERBY, SQL_ON, sql_list, SQL_IS_NULL, sql_iso, sql_count, SQL_ONE
+from pyLibrary.sql import SQL_LEFT_JOIN, SQL_WHERE, SQL_GROUPBY, SQL_SELECT, SQL_FROM, SQL_ORDERBY, SQL_ON, sql_list, SQL_IS_NULL, sql_iso, sql_count, SQL_ONE, sql_alias
 from pyLibrary.sql.sqlite import quote_column, join_column
 
 
@@ -60,7 +60,7 @@ class GroupbyTable(EdgesTable):
 
                 column_alias = _make_column_name(column_number)
                 groupby.append(sql)
-                selects.append(sql + " AS " + column_alias)
+                selects.append(sql_alias(sql, column_alias))
                 if s.nested_path == ".":
                     select_name = s.name
                 else:
@@ -84,9 +84,9 @@ class GroupbyTable(EdgesTable):
                 Log.error("No such column {{var}}", var=s.value.var)
 
             if s.value == "." and s.aggregate == "count":
-                selects.append(sql_count(SQL_ONE) + " AS " + quote_column(s.name))
+                selects.append(sql_alias(sql_count(SQL_ONE) , quote_column(s.name)))
             else:
-                selects.append(sql_aggs[s.aggregate] + sql_iso(sql)+" AS " + quote_column(s.name))
+                selects.append(sql_alias(sql_aggs[s.aggregate] + sql_iso(sql),quote_column(s.name)))
 
             index_to_column[column_number] = ColumnMapping(
                 push_name=s.name,

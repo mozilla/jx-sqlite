@@ -121,3 +121,7 @@ def sql_count(sql):
 
 def sql_concat(list_):
     return SQL(" || ").join(sql_iso(l) for l in list_)
+
+
+def sql_alias(value, alias):
+    return SQL(value.template + " AS " + alias.template)

@@ -26,7 +26,7 @@ from mo_dots.lists import FlatList
 from pyLibrary import convert
 from mo_collections.matrix import Matrix
 from mo_kwargs import override
-from pyLibrary.sql import SQL, SQL_IS_NULL, SQL_AND, SQL_IS_NOT_NULL, SQL_ORDERBY, SQL_LIMIT, SQL_COMMA, sql_iso, sql_list, SQL_TRUE
+from pyLibrary.sql import SQL, SQL_IS_NULL, SQL_AND, SQL_IS_NOT_NULL, SQL_ORDERBY, SQL_LIMIT, SQL_COMMA, sql_iso, sql_list, SQL_TRUE, sql_alias
 from pyLibrary.sql.mysql import int_list_packer
 
 
@@ -117,10 +117,10 @@ class MySQL(object):
             if e.domain.type != "default":
                 Log.error("domain of type {{type}} not supported, yet", type=e.domain.type)
             groups.append(e.value)
-            selects.append(e.value + " AS " + self.db.quote_column(e.name))
+            selects.append(sql_alias(e.value, self.db.quote_column(e.name)))
 
         for s in select:
-            selects.append(aggregates[s.aggregate].replace("{{code}}", s.value) + " AS " + self.db.quote_column(s.name))
+            selects.append(sql_alias(aggregates[s.aggregate].replace("{{code}}", s.value), self.db.quote_column(s.name)))
 
         sql = expand_template("""
             SELECT
@@ -205,7 +205,7 @@ class MySQL(object):
             if s0.aggregate not in aggregates:
                 Log.error("Expecting all columns to have an aggregate: {{select}}", select=s0)
 
-            select = aggregates[s0.aggregate].replace("{{code}}", s0.value) + " AS " + self.db.quote_column(s0.name)
+            select = sql_alias(aggregates[s0.aggregate].replace("{{code}}", s0.value) , self.db.quote_column(s0.name))
 
             sql = expand_template("""
                 SELECT
@@ -238,9 +238,9 @@ class MySQL(object):
                         selects.append(v + " AS " + self.db.quote_column(s.name + "." + k))
                 if isinstance(s.value, list):
                     for i, ss in enumerate(s.value):
-                        selects.append(s.value + " AS " + self.db.quote_column(s.name + "," + str(i)))
+                        selects.append(sql_alias(s.value ,self.db.quote_column(s.name + "," + str(i))))
                 else:
-                    selects.append(s.value + " AS " + self.db.quote_column(s.name))
+                    selects.append(sql_alias(s.value, self.db.quote_column(s.name)))
 
             sql = expand_template("""
                 SELECT
@@ -285,7 +285,7 @@ class MySQL(object):
                 select = "*"
             else:
                 name = query.select.name
-                select = query.select.value + " AS " + self.db.quote_column(name)
+                select = sql_alias(query.select.value, self.db.quote_column(name))
 
             sql = expand_template("""
                 SELECT

@@ -24,7 +24,7 @@ from mo_dots import listwrap, Data, unwraplist, split_field, join_field, startsw
 from mo_future import text_type
 from mo_future import unichr
 from mo_math import UNION, MAX
-from pyLibrary.sql import SQL_UNION_ALL, SQL_LEFT_JOIN, SQL_FROM, SQL_WHERE, SQL_SELECT, SQL_ON, SQL_AND, SQL_LIMIT, SQL_ORDERBY, SQL_NULL, SQL_IS_NULL, SQL_IS_NOT_NULL, sql_iso, sql_list
+from pyLibrary.sql import SQL_UNION_ALL, SQL_LEFT_JOIN, SQL_FROM, SQL_WHERE, SQL_SELECT, SQL_ON, SQL_AND, SQL_LIMIT, SQL_ORDERBY, SQL_NULL, SQL_IS_NULL, SQL_IS_NOT_NULL, sql_iso, sql_list, sql_alias
 from pyLibrary.sql.sqlite import quote_value, quote_column, join_column
 
 
@@ -96,7 +96,7 @@ class SetOpTable(InsertTable):
                     column_number = len(sql_selects)
                     # SQL HAS ABS TABLE REFERENCE
                     column_alias = _make_column_name(column_number)
-                    sql_selects.append(sql + " AS " + column_alias)
+                    sql_selects.append(sql_alias(sql, column_alias))
                     if s.sort == -1:
                         sorts.append(column_alias + SQL_IS_NOT_NULL)
                         sorts.append(column_alias + " DESC")
@@ -134,7 +134,7 @@ class SetOpTable(InsertTable):
             if nested_path == "." and quoted_GUID in vars_:
                 column_number = index_to_uid[nested_path] = nested_doc_details['id_coord'] = len(sql_selects)
                 sql_select = join_column(alias, quoted_GUID)
-                sql_selects.append(sql_select + " AS " + _make_column_name(column_number))
+                sql_selects.append(sql_alias(sql_select, _make_column_name(column_number)))
                 index_to_column[column_number] = nested_doc_details['index_to_column'][column_number] = ColumnMapping(
                     push_name="_id",
                     push_column_name="_id",
@@ -151,7 +151,7 @@ class SetOpTable(InsertTable):
             # WE ALWAYS ADD THE UID AND ORDER
             column_number = index_to_uid[nested_path] = nested_doc_details['id_coord'] = len(sql_selects)
             sql_select = join_column(alias, quoted_UID)
-            sql_selects.append(sql_select + " AS " + _make_column_name(column_number))
+            sql_selects.append(sql_alias(sql_select, _make_column_name(column_number)))
             if nested_path != ".":
                 index_to_column[column_number] = ColumnMapping(
                     sql=sql_select,
@@ -162,7 +162,7 @@ class SetOpTable(InsertTable):
                 )
                 column_number = len(sql_selects)
                 sql_select = join_column(alias , quoted_ORDER)
-                sql_selects.append(sql_select + " AS " + _make_column_name(column_number))
+                sql_selects.append(sql_alias(sql_select, _make_column_name(column_number)))
                 index_to_column[column_number] = ColumnMapping(
                     sql=sql_select,
                     type="number",
@@ -200,7 +200,7 @@ class SetOpTable(InsertTable):
                                     if concat_field(alias, unsorted_sql) in selects and len(unsorted_sql.split()) == 1:
                                         continue
                                     selects.append(concat_field(alias, unsorted_sql))
-                                    sql_selects.append(join_column(alias, unsorted_sql) + " AS " + column_alias)
+                                    sql_selects.append(sql_alias(join_column(alias, unsorted_sql), column_alias))
                                     index_to_column[column_number] = nested_doc_details['index_to_column'][column_number] = ColumnMapping(
                                         push_name=literal_field(get_property_name(concat_field(s.name, column.name))),
                                         push_column_name=get_property_name(concat_field(s.name, column.name)),
@@ -257,7 +257,7 @@ class SetOpTable(InsertTable):
                     if concat_field(alias, unsorted_sql) in selects and len(unsorted_sql.split()) == 1:
                         continue
                     selects.append(concat_field(alias, unsorted_sql))
-                    sql_selects.append(join_column(alias, unsorted_sql) + " AS " + column_alias)
+                    sql_selects.append(sql_alias(join_column(alias, unsorted_sql) , column_alias))
                     index_to_column[column_number] = nested_doc_details['index_to_column'][column_number] = ColumnMapping(
                         push_name=s.name,
                         push_column_name=s.name,
@@ -581,10 +581,10 @@ class SetOpTable(InsertTable):
                         continue
 
                     if startswith_field(sql_select.nested_path[0], nested_path):
-                        select_clause.append(sql_select.sql + " AS " + sql_select.column_alias)
+                        select_clause.append(sql_alias(sql_select.sql, sql_select.column_alias))
                     else:
                         # DO NOT INCLUDE DEEP STUFF AT THIS LEVEL
-                        select_clause.append(SQL_NULL+" AS " + sql_select.column_alias)
+                        select_clause.append(sql_alias(SQL_NULL, sql_select.column_alias))
 
                 if nested_path == ".":
                     from_clause += SQL_FROM + quote_column(self.sf.fact) + " " + alias

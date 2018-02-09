@@ -24,7 +24,7 @@ from mo_dots import listwrap, coalesce, split_field, join_field, startswith_fiel
 from mo_future import text_type, unichr
 from mo_logs import Log
 from mo_math import Math
-from pyLibrary.sql import SQL, SQL_AND, SQL_COMMA, SQL_OR, SQL_UNION_ALL, SQL_LEFT_JOIN, SQL_INNER_JOIN, SQL_GROUPBY, SQL_WHERE, SQL_FROM, SQL_SELECT, SQL_LIMIT, SQL_ORDERBY, SQL_ON, SQL_NULL, SQL_IS_NULL, SQL_IS_NOT_NULL, sql_list, sql_iso, SQL_END, SQL_ELSE, SQL_THEN, SQL_WHEN, SQL_CASE, SQL_ONE, sql_count, SQL_DESC, SQL_STAR, SQL_TRUE, SQL_UNION
+from pyLibrary.sql import SQL, SQL_AND, SQL_COMMA, SQL_OR, SQL_UNION_ALL, SQL_LEFT_JOIN, SQL_INNER_JOIN, SQL_GROUPBY, SQL_WHERE, SQL_FROM, SQL_SELECT, SQL_LIMIT, SQL_ORDERBY, SQL_ON, SQL_NULL, SQL_IS_NULL, SQL_IS_NOT_NULL, sql_list, sql_iso, SQL_END, SQL_ELSE, SQL_THEN, SQL_WHEN, SQL_CASE, SQL_ONE, sql_count, SQL_DESC, SQL_STAR, SQL_TRUE, SQL_UNION, sql_alias
 from pyLibrary.sql.sqlite import quote_value, quote_column, join_column
 
 EXISTS_COLUMN = quote_column("__exists__")
@@ -140,15 +140,15 @@ class EdgesTable(SetOpTable):
                     Log.error("Do not know how to handle")
                 if query_edge.value:
                     domain = SQL_UNION_ALL.join(
-                        SQL_SELECT + quote_value(coalesce(p.dataIndex, i)) + " AS rownum, " +
-                        quote_value(p.value) + " AS " + domain_name
+                        SQL_SELECT + sql_alias(quote_value(coalesce(p.dataIndex, i)), "rownum") + SQL_COMMA +
+                        sql_alias(quote_value(p.value), domain_name)
                         for i, p in enumerate(query_edge.domain.partitions)
                     )
                     if query_edge.allowNulls:
                         domain += (
                             SQL_UNION_ALL + SQL_SELECT +
-                            quote_value(len(query_edge.domain.partitions)) + " AS rownum, " +
-                            SQL_AND + " AS " + domain_name
+                            sql_alias(quote_value(len(query_edge.domain.partitions)), "rownum") + SQL_COMMA +
+                            sql_alias(SQL_NULL, domain_name)
                         )
                     where = None
                     join_type = SQL_LEFT_JOIN if query_edge.allowNulls else SQL_INNER_JOIN
@@ -227,7 +227,7 @@ class EdgesTable(SetOpTable):
                     domain_nested_path = domain_columns[0].nested_path
                 domain_table = quote_column(concat_field(self.sf.fact, domain_nested_path[0]))
                 domain = (
-                    SQL_SELECT + sql_list(g + " AS " + n for n, g in zip(domain_names, vals)) +
+                    SQL_SELECT + sql_list(sql_alias(g, n) for n, g in zip(domain_names, vals)) +
                     SQL_FROM + domain_table + " " + nest_to_alias["."] +
                     SQL_GROUPBY + sql_list(vals)
                 )
@@ -254,7 +254,7 @@ class EdgesTable(SetOpTable):
                 domain_table = quote_column(concat_field(self.sf.fact, domain_nested_path[0]))
                 limit = Math.min(query.limit, query_edge.domain.limit)
                 domain = (
-                    SQL_SELECT + sql_list(g + " AS " + n for n, g in zip(domain_names, vals)) +
+                    SQL_SELECT + sql_list(sql_alias(g, n) for n, g in zip(domain_names, vals)) +
                     SQL_FROM + domain_table + " " + nest_to_alias["."] +
                     SQL_WHERE + SQL_AND.join(g + SQL_IS_NOT_NULL for g in vals) +
                     SQL_GROUPBY + sql_list(g for g in vals) +
@@ -269,7 +269,7 @@ class EdgesTable(SetOpTable):
                 if query_edge.allowNulls:
                     domain += (
                         SQL_UNION_ALL +
-                        SQL_SELECT + sql_list(SQL_NULL + " AS " + n for n in domain_names)
+                        SQL_SELECT + sql_list(sql_alias(SQL_NULL, n) for n in domain_names)
                     )
 
                 where = None
@@ -295,7 +295,7 @@ class EdgesTable(SetOpTable):
                 if len(edge_names) == 1:
                     domain = self._make_range_domain(domain=d, column_name=domain_name)
                     if query_edge.allowNulls:
-                        domain += SQL_UNION_ALL + SQL_SELECT + SQL_NULL + " AS " + domain_name
+                        domain += SQL_UNION_ALL + SQL_SELECT + sql_alias(SQL_NULL, domain_name)
                     on_clause = (
                         SQL_AND.join(
                             join_column(edge_alias, k) + " <= " + v + SQL_AND +
@@ -336,7 +336,7 @@ class EdgesTable(SetOpTable):
             null_groupby.append(sql_list(join_column(edge_alias, d) for d in domain_names))
 
             for n, k in enumerate(domain_names):
-                outer_selects.append(join_column(edge_alias, k) + " AS " + k)
+                outer_selects.append(sql_alias(join_column(edge_alias, k), k))
 
                 orderby.append(k + SQL_IS_NULL)
                 if query.sort[n].sort == -1:
@@ -368,7 +368,7 @@ class EdgesTable(SetOpTable):
                 columns = [c.es_column for c in self.sf.columns if untyped_column(c.es_column)[0] == value]
                 sql = SQL("+").join(sql_count(quote_column(col)) for col in columns)
                 column_number = len(outer_selects)
-                outer_selects.append(sql + " AS " + _make_column_name(column_number))
+                outer_selects.append(sql_alias(sql, _make_column_name(column_number)))
                 index_to_column[column_number] = ColumnMapping(
                     push_name=s.name,
                     push_column_name=s.name,
@@ -388,7 +388,7 @@ class EdgesTable(SetOpTable):
                 for details in s.value.to_sql(schema):
                     for json_type, sql in details.sql.items():
                         column_number = len(outer_selects)
-                        count_sql = sql_count("DISTINCT" + sql_iso(sql)) + " AS " + _make_column_name(column_number)
+                        count_sql = sql_alias(sql_count("DISTINCT" + sql_iso(sql)) , _make_column_name(column_number))
                         outer_selects.append(count_sql)
                         index_to_column[column_number] = ColumnMapping(
                             push_name=s.name,
@@ -422,7 +422,7 @@ class EdgesTable(SetOpTable):
                     for name, code in STATS.items():
                         full_sql = code.replace("{{value}}", sql)
                         column_number = len(outer_selects)
-                        outer_selects.append(full_sql + " AS " + _make_column_name(column_number))
+                        outer_selects.append(sql_alias(full_sql, _make_column_name(column_number)))
                         index_to_column[column_number] = ColumnMapping(
                             push_name=s.name,
                             push_column_name=s.name,
@@ -440,7 +440,7 @@ class EdgesTable(SetOpTable):
                         sql = sql_aggs[s.aggregate] + sql_iso(sql)
                         if s.default != None:
                             sql = "COALESCE" + sql_iso(sql + SQL_COMMA + quote_value(s.default))
-                        outer_selects.append(sql + " AS " + _make_column_name(column_number))
+                        outer_selects.append(sql_alias(sql, _make_column_name(column_number)))
                         index_to_column[column_number] = ColumnMapping(
                             push_name=s.name,
                             push_column_name=s.name,
