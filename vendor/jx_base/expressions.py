@@ -61,7 +61,7 @@ def jx_expression(expr, schema=None):
     for v in output.vars():
         leaves = schema.leaves(v.var)
         if len(leaves) == 1:
-            v.data_type = leaves[0].type
+            v.data_type = list(leaves)[0].type
     return output
 
 

@@ -261,7 +261,7 @@ class Schema(object):
             rel_name = column.names[np]
             container = self.map.get(rel_name)
             if not container:
-                container = self.map[rel_name] = []
+                container = self.map[rel_name] = set()
             hidden = [
                 c
                 for c in container
@@ -270,7 +270,7 @@ class Schema(object):
             for h in hidden:
                 container.remove(h)
 
-            container.append(column)
+            container.add(column)
 
     def remove(self, column_name, column):
         if column_name != column.names[self.nested_path[0]]:
@@ -307,13 +307,17 @@ class Schema(object):
         return [c for cs in self.map.values() for c in cs]
 
     def leaves(self, prefix):
-        return [
+        output = self.map.get(prefix)
+        if output:
+            return output
+
+        return set(
             c
             for k, cs in self.map.items()
             if startswith_field(k, prefix)
             for c in cs
             if c.type not in STRUCT
-        ]
+        )
 
     def map_to_sql(self, var=""):
         """

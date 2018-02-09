@@ -326,7 +326,7 @@ class SetOpTable(InsertTable):
                             value = row[i]
                             if isinstance(query.select, list) or isinstance(query.select.value, LeavesOp):
                                 # ASSIGN INNER PROPERTIES
-                                relative_path = join_field([c.push_name] + split_field(c.push_child))
+                                relative_path = concat_field(c.push_name, c.push_child)
                             else:  # FACT IS EXPECTED TO BE A SINGLE VALUE, NOT AN OBJECT
                                 relative_path = c.push_child
 
