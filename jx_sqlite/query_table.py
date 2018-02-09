@@ -26,7 +26,7 @@ from mo_collections.matrix import Matrix, index_to_coordinate
 from mo_dots import listwrap, coalesce, Data, wrap, startswith_field, unwrap, unwraplist, concat_field, relative_field, Null
 from mo_future import text_type
 from mo_logs import Log
-from pyLibrary.sql import SQL_COMMA, SQL, SQL_WHERE, SQL_FROM, SQL_SELECT
+from pyLibrary.sql import SQL, SQL_WHERE, SQL_FROM, SQL_SELECT, sql_list, sql_iso, SQL_ORDERBY, sql_count
 
 
 class QueryTable(GroupbyTable):
@@ -34,16 +34,16 @@ class QueryTable(GroupbyTable):
         return column.names[self.sf.fact]
 
     def __len__(self):
-        counter = self.db.query(SQL_SELECT+"COUNT(*)"+SQL_FROM + quote_table(self.sf.fact))[0][0]
+        counter = self.db.query(SQL_SELECT + sql_count("*") + SQL_FROM + quote_table(self.sf.fact))[0][0]
         return counter
 
     def __nonzero__(self):
-        counter = self.db.query(SQL_SELECT+"COUNT(*)"+SQL_FROM + quote_table(self.sf.fact))[0][0]
+        counter = self.db.query(SQL_SELECT + sql_count("*") + SQL_FROM + quote_table(self.sf.fact))[0][0]
         return bool(counter)
 
     def delete(self, where):
         filter = where.to_sql()
-        self.db.execute("DELETE"+SQL_FROM + quote_table(self.sf.fact) + SQL_WHERE + filter)
+        self.db.execute("DELETE" + SQL_FROM + quote_table(self.sf.fact) + SQL_WHERE + filter)
 
     def vars(self):
         return set(self.columns.keys())
@@ -69,7 +69,7 @@ class QueryTable(GroupbyTable):
             else:
                 select.append(
                     "coalesce(" +
-                    SQL_COMMA.join(quote_table(c.es_column) for c in cs) +
+                    sql_list(quote_table(c.es_column) for c in cs) +
                     ") " + quote_table(c.name)
                 )
 
@@ -417,8 +417,8 @@ class QueryTable(GroupbyTable):
         if window.value == "rownum":
             return (
                 "ROW_NUMBER()-1 OVER (" +
-                " PARTITION BY " + (SQL_COMMA.join(window.edges.values)) +
-                SQL_ORDERBY + (SQL_COMMA.join(window.edges.sort)) +
+                " PARTITION BY " + sql_iso(sql_list(window.edges.values)) +
+                SQL_ORDERBY + sql_iso(sql_list(window.edges.sort)) +
                 ") AS " + quote_table(window.name)
             )
 
@@ -426,9 +426,9 @@ class QueryTable(GroupbyTable):
         range_max = text_type(coalesce(window.range.max, "UNBOUNDED"))
 
         return (
-            sql_aggs[window.aggregate] + "(" + window.value.to_sql() + ") OVER (" +
-            " PARTITION BY " + (SQL_COMMA.join(window.edges.values)) +
-            SQL_ORDERBY + (SQL_COMMA.join(window.edges.sort)) +
+            sql_aggs[window.aggregate] + sql_iso(window.value.to_sql())+" OVER (" +
+            " PARTITION BY " + sql_iso(sql_list(window.edges.values)) +
+            SQL_ORDERBY + sql_iso(sql_list(window.edges.sort)) +
             " ROWS BETWEEN " + range_min + " PRECEDING AND " + range_max + " FOLLOWING " +
             ") AS " + quote_table(window.name)
         )

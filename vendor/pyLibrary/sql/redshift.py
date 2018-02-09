@@ -118,7 +118,7 @@ class Redshift(object):
                 "INSERT INTO " + self.quote_column(table_name) + "(" +
                 ",".join([self.quote_column(k) for k in columns]) +
                 ") VALUES " + ",\n".join([
-                "(" + ",".join([self.quote_value(r.get(k, None)) for k in columns]) + ")"
+                sql_iso(",".join([self.quote_value(r.get(k, None)) for k in columns]))
                 for r in records
             ])
             )
@@ -140,7 +140,7 @@ class Redshift(object):
     def quote_column(self, name):
         if isinstance(name, text_type):
             return SQL('"' + name.replace('"', '""') + '"')
-        return SQL("(" + (", ".join(self.quote_value(v) for v in name)) + ")")
+        return SQL(sql_iso((", ".join(self.quote_value(v) for v in name))))
 
     def quote_value(self, value):
         if value ==None:

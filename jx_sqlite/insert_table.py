@@ -25,7 +25,7 @@ from jx_sqlite.base_table import BaseTable, generateGuid
 from jx_base import STRUCT
 from jx_base.expressions import jx_expression
 from jx_python.meta import Column
-from pyLibrary.sql import SQL, SQL_COMMA, SQL_AND, SQL_UNION_ALL, SQL_INNER_JOIN, SQL_WHERE, SQL_FROM, SQL_SELECT
+from pyLibrary.sql import SQL, SQL_COMMA, SQL_AND, SQL_UNION_ALL, SQL_INNER_JOIN, SQL_WHERE, SQL_FROM, SQL_SELECT, SQL_NULL, sql_list, sql_iso
 from pyLibrary.sql.sqlite import quote_value, quote_column
 
 
@@ -58,7 +58,7 @@ class InsertTable(BaseTable):
             for v in _vars
             for c in self.columns.get(v, Null)
             if c.type not in STRUCT
-            }
+        }
         where_sql = where.map(_map).to_sql()
         new_columns = set(command.set.keys()) - set(self.columns.keys())
         for new_column_name in new_columns:
@@ -77,16 +77,16 @@ class InsertTable(BaseTable):
             if get_type(nested_value) == "nested":
                 nested_table_name = concat_field(self.sf.fact, nested_column_name)
                 nested_table = nested_tables[nested_column_name]
-                self_primary_key = SQL_COMMA.join(quote_table(c.es_column) for u in self.uid for c in self.columns[u])
+                self_primary_key = sql_list(quote_table(c.es_column) for u in self.uid for c in self.columns[u])
                 extra_key_name = UID_PREFIX + "id" + text_type(len(self.uid))
                 extra_key = [e for e in nested_table.columns[extra_key_name]][0]
 
                 sql_command = (
-                    "DELETE"+SQL_FROM + quote_table(nested_table.name) +
-                    SQL_WHERE+"EXISTS (" +
+                    "DELETE" + SQL_FROM + quote_table(nested_table.name) +
+                    SQL_WHERE + "EXISTS (" +
                     "\nSELECT 1 " +
                     SQL_FROM + quote_table(nested_table.name) + " n" +
-                    SQL_INNER_JOIN+"(" +
+                    SQL_INNER_JOIN + "(" +
                     SQL_SELECT + self_primary_key +
                     SQL_FROM + quote_table(self.sf.fact) +
                     SQL_WHERE + where_sql +
@@ -108,16 +108,14 @@ class InsertTable(BaseTable):
                 for d in listwrap(nested_value):
                     nested_table.flatten(d, Data(), doc_collection, path=nested_column_name)
 
-                prefix = (
-                    "INSERT INTO " + quote_table(nested_table.name) + "(" +
-                    self_primary_key + "," +
-                    quote_column(extra_key) + "," +
-                    SQL_COMMA.join(
+                prefix = "INSERT INTO " + quote_table(nested_table.name) + sql_iso(sql_list(
+                    [self_primary_key] +
+                    [quote_column(extra_key)] +
+                    [
                         quote_table(c.es_column)
                         for c in doc_collection.get(".", Null).active_columns
-                    ) +
-                    ")"
-                )
+                    ]
+                ))
 
                 # BUILD THE PARENT TABLES
                 parent = (
@@ -130,7 +128,7 @@ class InsertTable(BaseTable):
                 children = SQL_UNION_ALL.join(
                     SQL_SELECT +
                     quote_value(i) + " " + quote_table(extra_key.es_column) + "," +
-                    SQL_COMMA.join(
+                    sql_list(
                         quote_value(row[c.name]) + " " + quote_table(c.es_column)
                         for c in doc_collection.get(".", Null).active_columns
                     )
@@ -140,17 +138,17 @@ class InsertTable(BaseTable):
                 sql_command = (
                     prefix +
                     SQL_SELECT +
-                    SQL_COMMA.join(
+                    sql_list(
                         "p." + quote_table(c.es_column)
                         for u in self.uid for c in self.columns[u]
                     ) + "," +
                     "c." + quote_column(extra_key) + "," +
-                    SQL_COMMA.join(
+                    sql_list(
                         "c." + quote_table(c.es_column)
                         for c in doc_collection.get(".", Null).active_columns
                     ) +
-                    SQL_FROM+"(" + parent + ") p " +
-                    SQL_INNER_JOIN+"(" + children +
+                    SQL_FROM + sql_iso(parent) + " p " +
+                    SQL_INNER_JOIN + "(" + children +
                     "\n) c on 1=1"
                 )
 
@@ -174,21 +172,21 @@ class InsertTable(BaseTable):
 
         command = (
             "UPDATE " + quote_table(self.sf.fact) + " SET " +
-            SQL_COMMA.join(
+            sql_list(
                 [
                     quote_column(c) + "=" + quote_value(get_if_type(v, c.type))
                     for k, v in command.set.items()
                     if get_type(v) != "nested"
                     for c in self.columns[k]
                     if c.type != "nested" and len(c.nested_path) == 1
-                    ] +
+                ] +
                 [
-                    quote_column(c) + "=NULL"
+                    quote_column(c) + "=" + SQL_NULL
                     for k in listwrap(command['clear'])
                     if k in self.columns
                     for c in self.columns[k]
                     if c.type != "nested" and len(c.nested_path) == 1
-                    ]
+                ]
             ) +
             SQL_WHERE + where_sql
         )
@@ -245,7 +243,7 @@ class InsertTable(BaseTable):
             :param row: we will be filling this
             :return:
             """
-            table=concat_field(self.sf.fact, nested_path[0])
+            table = concat_field(self.sf.fact, nested_path[0])
             insertion = doc_collection[nested_path[0]]
             if not row:
                 row = {GUID: guid, UID: uid, PARENT: parent_id, ORDER: order}
@@ -287,7 +285,7 @@ class InsertTable(BaseTable):
 
                     # INSIDE IF BLOCK BECAUSE WE DO NOT WANT IT TO ADD WHAT WE columns.get() ALREADY
                     insertion.active_columns.add(c)
-                elif c.type=="nested" and value_type=="object":
+                elif c.type == "nested" and value_type == "object":
                     value_type = "nested"
                     v = [v]
                 elif len(c.nested_path) < len(nested_path):
@@ -307,7 +305,7 @@ class InsertTable(BaseTable):
                     insertion.active_columns.add(deep_c)
 
                     for r in from_doc.rows:
-                        r1=unwrap(r)
+                        r1 = unwrap(r)
                         if column in r1:
                             row1 = {UID: self.next_uid(), PARENT: r1["__id__"], ORDER: 0, column: r1[column]}
                             insertion.rows.append(row1)
@@ -366,12 +364,12 @@ class InsertTable(BaseTable):
 
             prefix = (
                 "INSERT INTO " + quote_table(table_name) +
-                "(" + SQL_COMMA.join(map(quote_table, all_columns)) + ")"
+                sql_iso(sql_list(map(quote_table, all_columns)))
             )
 
             # BUILD THE RECORDS
             records = SQL_UNION_ALL.join(
-                SQL_SELECT + SQL_COMMA.join(quote_value(row.get(c)) for c in all_columns)
+                SQL_SELECT + sql_list(quote_value(row.get(c)) for c in all_columns)
                 for row in unwrap(rows)
             )
 

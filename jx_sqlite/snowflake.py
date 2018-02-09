@@ -22,7 +22,7 @@ from jx_sqlite import quote_table, typed_column, UID, quoted_UID, quoted_GUID, s
 from jx_sqlite import untyped_column
 from mo_dots import relative_field, listwrap, split_field, join_field, wrap, startswith_field, concat_field, Null, coalesce, set_default
 from mo_logs import Log
-from pyLibrary.sql import SQL_COMMA, SQL_SELECT, SQL_FROM
+from pyLibrary.sql import SQL_FROM, sql_iso, sql_list, SQL_LIMIT, SQL_SELECT, SQL_ZERO
 from pyLibrary.sql.sqlite import quote_column
 
 
@@ -61,7 +61,7 @@ class Snowflake(object):
             self.add_table_to_schema(nested_path)
 
             # LOAD THE COLUMNS
-            command = "PRAGMA table_info(" + quote_table(table.name) + ")"
+            command = "PRAGMA table_info"+sql_iso(quote_table(table.name))
             details = self.db.query(command)
 
             for cid, name, dtype, notnull, dfft_value, pk in details.data:
@@ -105,13 +105,13 @@ class Snowflake(object):
 
         command = (
             "CREATE TABLE " + quote_table(self.fact) + "(" +
-            (SQL_COMMA.join(
+            (sql_list(
                 [quoted_GUID + " TEXT "] +
                 [quoted_UID + " INTEGER"] +
                 [quote_column(c.es_column) + " " + sql_types[c.type] for c in self.tables["."].schema.columns]
             )) +
             ", PRIMARY KEY (" +
-            (SQL_COMMA.join(
+            (sql_list(
                 [quoted_GUID] +
                 [quoted_UID] +
                 [quote_column(c.es_column) for c in self.tables["."].schema.columns]
@@ -167,17 +167,15 @@ class Snowflake(object):
 
         # DEFINE A NEW TABLE?
         # LOAD THE COLUMNS
-        command = "PRAGMA table_info(" + quote_table(destination_table) + ")"
+        command = "PRAGMA table_info"+sql_iso(quote_table(destination_table))
         details = self.db.query(command)
         if not details.data:
             command = (
-                "CREATE TABLE " + quote_table(destination_table) + "(" +
-                (SQL_COMMA.join(
-                    [quoted_UID + " INTEGER", quoted_PARENT + " INTEGER", quoted_ORDER+" INTEGER"]
-                )) +
-                ", PRIMARY KEY (" + quoted_UID + ")" +
-                ", FOREIGN KEY (" + quoted_PARENT + ") REFERENCES " + quote_table(existing_table) + "(" + quoted_UID + ")"
-                ")"
+                "CREATE TABLE " + quote_table(destination_table) + sql_iso(sql_list(
+                [quoted_UID + " INTEGER", quoted_PARENT + " INTEGER", quoted_ORDER + " INTEGER"] +
+                ["PRIMARY KEY " + sql_iso(quoted_UID)] +
+                ["FOREIGN KEY " + sql_iso(quoted_PARENT) + " REFERENCES " + quote_table(existing_table) + sql_iso(quoted_UID)]
+            ))
             )
             self.db.execute(command)
             self.add_table_to_schema([new_path])
@@ -196,14 +194,14 @@ class Snowflake(object):
         for col in moving_columns:
             column = col.es_column
             tmp_table = "tmp_" + existing_table
-            columns = self.db.query("select * from " + quote_table(existing_table) + SQL_LIMIT+"0").header
+            columns = self.db.query(SQL_SELECT + "*" + SQL_FROM + quote_table(existing_table) + SQL_LIMIT + SQL_ZERO).header
             self.db.execute(
                 "ALTER TABLE " + quote_table(existing_table) +
                 " RENAME TO " + quote_table(tmp_table)
             )
             self.db.execute(
-                "CREATE TABLE " + quote_table(existing_table) +
-                " AS SELECT " + (SQL_COMMA.join([quote_table(c) for c in columns if c!=column])) +
+                "CREATE TABLE " + quote_table(existing_table) + " AS " +
+                SQL_SELECT + sql_list([quote_table(c) for c in columns if c != column]) +
                 SQL_FROM + quote_table(tmp_table)
             )
             self.db.execute("DROP TABLE " + quote_table(tmp_table))

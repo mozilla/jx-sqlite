@@ -13,6 +13,10 @@ from __future__ import unicode_literals
 
 from collections import Mapping
 
+import mo_json
+from jx_base import IS_NULL
+from mo_future import text_type
+
 from mo_logs import Log
 from mo_logs.exceptions import suppress_exception
 from mo_logs.strings import indent, expand_template
@@ -22,7 +26,7 @@ from mo_dots.lists import FlatList
 from pyLibrary import convert
 from mo_collections.matrix import Matrix
 from mo_kwargs import override
-from pyLibrary.sql import SQL
+from pyLibrary.sql import SQL, SQL_IS_NULL, SQL_AND, SQL_IS_NOT_NULL, SQL_ORDERBY, SQL_LIMIT, SQL_COMMA, sql_iso, sql_list
 from pyLibrary.sql.mysql import int_list_packer
 
 
@@ -76,7 +80,6 @@ class MySQL(object):
             "assignment": ",".join(self.db.quote_column(k) + "=" + self.db.quote_value(v) for k, v in query.set),
             "where": self._where2sql(query.where)
         })
-
 
     def _subquery(self, query, isolate=True, stacked=False):
         if isinstance(query, text_type):
@@ -316,11 +319,10 @@ class MySQL(object):
         """
         if not sort:
             return ""
-        return SQL(SQL_ORDERBY + ",\n".join([self.db.quote_column(o.field) + (" DESC" if o.sort == -1 else "") for o in sort]))
+        return SQL_ORDERBY + sql_list([self.db.quote_column(o.field) + (" DESC" if o.sort == -1 else "") for o in sort])
 
     def _limit2sql(self, limit):
         return SQL("" if not limit else SQL_LIMIT + str(limit))
-
 
     def _where2sql(self, where):
         if where == None:
@@ -336,10 +338,10 @@ def _isolate(separator, list):
             return list[0]
     except Exception as e:
         Log.error("Programming problem: separator={{separator}}, list={{list}",
-            list=list,
-            separator=separator,
-            cause=e
-        )
+                  list=list,
+                  separator=separator,
+                  cause=e
+                  )
 
 
 def esfilter2sqlwhere(db, esfilter):
@@ -356,13 +358,13 @@ def _esfilter2sqlwhere(db, esfilter):
     if esfilter is True:
         return "1=1"
     elif esfilter["and"]:
-        return _isolate("AND", [esfilter2sqlwhere(db, a) for a in esfilter["and"]])
+        return _isolate(SQL_AND, [esfilter2sqlwhere(db, a) for a in esfilter["and"]])
     elif esfilter["or"]:
         return _isolate("OR", [esfilter2sqlwhere(db, a) for a in esfilter["or"]])
     elif esfilter["not"]:
-        return "NOT (" + esfilter2sqlwhere(db, esfilter["not"]) + ")"
+        return "NOT " + sql_iso(esfilter2sqlwhere(db, esfilter["not"]))
     elif esfilter.term:
-        return _isolate("AND", [db.quote_column(col) + SQL("=") + db.quote_value(val) for col, val in esfilter.term.items()])
+        return _isolate(SQL_AND, [db.quote_column(col) + SQL("=") + db.quote_value(val) for col, val in esfilter.term.items()])
     elif esfilter.terms:
         for col, v in esfilter.terms.items():
             if len(v) == 0:
@@ -386,9 +388,9 @@ def _esfilter2sqlwhere(db, esfilter):
                         return esfilter2sqlwhere(db, {"missing": col})
                     else:
                         return "false"
-            return db.quote_column(col) + SQL(" in (" + ",\n".join([db.quote_value(val) for val in v]) + ")")
+            return db.quote_column(col) + " in " + sql_iso(sql_list([db.quote_value(val) for val in v]))
     elif esfilter.script:
-        return "(" + esfilter.script + ")"
+        return sql_iso(esfilter.script)
     elif esfilter.range:
         name2sign = {
             "gt": SQL(">"),
@@ -410,22 +412,22 @@ def _esfilter2sqlwhere(db, esfilter):
                 )
             return sql
 
-        output = _isolate("AND", [single(col, ranges) for col, ranges in esfilter.range.items()])
+        output = _isolate(SQL_AND, [single(col, ranges) for col, ranges in esfilter.range.items()])
         return output
     elif esfilter.missing:
         if isinstance(esfilter.missing, text_type):
-            return "(" + db.quote_column(esfilter.missing) + " IS Null)"
+            return sql_iso(db.quote_column(esfilter.missing) + SQL_IS_NULL)
         else:
-            return "(" + db.quote_column(esfilter.missing.field) + " IS Null)"
+            return sql_iso(db.quote_column(esfilter.missing.field) + SQL_IS_NULL)
     elif esfilter.exists:
         if isinstance(esfilter.exists, text_type):
-            return "(" + db.quote_column(esfilter.exists) + " IS NOT Null)"
+            return sql_iso(db.quote_column(esfilter.exists) + SQL_IS_NOT_NULL)
         else:
-            return "(" + db.quote_column(esfilter.exists.field) + " IS NOT Null)"
+            return sql_iso(db.quote_column(esfilter.exists.field) + SQL_IS_NOT_NULL)
     elif esfilter.match_all:
         return "1=1"
     elif esfilter.instr:
-        return _isolate("AND", ["instr(" + db.quote_column(col) + ", " + db.quote_value(val) + ")>0" for col, val in esfilter.instr.items()])
+        return _isolate(SQL_AND, ["instr" + sql_iso(db.quote_column(col) + ", " + db.quote_value(val)) + ">0" for col, val in esfilter.instr.items()])
     else:
         Log.error("Can not convert esfilter to SQL: {{esfilter}}", esfilter=esfilter)
 
@@ -438,7 +440,6 @@ def expand_json(rows):
                 with suppress_exception:
                     value = mo_json.json2value(json)
                     r[k] = value
-
 
 
 # MAP NAME TO SQL FUNCTION
@@ -464,6 +465,6 @@ aggregates = {
     "variance": "POWER(STDDEV({{code}}), 2)"
 }
 
-
 from jx_base.container import type2container
+
 type2container["mysql"] = MySQL

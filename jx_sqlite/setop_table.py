@@ -13,20 +13,18 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
-from mo_future import text_type
+from jx_base import STRUCT
 from jx_base.expressions import BooleanOp
-
+from jx_base.queries import get_property_name
+from jx_python.meta import Column
+from jx_sqlite import quote_table, quoted_UID, quoted_GUID, get_column, _make_column_name, ORDER, COLUMN, set_column, quoted_PARENT, ColumnMapping
+from jx_sqlite.expressions import sql_type_to_json_type, LeavesOp
+from jx_sqlite.insert_table import InsertTable
 from mo_dots import listwrap, Data, unwraplist, split_field, join_field, startswith_field, unwrap, relative_field, concat_field, literal_field, Null
+from mo_future import text_type
 from mo_future import unichr
 from mo_math import UNION, MAX
-
-from jx_base.queries import get_property_name
-from jx_sqlite import quote_table, quoted_UID, quoted_GUID, get_column, _make_column_name, ORDER, COLUMN, set_column, quoted_PARENT, ColumnMapping
-from jx_sqlite.insert_table import InsertTable
-from jx_base import STRUCT
-from jx_sqlite.expressions import sql_type_to_json_type, LeavesOp
-from jx_python.meta import Column
-from pyLibrary.sql import SQL_COMMA, SQL_UNION_ALL, SQL_LEFT_JOIN, SQL_FROM, SQL_WHERE, SQL_SELECT, SQL_ON, SQL_AND, SQL_LIMIT, SQL_ORDERBY
+from pyLibrary.sql import SQL_UNION_ALL, SQL_LEFT_JOIN, SQL_FROM, SQL_WHERE, SQL_SELECT, SQL_ON, SQL_AND, SQL_LIMIT, SQL_ORDERBY, SQL_NULL, SQL_IS_NULL, SQL_IS_NOT_NULL, sql_iso, sql_list
 from pyLibrary.sql.sqlite import quote_value, quote_column
 
 
@@ -100,10 +98,10 @@ class SetOpTable(InsertTable):
                     column_alias = _make_column_name(column_number)
                     sql_selects.append(sql + " AS " + column_alias)
                     if s.sort == -1:
-                        sorts.append(column_alias + " IS NOT NULL")
+                        sorts.append(column_alias + SQL_IS_NOT_NULL)
                         sorts.append(column_alias + " DESC")
                     else:
-                        sorts.append(column_alias + " IS NULL")
+                        sorts.append(column_alias + SQL_IS_NULL)
                         sorts.append(column_alias)
 
         selects = []
@@ -286,8 +284,8 @@ class SetOpTable(InsertTable):
 
         ordered_sql = (
             SQL_SELECT + "*" +
-            SQL_FROM + "(" + unsorted_sql + ")" +
-            SQL_ORDERBY + SQL_COMMA.join(sorts) +
+            SQL_FROM + sql_iso(unsorted_sql) +
+            SQL_ORDERBY + sql_list(sorts) +
             SQL_LIMIT + quote_value(query.limit)
         )
         self.db.create_new_functions()  # creating new functions: regexp
@@ -586,7 +584,7 @@ class SetOpTable(InsertTable):
                         select_clause.append(sql_select.sql + " AS " + sql_select.column_alias)
                     else:
                         # DO NOT INCLUDE DEEP STUFF AT THIS LEVEL
-                        select_clause.append("NULL AS " + sql_select.column_alias)
+                        select_clause.append(SQL_NULL+" AS " + sql_select.column_alias)
 
                 if nested_path == ".":
                     from_clause += SQL_FROM + quote_table(self.sf.fact) + " " + alias
@@ -595,7 +593,7 @@ class SetOpTable(InsertTable):
                         SQL_LEFT_JOIN + quote_table(concat_field(self.sf.fact, sub_table.name)) + " " + alias +
                         SQL_ON + alias + "." + quoted_PARENT + " = " + parent_alias + "." + quoted_UID
                     )
-                    where_clause = "(" + where_clause + ")" + SQL_AND + alias + "." + quote_table(ORDER) + " > 0"
+                    where_clause = sql_iso(where_clause) + SQL_AND + alias + "." + quote_table(ORDER) + " > 0"
                 parent_alias = alias
 
             elif startswith_field(primary_nested_path, nested_path):
@@ -609,7 +607,7 @@ class SetOpTable(InsertTable):
                         SQL_LEFT_JOIN + quote_table(concat_field(self.sf.fact, sub_table.name)) + " " + alias +
                         SQL_ON + alias + "." + quoted_PARENT + " = " + parent_alias + "." + quoted_UID
                     )
-                    where_clause = "(" + where_clause + ") AND " + parent_alias + "." + quote_table(ORDER) + " > 0"
+                    where_clause = sql_iso(where_clause) + SQL_AND + parent_alias + "." + quote_table(ORDER) + " > 0"
                 parent_alias = alias
 
             elif startswith_field(nested_path, primary_nested_path):
@@ -636,7 +634,7 @@ class SetOpTable(InsertTable):
                 continue
 
         sql = SQL_UNION_ALL.join(
-            [SQL_SELECT + SQL_COMMA.join(select_clause) + from_clause + SQL_WHERE + where_clause] +
+            [SQL_SELECT + sql_list(select_clause) + from_clause + SQL_WHERE + where_clause] +
             children_sql
         )
 

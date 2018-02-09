@@ -21,7 +21,7 @@ from jx_sqlite.edges_table import EdgesTable
 from jx_sqlite.expressions import sql_type_to_json_type
 from mo_dots import listwrap, split_field, join_field, startswith_field, concat_field
 from mo_logs import Log
-from pyLibrary.sql import SQL_COMMA, SQL_LEFT_JOIN, SQL_WHERE, SQL_GROUPBY, SQL_SELECT, SQL_FROM
+from pyLibrary.sql import SQL_COMMA, SQL_LEFT_JOIN, SQL_WHERE, SQL_GROUPBY, SQL_SELECT, SQL_FROM, SQL_ORDERBY, SQL_ON, SQL_NULL, sql_list, SQL_IS_NULL, sql_iso, sql_count, SQL_ONE
 
 
 class GroupbyTable(EdgesTable):
@@ -31,7 +31,7 @@ class GroupbyTable(EdgesTable):
         nest_to_alias = {
             nested_path: "__" + unichr(ord('a') + i) + "__"
             for i, (nested_path, sub_table) in enumerate(self.sf.tables.items())
-            }
+        }
         frum_path = split_field(frum)
         base_table = join_field(frum_path[0:1])
         path = join_field(frum_path[1:])
@@ -55,13 +55,13 @@ class GroupbyTable(EdgesTable):
             for s in e.value.to_sql(schema):
                 column_number = len(selects)
                 sql_type, sql = s.sql.items()[0]
-                if sql == 'NULL'and not e.value.var in schema.keys():
+                if sql == 'NULL' and not e.value.var in schema.keys():
                     Log.error("No such column {{var}}", var=e.value.var)
 
                 column_alias = _make_column_name(column_number)
                 groupby.append(sql)
                 selects.append(sql + " AS " + column_alias)
-                if s.nested_path ==".":
+                if s.nested_path == ".":
                     select_name = s.name
                 else:
                     select_name = "."
@@ -80,18 +80,18 @@ class GroupbyTable(EdgesTable):
         for i, s in enumerate(listwrap(query.select)):
             column_number = len(selects)
             sql_type, sql = s.value.to_sql(schema)[0].sql.items()[0]
-            if sql == 'NULL'and not s.value.var in schema.keys():
+            if sql == 'NULL' and not s.value.var in schema.keys():
                 Log.error("No such column {{var}}", var=s.value.var)
 
             if s.value == "." and s.aggregate == "count":
-                selects.append("COUNT(1) AS " + quote_table(s.name))
+                selects.append(sql_count(SQL_ONE) + " AS " + quote_table(s.name))
             else:
-                selects.append(sql_aggs[s.aggregate] + "(" + sql + ") AS " + quote_table(s.name))
+                selects.append(sql_aggs[s.aggregate] + sql_iso(sql)+" AS " + quote_table(s.name))
 
             index_to_column[column_number] = ColumnMapping(
                 push_name=s.name,
                 push_column_name=s.name,
-                push_column=i+len(query.groupby),
+                push_column=i + len(query.groupby),
                 push_child=".",
                 pull=get_column(column_number),
                 sql=sql,
@@ -105,19 +105,18 @@ class GroupbyTable(EdgesTable):
         where = query.where.to_sql(schema)[0].sql.b
 
         command = (
-            SQL_SELECT + (SQL_COMMA.join(selects)) +
+            SQL_SELECT + (sql_list(selects)) +
             SQL_FROM + from_sql +
             SQL_WHERE + where +
-            SQL_GROUPBY + SQL_COMMA.join(groupby)
+            SQL_GROUPBY + sql_list(groupby)
         )
 
         if query.sort:
-            command += SQL_ORDERBY + SQL_COMMA.join(
-                "(" + sql[t] + ") IS NULL"  + ",\n" +
+            command += SQL_ORDERBY + sql_list(
+                sql_iso(sql[t]) + SQL_IS_NULL + "," +
                 sql[t] + (" DESC" if s.sort == -1 else "")
                 for s, sql in [(s, s.value.to_sql(schema)[0].sql) for s in query.sort]
                 for t in "bns" if sql[t]
             )
 
         return command, index_to_column
-

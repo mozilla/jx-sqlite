@@ -22,8 +22,10 @@ from mo_dots import listwrap, coalesce, split_field, join_field, startswith_fiel
 from mo_future import text_type, unichr
 from mo_logs import Log
 from mo_math import Math
-from pyLibrary.sql import SQL, SQL_AND, SQL_COMMA, SQL_OR, SQL_UNION_ALL, SQL_LEFT_JOIN, SQL_INNER_JOIN, SQL_GROUPBY, SQL_WHERE, SQL_FROM, SQL_SELECT, SQL_LIMIT, SQL_ORDERBY, SQL_ON
+from pyLibrary.sql import SQL, SQL_AND, SQL_COMMA, SQL_OR, SQL_UNION_ALL, SQL_LEFT_JOIN, SQL_INNER_JOIN, SQL_GROUPBY, SQL_WHERE, SQL_FROM, SQL_SELECT, SQL_LIMIT, SQL_ORDERBY, SQL_ON, SQL_NULL, SQL_IS_NULL, SQL_IS_NOT_NULL, sql_list, sql_iso, SQL_END, SQL_ELSE, SQL_THEN, SQL_WHEN, SQL_CASE, SQL_ONE, sql_count, SQL_DESC, SQL_STAR
 from pyLibrary.sql.sqlite import quote_value, quote_column
+
+EXISTS_COLUMN = quote_column("__exists__")
 
 
 class EdgesTable(SetOpTable):
@@ -61,28 +63,26 @@ class EdgesTable(SetOpTable):
         ons = []
         join_types = []
         wheres = []
-        null_ons = [SQL("__exists__ IS NULL")]
+        null_ons = [EXISTS_COLUMN + SQL_IS_NULL]
         groupby = []
         null_groupby = []
         orderby = []
         domains = []
-        select_clause = [
-            SQL("1 __exists__")  # USED TO DISTINGUISH BETWEEN NULL-BECAUSE-LEFT-JOIN OR NULL-BECAUSE-NULL-VALUE
-        ]
+        select_clause = [SQL_ONE + EXISTS_COLUMN]  # USED TO DISTINGUISH BETWEEN NULL-BECAUSE-LEFT-JOIN OR NULL-BECAUSE-NULL-VALUE
 
         for edge_index, query_edge in enumerate(query.edges):
-            edge_alias = "e" + text_type(edge_index)
+            edge_alias = quote_column("e" + text_type(edge_index))
 
             if query_edge.value:
                 edge_values = [p for c in query_edge.value.to_sql(schema).sql for p in c.items()]
 
             elif not query_edge.value and any(query_edge.domain.partitions.where):
-                case = "CASE "
+                case = SQL_CASE
                 for pp, p in enumerate(query_edge.domain.partitions):
                     w = p.where.to_sql(schema)[0].sql.b
                     t = quote_value(pp)
-                    case += " WHEN " + w + " THEN " + t
-                case += " ELSE NULL END "  # quote value with length of partitions
+                    case += SQL_WHEN + w + SQL_THEN + t
+                case += SQL_ELSE + SQL_NULL + SQL_END  # quote value with length of partitions
                 edge_values = [("n", case)]
 
             elif query_edge.range:
@@ -146,7 +146,7 @@ class EdgesTable(SetOpTable):
                         domain += (
                             SQL_UNION_ALL + SQL_SELECT +
                             quote_value(len(query_edge.domain.partitions)) + " AS rownum, " +
-                            "NULL AS " + domain_name
+                            SQL_AND + " AS " + domain_name
                         )
                     where = None
                     join_type = SQL_LEFT_JOIN if query_edge.allowNulls else SQL_INNER_JOIN
@@ -155,10 +155,10 @@ class EdgesTable(SetOpTable):
                             edge_alias + "." + k + " = " + v
                             for k, v in zip(domain_names, vals)
                         ) +
-                        SQL_OR + "(" +
-                        edge_alias + "." + domain_names[0] + " IS NULL AND " +
-                        SQL_AND.join(v + " IS NULL" for v in vals) +
-                        ")"
+                        SQL_OR + sql_iso(
+                            edge_alias + "." + domain_names[0] + SQL_IS_NULL + SQL_AND +
+                            SQL_AND.join(v + SQL_IS_NULL for v in vals)
+                        )
                     )
                     null_on_clause = None
                 else:
@@ -183,7 +183,7 @@ class EdgesTable(SetOpTable):
                     domain = self._make_range_domain(domain=d, column_name=domain_name)
                     limit = Math.min(query.limit, query_edge.domain.limit)
                     domain += (
-                        SQL_ORDERBY + SQL_COMMA.join(vals) +
+                        SQL_ORDERBY + sql_list(vals) +
                         SQL_LIMIT + text_type(limit)
                     )
 
@@ -201,14 +201,14 @@ class EdgesTable(SetOpTable):
                     domain = self._make_range_domain(domain=d, column_name=domain_name)
                     limit = Math.min(query.limit, query_edge.domain.limit)
                     domain += (
-                        SQL_ORDERBY + SQL_COMMA.join(vals) +
+                        SQL_ORDERBY + sql_list(vals) +
                         SQL_LIMIT + text_type(limit)
                     )
                     where = None
                     join_type = SQL_LEFT_JOIN if query_edge.allowNulls else SQL_INNER_JOIN
                     on_clause = (
                         edge_alias + "." + domain_name + " < " + edge_values[1][1] + SQL_AND +
-                        edge_values[0][1] + " < (" + edge_alias + "." + domain_name + " + " + text_type(d.interval) + ")"
+                        edge_values[0][1] + " < " + sql_iso(edge_alias + "." + domain_name + " + " + text_type(d.interval))
                     )
                     null_on_clause = None
                 else:
@@ -225,19 +225,19 @@ class EdgesTable(SetOpTable):
                     domain_nested_path = domain_columns[0].nested_path
                 domain_table = quote_table(concat_field(self.sf.fact, domain_nested_path[0]))
                 domain = (
-                    SQL_SELECT + SQL_COMMA.join(g + " AS " + n for n, g in zip(domain_names, vals)) +
+                    SQL_SELECT + sql_list(g + " AS " + n for n, g in zip(domain_names, vals)) +
                     SQL_FROM + domain_table + " " + nest_to_alias["."] +
-                    SQL_GROUPBY + SQL_COMMA.join(vals)
+                    SQL_GROUPBY + sql_list(vals)
                 )
                 limit = Math.min(query.limit, query_edge.domain.limit)
                 domain += (
-                    SQL_ORDERBY + "COUNT(1) DESC" +
+                    SQL_ORDERBY + sql_count(SQL_ONE)+SQL_DESC +
                     SQL_LIMIT + text_type(limit)
                 )
                 where = None
                 join_type = SQL_LEFT_JOIN if query_edge.allowNulls else SQL_INNER_JOIN
                 on_clause = SQL_AND.join(
-                    "((" + edge_alias + "." + k + " IS NULL AND " + v + " IS NULL) OR " + edge_alias + "." + k + " = " + v + ")"
+                    sql_iso(sql_iso(edge_alias + "." + k + SQL_IS_NULL + SQL_AND + v + SQL_IS_NULL) + SQL_OR + edge_alias + "." + k + " = " + v)
                     for k, v in zip(domain_names, vals)
                 )
                 null_on_clause = None
@@ -251,36 +251,38 @@ class EdgesTable(SetOpTable):
                     domain_nested_path = domain_columns[0].nested_path
                 domain_table = quote_table(concat_field(self.sf.fact, domain_nested_path[0]))
                 domain = (
-                    SQL_SELECT + SQL_COMMA.join(domain_names) + SQL_FROM + "(" +
-                    SQL_SELECT + SQL_COMMA.join(
-                    g + " AS " + n for n, g in zip(domain_names, vals)
-                ) +
+                    SQL_SELECT + sql_list(
+                        g + " AS " + n for n, g in zip(domain_names, vals)
+                    ) +
                     SQL_FROM + domain_table + " " + nest_to_alias["."]
                 )
                 if not query_edge.allowNulls:
-                    domain += SQL_WHERE + SQL_AND.join(g + " IS NOT NULL" for g in vals)
+                    domain += SQL_WHERE + SQL_AND.join(g + SQL_IS_NOT_NULL for g in vals)
 
-                domain += SQL_GROUPBY + SQL_COMMA.join(g for g in vals)
+                domain += SQL_GROUPBY + sql_list(g for g in vals)
 
                 limit = Math.min(query.limit, query_edge.domain.limit)
                 domain += (
-                    SQL_ORDERBY + SQL_COMMA.join(SQL("COUNT(1) DESC") for _ in vals) +
-                    SQL_LIMIT + quote_value(text_type(limit))
+                    SQL_ORDERBY + sql_list(sql_count(SQL_ONE) + SQL_DESC for _ in vals) +
+                    SQL_LIMIT + quote_value(limit)
                 )
-                domain += ")"
+
+                domain = (
+                    SQL_SELECT + sql_list(domain_names) +
+                    SQL_FROM + sql_iso(domain)
+                )
 
                 where = None
                 join_type = SQL_LEFT_JOIN if query_edge.allowNulls else SQL_INNER_JOIN
                 on_clause = (
-                    # "__exists__ AND " +
                     SQL_OR.join(  # "OR" IS FOR MATCHING DIFFERENT TYPES OF SAME NAME
                         edge_alias + "." + k + " = " + v
                         for k, v in zip(domain_names, vals)
                     ) +
-                    SQL_OR + "(" +
-                    edge_alias + "." + domain_names[0] + " IS NULL AND " +
-                    SQL_AND.join(v + " IS NULL" for v in vals) +
-                    ")"
+                    SQL_OR + sql_iso(
+                        edge_alias + "." + domain_names[0] + SQL_IS_NULL + SQL_AND +
+                        SQL_AND.join(v + SQL_IS_NULL for v in vals)
+                    )
                 )
                 null_on_clause = None
 
@@ -293,29 +295,30 @@ class EdgesTable(SetOpTable):
                 if len(edge_names) == 1:
                     domain = self._make_range_domain(domain=d, column_name=domain_name)
                     if query_edge.allowNulls:
-                        domain += SQL_UNION_ALL + SQL_SELECT + "NULL AS " + domain_name + "\n"
+                        domain += SQL_UNION_ALL + SQL_SELECT + SQL_NULL + " AS " + domain_name
                     on_clause = (
                         SQL_AND.join(
                             edge_alias + "." + k + " <= " + v + SQL_AND +
-                            v + " < (" + edge_alias + "." + k + " + " + quote_value(d.interval) + ")"
+                            v + " < " + sql_iso(edge_alias + "." + k + " + " + quote_value(d.interval))
                             for k, (t, v) in zip(domain_names, edge_values)
                         ) +
                         SQL_OR + "(" + SQL_AND.join(
-                            edge_alias + "." + k + " IS NULL AND " + v + " IS NULL"
-                            for k, v in zip(domain_names, vals)
-                        ) + ")"
+                        edge_alias + "." + k + SQL_IS_NULL + SQL_AND +
+                        v + SQL_IS_NULL
+                        for k, v in zip(domain_names, vals)
+                    ) + ")"
                     )
                     where = None
                     join_type = SQL_LEFT_JOIN if query_edge.allowNulls else SQL_INNER_JOIN
                     if query_edge.allowNulls:
                         null_on_clause = None
                     else:
-                        null_on_clause = SQL_AND.join(edge_alias + "." + k + " IS NOT NULL" for k in domain_names)
+                        null_on_clause = SQL_AND.join(edge_alias + "." + k + SQL_IS_NOT_NULL for k in domain_names)
                 elif query_edge.range:
                     domain = self._make_range_domain(domain=d, column_name=domain_name)
                     on_clause = (
                         edge_alias + "." + domain_name + " < " + edge_values[1][1] + SQL_AND +
-                        edge_values[0][1] + " < (" + edge_alias + "." + domain_name + " + " + quote_value(d.interval) + ")"
+                        edge_values[0][1] + " < " + sql_iso(edge_alias + "." + domain_name + " + " + quote_value(d.interval))
                     )
                 else:
                     Log.error("do not know how to handle")
@@ -329,13 +332,13 @@ class EdgesTable(SetOpTable):
             if null_on_clause:
                 null_ons.append(null_on_clause)
 
-            groupby.append(SQL_COMMA.join(domain_names))
-            null_groupby.append(SQL_COMMA.join(edge_alias + "." + d for d in domain_names))
+            groupby.append(sql_list(edge_alias + "." + d for d in domain_names))
+            null_groupby.append(sql_list(edge_alias + "." + d for d in domain_names))
 
             for n, k in enumerate(domain_names):
                 outer_selects.append(edge_alias + "." + k + " AS " + k)
 
-                orderby.append(k + " IS NULL")
+                orderby.append(k + SQL_IS_NULL)
                 if query.sort[n].sort == -1:
                     orderby.append(k + " DESC ")
                 else:
@@ -346,7 +349,7 @@ class EdgesTable(SetOpTable):
             si = ssi + offset
             if isinstance(s.value, Variable) and s.value.var == "." and s.aggregate == "count":
                 # COUNT RECORDS, NOT ANY ONE VALUE
-                sql = "COUNT(__exists__) AS " + quote_table(s.name)
+                sql = sql_count(EXISTS_COLUMN) + " AS " + quote_table(s.name)
 
                 column_number = len(outer_selects)
                 outer_selects.append(sql)
@@ -363,7 +366,7 @@ class EdgesTable(SetOpTable):
             elif s.aggregate == "count" and (not query.edges and not query.groupby):
                 value = s.value.var
                 columns = [c.es_column for c in self.sf.columns if untyped_column(c.es_column)[0] == value]
-                sql = SQL(" + ").join("COUNT(" + quote_table(col) + ")" for col in columns)
+                sql = SQL("+").join(sql_count(quote_table(col)) for col in columns)
                 column_number = len(outer_selects)
                 outer_selects.append(sql + " AS " + _make_column_name(column_number))
                 index_to_column[column_number] = ColumnMapping(
@@ -385,7 +388,7 @@ class EdgesTable(SetOpTable):
                 for details in s.value.to_sql(schema):
                     for json_type, sql in details.sql.items():
                         column_number = len(outer_selects)
-                        count_sql = "COUNT(DISTINCT(" + sql + ")) AS " + _make_column_name(column_number)
+                        count_sql = sql_count("DISTINCT" + sql_iso(sql)) + " AS " + _make_column_name(column_number)
                         outer_selects.append(count_sql)
                         index_to_column[column_number] = ColumnMapping(
                             push_name=s.name,
@@ -401,7 +404,7 @@ class EdgesTable(SetOpTable):
                 for details in s.value.to_sql(schema):
                     for sql_type, sql in details.sql.items():
                         column_number = len(outer_selects)
-                        outer_selects.append("JSON_GROUP_ARRAY(DISTINCT(" + sql + "))  AS " + _make_column_name(column_number))
+                        outer_selects.append("JSON_GROUP_ARRAY(DISTINCT" + sql_iso(sql) + ")  AS " + _make_column_name(column_number))
                         index_to_column[column_number] = ColumnMapping(
                             push_name=s.name,
                             push_column_name=s.name,
@@ -434,9 +437,9 @@ class EdgesTable(SetOpTable):
                 for details in s.value.to_sql(schema):
                     for sql_type, sql in details.sql.items():
                         column_number = len(outer_selects)
-                        sql = sql_aggs[s.aggregate] + "(" + sql + ")"
+                        sql = sql_aggs[s.aggregate] + sql_iso(sql)
                         if s.default != None:
-                            sql = "COALESCE(" + sql + ", " + quote_value(s.default) + ")"
+                            sql = "COALESCE" + sql_iso(sql + SQL_COMMA + quote_value(s.default))
                         outer_selects.append(sql + " AS " + _make_column_name(column_number))
                         index_to_column[column_number] = ColumnMapping(
                             push_name=s.name,
@@ -454,45 +457,46 @@ class EdgesTable(SetOpTable):
 
         all_parts = []
 
-        primary = (
-            "(" +
-            SQL_SELECT + SQL_COMMA.join(select_clause) + "," + "*" +
+        primary = sql_iso(
+            SQL_SELECT + sql_list(select_clause + [SQL_STAR]) +
             SQL_FROM + from_sql +
-            SQL_WHERE + main_filter +
-            ") " + nest_to_alias["."]
-        )
+            SQL_WHERE + main_filter
+        ) + nest_to_alias["."]
+
         edge_sql = []
         for edge_index, query_edge in enumerate(query.edges):
             edge_alias = quote_column("e" + text_type(edge_index))
             domain = domains[edge_index]
-            edge_sql.append("(" + domain + ") AS " + edge_alias)
+            edge_sql.append(sql_iso(domain) + " AS " + edge_alias)
 
         # COORDINATES OF ALL primary DATA
         part = (
-            SQL_SELECT + (SQL_COMMA.join(outer_selects)) +
+            SQL_SELECT + sql_list(outer_selects) +
             SQL_FROM + primary
         )
         for t, s, j in zip(join_types, edge_sql, ons):
             part += " " + t + s + SQL_ON + j
         if any(wheres):
-            part += SQL_WHERE + SQL_AND.join("(" + w + ")" for w in wheres if w)
+            part += SQL_WHERE + SQL_AND.join(sql_iso(w) for w in wheres if w)
+        if groupby:
+            part += SQL_GROUPBY + sql_list(groupby)
         all_parts.append(part)
 
         # ALL COORDINATES MISSED BY primary DATA
         if query.edges:
-            part = SQL_SELECT + (SQL_COMMA.join(outer_selects)) + SQL_FROM + edge_sql[0]
+            part = SQL_SELECT + sql_list(outer_selects) + SQL_FROM + edge_sql[0]
             for s in edge_sql[1:]:
                 part += SQL_LEFT_JOIN + s + SQL_ON + "1=1\n"
-            part += SQL_LEFT_JOIN + primary + SQL_ON + SQL_AND.join("(" + o + ")" for o in ons)
-            part += SQL_WHERE + SQL_AND.join("(" + w + ")" for w in null_ons if w)
+            part += SQL_LEFT_JOIN + primary + SQL_ON + SQL_AND.join(sql_iso(o) for o in ons)
+            part += SQL_WHERE + SQL_AND.join(sql_iso(w) for w in null_ons if w)
+            if groupby:
+                part += SQL_GROUPBY + sql_list(groupby)
             all_parts.append(part)
 
-        command = SQL_SELECT + "*" + SQL_FROM + "(" + SQL_UNION_ALL.join(all_parts) + ")"
+        command = SQL_SELECT + "*" + SQL_FROM + sql_iso(SQL_UNION_ALL.join(all_parts))
 
-        if groupby:
-            command += SQL_GROUPBY + SQL_COMMA.join(groupby)
         if orderby:
-            command += SQL_ORDERBY + SQL_COMMA.join(orderby)
+            command += SQL_ORDERBY + sql_list(orderby)
 
         return command, index_to_column
 
@@ -512,7 +516,7 @@ class EdgesTable(SetOpTable):
                 )
             else:
                 domain = (
-                    SQL_SELECT + "(" + value + ") + " + quote_value(domain.min) + " " + column_name +
+                    SQL_SELECT + sql_iso(value) + " + " + quote_value(domain.min) + " " + column_name +
                     SQL_FROM + "__digits__ a"
                 )
         else:
@@ -523,7 +527,7 @@ class EdgesTable(SetOpTable):
                 )
             else:
                 domain = (
-                    SQL_SELECT + "(" + value + " * " + quote_value(domain.interval) + ") + " + quote_value(domain.min) + " " + column_name +
+                    SQL_SELECT + sql_iso(value + " * " + quote_value(domain.interval)) + " + " + quote_value(domain.min) + " " + column_name +
                     SQL_FROM + "__digits__ a"
                 )
 

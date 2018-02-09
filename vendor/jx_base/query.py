@@ -562,8 +562,8 @@ def _normalize_group(edge, dim_index, limit, schema=None):
             "name": edge,
             "value": jx_expression(edge, schema=schema),
             "allowNulls": True,
-            "dim":dim_index,
-            "domain": {"type": "default"}
+            "dim": dim_index,
+            "domain": Domain(type="default", limit=limit)
         }])
     else:
         edge = wrap(edge)
