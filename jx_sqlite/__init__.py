@@ -16,15 +16,14 @@ from __future__ import unicode_literals
 from collections import Mapping
 from copy import copy
 
+from mo_dots import Data, split_field, join_field, concat_field
 from mo_future import text_type
-from mo_dots import Data, split_field, join_field, concat_field, Null
 from mo_json import json2value
 from mo_math.randoms import Random
 from mo_times import Date
-
 from pyLibrary.meta import DataClass
 from pyLibrary.sql import SQL
-from pyLibrary.sql.sqlite import quote_table
+from pyLibrary.sql.sqlite import quote_column
 
 GUID = "_id"
 UID = "__id__"  # will not be quoted
@@ -166,10 +165,10 @@ STATS = {
     "avg": "AVG({{value}})"
 }
 
-quoted_GUID = quote_table(GUID)
-quoted_UID = quote_table(UID)
-quoted_ORDER = quote_table(ORDER)
-quoted_PARENT = quote_table(PARENT)
+quoted_GUID = quote_column(GUID)
+quoted_UID = quote_column(UID)
+quoted_ORDER = quote_column(ORDER)
+quoted_PARENT = quote_column(PARENT)
 
 
 def sql_text_array_to_set(column):

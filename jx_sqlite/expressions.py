@@ -24,7 +24,7 @@ from mo_json import json2value
 from mo_logs import Log
 from mo_math import Math
 from pyLibrary import convert
-from pyLibrary.sql import SQL, SQL_AND, SQL_EMPTY_STRING, SQL_OR, SQL_TRUE, SQL_ZERO, SQL_FALSE, SQL_NULL, SQL_ONE, SQL_IS_NOT_NULL, sql_list, sql_iso, SQL_IS_NULL, SQL_END, SQL_ELSE, SQL_THEN, SQL_WHEN, SQL_CASE
+from pyLibrary.sql import SQL, SQL_AND, SQL_EMPTY_STRING, SQL_OR, SQL_TRUE, SQL_ZERO, SQL_FALSE, SQL_NULL, SQL_ONE, SQL_IS_NOT_NULL, sql_list, sql_iso, SQL_IS_NULL, SQL_END, SQL_ELSE, SQL_THEN, SQL_WHEN, SQL_CASE, sql_concat
 from pyLibrary.sql.sqlite import quote_column, quote_value
 
 
@@ -603,11 +603,12 @@ def to_sql(self, schema, not_null=False, boolean=False):
         missing = t.missing().partial_eval()
 
         term = t.to_sql(schema, not_null=True)[0].sql
-        term_sql = coalesce(
-            term.s,
-            "cast(" + term.n + " as text)",
-            SQL_CASE+SQL_WHEN + term.b + SQL_THEN+"`true`"+SQL_ELSE+"`false`"+SQL_END
-        )
+        if term.s:
+            term_sql = term.s
+        elif term.n:
+            term_sql = "cast(" + term.n + " as text)"
+        else:
+            term_sql = SQL_CASE + SQL_WHEN + term.b + SQL_THEN + quote_value("true") + SQL_ELSE + quote_value("false") + SQL_END
 
         if isinstance(missing, TrueOp):
             acc.append(SQL_EMPTY_STRING)
@@ -616,13 +617,13 @@ def to_sql(self, schema, not_null=False, boolean=False):
                 SQL_CASE +
                 SQL_WHEN + sql_iso(missing.to_sql(schema, boolean=True)[0].sql.b) +
                 SQL_THEN + SQL_EMPTY_STRING +
-                SQL_ELSE + sql_iso(sql_iso(sep) + " || " + sql_iso(term_sql)) +
+                SQL_ELSE + sql_iso(sql_concat([sep, term_sql])) +
                 SQL_END
             )
         else:
-            acc.append(sql_iso(sep) + " || " + sql_iso(term_sql))
+            acc.append(sql_concat([sep, term_sql]))
 
-    expr_ = "substr(" + SQL(" || ").join(acc) + ", " + LengthOp(None, self.separator).to_sql(schema)[0].sql.n + "+1)"
+    expr_ = "substr(" + sql_concat(acc) + ", " + LengthOp(None, self.separator).to_sql(schema)[0].sql.n + "+1)"
 
     missing = self.missing()
     if not missing:

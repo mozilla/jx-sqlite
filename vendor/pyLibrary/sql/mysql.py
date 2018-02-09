@@ -31,7 +31,8 @@ from mo_logs.strings import indent
 from mo_logs.strings import outdent
 from mo_math import Math
 from mo_times import Date
-from pyLibrary.sql import SQL, SQL_NULL, SQL_SELECT, SQL_LIMIT, SQL_WHERE, SQL_LEFT_JOIN, SQL_COMMA, SQL_FROM, SQL_AND, sql_list, sql_iso
+from pyLibrary.sql import SQL, SQL_NULL, SQL_SELECT, SQL_LIMIT, SQL_WHERE, SQL_LEFT_JOIN, SQL_COMMA, SQL_FROM, SQL_AND, sql_list, sql_iso, SQL_ASC
+from pyLibrary.sql.sqlite import join_column
 
 DEBUG = False
 MAX_BATCH_SIZE = 100
@@ -601,19 +602,19 @@ class MySQL(object):
             Log.error("missing column_name")
         elif isinstance(column_name, text_type):
             if table:
-                column_name = table + "." + column_name
+                column_name = join_column(table, column_name)
             return SQL("`" + column_name.replace(".", "`.`") + "`")  # MY SQL QUOTE OF COLUMN NAMES
         elif isinstance(column_name, list):
             if table:
-                return sql_list([self.quote_column(table + "." + c) for c in column_name])
-            return sql_list([self.quote_column(c) for c in column_name])
+                return sql_list(join_column(table, c) for c in column_name)
+            return sql_list(self.quote_column(c) for c in column_name)
         else:
             # ASSUME {"name":name, "value":value} FORM
             return SQL(column_name.value + " AS " + self.quote_column(column_name.name))
 
     def sort2sqlorderby(self, sort):
         sort = jx.normalize_sort_parameters(sort)
-        return sql_list([self.quote_column(s.field) + (" DESC" if s.sort == -1 else " ASC") for s in sort])
+        return sql_list([self.quote_column(s.field) + (SQL_DESC if s.sort == -1 else SQL_ASC) for s in sort])
 
 
 def utf8_to_unicode(v):

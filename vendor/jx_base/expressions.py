@@ -23,7 +23,7 @@ from mo_dots import coalesce, wrap, Null, split_field
 from mo_future import text_type, utf8_json_encoder, get_function_name
 from mo_json import scrub
 from mo_logs import Log, Except
-from mo_math import Math, MAX, MIN, UNION
+from mo_math import Math, MAX, MIN, UNION, AND
 from mo_times.dates import Date, unicode2Date
 
 ALLOW_SCRIPTING = False
@@ -1219,6 +1219,13 @@ class OrOp(Expression):
 
     def __call__(self, row=None, rownum=None, rows=None):
         return any(t(row, rownum, rows) for t in self.terms)
+
+    def __eq__(self, other):
+        if not isinstance(other, OrOp):
+            return False
+        if len(self.terms) != len(other.terms):
+            return False
+        return all(t == u for t, u in zip(self.terms, other.terms))
 
     @simplified
     def partial_eval(self):
@@ -2698,6 +2705,11 @@ class BasicEqOp(Expression):
 
     def missing(self):
         return FALSE
+
+    def __eq__(self, other):
+        if not isinstance(other, EqOp):
+            return False
+        return self.lhs==other.lhs and self.rhs==other.rhs
 
 
 class BasicSubstringOp(Expression):

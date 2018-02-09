@@ -16,16 +16,15 @@ from __future__ import unicode_literals
 from collections import Mapping
 from copy import copy
 
-from mo_future import text_type
-from mo_dots import listwrap, Data, wrap, Null, unwraplist, startswith_field, unwrap, concat_field, literal_field
-from mo_logs import Log
-
-from jx_sqlite import typed_column, quote_table, get_type, ORDER, UID, GUID, PARENT, get_if_type
-from jx_sqlite.base_table import BaseTable, generateGuid
 from jx_base import STRUCT
 from jx_base.expressions import jx_expression
 from jx_python.meta import Column
-from pyLibrary.sql import SQL, SQL_COMMA, SQL_AND, SQL_UNION_ALL, SQL_INNER_JOIN, SQL_WHERE, SQL_FROM, SQL_SELECT, SQL_NULL, sql_list, sql_iso
+from jx_sqlite import typed_column, get_type, ORDER, UID, GUID, PARENT, get_if_type
+from jx_sqlite.base_table import BaseTable, generateGuid
+from mo_dots import listwrap, Data, wrap, Null, unwraplist, startswith_field, unwrap, concat_field, literal_field
+from mo_future import text_type
+from mo_logs import Log
+from pyLibrary.sql import SQL_AND, SQL_UNION_ALL, SQL_INNER_JOIN, SQL_WHERE, SQL_FROM, SQL_SELECT, SQL_NULL, sql_list, sql_iso
 from pyLibrary.sql.sqlite import quote_value, quote_column
 
 
@@ -77,22 +76,22 @@ class InsertTable(BaseTable):
             if get_type(nested_value) == "nested":
                 nested_table_name = concat_field(self.sf.fact, nested_column_name)
                 nested_table = nested_tables[nested_column_name]
-                self_primary_key = sql_list(quote_table(c.es_column) for u in self.uid for c in self.columns[u])
+                self_primary_key = sql_list(quote_column(c.es_column) for u in self.uid for c in self.columns[u])
                 extra_key_name = UID_PREFIX + "id" + text_type(len(self.uid))
                 extra_key = [e for e in nested_table.columns[extra_key_name]][0]
 
                 sql_command = (
-                    "DELETE" + SQL_FROM + quote_table(nested_table.name) +
+                    "DELETE" + SQL_FROM + quote_column(nested_table.name) +
                     SQL_WHERE + "EXISTS (" +
                     "\nSELECT 1 " +
-                    SQL_FROM + quote_table(nested_table.name) + " n" +
+                    SQL_FROM + quote_column(nested_table.name) + " n" +
                     SQL_INNER_JOIN + "(" +
                     SQL_SELECT + self_primary_key +
-                    SQL_FROM + quote_table(self.sf.fact) +
+                    SQL_FROM + quote_column(self.sf.fact) +
                     SQL_WHERE + where_sql +
                     "\n) t ON " +
                     SQL_AND.join(
-                        "t." + quote_table(c.es_column) + " = n." + quote_table(c.es_column)
+                        "t." + quote_column(c.es_column) + " = n." + quote_column(c.es_column)
                         for u in self.uid
                         for c in self.columns[u]
                     ) +
@@ -108,11 +107,11 @@ class InsertTable(BaseTable):
                 for d in listwrap(nested_value):
                     nested_table.flatten(d, Data(), doc_collection, path=nested_column_name)
 
-                prefix = "INSERT INTO " + quote_table(nested_table.name) + sql_iso(sql_list(
+                prefix = "INSERT INTO " + quote_column(nested_table.name) + sql_iso(sql_list(
                     [self_primary_key] +
                     [quote_column(extra_key)] +
                     [
-                        quote_table(c.es_column)
+                        quote_column(c.es_column)
                         for c in doc_collection.get(".", Null).active_columns
                     ]
                 ))
@@ -120,16 +119,16 @@ class InsertTable(BaseTable):
                 # BUILD THE PARENT TABLES
                 parent = (
                     SQL_SELECT + self_primary_key +
-                    SQL_FROM + quote_table(self.sf.fact) +
+                    SQL_FROM + quote_column(self.sf.fact) +
                     SQL_WHERE + jx_expression(command.where).to_sql()
                 )
 
                 # BUILD THE RECORDS
                 children = SQL_UNION_ALL.join(
                     SQL_SELECT +
-                    quote_value(i) + " " + quote_table(extra_key.es_column) + "," +
+                    quote_value(i) + " " + quote_column(extra_key.es_column) + "," +
                     sql_list(
-                        quote_value(row[c.name]) + " " + quote_table(c.es_column)
+                        quote_value(row[c.name]) + " " + quote_column(c.es_column)
                         for c in doc_collection.get(".", Null).active_columns
                     )
                     for i, row in enumerate(doc_collection.get(".", Null).rows)
@@ -139,12 +138,12 @@ class InsertTable(BaseTable):
                     prefix +
                     SQL_SELECT +
                     sql_list(
-                        "p." + quote_table(c.es_column)
+                        "p." + quote_column(c.es_column)
                         for u in self.uid for c in self.columns[u]
                     ) + "," +
                     "c." + quote_column(extra_key) + "," +
                     sql_list(
-                        "c." + quote_table(c.es_column)
+                        "c." + quote_column(c.es_column)
                         for c in doc_collection.get(".", Null).active_columns
                     ) +
                     SQL_FROM + sql_iso(parent) + " p " +
@@ -171,7 +170,7 @@ class InsertTable(BaseTable):
                             self.columns[column.name].add(column)
 
         command = (
-            "UPDATE " + quote_table(self.sf.fact) + " SET " +
+            "UPDATE " + quote_column(self.sf.fact) + " SET " +
             sql_list(
                 [
                     quote_column(c) + "=" + quote_value(get_if_type(v, c.type))
@@ -363,8 +362,8 @@ class InsertTable(BaseTable):
             all_columns = meta_columns + active_columns.es_column
 
             prefix = (
-                "INSERT INTO " + quote_table(table_name) +
-                sql_iso(sql_list(map(quote_table, all_columns)))
+                "INSERT INTO " + quote_column(table_name) +
+                sql_iso(sql_list(map(quote_column, all_columns)))
             )
 
             # BUILD THE RECORDS

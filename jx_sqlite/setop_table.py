@@ -17,7 +17,7 @@ from jx_base import STRUCT
 from jx_base.expressions import BooleanOp
 from jx_base.queries import get_property_name
 from jx_python.meta import Column
-from jx_sqlite import quote_table, quoted_UID, quoted_GUID, get_column, _make_column_name, ORDER, COLUMN, set_column, quoted_PARENT, ColumnMapping
+from jx_sqlite import quoted_UID, quoted_GUID, get_column, _make_column_name, ORDER, COLUMN, set_column, quoted_PARENT, ColumnMapping, quoted_ORDER
 from jx_sqlite.expressions import sql_type_to_json_type, LeavesOp
 from jx_sqlite.insert_table import InsertTable
 from mo_dots import listwrap, Data, unwraplist, split_field, join_field, startswith_field, unwrap, relative_field, concat_field, literal_field, Null
@@ -25,7 +25,7 @@ from mo_future import text_type
 from mo_future import unichr
 from mo_math import UNION, MAX
 from pyLibrary.sql import SQL_UNION_ALL, SQL_LEFT_JOIN, SQL_FROM, SQL_WHERE, SQL_SELECT, SQL_ON, SQL_AND, SQL_LIMIT, SQL_ORDERBY, SQL_NULL, SQL_IS_NULL, SQL_IS_NOT_NULL, sql_iso, sql_list
-from pyLibrary.sql.sqlite import quote_value, quote_column
+from pyLibrary.sql.sqlite import quote_value, quote_column, join_column
 
 
 class SetOpTable(InsertTable):
@@ -133,7 +133,7 @@ class SetOpTable(InsertTable):
 
             if nested_path == "." and quoted_GUID in vars_:
                 column_number = index_to_uid[nested_path] = nested_doc_details['id_coord'] = len(sql_selects)
-                sql_select = alias + "." + quoted_GUID
+                sql_select = join_column(alias, quoted_GUID)
                 sql_selects.append(sql_select + " AS " + _make_column_name(column_number))
                 index_to_column[column_number] = nested_doc_details['index_to_column'][column_number] = ColumnMapping(
                     push_name="_id",
@@ -150,7 +150,7 @@ class SetOpTable(InsertTable):
 
             # WE ALWAYS ADD THE UID AND ORDER
             column_number = index_to_uid[nested_path] = nested_doc_details['id_coord'] = len(sql_selects)
-            sql_select = alias + "." + quoted_UID
+            sql_select = join_column(alias, quoted_UID)
             sql_selects.append(sql_select + " AS " + _make_column_name(column_number))
             if nested_path != ".":
                 index_to_column[column_number] = ColumnMapping(
@@ -161,7 +161,7 @@ class SetOpTable(InsertTable):
 
                 )
                 column_number = len(sql_selects)
-                sql_select = alias + "." + quote_table(ORDER)
+                sql_select = join_column(alias , quoted_ORDER)
                 sql_selects.append(sql_select + " AS " + _make_column_name(column_number))
                 index_to_column[column_number] = ColumnMapping(
                     sql=sql_select,
@@ -200,7 +200,7 @@ class SetOpTable(InsertTable):
                                     if concat_field(alias, unsorted_sql) in selects and len(unsorted_sql.split()) == 1:
                                         continue
                                     selects.append(concat_field(alias, unsorted_sql))
-                                    sql_selects.append(alias + "." + unsorted_sql + " AS " + column_alias)
+                                    sql_selects.append(join_column(alias, unsorted_sql) + " AS " + column_alias)
                                     index_to_column[column_number] = nested_doc_details['index_to_column'][column_number] = ColumnMapping(
                                         push_name=literal_field(get_property_name(concat_field(s.name, column.name))),
                                         push_column_name=get_property_name(concat_field(s.name, column.name)),
@@ -229,7 +229,7 @@ class SetOpTable(InsertTable):
                                     if concat_field(alias, unsorted_sql) in selects and len(unsorted_sql.split()) == 1:
                                         continue
                                     selects.append(concat_field(alias, unsorted_sql))
-                                    sql_selects.append(alias + "." + unsorted_sql + " AS " + column_alias)
+                                    sql_selects.append(join_column(alias, unsorted_sql) + " AS " + column_alias)
                                     index_to_column[column_number] = nested_doc_details['index_to_column'][column_number] = ColumnMapping(
                                         push_name=s.name,
                                         push_column_name=s.name,
@@ -252,12 +252,12 @@ class SetOpTable(InsertTable):
 
                     column_number = len(sql_selects)
                     nested_path = c.nested_path
-                    unsorted_sql = nest_to_alias[nested_path[0]] + "." + quote_table(c.es_column)
+                    unsorted_sql = join_column(nest_to_alias[nested_path[0]] , c.es_column)
                     column_alias = _make_column_name(column_number)
                     if concat_field(alias, unsorted_sql) in selects and len(unsorted_sql.split()) == 1:
                         continue
                     selects.append(concat_field(alias, unsorted_sql))
-                    sql_selects.append(alias + "." + unsorted_sql + " AS " + column_alias)
+                    sql_selects.append(join_column(alias, unsorted_sql) + " AS " + column_alias)
                     index_to_column[column_number] = nested_doc_details['index_to_column'][column_number] = ColumnMapping(
                         push_name=s.name,
                         push_column_name=s.name,
@@ -587,36 +587,36 @@ class SetOpTable(InsertTable):
                         select_clause.append(SQL_NULL+" AS " + sql_select.column_alias)
 
                 if nested_path == ".":
-                    from_clause += SQL_FROM + quote_table(self.sf.fact) + " " + alias
+                    from_clause += SQL_FROM + quote_column(self.sf.fact) + " " + alias
                 else:
                     from_clause += (
-                        SQL_LEFT_JOIN + quote_table(concat_field(self.sf.fact, sub_table.name)) + " " + alias +
-                        SQL_ON + alias + "." + quoted_PARENT + " = " + parent_alias + "." + quoted_UID
+                        SQL_LEFT_JOIN + quote_column(concat_field(self.sf.fact, sub_table.name)) + " " + alias +
+                        SQL_ON + join_column(alias, quoted_PARENT) + " = " + join_column(parent_alias, quoted_UID)
                     )
-                    where_clause = sql_iso(where_clause) + SQL_AND + alias + "." + quote_table(ORDER) + " > 0"
+                    where_clause = sql_iso(where_clause) + SQL_AND + join_column(alias , quoted_ORDER) + " > 0"
                 parent_alias = alias
 
             elif startswith_field(primary_nested_path, nested_path):
                 # PARENT TABLE
                 # NO NEED TO INCLUDE COLUMNS, BUT WILL INCLUDE ID AND ORDER
                 if nested_path == ".":
-                    from_clause += SQL_FROM + quote_table(self.sf.fact) + " " + alias
+                    from_clause += SQL_FROM + quote_column(self.sf.fact) + " " + alias
                 else:
                     parent_alias = alias = unichr(ord('a') + i - 1)
                     from_clause += (
-                        SQL_LEFT_JOIN + quote_table(concat_field(self.sf.fact, sub_table.name)) + " " + alias +
-                        SQL_ON + alias + "." + quoted_PARENT + " = " + parent_alias + "." + quoted_UID
+                        SQL_LEFT_JOIN + quote_column(concat_field(self.sf.fact, sub_table.name)) + " " + alias +
+                        SQL_ON + join_column(alias, quoted_PARENT) + " = " + join_column(parent_alias, quoted_UID)
                     )
-                    where_clause = sql_iso(where_clause) + SQL_AND + parent_alias + "." + quote_table(ORDER) + " > 0"
+                    where_clause = sql_iso(where_clause) + SQL_AND + join_column(parent_alias, quoted_ORDER) + " > 0"
                 parent_alias = alias
 
             elif startswith_field(nested_path, primary_nested_path):
                 # CHILD TABLE
                 # GET FIRST ROW FOR EACH NESTED TABLE
                 from_clause += (
-                    SQL_LEFT_JOIN + quote_table(concat_field(self.sf.fact, sub_table.name)) + " " + alias +
-                    SQL_ON + alias + "." + quoted_PARENT + " = " + parent_alias + "." + quoted_UID +
-                    SQL_AND + alias + "." + quote_table(ORDER) + " = 0"
+                    SQL_LEFT_JOIN + quote_column(concat_field(self.sf.fact, sub_table.name)) + " " + alias +
+                    SQL_ON + join_column(alias, quoted_PARENT) + " = " + join_column(parent_alias, quoted_UID) +
+                    SQL_AND + join_column(alias, ORDER) + " = 0"
                 )
 
                 # IMMEDIATE CHILDREN ONLY

@@ -116,3 +116,7 @@ def sql_iso(sql):
 
 def sql_count(sql):
     return "COUNT(" + sql + ")"
+
+
+def sql_concat(list_):
+    return SQL(" || ").join(sql_iso(l) for l in list_)

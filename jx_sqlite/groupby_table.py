@@ -13,15 +13,15 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
-from mo_future import unichr
-
 from jx_python import jx
-from jx_sqlite import UID, quote_table, get_column, _make_column_name, sql_aggs, PARENT, ColumnMapping
+from jx_sqlite import UID, get_column, _make_column_name, sql_aggs, PARENT, ColumnMapping, quoted_UID, quoted_PARENT
 from jx_sqlite.edges_table import EdgesTable
 from jx_sqlite.expressions import sql_type_to_json_type
 from mo_dots import listwrap, split_field, join_field, startswith_field, concat_field
+from mo_future import unichr
 from mo_logs import Log
-from pyLibrary.sql import SQL_COMMA, SQL_LEFT_JOIN, SQL_WHERE, SQL_GROUPBY, SQL_SELECT, SQL_FROM, SQL_ORDERBY, SQL_ON, SQL_NULL, sql_list, SQL_IS_NULL, sql_iso, sql_count, SQL_ONE
+from pyLibrary.sql import SQL_LEFT_JOIN, SQL_WHERE, SQL_GROUPBY, SQL_SELECT, SQL_FROM, SQL_ORDERBY, SQL_ON, sql_list, SQL_IS_NULL, sql_iso, sql_count, SQL_ONE
+from pyLibrary.sql.sqlite import quote_column, join_column
 
 
 class GroupbyTable(EdgesTable):
@@ -45,8 +45,8 @@ class GroupbyTable(EdgesTable):
         previous = tables[0]
         for t in tables[1::]:
             from_sql += (
-                SQL_LEFT_JOIN + quote_table(concat_field(base_table, t.nest)) + " " + t.alias +
-                SQL_ON + t.alias + "." + PARENT + " = " + previous.alias + "." + UID
+                SQL_LEFT_JOIN + quote_column(concat_field(base_table, t.nest)) + " " + t.alias +
+                SQL_ON + join_column(t.alias, quoted_PARENT) + " = " + join_column(previous.alias, quoted_UID)
             )
 
         selects = []
@@ -84,9 +84,9 @@ class GroupbyTable(EdgesTable):
                 Log.error("No such column {{var}}", var=s.value.var)
 
             if s.value == "." and s.aggregate == "count":
-                selects.append(sql_count(SQL_ONE) + " AS " + quote_table(s.name))
+                selects.append(sql_count(SQL_ONE) + " AS " + quote_column(s.name))
             else:
-                selects.append(sql_aggs[s.aggregate] + sql_iso(sql)+" AS " + quote_table(s.name))
+                selects.append(sql_aggs[s.aggregate] + sql_iso(sql)+" AS " + quote_column(s.name))
 
             index_to_column[column_number] = ColumnMapping(
                 push_name=s.name,
@@ -95,7 +95,7 @@ class GroupbyTable(EdgesTable):
                 push_child=".",
                 pull=get_column(column_number),
                 sql=sql,
-                column_alias=quote_table(s.name),
+                column_alias=quote_column(s.name),
                 type=sql_type_to_json_type[sql_type]
             )
 

@@ -238,6 +238,9 @@ _no_need_to_quote = re.compile(r"^\w+$", re.UNICODE)
 
 
 def quote_column(column_name, table=None):
+    if isinstance(column_name, SQL):
+        return column_name
+
     if not isinstance(column_name, text_type):
         Log.error("expecting a name")
     if table != None:
@@ -246,12 +249,6 @@ def quote_column(column_name, table=None):
         if _no_need_to_quote.match(column_name):
             return SQL(" " + column_name + " ")
         return SQL(" " + quote(column_name) + " ")
-
-
-def quote_table(column):
-    if _no_need_to_quote.match(column):
-        return SQL(column)
-    return SQL(quote(column))
 
 
 def quote_value(value):
@@ -273,3 +270,7 @@ def quote_value(value):
         return SQL(text_type(value))
 
 
+def join_column(a, b):
+    a = quote_column(a)
+    b = quote_column(b)
+    return SQL(a.template.rstrip() + "." + b.template.lstrip())
