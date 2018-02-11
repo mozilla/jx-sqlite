@@ -24,7 +24,7 @@ from mo_json import json2value
 from mo_logs import Log
 from mo_math import Math
 from pyLibrary import convert
-from pyLibrary.sql import SQL, SQL_AND, SQL_EMPTY_STRING, SQL_OR, SQL_TRUE, SQL_ZERO, SQL_FALSE, SQL_NULL, SQL_ONE, SQL_IS_NOT_NULL, sql_list, sql_iso, SQL_IS_NULL, SQL_END, SQL_ELSE, SQL_THEN, SQL_WHEN, SQL_CASE, sql_concat
+from pyLibrary.sql import SQL, SQL_AND, SQL_EMPTY_STRING, SQL_OR, SQL_TRUE, SQL_ZERO, SQL_FALSE, SQL_NULL, SQL_ONE, SQL_IS_NOT_NULL, sql_list, sql_iso, SQL_IS_NULL, SQL_END, SQL_ELSE, SQL_THEN, SQL_WHEN, SQL_CASE, sql_concat, sql_coalesce
 from pyLibrary.sql.sqlite import quote_column, quote_value
 
 
@@ -257,7 +257,7 @@ def to_sql(self, schema, not_null=False, boolean=False):
         else:
             return wrap([{
                 "name": ".",
-                "sql": {"n": "COALESCE(" + sql_iso(lhs) + " / " + sql_iso(rhs) + ", " + d + ")"}
+                "sql": {"n": sql_coalesce([sql_iso(lhs) + " / " + sql_iso(rhs), d])}
             }])
     else:
         return Null
@@ -367,7 +367,7 @@ def to_sql(self, schema, not_null=False, boolean=False):
     elif len(acc) == 1:
         return wrap([{"name": ".", "sql": {"n": acc[0]}}])
     else:
-        return wrap([{"name": ".", "sql": {"n": "COALESCE" + sql_iso(sql_list(acc))}}])
+        return wrap([{"name": ".", "sql": {"n": sql_coalesce(acc)}}])
 
 
 @extend(NumberOp)
@@ -386,7 +386,7 @@ def to_sql(self, schema, not_null=False, boolean=False):
     elif len(acc) == 1:
         return wrap([{"name": ".", "sql": {"n": acc}}])
     else:
-        return wrap([{"name": ".", "sql": {"n": "COALESCE" + sql_iso(sql_list(acc))}}])
+        return wrap([{"name": ".", "sql": {"n": sql_coalesce(acc)}}])
 
 
 @extend(StringOp)
@@ -406,7 +406,7 @@ def to_sql(self, schema, not_null=False, boolean=False):
     elif len(acc) == 1:
         return wrap([{"name": ".", "sql": {"s": acc[0]}}])
     else:
-        return wrap([{"name": ".", "sql": {"s": "COALESCE" + sql_iso(sql_list(acc))}}])
+        return wrap([{"name": ".", "sql": {"s": sql_coalesce(acc)}}])
 
 
 @extend(CountOp)
@@ -456,16 +456,16 @@ def to_sql(self, schema, not_null=False, boolean=False):
     if self.nulls.json == "true":
         sql = (
             SQL_CASE +
-            SQL_WHEN + SQL_AND.join("(" + sql_iso(s) + " IS NULL)" for s in sql_terms) +
+            SQL_WHEN + SQL_AND.join(sql_iso(s+SQL_IS_NULL) for s in sql_terms) +
             SQL_THEN + default +
-            SQL_ELSE + op.join("COALESCE(" + s + ", 0)" for s in sql_terms) +
+            SQL_ELSE + op.join(sql_coalesce([s, SQL_ZERO]) for s in sql_terms) +
             SQL_END
         )
         return wrap([{"name": ".", "sql": {"n": sql}}])
     else:
         sql = (
             SQL_CASE +
-            SQL_WHEN + SQL_OR.join("(" + sql_iso(s) + " IS NULL)" for s in sql_terms) +
+            SQL_WHEN + SQL_OR.join(sql_iso(sql_iso(s) + SQL_IS_NULL) for s in sql_terms) +
             SQL_THEN + default +
             SQL_ELSE + op.join(sql_iso(s) for s in sql_terms) +
             SQL_END
@@ -501,7 +501,7 @@ def to_sql(self, schema, not_null=False, boolean=False):
         elif len(terms) == 1:
             output[t] = terms[0]
         else:
-            output[t] = "COALESCE" + sql_iso(sql_list(terms))
+            output[t] = sql_coalesce(terms)
     return wrap([{"name": ".", "sql": output}])
 
 

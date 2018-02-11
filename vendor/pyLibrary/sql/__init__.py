@@ -125,3 +125,7 @@ def sql_concat(list_):
 
 def sql_alias(value, alias):
     return SQL(value.template + " AS " + alias.template)
+
+
+def sql_coalesce(list_):
+    return "COALESCE(" + SQL_COMMA.join(list_) + ")"

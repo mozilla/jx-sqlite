@@ -22,7 +22,7 @@ from mo_dots import listwrap, coalesce, split_field, join_field, startswith_fiel
 from mo_future import text_type, unichr
 from mo_logs import Log
 from mo_math import Math
-from pyLibrary.sql import SQL, SQL_AND, SQL_COMMA, SQL_OR, SQL_UNION_ALL, SQL_LEFT_JOIN, SQL_INNER_JOIN, SQL_GROUPBY, SQL_WHERE, SQL_FROM, SQL_SELECT, SQL_LIMIT, SQL_ORDERBY, SQL_ON, SQL_NULL, SQL_IS_NULL, SQL_IS_NOT_NULL, sql_list, sql_iso, SQL_END, SQL_ELSE, SQL_THEN, SQL_WHEN, SQL_CASE, SQL_ONE, sql_count, SQL_DESC, SQL_STAR, SQL_TRUE, sql_alias
+from pyLibrary.sql import SQL, SQL_AND, SQL_COMMA, SQL_OR, SQL_UNION_ALL, SQL_LEFT_JOIN, SQL_INNER_JOIN, SQL_GROUPBY, SQL_WHERE, SQL_FROM, SQL_SELECT, SQL_LIMIT, SQL_ORDERBY, SQL_ON, SQL_NULL, SQL_IS_NULL, SQL_IS_NOT_NULL, sql_list, sql_iso, SQL_END, SQL_ELSE, SQL_THEN, SQL_WHEN, SQL_CASE, SQL_ONE, sql_count, SQL_DESC, SQL_STAR, SQL_TRUE, sql_alias, sql_coalesce
 from pyLibrary.sql.sqlite import quote_value, quote_column, join_column
 
 EXISTS_COLUMN = quote_column("__exists__")
@@ -67,7 +67,6 @@ class EdgesTable(SetOpTable):
         null_groupby = []
         orderby = []
         domains = []
-        null_domains = []
 
         select_clause = [SQL_ONE + EXISTS_COLUMN] + [quote_column(c.es_column) for c in self.sf.tables['.'].columns]
 
@@ -329,7 +328,7 @@ class EdgesTable(SetOpTable):
                 Log.error("not handled")
 
             domains.append(domain)
-            null_domains.append(null_domain)
+            # null_domains.append(null_domain)
             ons.append(on_clause)
             wheres.append(where)
             join_types.append(join_type)
@@ -443,7 +442,7 @@ class EdgesTable(SetOpTable):
                         column_number = len(outer_selects)
                         sql = sql_aggs[s.aggregate] + sql_iso(sql)
                         if s.default != None:
-                            sql = "COALESCE" + sql_iso(sql_list(sql, quote_value(s.default)))
+                            sql = sql_coalesce([sql, quote_value(s.default)])
                         outer_selects.append(sql_alias(sql, _make_column_name(column_number)))
                         index_to_column[column_number] = ColumnMapping(
                             push_name=s.name,
@@ -464,9 +463,7 @@ class EdgesTable(SetOpTable):
         primary = sql_iso(
             SQL_SELECT + sql_list(select_clause) +
             SQL_FROM + from_sql +
-            SQL_WHERE + main_filter +
-            SQL_UNION_ALL +
-            SQL_SELECT + sql_list([SQL_NULL] * len(select_clause))
+            SQL_WHERE + main_filter
         ) + nest_to_alias["."]
 
         edge_sql = []
