@@ -21,8 +21,9 @@ from jx_python.meta import Column
 from jx_sqlite import typed_column, UID, quoted_UID, quoted_GUID, sql_types, quoted_PARENT, quoted_ORDER
 from jx_sqlite import untyped_column
 from mo_dots import relative_field, listwrap, split_field, join_field, wrap, startswith_field, concat_field, Null, coalesce, set_default
+from mo_future import text_type
 from mo_logs import Log
-from pyLibrary.sql import SQL_FROM, sql_iso, sql_list, SQL_LIMIT, SQL_SELECT, SQL_ZERO
+from pyLibrary.sql import SQL_FROM, sql_iso, sql_list, SQL_LIMIT, SQL_SELECT, SQL_ZERO, SQL_STAR
 from pyLibrary.sql.sqlite import quote_column
 
 
@@ -38,10 +39,6 @@ class Snowflake(object):
         self.tables = OrderedDict()  # MAP FROM NESTED PATH TO Table OBJECT, PARENTS PROCEED CHILDREN
         if not self.read_db():
             self.create_fact(uid)
-
-    # def __del__(self):
-    #     for nested_path, table in self.tables.items():
-    #         self.db.execute("DROP TABLE " + quote_column(concat_field(self.fact, nested_path)))
 
     def read_db(self):
         """
@@ -194,7 +191,7 @@ class Snowflake(object):
         for col in moving_columns:
             column = col.es_column
             tmp_table = "tmp_" + existing_table
-            columns = self.db.query(SQL_SELECT + "*" + SQL_FROM + quote_column(existing_table) + SQL_LIMIT + SQL_ZERO).header
+            columns = list(map(text_type, self.db.query(SQL_SELECT + SQL_STAR + SQL_FROM + quote_column(existing_table) + SQL_LIMIT + SQL_ZERO).header))
             self.db.execute(
                 "ALTER TABLE " + quote_column(existing_table) +
                 " RENAME TO " + quote_column(tmp_table)
@@ -223,6 +220,7 @@ class Snowflake(object):
         for table in self.tables.values():
             rel_name = column.names[table.name] = relative_field(abs_name, table.name)
             table.schema.add(rel_name, column)
+            table.columns.append(column)
 
 
 class Table(Container):
@@ -230,6 +228,7 @@ class Table(Container):
     def __init__(self, nested_path):
         self.nested_path = nested_path
         self._schema = Schema(nested_path)
+        self.columns = []  # PLAIN DATABASE COLUMNS
 
     @property
     def name(self):
@@ -241,6 +240,7 @@ class Table(Container):
     @property
     def schema(self):
         return self._schema
+
 
 class Schema(object):
     """

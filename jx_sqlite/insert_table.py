@@ -287,7 +287,7 @@ class InsertTable(BaseTable):
                     column = c.es_column
                     from_doc.active_columns.remove(c)
                     abs_schema.remove(cname, c)
-                    required_changes.append({"nest": (c, nested_path[0])})
+                    required_changes.append({"nest": (c, nested_path)})
                     deep_c = Column(
                         names={".": cname},
                         type=value_type,

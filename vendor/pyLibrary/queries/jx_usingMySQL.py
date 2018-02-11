@@ -184,7 +184,7 @@ class MySQL(object):
 
             selects = FlatList()
             for s in query.select:
-                selects.append(aggregates[s.aggregate].replace("{{code}}", s.value) + " AS " + self.db.quote_column(s.name))
+                selects.append(sql_alias(aggregates[s.aggregate].replace("{{code}}", s.value),self.db.quote_column(s.name)))
 
             sql = expand_template("""
                 SELECT
@@ -235,10 +235,10 @@ class MySQL(object):
             for s in listwrap(query.select):
                 if isinstance(s.value, Mapping):
                     for k, v in s.value.items:
-                        selects.append(v + " AS " + self.db.quote_column(s.name + "." + k))
+                        selects.append(sql_alias(v, self.db.quote_column(s.name + "." + k)))
                 if isinstance(s.value, list):
                     for i, ss in enumerate(s.value):
-                        selects.append(sql_alias(s.value ,self.db.quote_column(s.name + "," + str(i))))
+                        selects.append(sql_alias(s.value, self.db.quote_column(s.name + "," + str(i))))
                 else:
                     selects.append(sql_alias(s.value, self.db.quote_column(s.name)))
 

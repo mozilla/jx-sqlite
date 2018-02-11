@@ -178,7 +178,7 @@ def sql_text_array_to_set(column):
             return set()
         else:
             value = json2value(row[column])
-            return set(value)
+            return set(value) - {None}
 
     return _convert
 

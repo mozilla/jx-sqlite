@@ -229,7 +229,7 @@ class SetOpTable(InsertTable):
                                     if concat_field(alias, unsorted_sql) in selects and len(unsorted_sql.split()) == 1:
                                         continue
                                     selects.append(concat_field(alias, unsorted_sql))
-                                    sql_selects.append(join_column(alias, unsorted_sql) + " AS " + column_alias)
+                                    sql_selects.append(sql_alias(join_column(alias, unsorted_sql), column_alias))
                                     index_to_column[column_number] = nested_doc_details['index_to_column'][column_number] = ColumnMapping(
                                         push_name=s.name,
                                         push_column_name=s.name,
