@@ -407,15 +407,13 @@ class SetOpTable(InsertTable):
             if isinstance(query.select, list) or isinstance(query.select.value, LeavesOp):
                 num_rows = len(data)
                 map_index_to_name = {c.push_column: c.push_column_name for c in cols}
-                temp_data = Data()
+                temp_data = {c.push_column_name: [None] * num_rows for c in cols}
                 for rownum, d in enumerate(data):
                     for k, v in d.items():
-                        if temp_data[k] == None:
-                            temp_data[k] = [None] * num_rows
                         temp_data[k][rownum] = v
                 return Data(
                     meta={"format": "cube"},
-                    data={n: temp_data[literal_field(n)] for c, n in map_index_to_name.items()},
+                    data={n: temp_data[n] for c, n in map_index_to_name.items()},
                     edges=[{
                         "name": "rownum",
                         "domain": {
@@ -466,7 +464,6 @@ class SetOpTable(InsertTable):
                         data=output_data
                     )
             if isinstance(query.select, list) or isinstance(query.select.value, LeavesOp):
-                num_rows = len(data)
                 column_names = [None] * (max(c.push_column for c in cols) + 1)
                 for c in cols:
                     column_names[c.push_column] = c.push_column_name
@@ -474,10 +471,8 @@ class SetOpTable(InsertTable):
                 temp_data = []
                 for rownum, d in enumerate(data):
                     row = [None] * len(column_names)
-                    for i, (k, v) in enumerate(sorted(d.items())):
-                        for c in cols:
-                            if k == c.push_name:
-                                row[c.push_column] = v
+                    for c in cols:
+                        row[c.push_column] = d[c.push_name]
                     temp_data.append(row)
 
                 return Data(
@@ -521,12 +516,8 @@ class SetOpTable(InsertTable):
                 temp_data = []
                 for rownum, d in enumerate(data):
                     row = {}
-                    for k, v in d.items():
-                        for c in cols:
-                            if c.push_name == c.push_column_name == k:
-                                row[c.push_column_name] = v
-                            elif c.push_name == k and c.push_column_name != k:
-                                row[c.push_column_name] = v
+                    for c in cols:
+                        row[c.push_column_name] = d[c.push_name]
                     temp_data.append(row)
                 return Data(
                     meta={"format": "list"},
