@@ -307,10 +307,6 @@ class Schema(object):
         return [c for cs in self.map.values() for c in cs]
 
     def leaves(self, prefix):
-        output = self.map.get(prefix)
-        if output:
-            return output
-
         return set(
             c
             for k, cs in self.map.items()

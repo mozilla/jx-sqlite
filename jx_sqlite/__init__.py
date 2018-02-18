@@ -16,12 +16,12 @@ from __future__ import unicode_literals
 from collections import Mapping
 from copy import copy
 
+from jx_base import DataClass
 from mo_dots import Data, split_field, join_field, concat_field
 from mo_future import text_type
 from mo_json import json2value
 from mo_math.randoms import Random
 from mo_times import Date
-from pyLibrary.meta import DataClass
 from pyLibrary.sql import SQL
 from pyLibrary.sql.sqlite import quote_column
 

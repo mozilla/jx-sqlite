@@ -23,7 +23,7 @@ from mo_dots import coalesce, wrap, Null, split_field
 from mo_future import text_type, utf8_json_encoder, get_function_name
 from mo_json import scrub
 from mo_logs import Log, Except
-from mo_math import Math, MAX, MIN, UNION, AND
+from mo_math import Math, MAX, MIN, UNION
 from mo_times.dates import Date, unicode2Date
 
 ALLOW_SCRIPTING = False
@@ -1268,6 +1268,10 @@ class LengthOp(Expression):
         Expression.__init__(self, op, [term])
         self.term = term
 
+    def __eq__(self, other):
+        if isinstance(other, LengthOp):
+            return self.term == other.term
+
     def __data__(self):
         return {"length": self.term.__data__()}
 
@@ -1298,13 +1302,13 @@ class FirstOp(Expression):
         self.data_type = self.term.type
 
     def __data__(self):
-        return {"boolean": self.term.__data__()}
+        return {"first": self.term.__data__()}
 
     def vars(self):
         return self.term.vars()
 
     def map(self, map_):
-        return BooleanOp("boolean", self.term.map(map_))
+        return LastOp("last", self.term.map(map_))
 
     def missing(self):
         return self.term.missing()
@@ -1322,6 +1326,43 @@ class FirstOp(Expression):
             Log.error("not handled yet")
         else:
             return FirstOp("first", term)
+
+
+class LastOp(Expression):
+    def __init__(self, op, term):
+        Expression.__init__(self, op, [term])
+        self.term = term
+        self.data_type = self.term.type
+
+    def __data__(self):
+        return {"last": self.term.__data__()}
+
+    def vars(self):
+        return self.term.vars()
+
+    def map(self, map_):
+        return LastOp("last", self.term.map(map_))
+
+    def missing(self):
+        return self.term.missing()
+
+    @simplified
+    def partial_eval(self):
+        term = self.term.partial_eval()
+        if isinstance(self.term, LastOp):
+            return term
+        elif term.type != OBJECT and not term.many:
+            return term
+        elif term is NULL:
+            return term
+        elif isinstance(term, Literal):
+            if isinstance(term, list):
+                if len(term)>0:
+                    return term[-1]
+                return NULL
+            return term
+        else:
+            return LastOp("last", term)
 
 
 class BooleanOp(Expression):
@@ -2754,6 +2795,7 @@ operators = {
     "instr": FindOp,
     "is_number": IsNumberOp,
     "is_string": IsStringOp,
+    "last": LastOp,
     "left": LeftOp,
     "length": LengthOp,
     "literal": Literal,

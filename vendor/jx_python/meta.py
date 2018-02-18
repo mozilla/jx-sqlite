@@ -11,63 +11,25 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
-from copy import copy
 from datetime import date
 from datetime import datetime
 
-from mo_future import text_type, long, PY2
-from jx_base import STRUCT
-
+from jx_base import STRUCT, Column
+from jx_base.container import Container
+from jx_base.schema import Schema
 from jx_python import jx
 from mo_collections import UniqueIndex
 from mo_dots import Data, concat_field, get_attr, listwrap, unwraplist, NullType, FlatList
 from mo_dots import split_field, join_field, ROOT_PATH
 from mo_dots import wrap
+from mo_future import none_type
+from mo_future import text_type, long, PY2
 from mo_json.typed_encoder import untype_path, unnest_path
 from mo_logs import Log
 from mo_threads import Lock
-from mo_future import none_type
-
-from jx_base.container import Container
-from jx_base.schema import Schema
 from mo_times.dates import Date
-from pyLibrary.meta import DataClass
 
 singlton = None
-
-
-
-
-
-class Table(DataClass("Table", [
-    "name",
-    "url",
-    "query_path",
-    "timestamp"
-])):
-    @property
-    def columns(self):
-        return singlton.get_columns(table_name=self.name)
-
-
-Column = DataClass(
-    "Column",
-    [
-        # "table",
-        "names",  # MAP FROM TABLE NAME TO COLUMN NAME (ONE COLUMN CAN HAVE MULTIPLE NAMES)
-        "es_column",
-        "es_index",
-        # "es_type",
-        "type",
-        {"name": "useSource", "default": False},
-        {"name": "nested_path", "nulls": True},  # AN ARRAY OF PATHS (FROM DEEPEST TO SHALLOWEST) INDICATING THE JSON SUB-ARRAYS
-        {"name": "count", "nulls": True},
-        {"name": "cardinality", "nulls": True},
-        {"name": "multi", "nulls": True},
-        {"name": "partitions", "nulls": True},
-        {"name": "last_updated", "nulls": True}
-    ]
-)
 
 
 class ColumnList(Container):

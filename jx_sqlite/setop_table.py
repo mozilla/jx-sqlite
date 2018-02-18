@@ -41,34 +41,19 @@ class SetOpTable(InsertTable):
             for i, (nested_path, sub_table) in enumerate(self.sf.tables.items())
         }
 
-        active_columns = {".": []}
-        for cname, cols in schema.items():
-            if any(startswith_field(cname, v) for v in vars_):
-                for c in cols:
-                    if c.type in STRUCT:
-                        continue
-                    nest = c.nested_path[0]
-                    active = active_columns.get(nest)
-                    if not active:
-                        active = active_columns[nest] = []
-                    active.append(c)
-
-        for nested_path, s in self.sf.tables.items():
-            for cname, cols in s.schema.items():
-                if not any(startswith_field(cname, c.names[c.nested_path[0]]) for n, cc in active_columns.items() for c in cc):
-                    for c in cols:
-                        if c.type in STRUCT:
-                            continue
-                        nest = c.nested_path[0]
-                        active = active_columns.get(nest)
-                        if not active:
-                            active = active_columns[nest] = []
-                        active.append(c)
+        active_columns = {".": set()}
+        for v in vars_:
+            for c in schema.leaves(v):
+                nest = c.nested_path[0]
+                active = active_columns.get(nest)
+                if not active:
+                    active = active_columns[nest] = set()
+                active.add(c)
 
         # ANY VARS MENTIONED WITH NO COLUMNS?
         for v in vars_:
             if not any(startswith_field(cname, v) for cname in schema.keys()):
-                active_columns["."].append(Column(
+                active_columns["."].add(Column(
                     names={".": v},
                     type="null",
                     es_column=".",
@@ -406,14 +391,13 @@ class SetOpTable(InsertTable):
 
             if isinstance(query.select, list) or isinstance(query.select.value, LeavesOp):
                 num_rows = len(data)
-                map_index_to_name = {c.push_column: c.push_column_name for c in cols}
                 temp_data = {c.push_column_name: [None] * num_rows for c in cols}
                 for rownum, d in enumerate(data):
-                    for k, v in d.items():
-                        temp_data[k][rownum] = v
+                    for c in cols:
+                        temp_data[c.push_column_name][rownum] = d[c.push_name]
                 return Data(
                     meta={"format": "cube"},
-                    data={n: temp_data[n] for c, n in map_index_to_name.items()},
+                    data=temp_data,
                     edges=[{
                         "name": "rownum",
                         "domain": {
