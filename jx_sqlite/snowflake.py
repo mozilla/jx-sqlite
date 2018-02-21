@@ -13,7 +13,7 @@ from __future__ import unicode_literals
 from collections import OrderedDict
 from copy import copy
 
-from jx_base import STRUCT
+from jx_base import STRUCT, OBJECT
 from jx_base.container import Container
 from jx_base.queries import get_property_name
 from jx_python import jx
@@ -101,19 +101,17 @@ class Snowflake(object):
                 new_columns.append(c)
 
         command = (
-            "CREATE TABLE " + quote_column(self.fact) + "(" +
-            (sql_list(
+            "CREATE TABLE " + quote_column(self.fact) +
+            sql_iso(sql_list(
                 [quoted_GUID + " TEXT "] +
                 [quoted_UID + " INTEGER"] +
-                [quote_column(c.es_column) + " " + sql_types[c.type] for c in self.tables["."].schema.columns]
-            )) +
-            ", PRIMARY KEY (" +
-            (sql_list(
-                [quoted_GUID] +
-                [quoted_UID] +
-                [quote_column(c.es_column) for c in self.tables["."].schema.columns]
-            )) +
-            "))"
+                [quote_column(c.es_column) + " " + sql_types[c.type] for c in self.tables["."].schema.columns] +
+                [" PRIMARY KEY " + sql_iso(sql_list(
+                    [quoted_GUID] +
+                    [quoted_UID] +
+                    [quote_column(c.es_column) for c in self.tables["."].schema.columns]
+                ))]
+            ))
         )
 
         self.db.execute(command)
@@ -250,7 +248,13 @@ class Schema(object):
     def __init__(self, nested_path):
         if nested_path[-1] != '.':
             Log.error("Expecting full nested path")
-        self.map = {}
+        self.map = {".": set([Column(
+            names={".": "."},
+            type=OBJECT,
+            es_column="_source",
+            es_index=nested_path,
+            nested_path=nested_path
+        )])}
         self.nested_path = nested_path
 
     def add(self, column_name, column):
@@ -279,8 +283,8 @@ class Schema(object):
         self.map[column_name]=[c for c in self.map[column_name] if c != column]
 
     def __getitem__(self, item):
-        output = self.map.get(item)
-        return output if output else Null
+        output = self.map.get(item, Null)
+        return output
 
     def __copy__(self):
         output = Schema(self.nested_path)
@@ -304,13 +308,13 @@ class Schema(object):
 
     @property
     def columns(self):
-        return [c for cs in self.map.values() for c in cs]
+        return [c for cs in self.map.values() for c in cs if c.es_column not in ['_id', '_source']]
 
     def leaves(self, prefix):
         return set(
             c
             for k, cs in self.map.items()
-            if startswith_field(k, prefix)
+            if startswith_field(k, prefix) and k != "_id"
             for c in cs
             if c.type not in STRUCT
         )

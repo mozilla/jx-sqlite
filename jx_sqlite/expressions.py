@@ -17,7 +17,8 @@ from jx_base.expressions import Variable, DateOp, TupleOp, LeavesOp, BinaryOp, O
     PrefixOp, UnixOp, FromUnixOp, NotLeftOp, RightOp, NotRightOp, FindOp, InOp, RangeOp, CaseOp, AndOp, \
     ConcatOp, LeftOp, EqOp, WhenOp, BasicIndexOfOp, IntegerOp, MaxOp, BasicSubstringOp, BasicEqOp, FALSE, MinOp, BooleanOp, SuffixOp, BetweenOp
 from jx_base.queries import get_property_name
-from mo_dots import coalesce, wrap, Null, split_field
+from jx_sqlite import quoted_GUID, GUID
+from mo_dots import coalesce, wrap, Null, split_field, listwrap
 from mo_dots import join_field, ROOT_PATH, relative_field, Data
 from mo_future import text_type
 from mo_json import json2value
@@ -30,15 +31,21 @@ from pyLibrary.sql.sqlite import quote_column, quote_value
 
 @extend(Variable)
 def to_sql(self, schema, not_null=False, boolean=False):
-    # cols = [Data({cname: c}) for cname, cs in schema.map_to_sql(self.var).items() for c in cs]
-    cols = schema.leaves(self.var)
-    if not cols:
+    if self.var == GUID:
+        return wrap([{"name": ".", "sql": {"s": quoted_GUID}, "nested_path": ROOT_PATH}])
+    vars = schema[self.var]
+    if not vars:
         # DOES NOT EXIST
         return wrap([{"name": ".", "sql": {"0": SQL_NULL}, "nested_path": ROOT_PATH}])
+    var_name = list(set(listwrap(vars).names.get('\\.')))
+    if len(var_name) > 1:
+        Log.error("do not know how to handle")
+    var_name = var_name[0]
+    cols = schema.leaves(self.var)
     acc = {}
     if boolean:
         for col in cols:
-            cname, col = col.names[col.nested_path[0]], col
+            cname = relative_field(col.names['.'], var_name)
             nested_path = col.nested_path[0]
             if col.type == OBJECT:
                 value = SQL_TRUE
@@ -51,7 +58,7 @@ def to_sql(self, schema, not_null=False, boolean=False):
             tempb['b'] = value
     else:
         for col in cols:
-            cname, col = col.names[col.nested_path[0]], col
+            cname = relative_field(col.names['.'], var_name)
             if col.type == OBJECT:
                 prefix = self.var + "."
                 for cn, cs in schema.items():
@@ -67,7 +74,7 @@ def to_sql(self, schema, not_null=False, boolean=False):
                 tempb[json_type_to_sql_type[col.type]] = quote_column(col.es_column)
 
     return wrap([
-        {"name": relative_field(cname, self.var), "sql": types, "nested_path": nested_path}
+        {"name": cname, "sql": types, "nested_path": nested_path}
         for nested_path, pairs in acc.items() for cname, types in pairs.items()
     ])
 

@@ -17,7 +17,7 @@ from jx_base import STRUCT
 from jx_base.expressions import BooleanOp
 from jx_base.queries import get_property_name
 from jx_python.meta import Column
-from jx_sqlite import quoted_UID, quoted_GUID, get_column, _make_column_name, ORDER, COLUMN, set_column, quoted_PARENT, ColumnMapping, quoted_ORDER
+from jx_sqlite import quoted_UID, quoted_GUID, get_column, _make_column_name, ORDER, COLUMN, set_column, quoted_PARENT, ColumnMapping, quoted_ORDER, GUID
 from jx_sqlite.expressions import sql_type_to_json_type, LeavesOp
 from jx_sqlite.insert_table import InsertTable
 from mo_dots import listwrap, Data, unwraplist, split_field, join_field, startswith_field, unwrap, relative_field, concat_field, literal_field, Null
@@ -118,7 +118,7 @@ class SetOpTable(InsertTable):
 
             alias = nested_doc_details['alias'] = nest_to_alias[step]
 
-            if step == "." and quoted_GUID in vars_:
+            if step == "." and GUID in vars_:
                 column_number = index_to_uid[step] = nested_doc_details['id_coord'] = len(sql_selects)
                 sql_select = join_column(alias, quoted_GUID)
                 sql_selects.append(sql_alias(sql_select, _make_column_name(column_number)))
