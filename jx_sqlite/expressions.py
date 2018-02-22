@@ -112,7 +112,7 @@ def to_sql(self, schema, not_null=False, boolean=False):
 
 @extend(DateOp)
 def to_sql(self, schema, not_null=False, boolean=False):
-    return wrap([{"name": ".", "sql": {"n": quote_value(json2value(self.json))}}])
+    return wrap([{"name": ".", "sql": {"n": quote_value(self.value)}}])
 
 
 @extend(TupleOp)

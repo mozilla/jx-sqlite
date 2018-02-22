@@ -13,7 +13,7 @@ from __future__ import unicode_literals
 from collections import OrderedDict
 from copy import copy
 
-from jx_base import STRUCT, OBJECT
+from jx_base import STRUCT, OBJECT, EXISTS
 from jx_base.container import Container
 from jx_base.queries import get_property_name
 from jx_python import jx
@@ -263,9 +263,7 @@ class Schema(object):
 
         for np in self.nested_path:
             rel_name = column.names[np]
-            container = self.map.get(rel_name)
-            if not container:
-                container = self.map[rel_name] = set()
+            container = self.map.setdefault(rel_name, set())
             hidden = [
                 c
                 for c in container
@@ -276,11 +274,15 @@ class Schema(object):
 
             container.add(column)
 
+        container = self.map.setdefault(column.es_column, set())
+        container.add(column)
+
+
     def remove(self, column_name, column):
         if column_name != column.names[self.nested_path[0]]:
             Log.error("Logic error")
 
-        self.map[column_name]=[c for c in self.map[column_name] if c != column]
+        self.map[column_name] = [c for c in self.map[column_name] if c != column]
 
     def __getitem__(self, item):
         output = self.map.get(item, Null)
@@ -311,12 +313,14 @@ class Schema(object):
         return [c for cs in self.map.values() for c in cs if c.es_column not in ['_id', '_source']]
 
     def leaves(self, prefix):
+        head = self.map[prefix]
+        full_name = list(head)[0].names['.']
         return set(
             c
             for k, cs in self.map.items()
-            if startswith_field(k, prefix) and k != "_id"
+            if startswith_field(k, full_name) and k != "_id"
             for c in cs
-            if c.type not in STRUCT
+            if c.type not in [OBJECT, EXISTS]
         )
 
     def map_to_sql(self, var=""):

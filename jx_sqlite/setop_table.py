@@ -162,75 +162,74 @@ class SetOpTable(InsertTable):
             if step not in active_columns:
                 continue
 
-            if len(active_columns[step]) != 0:
-                # ADD SQL SELECT COLUMNS FOR EACH jx SELECT CLAUSE
-                si = 0
-                for s in listwrap(query.select):
-                    try:
-                        column_number = len(sql_selects)
-                        s.pull = get_column(column_number)
-                        db_columns = s.value.partial_eval().to_sql(schema)
+            # ADD SQL SELECT COLUMNS FOR EACH jx SELECT CLAUSE
+            si = 0
+            for s in listwrap(query.select):
+                try:
+                    column_number = len(sql_selects)
+                    s.pull = get_column(column_number)
+                    db_columns = s.value.partial_eval().to_sql(schema)
 
-                        if isinstance(s.value, LeavesOp):
-                            for column in db_columns:
-                                if isinstance(column.nested_path, list):
-                                    column.nested_path = column.nested_path[0]
-                                if column.nested_path and column.nested_path != step:
+                    if isinstance(s.value, LeavesOp):
+                        for column in db_columns:
+                            if isinstance(column.nested_path, list):
+                                column.nested_path = column.nested_path[0]
+                            if column.nested_path and column.nested_path != step:
+                                continue
+                            for t, unsorted_sql in column.sql.items():
+                                json_type = sql_type_to_json_type[t]
+                                if json_type in STRUCT:
                                     continue
-                                for t, unsorted_sql in column.sql.items():
-                                    json_type = sql_type_to_json_type[t]
-                                    if json_type in STRUCT:
-                                        continue
-                                    column_number = len(sql_selects)
-                                    # SQL HAS ABS TABLE REFERENCE
-                                    column_alias = _make_column_name(column_number)
-                                    if concat_field(alias, unsorted_sql) in selects and len(unsorted_sql.split()) == 1:
-                                        continue
-                                    selects.append(concat_field(alias, unsorted_sql))
-                                    sql_selects.append(sql_alias(join_column(alias, unsorted_sql), column_alias))
-                                    index_to_column[column_number] = nested_doc_details['index_to_column'][column_number] = ColumnMapping(
-                                        push_name=literal_field(get_property_name(concat_field(s.name, column.name))),
-                                        push_column_name=get_property_name(concat_field(s.name, column.name)),
-                                        push_column=si,
-                                        push_child=".",
-                                        pull=get_column(column_number),
-                                        sql=unsorted_sql,
-                                        type=json_type,
-                                        column_alias=column_alias,
-                                        nested_path=nested_path
-                                    )
-                                    si += 1
-                        else:
-                            for column in db_columns:
-                                if isinstance(column.nested_path, list):
-                                    column.nested_path = column.nested_path[0]
-                                if column.nested_path and column.nested_path != step:
+                                column_number = len(sql_selects)
+                                # SQL HAS ABS TABLE REFERENCE
+                                column_alias = _make_column_name(column_number)
+                                if concat_field(alias, unsorted_sql) in selects and len(unsorted_sql.split()) == 1:
                                     continue
-                                for t, unsorted_sql in column.sql.items():
-                                    json_type = sql_type_to_json_type[t]
-                                    if json_type in STRUCT:
-                                        continue
-                                    column_number = len(sql_selects)
-                                    # SQL HAS ABS TABLE REFERENCE
-                                    column_alias = _make_column_name(column_number)
-                                    if concat_field(alias, unsorted_sql) in selects and len(unsorted_sql.split()) == 1:
-                                        continue
-                                    selects.append(concat_field(alias, unsorted_sql))
-                                    sql_selects.append(sql_alias(join_column(alias, unsorted_sql), column_alias))
-                                    index_to_column[column_number] = nested_doc_details['index_to_column'][column_number] = ColumnMapping(
-                                        push_name=s.name,
-                                        push_column_name=s.name,
-                                        push_column=si,
-                                        push_child=column.name,
-                                        pull=get_column(column_number),
-                                        sql=unsorted_sql,
-                                        type=json_type,
-                                        column_alias=column_alias,
-                                        nested_path=nested_path
-                                    )
-                    finally:
-                        si += 1
-            elif startswith_field(step, primary_nested_path):
+                                selects.append(concat_field(alias, unsorted_sql))
+                                sql_selects.append(sql_alias(join_column(alias, unsorted_sql), column_alias))
+                                index_to_column[column_number] = nested_doc_details['index_to_column'][column_number] = ColumnMapping(
+                                    push_name=literal_field(get_property_name(concat_field(s.name, column.name))),
+                                    push_column_name=get_property_name(concat_field(s.name, column.name)),
+                                    push_column=si,
+                                    push_child=".",
+                                    pull=get_column(column_number),
+                                    sql=unsorted_sql,
+                                    type=json_type,
+                                    column_alias=column_alias,
+                                    nested_path=nested_path
+                                )
+                                si += 1
+                    else:
+                        for column in db_columns:
+                            if isinstance(column.nested_path, list):
+                                column.nested_path = column.nested_path[0]
+                            if column.nested_path and column.nested_path != step:
+                                continue
+                            for t, unsorted_sql in column.sql.items():
+                                json_type = sql_type_to_json_type[t]
+                                if json_type in STRUCT:
+                                    continue
+                                column_number = len(sql_selects)
+                                # SQL HAS ABS TABLE REFERENCE
+                                column_alias = _make_column_name(column_number)
+                                if concat_field(alias, unsorted_sql) in selects and len(unsorted_sql.split()) == 1:
+                                    continue
+                                selects.append(concat_field(alias, unsorted_sql))
+                                sql_selects.append(sql_alias(join_column(alias, unsorted_sql), column_alias))
+                                index_to_column[column_number] = nested_doc_details['index_to_column'][column_number] = ColumnMapping(
+                                    push_name=s.name,
+                                    push_column_name=s.name,
+                                    push_column=si,
+                                    push_child=column.name,
+                                    pull=get_column(column_number),
+                                    sql=unsorted_sql,
+                                    type=json_type,
+                                    column_alias=column_alias,
+                                    nested_path=nested_path
+                                )
+                finally:
+                    si += 1
+            if startswith_field(step, primary_nested_path):
                 # ADD REQUIRED COLUMNS, FOR DEEP STUFF
                 for ci, c in enumerate(active_columns[step]):
                     if c.type in STRUCT:
