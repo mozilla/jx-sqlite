@@ -123,8 +123,8 @@ class SetOpTable(InsertTable):
                 sql_select = join_column(alias, quoted_GUID)
                 sql_selects.append(sql_alias(sql_select, _make_column_name(column_number)))
                 index_to_column[column_number] = nested_doc_details['index_to_column'][column_number] = ColumnMapping(
-                    push_name="_id",
-                    push_column_name="_id",
+                    push_name=GUID,
+                    push_column_name=GUID,
                     push_column=0,
                     push_child=".",
                     sql=sql_select,
@@ -133,13 +133,14 @@ class SetOpTable(InsertTable):
                     column_alias=_make_column_name(column_number),
                     nested_path=nested_path
                 )
-                query.select = [s for s in listwrap(query.select) if s.name != "_id"]
+                query.select = [s for s in listwrap(query.select) if s.name != GUID]
 
             # WE ALWAYS ADD THE UID AND ORDER
             column_number = index_to_uid[step] = nested_doc_details['id_coord'] = len(sql_selects)
             sql_select = join_column(alias, quoted_UID)
             sql_selects.append(sql_alias(sql_select, _make_column_name(column_number)))
             if step != ".":
+                # ID AND ORDER FOR CHILD TABLES
                 index_to_column[column_number] = ColumnMapping(
                     sql=sql_select,
                     type="number",
@@ -155,7 +156,6 @@ class SetOpTable(InsertTable):
                     type="number",
                     nested_path=nested_path,
                     column_alias=_make_column_name(column_number)
-
                 )
 
             # WE DO NOT NEED DATA FROM TABLES WE REQUEST NOTHING FROM
@@ -229,7 +229,7 @@ class SetOpTable(InsertTable):
                                 )
                 finally:
                     si += 1
-            if startswith_field(step, primary_nested_path):
+            if startswith_field(step, primary_nested_path) and step !=primary_nested_path:
                 # ADD REQUIRED COLUMNS, FOR DEEP STUFF
                 for ci, c in enumerate(active_columns[step]):
                     if c.type in STRUCT:

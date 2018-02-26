@@ -362,11 +362,11 @@ class QueryTable(GroupbyTable):
         tables = [concat_field(self.sf.fact, i) for i in t]
 
         metadata = []
-        if columns[-1].es_column!="_id":
+        if columns[-1].es_column!=GUID:
             columns.append(Column(
-                names={i: relative_field("_id", i) for i in t},
+                names={i: relative_field(GUID, i) for i in t},
                 type="string",
-                es_column="_id",
+                es_column=GUID,
                 es_index=self.sf.fact,
                 nested_path=["."]
             ))

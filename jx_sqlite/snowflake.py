@@ -13,12 +13,12 @@ from __future__ import unicode_literals
 from collections import OrderedDict
 from copy import copy
 
-from jx_base import STRUCT, OBJECT, EXISTS
+from jx_base import STRUCT, OBJECT, EXISTS, STRING
 from jx_base.container import Container
 from jx_base.queries import get_property_name
 from jx_python import jx
 from jx_python.meta import Column
-from jx_sqlite import typed_column, UID, quoted_UID, quoted_GUID, sql_types, quoted_PARENT, quoted_ORDER
+from jx_sqlite import typed_column, UID, quoted_UID, quoted_GUID, sql_types, quoted_PARENT, quoted_ORDER, GUID
 from jx_sqlite import untyped_column
 from mo_dots import relative_field, listwrap, split_field, join_field, wrap, startswith_field, concat_field, Null, coalesce, set_default
 from mo_future import text_type
@@ -248,13 +248,22 @@ class Schema(object):
     def __init__(self, nested_path):
         if nested_path[-1] != '.':
             Log.error("Expecting full nested path")
-        self.map = {".": set([Column(
-            names={".": "."},
-            type=OBJECT,
-            es_column="_source",
-            es_index=nested_path,
-            nested_path=nested_path
-        )])}
+        self.map = {
+            ".": {Column(
+                names={".": "."},
+                type=OBJECT,
+                es_column="_source",
+                es_index=nested_path,
+                nested_path=nested_path
+            )},
+            GUID: {Column(
+                names={".": GUID},
+                type=STRING,
+                es_column=GUID,
+                es_index=nested_path,
+                nested_path=nested_path
+            )}
+        }
         self.nested_path = nested_path
 
     def add(self, column_name, column):
@@ -310,7 +319,7 @@ class Schema(object):
 
     @property
     def columns(self):
-        return [c for cs in self.map.values() for c in cs if c.es_column not in ['_id', '_source']]
+        return [c for cs in self.map.values() for c in cs if c.es_column not in [GUID, '_source']]
 
     def leaves(self, prefix):
         head = self.map[prefix]
@@ -318,7 +327,7 @@ class Schema(object):
         return set(
             c
             for k, cs in self.map.items()
-            if startswith_field(k, full_name) and k != "_id"
+            if startswith_field(k, full_name) and k != GUID or k == full_name
             for c in cs
             if c.type not in [OBJECT, EXISTS]
         )
