@@ -95,7 +95,7 @@ class Schema(object):
         """
         self._columns = copy(columns)
         table_path = split_field(table_name)
-        self.table = table_path[0]  # USED AS AN EXPLICIT STATEMENT OF PERSPECTIVE IN THE DATABASE
+        self.table = join_field(table_path[:1])  # USED AS AN EXPLICIT STATEMENT OF PERSPECTIVE IN THE DATABASE
         query_path = join_field(table_path[1:])  # TODO: REPLACE WITH THE nested_path ARRAY
         if query_path == ".":
             self.query_path = query_path

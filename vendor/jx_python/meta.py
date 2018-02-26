@@ -145,7 +145,7 @@ def get_schema_from_list(table_name, frum):
     """
     columns = UniqueIndex(keys=("names.\\.",))
     _get_schema_from_list(frum, ".", prefix_path=[], nested_path=ROOT_PATH, columns=columns)
-    return Schema(table_name=table_name, columns=columns)
+    return Schema(table_name=table_name, columns=list(columns))
 
 
 def _get_schema_from_list(frum, table_name, prefix_path, nested_path, columns):

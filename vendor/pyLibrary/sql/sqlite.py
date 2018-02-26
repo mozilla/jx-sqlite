@@ -244,7 +244,7 @@ def quote_column(column_name, table=None):
     if not isinstance(column_name, text_type):
         Log.error("expecting a name")
     if table != None:
-        return SQL(" " + quote(table) + "." + quote(column_name) + " ")
+        return SQL(" d" + quote(table) + "." + quote(column_name) + " ")
     else:
         if _no_need_to_quote.match(column_name):
             return SQL(" " + column_name + " ")

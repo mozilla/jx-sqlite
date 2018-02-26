@@ -31,7 +31,7 @@ from mo_logs.strings import indent
 from mo_logs.strings import outdent
 from mo_math import Math
 from mo_times import Date
-from pyLibrary.sql import SQL, SQL_NULL, SQL_SELECT, SQL_LIMIT, SQL_WHERE, SQL_LEFT_JOIN, SQL_COMMA, SQL_FROM, SQL_AND, sql_list, sql_iso, SQL_ASC, SQL_TRUE, SQL_ONE, SQL_DESC
+from pyLibrary.sql import SQL, SQL_NULL, SQL_SELECT, SQL_LIMIT, SQL_WHERE, SQL_LEFT_JOIN, SQL_COMMA, SQL_FROM, SQL_AND, sql_list, sql_iso, SQL_ASC, SQL_TRUE, SQL_ONE, SQL_DESC, SQL_IS_NULL, sql_alias
 from pyLibrary.sql.sqlite import join_column
 
 DEBUG = False
@@ -460,11 +460,10 @@ class MySQL(object):
 
         try:
             command = (
-                "INSERT INTO " + self.quote_column(table_name) + "(" +
-                sql_list([self.quote_column(k) for k in keys]) +
-                ") VALUES (" +
-                sql_list([self.quote_value(record[k]) for k in keys]) +
-                ")"
+                "INSERT INTO " + self.quote_column(table_name) +
+                sql_iso(sql_list([self.quote_column(k) for k in keys])) +
+                " VALUES " +
+                sql_iso(sql_list([self.quote_value(record[k]) for k in keys]))
             )
             self.execute(command)
         except Exception as e:
@@ -475,7 +474,12 @@ class MySQL(object):
     def insert_new(self, table_name, candidate_key, new_record):
         candidate_key = listwrap(candidate_key)
 
-        condition = SQL_AND.join([self.quote_column(k) + "=" + self.quote_value(new_record[k]) if new_record[k] != None else self.quote_column(k) + " IS NULL" for k in candidate_key])
+        condition = SQL_AND.join([
+            self.quote_column(k) + "=" + self.quote_value(new_record[k])
+            if new_record[k] != None
+            else self.quote_column(k) + SQL_IS_NULL
+            for k in candidate_key
+        ])
         command = (
             "INSERT INTO " + self.quote_column(table_name) + sql_iso(sql_list(
                 self.quote_column(k) for k in new_record.keys()
@@ -489,7 +493,7 @@ class MySQL(object):
                 SQL_FROM + self.quote_column(table_name) +
                 SQL_WHERE + condition +
                 SQL_LIMIT + SQL_ONE
-            ) + " b ON " + SQL_TRUE + SQL_WHERE + " exist IS NULL"
+            ) + " b ON " + SQL_TRUE + SQL_WHERE + " exist " + SQL_IS_NULL
         )
         self.execute(command, {})
 
@@ -509,9 +513,9 @@ class MySQL(object):
 
         try:
             command = (
-                "INSERT INTO " + self.quote_column(table_name) + "(" +
-                sql_list([self.quote_column(k) for k in keys]) +
-                ") VALUES " + sql_list([
+                "INSERT INTO " + self.quote_column(table_name) +
+                sql_iso(sql_list([self.quote_column(k) for k in keys])) +
+                " VALUES " + sql_list([
                 sql_iso(sql_list([self.quote_value(r[k]) for k in keys]))
                 for r in records
             ])
@@ -529,7 +533,7 @@ class MySQL(object):
         new_values = self.quote_param(new_values)
 
         where_clause = SQL_AND.join([
-            self.quote_column(k) + "=" + self.quote_value(v) if v != None else self.quote_column(k) + " IS NULL"
+            self.quote_column(k) + "=" + self.quote_value(v) if v != None else self.quote_column(k) + SQL_IS_NULL
             for k, v in where_slice.items()
         ])
 

@@ -66,8 +66,8 @@ def run(query, frum=Null):
     BUT IT IS ALSO PROCESSING A list CONTAINER; SEPARATE TO A ListContainer
     """
     if frum == None:
-        query_op = QueryOp.wrap(query)
-        frum = query_op.frum
+        frum = wrap(query)['from']
+        query_op = QueryOp.wrap(query, table=frum, schema=frum.schema)
     else:
         query_op = QueryOp.wrap(query, frum.schema)
 
