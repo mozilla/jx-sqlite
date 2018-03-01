@@ -18,28 +18,26 @@
 
 from __future__ import absolute_import
 from __future__ import division
-from __future__ import unicode_literals
 
 from copy import copy
 from mmap import mmap
 from numbers import Number
 from tempfile import TemporaryFile
 
-from mo_future import text_type
-
-from jx_python import jx
-from mo_dots import Data, coalesce, wrap, set_default, unwrap
-from mo_json import value2json
-from mo_logs import Log
-from mo_math import Math
-from mo_threads import Lock
-from mo_threads import Till
-from pyLibrary import convert
 from requests import sessions, Response
 
 import mo_json
+from jx_python import jx
+from mo_dots import Data, coalesce, wrap, set_default, unwrap
+from mo_future import text_type, PY2
+from mo_json import value2json
+from mo_logs import Log
 from mo_logs.exceptions import Except
+from mo_math import Math
+from mo_threads import Lock
+from mo_threads import Till
 from mo_times.durations import Duration
+from pyLibrary import convert
 from pyLibrary.env.big_data import safe_size, ibytes2ilines, icompressed2ibytes
 
 DEBUG = False
@@ -92,11 +90,11 @@ def request(method, url, zip=None, retry=None, **kwargs):
             except Exception as e:
                 e = Except.wrap(e)
                 failures.append(e)
-        Log.error("Tried {{num}} urls", num=len(url), cause=failures)
+        Log.error(u"Tried {{num}} urls", num=len(url), cause=failures)
 
-    if b"session" in kwargs:
-        session = kwargs[b"session"]
-        del kwargs[b"session"]
+    if 'session' in kwargs:
+        session = kwargs['session']
+        del kwargs['session']
     else:
         session = sessions.Session()
     session.headers.update(default_headers)
@@ -106,10 +104,10 @@ def request(method, url, zip=None, retry=None, **kwargs):
 
     if isinstance(url, text_type):
         # httplib.py WILL **FREAK OUT** IF IT SEES ANY UNICODE
-        url = url.encode("ascii")
+        url = url.encode('ascii')
 
     _to_ascii_dict(kwargs)
-    timeout = kwargs[b'timeout'] = coalesce(kwargs.get(b'timeout'), default_timeout)
+    timeout = kwargs['timeout'] = coalesce(kwargs.get('timeout'), default_timeout)
 
     if retry == None:
         retry = Data(times=1, sleep=0)
@@ -121,24 +119,24 @@ def request(method, url, zip=None, retry=None, **kwargs):
             retry.sleep = retry.sleep.seconds
         set_default(retry, {"times": 1, "sleep": 0})
 
-    if b'json' in kwargs:
-        kwargs[b'data'] = value2json(kwargs[b'json']).encode("utf8")
-        del kwargs[b'json']
+    if 'json' in kwargs:
+        kwargs['data'] = value2json(kwargs['json']).encode('utf8')
+        del kwargs['json']
 
     try:
-        headers = kwargs[b"headers"] = unwrap(coalesce(kwargs.get(b'headers'), {}))
-        set_default(headers, {b"Accept-Encoding": b"compress, gzip"})
+        headers = kwargs['headers'] = unwrap(coalesce(kwargs.get('headers'), {}))
+        set_default(headers, {'Accept-Encoding': 'compress, gzip'})
 
-        if zip and len(coalesce(kwargs.get(b"data"))) > 1000:
-            compressed = convert.bytes2zip(kwargs[b"data"])
-            headers[b'content-encoding'] = b'gzip'
-            kwargs[b"data"] = compressed
+        if zip and len(coalesce(kwargs.get('data'))) > 1000:
+            compressed = convert.bytes2zip(kwargs['data'])
+            headers['content-encoding'] = 'gzip'
+            kwargs['data'] = compressed
 
             _to_ascii_dict(headers)
         else:
             _to_ascii_dict(headers)
     except Exception as e:
-        Log.error("Request setup failure on {{url}}", url=url, cause=e)
+        Log.error(u"Request setup failure on {{url}}", url=url, cause=e)
 
     errors = []
     for r in range(retry.times):
@@ -147,35 +145,38 @@ def request(method, url, zip=None, retry=None, **kwargs):
 
         try:
             if DEBUG:
-                Log.note("http {{method}} to {{url}}", method=method, url=url)
+                Log.note(u"http {{method}} to {{url}}", method=method, url=url)
             return session.request(method=method, url=url, **kwargs)
         except Exception as e:
             errors.append(Except.wrap(e))
 
     if " Read timed out." in errors[0]:
-        Log.error("Tried {{times}} times: Timeout failure (timeout was {{timeout}}", timeout=timeout, times=retry.times, cause=errors[0])
+        Log.error(u"Tried {{times}} times: Timeout failure (timeout was {{timeout}}", timeout=timeout, times=retry.times, cause=errors[0])
     else:
-        Log.error("Tried {{times}} times: Request failure of {{url}}", url=url, times=retry.times, cause=errors[0])
+        Log.error(u"Tried {{times}} times: Request failure of {{url}}", url=url, times=retry.times, cause=errors[0])
 
 
-def _to_ascii_dict(headers):
-    if headers is None:
-        return
-    for k, v in copy(headers).items():
-        if isinstance(k, text_type):
-            del headers[k]
-            if isinstance(v, text_type):
-                headers[k.encode("ascii")] = v.encode("ascii")
-            else:
-                headers[k.encode("ascii")] = v
-        elif isinstance(v, text_type):
-            headers[k] = v.encode("ascii")
-
+if PY2:
+    def _to_ascii_dict(headers):
+        if headers is None:
+            return
+        for k, v in copy(headers).items():
+            if isinstance(k, text_type):
+                del headers[k]
+                if isinstance(v, text_type):
+                    headers[k.encode('ascii')] = v.encode('ascii')
+                else:
+                    headers[k.encode('ascii')] = v
+            elif isinstance(v, text_type):
+                headers[k] = v.encode('ascii')
+else:
+    def _to_ascii_dict(headers):
+        pass
 
 def get(url, **kwargs):
-    kwargs.setdefault(b'allow_redirects', True)
-    kwargs[b"stream"] = True
-    return HttpResponse(request(b'get', url, **kwargs))
+    kwargs.setdefault('allow_redirects', True)
+    kwargs['stream'] = True
+    return HttpResponse(request('get', url, **kwargs))
 
 
 def get_json(url, **kwargs):
@@ -188,68 +189,68 @@ def get_json(url, **kwargs):
         return mo_json.json2value(convert.utf82unicode(c))
     except Exception as e:
         if Math.round(response.status_code, decimal=-2) in [400, 500]:
-            Log.error("Bad GET response: {{code}}", code=response.status_code)
+            Log.error(u"Bad GET response: {{code}}", code=response.status_code)
         else:
-            Log.error("Good GET requests, but bad JSON", cause=e)
+            Log.error(u"Good GET requests, but bad JSON", cause=e)
 
 
 def options(url, **kwargs):
-    kwargs.setdefault(b'allow_redirects', True)
-    kwargs[b"stream"] = True
-    return HttpResponse(request(b'options', url, **kwargs))
+    kwargs.setdefault('allow_redirects', True)
+    kwargs['stream'] = True
+    return HttpResponse(request('options', url, **kwargs))
 
 
 def head(url, **kwargs):
-    kwargs.setdefault(b'allow_redirects', False)
-    kwargs[b"stream"] = True
-    return HttpResponse(request(b'head', url, **kwargs))
+    kwargs.setdefault('allow_redirects', False)
+    kwargs['stream'] = True
+    return HttpResponse(request('head', url, **kwargs))
 
 
 def post(url, **kwargs):
-    kwargs[b"stream"] = True
-    return HttpResponse(request(b'post', url, **kwargs))
+    kwargs['stream'] = True
+    return HttpResponse(request('post', url, **kwargs))
 
 
 def delete(url, **kwargs):
-    return HttpResponse(request(b'delete', url, **kwargs))
+    return HttpResponse(request('delete', url, **kwargs))
 
 
 def post_json(url, **kwargs):
     """
     ASSUME RESPONSE IN IN JSON
     """
-    if b"json" in kwargs:
-        kwargs[b"data"] = convert.unicode2utf8(value2json(kwargs[b"json"]))
-    elif b'data' in kwargs:
-        kwargs[b"data"] = convert.unicode2utf8(value2json(kwargs[b"data"]))
+    if 'json' in kwargs:
+        kwargs['data'] = unicode2utf8(value2json(kwargs['json']))
+    elif 'data' in kwargs:
+        kwargs['data'] = unicode2utf8(value2json(kwargs['data']))
     else:
-        Log.error("Expecting `json` parameter")
+        Log.error(u"Expecting `json` parameter")
 
     response = post(url, **kwargs)
     c = response.content
     try:
         details = mo_json.json2value(convert.utf82unicode(c))
     except Exception as e:
-        Log.error("Unexpected return value {{content}}", content=c, cause=e)
+        Log.error(u"Unexpected return value {{content}}", content=c, cause=e)
 
     if response.status_code not in [200, 201]:
-        Log.error("Bad response", cause=Except.wrap(details))
+        Log.error(u"Bad response", cause=Except.wrap(details))
 
     return details
 
 
 def put(url, **kwargs):
-    return HttpResponse(request(b'put', url, **kwargs))
+    return HttpResponse(request('put', url, **kwargs))
 
 
 def patch(url, **kwargs):
-    kwargs[b"stream"] = True
-    return HttpResponse(request(b'patch', url, **kwargs))
+    kwargs['stream'] = True
+    return HttpResponse(request('patch', url, **kwargs))
 
 
 def delete(url, **kwargs):
-    kwargs[b"stream"] = True
-    return HttpResponse(request(b'delete', url, **kwargs))
+    kwargs['stream'] = True
+    return HttpResponse(request('delete', url, **kwargs))
 
 
 class HttpResponse(Response):
@@ -286,7 +287,7 @@ class HttpResponse(Response):
     def all_lines(self):
         return self.get_all_lines()
 
-    def get_all_lines(self, encoding="utf8", flexible=False):
+    def get_all_lines(self, encoding='utf8', flexible=False):
         try:
             iterator = self.raw.stream(4096, decode_content=False)
 
@@ -294,12 +295,12 @@ class HttpResponse(Response):
                 return ibytes2ilines(icompressed2ibytes(iterator), encoding=encoding, flexible=flexible)
             elif self.headers.get('content-type') == 'application/zip':
                 return ibytes2ilines(icompressed2ibytes(iterator), encoding=encoding, flexible=flexible)
-            elif self.url.endswith(".gz"):
+            elif self.url.endswith('.gz'):
                 return ibytes2ilines(icompressed2ibytes(iterator), encoding=encoding, flexible=flexible)
             else:
                 return ibytes2ilines(iterator, encoding=encoding, flexible=flexible, closer=self.close)
         except Exception as e:
-            Log.error("Can not read content", cause=e)
+            Log.error(u"Can not read content", cause=e)
 
 
 class Generator_usingStream(object):

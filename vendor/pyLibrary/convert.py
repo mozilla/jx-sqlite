@@ -405,14 +405,6 @@ def value2number(v):
             Log.error("Not a number ({{value}})",  value= v, cause=e)
 
 
-def utf82unicode(value):
-    return value.decode('utf8')
-
-
-def unicode2utf8(value):
-    return value.encode('utf8')
-
-
 def latin12unicode(value):
     if isinstance(value, text_type):
         Log.error("can not convert unicode from latin1")
@@ -478,9 +470,9 @@ def ini2value(ini_content):
     """
     INI FILE CONTENT TO Data
     """
-    from ConfigParser import ConfigParser
+    from mo_future import ConfigParser, StringIO
 
-    buff = StringIO.StringIO(ini_content)
+    buff = StringIO(ini_content)
     config = ConfigParser()
     config._read(buff, "dummy")
 

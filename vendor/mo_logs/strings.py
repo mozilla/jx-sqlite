@@ -633,6 +633,10 @@ def apply_diff(text, diff, reverse=False):
     return text
 
 
+def unicode2utf8(value):
+    return value.encode('utf8')
+
+
 def utf82unicode(value):
     """
     WITH EXPLANATION FOR FAILURE

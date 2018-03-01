@@ -218,7 +218,7 @@ class Data(MutableMapping):
 
     def values(self):
         d = _get(self, "_dict")
-        return listwrap(d.values())
+        return listwrap(list(d.values()))
 
     def clear(self):
         get_logger().error("clear() not supported")

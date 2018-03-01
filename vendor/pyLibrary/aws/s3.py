@@ -314,7 +314,7 @@ class Bucket(object):
                     value = convert.bytes2zip(value)
                     key += ".json.gz"
                 else:
-                    value = convert.bytes2zip(convert.unicode2utf8(value))
+                    value = convert.bytes2zip(unicode2utf8(value))
                     key += ".json.gz"
 
             else:
@@ -446,7 +446,7 @@ class PublicBucket(object):
 
         def more():
             xml = http.get(self.url + "?" + value2url_param(state)).content
-            data = BeautifulSoup(xml)
+            data = BeautifulSoup(xml, 'xml')
 
             state.get_more = data.find("istruncated").contents[0] == "true"
             contents = data.findAll("contents")

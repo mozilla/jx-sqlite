@@ -133,7 +133,10 @@ class {{class_name}}(Mapping):
 
 
     def _constraint(row, rownum, rows):
-        return {{constraint_expr}}
+        try:
+            return {{constraint_expr}}
+        except Exception as e:
+            return False
 
     def __init__(self, **kwargs):
         if not kwargs:
@@ -218,12 +221,18 @@ class {{class_name}}(Mapping):
     return _exec(code, name)
 
 
-class Table(DataClass("Table", [
-    "name",
-    "url",
-    "query_path",
-    "timestamp"
-])):
+class Table(DataClass(
+    "Table",
+    [
+        "name",
+        "url",
+        "query_path",
+        "timestamp"
+    ],
+    constraint={"and": [
+        {"eq": [{"last": "query_path"}, {"literal": "."}]}
+    ]}
+)):
     @property
     def columns(self):
         Log.error("not implemented")
