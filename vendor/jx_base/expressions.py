@@ -17,7 +17,7 @@ from collections import Mapping
 from decimal import Decimal
 
 import mo_json
-from jx_base import OBJECT, python_type_to_json_type, BOOLEAN, NUMBER, INTEGER, STRING
+from jx_base import OBJECT, python_type_to_json_type, BOOLEAN, NUMBER, INTEGER, STRING, IS_NULL
 from jx_base.queries import is_variable_name, get_property_name
 from mo_dots import coalesce, wrap, Null, split_field
 from mo_future import text_type, utf8_json_encoder, get_function_name
@@ -60,6 +60,8 @@ def jx_expression(expr, schema=None):
         return output
     for v in output.vars():
         leaves = schema.leaves(v.var)
+        if len(leaves) == 0:
+            v.data_type = IS_NULL
         if len(leaves) == 1:
             v.data_type = list(leaves)[0].type
     return output

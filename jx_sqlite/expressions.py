@@ -11,14 +11,14 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
-from jx_base import OBJECT, BOOLEAN
+from jx_base import OBJECT, BOOLEAN, STRUCT, EXISTS, NESTED
 from jx_base.expressions import Variable, DateOp, TupleOp, LeavesOp, BinaryOp, OrOp, InequalityOp, extend, Literal, NullOp, TrueOp, FalseOp, DivOp, FloorOp, \
     NeOp, NotOp, LengthOp, NumberOp, StringOp, CountOp, MultiOp, RegExpOp, CoalesceOp, MissingOp, ExistsOp, \
     PrefixOp, UnixOp, FromUnixOp, NotLeftOp, RightOp, NotRightOp, FindOp, InOp, RangeOp, CaseOp, AndOp, \
     ConcatOp, LeftOp, EqOp, WhenOp, BasicIndexOfOp, IntegerOp, MaxOp, BasicSubstringOp, BasicEqOp, FALSE, MinOp, BooleanOp, SuffixOp, BetweenOp
 from jx_base.queries import get_property_name
 from jx_sqlite import quoted_GUID, GUID
-from mo_dots import coalesce, wrap, Null, split_field, listwrap
+from mo_dots import coalesce, wrap, Null, split_field, listwrap, startswith_field
 from mo_dots import join_field, ROOT_PATH, relative_field, Data
 from mo_future import text_type
 from mo_json import json2value
@@ -126,14 +126,18 @@ def to_sql(self, schema, not_null=False, boolean=False):
         Log.error("Can only handle Variable")
     term = self.term.var
     prefix_length = len(split_field(term))
-    return wrap([
+    output = wrap([
         {
             "name": join_field(split_field(schema.get_column_name(c))[prefix_length:]),
             "sql": Variable(schema.get_column_name(c)).to_sql(schema)[0].sql
         }
-        for n, cols in schema.map_to_sql(term).items()
-        for c in cols
+        for c in schema.columns
+        if startswith_field(c.names['.'], term) and (
+            (c.type not in (EXISTS, OBJECT, NESTED) and startswith_field(schema.nested_path[0], c.nested_path[0])) or
+            (c.type not in (EXISTS, OBJECT) and schema.nested_path[0] == c.nested_path[0])
+        )
     ])
+    return output
 
 
 @extend(EqOp)

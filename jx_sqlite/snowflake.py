@@ -35,7 +35,7 @@ class Snowflake(object):
         self.fact = fact  # THE CENTRAL FACT TABLE
         self.uid = uid
         self.db = db
-        self.columns = []  # EVERY COLUMN IS ACCESSIBLE BY EVERY TABLE IN THE SNOWFLAKE
+        self._columns = []  # EVERY COLUMN IS ACCESSIBLE BY EVERY TABLE IN THE SNOWFLAKE
         self.tables = OrderedDict()  # MAP FROM NESTED PATH TO Table OBJECT, PARENTS PROCEED CHILDREN
         if not self.read_db():
             self.create_fact(uid)
@@ -153,7 +153,7 @@ class Snowflake(object):
 
         # FIND THE INNER COLUMNS WE WILL BE MOVING
         moving_columns = []
-        for c in self.columns:
+        for c in self._columns:
             if destination_table!=column.es_index and column.es_column==c.es_column:
                 moving_columns.append(c)
                 c.nested_path = new_path
@@ -206,13 +206,17 @@ class Snowflake(object):
         self.tables[table.name] = table
         path = table.name
 
-        for c in self.columns:
+        for c in self._columns:
             rel_name = c.names[path] = relative_field(c.names["."], path)
             table.schema.add(rel_name, c)
         return table
 
+    @property
+    def columns(self):
+        return self._columns
+
     def add_column_to_schema(self, column):
-        self.columns.append(column)
+        self._columns.append(column)
         abs_name = column.names["."]
 
         for table in self.tables.values():
@@ -248,31 +252,33 @@ class Schema(object):
     def __init__(self, nested_path):
         if nested_path[-1] != '.':
             Log.error("Expecting full nested path")
-        self.map = {
-            ".": {Column(
-                names={".": "."},
-                type=OBJECT,
-                es_column="_source",
-                es_index=nested_path,
-                nested_path=nested_path
-            )},
-            GUID: {Column(
-                names={".": GUID},
-                type=STRING,
-                es_column=GUID,
-                es_index=nested_path,
-                nested_path=nested_path
-            )}
-        }
+        source = Column(
+            names={".": "."},
+            type=OBJECT,
+            es_column="_source",
+            es_index=nested_path,
+            nested_path=nested_path
+        )
+        guid = Column(
+            names={".": GUID},
+            type=STRING,
+            es_column=GUID,
+            es_index=nested_path,
+            nested_path=nested_path
+        )
+        self.namespace = {".": {source}, GUID: {guid}}
+        self._columns = [source, guid]
         self.nested_path = nested_path
 
     def add(self, column_name, column):
         if column_name != column.names[self.nested_path[0]]:
             Log.error("Logic error")
 
+        self._columns.append(column)
+
         for np in self.nested_path:
             rel_name = column.names[np]
-            container = self.map.setdefault(rel_name, set())
+            container = self.namespace.setdefault(rel_name, set())
             hidden = [
                 c
                 for c in container
@@ -283,7 +289,7 @@ class Schema(object):
 
             container.add(column)
 
-        container = self.map.setdefault(column.es_column, set())
+        container = self.namespace.setdefault(column.es_column, set())
         container.add(column)
 
 
@@ -291,16 +297,16 @@ class Schema(object):
         if column_name != column.names[self.nested_path[0]]:
             Log.error("Logic error")
 
-        self.map[column_name] = [c for c in self.map[column_name] if c != column]
+        self.namespace[column_name] = [c for c in self.namespace[column_name] if c != column]
 
     def __getitem__(self, item):
-        output = self.map.get(item, Null)
+        output = self.namespace.get(item, Null)
         return output
 
     def __copy__(self):
         output = Schema(self.nested_path)
-        for k, v in self.map.items():
-            output.map[k] = copy(v)
+        for k, v in self.namespace.items():
+            output.namespace[k] = copy(v)
         return output
 
     def get_column_name(self, column):
@@ -312,21 +318,23 @@ class Schema(object):
         return get_property_name(column.names[self.nested_path[0]])
 
     def keys(self):
-        return self.map.keys()
+        return set(self.namespace.keys())
 
     def items(self):
-        return self.map.items()
+        return list(self.namespace.items())
 
     @property
     def columns(self):
-        return [c for cs in self.map.values() for c in cs if c.es_column not in [GUID, '_source']]
+        return [c for c in self._columns if c.es_column not in [GUID, '_source']]
 
     def leaves(self, prefix):
-        head = self.map[prefix]
+        head = self.namespace.get(prefix, None)
+        if not head:
+            return Null
         full_name = list(head)[0].names['.']
         return set(
             c
-            for k, cs in self.map.items()
+            for k, cs in self.namespace.items()
             if startswith_field(k, full_name) and k != GUID or k == full_name
             for c in cs
             if c.type not in [OBJECT, EXISTS]
@@ -337,35 +345,25 @@ class Schema(object):
         RETURN A MAP FROM THE RELATIVE AND ABSOLUTE NAME SPACE TO COLUMNS
         """
         origin = self.nested_path[0]
-        if startswith_field(var, origin) and origin!=var:
+        if startswith_field(var, origin) and origin != var:
             var = relative_field(var, origin)
-        fact_dict={}
-        origin_dict={}
-        for k, cs in self.map.items():
-            for c in cs :
-                if c.type not in STRUCT:
-                    if (startswith_field(get_property_name(k), var)):
-                        if c.names[origin] in origin_dict:
-                            origin_dict[c.names[origin]].append(c)
-                        else:
-                            origin_dict[c.names[origin]] = [c]
+        fact_dict = {}
+        origin_dict = {}
+        for k, cs in self.namespace.items():
+            for c in cs:
+                if c.type in STRUCT:
+                    continue
 
-                        if origin!=c.nested_path[0]:
-                            if c.names["."] in fact_dict:
-                                fact_dict[c.names["."]].append(c)
-                            else:
-                                fact_dict[c.names["."]] = [c]
-                    elif origin==var:
-                        if concat_field(var, c.names[origin]) in origin_dict:
-                            origin_dict[concat_field(var, c.names[origin])].append(c)
-                        else:
-                            origin_dict[concat_field(var, c.names[origin])] = [c]
+                if startswith_field(get_property_name(k), var):
+                    origin_dict.setdefault(c.names[origin], []).append(c)
 
-                        if origin!=c.nested_path[0]:
-                            if c.names["."] in fact_dict:
-                                fact_dict[concat_field(var, c.names["."])].append(c)
-                            else:
-                                fact_dict[concat_field(var, c.names["."])] = [c]
+                    if origin != c.nested_path[0]:
+                        fact_dict.setdefault(c.names["."], []).append(c)
+                elif origin == var:
+                    origin_dict.setdefault(concat_field(var, c.names[origin]), []).append(c)
+
+                    if origin != c.nested_path[0]:
+                        fact_dict.setdefault(concat_field(var, c.names["."]), []).append(c)
 
         return set_default(origin_dict, fact_dict)
 

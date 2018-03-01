@@ -83,12 +83,13 @@ class TestSetOps(BaseTestCase):
             },
             "expecting_list": {
                 "meta": {"format": "list"}, "data": [
-                {},
-                {},
-                {},
-                {},
-                {}
-            ]},
+                    {},
+                    {},
+                    {},
+                    {},
+                    {}
+                ]
+            },
             "expecting_table": {
                 "meta": {"format": "table"},
                 "header": ["a.b.d"],
@@ -1028,7 +1029,6 @@ class TestSetOps(BaseTestCase):
             }
         }
         self.utils.execute_tests(test)
-
 
     def test_select3_object(self):
         """
