@@ -186,7 +186,14 @@ def to_sql(self, schema, not_null=False, boolean=False):
         return wrap([{"name": ".", "sql": {"n": "INSTR" + sql_iso(value + "," + find) + "-1"}}])
     else:
         start_index = start.to_sql(schema)[0].sql.n
-        return wrap([{"name": ".", "sql": {"n": "INSTR(SUBSTR" + sql_iso(value + "," + start_index + "+1)," + find) + "+" + start_index + "-1"}}])
+        found = "INSTR(SUBSTR" + sql_iso(value + "," + start_index + "+1)," + find)
+        return wrap([{"name": ".", "sql": {"n": (
+            SQL_CASE +
+            SQL_WHEN + found +
+            SQL_THEN + found + "+" + start_index + "-1" +
+            SQL_ELSE + "-1" +
+            SQL_END
+        )}}])
 
 
 @extend(BasicSubstringOp)
@@ -350,15 +357,16 @@ def to_sql(self, schema, not_null=False, boolean=False):
 
 @extend(LengthOp)
 def to_sql(self, schema, not_null=False, boolean=False):
-    if isinstance(self.term, Literal):
-        val = self.term.value
+    term = self.term.partial_eval()
+    if isinstance(term, Literal):
+        val = term.value
         if isinstance(val, text_type):
             return wrap([{"name": ".", "sql": {"n": convert.value2json(len(val))}}])
         elif isinstance(val, (float, int)):
             return wrap([{"name": ".", "sql": {"n": convert.value2json(len(convert.value2json(val)))}}])
         else:
             return Null
-    value = self.term.to_sql(schema)[0].sql.s
+    value = term.to_sql(schema)[0].sql.s
     return wrap([{"name": ".", "sql": {"n": "LENGTH" + sql_iso(value)}}])
 
 
@@ -518,18 +526,24 @@ def to_sql(self, schema, not_null=False, boolean=False):
 
 @extend(MissingOp)
 def to_sql(self, schema, not_null=False, boolean=False):
-    field = self.expr.partial_eval().to_sql(schema)
+    value = self.expr.partial_eval()
+    missing_value = value.missing().partial_eval()
 
-    if len(field) > 1:
+    if not isinstance(missing_value, MissingOp):
+        return missing_value.to_sql(schema)
+
+    value_sql = value.to_sql(schema)
+
+    if len(value_sql) > 1:
         return wrap([{"name": ".", "sql": {"b": SQL_FALSE}}])
 
     acc = []
-    for c in field:
+    for c in value_sql:
         for t, v in c.sql.items():
             if t == "b":
                 acc.append(sql_iso(v) + SQL_IS_NULL)
             if t == "s":
-                acc.append(sql_iso(sql_iso(v) + SQL_IS_NULL + SQL_OR + v + "=" + SQL_EMPTY_STRING))
+                acc.append(sql_iso(sql_iso(v) + SQL_IS_NULL) + SQL_OR + sql_iso(sql_iso(v) + "=" + SQL_EMPTY_STRING))
             if t == "n":
                 acc.append(sql_iso(v) + SQL_IS_NULL)
 
@@ -539,11 +553,13 @@ def to_sql(self, schema, not_null=False, boolean=False):
         return wrap([{"name": ".", "sql": {"b": SQL_AND.join(acc)}}])
 
 
+
+
 @extend(WhenOp)
 def to_sql(self, schema, not_null=False, boolean=False):
-    when = self.when.to_sql(schema, boolean=True)[0].sql
-    then = self.then.to_sql(schema, not_null=not_null)[0].sql
-    els_ = self.els_.to_sql(schema, not_null=not_null)[0].sql
+    when = self.when.partial_eval().to_sql(schema, boolean=True)[0].sql
+    then = self.then.partial_eval().to_sql(schema, not_null=not_null)[0].sql
+    els_ = self.els_.partial_eval().to_sql(schema, not_null=not_null)[0].sql
     output = {}
     for t in "bsn":
         if then[t] == None:
@@ -716,23 +732,33 @@ def to_sql(self, schema, not_null=False, boolean=False):
     start_index = self.start.to_sql(schema)[0].sql.n
 
     if boolean:
-        if start_index == "0":
+        if start_index.strip() == "0":
             return wrap([{"name": ".", "sql": {
-                "b": "INSTR" + sql_iso(value + "," + find)
+                "b": "INSTR" + sql_iso(sql_list([value, find]))
             }}])
         else:
-            return wrap([{"name": ".", "sql": {
-                "b": "INSTR(SUBSTR" + sql_iso(value + "," + start_index + "+1)," + find)
-            }}])
+            return wrap([{"name": ".", "sql": {"b": "INSTR" + sql_iso(sql_list([
+                "SUBSTR" + sql_iso(sql_list([value, start_index + "+" + SQL_ONE])),
+                find
+            ]))}}])
     else:
         default = self.default.to_sql(schema, not_null=True)[0].sql.n if self.default else SQL_NULL
         test = self.to_sql(schema, boolean=True)[0].sql.b
-        if start_index == "0":
-            index = "INSTR" + sql_iso(value + "," + find) + "-1"
+        if start_index.strip() == "0":
+            index = "INSTR" + sql_iso(sql_list([value, find])) + "-1"
         else:
-            index = "INSTR(SUBSTR" + sql_iso(value + "," + start_index + "+1)," + find) + "+" + start_index + "-1"
+            index = "INSTR" + sql_iso(sql_list([
+                "SUBSTR" + sql_iso(sql_list([value, start_index + "+" + SQL_ONE])),
+                find
+            ])) + "+" + start_index + "-1"
 
-        sql = SQL_CASE+SQL_WHEN + sql_iso(test) + SQL_THEN + sql_iso(index) + SQL_ELSE + sql_iso(default) + SQL_END
+        sql = (
+            SQL_CASE +
+            SQL_WHEN + sql_iso(test) +
+            SQL_THEN + sql_iso(index) +
+            SQL_ELSE + sql_iso(default) +
+            SQL_END
+        )
         return wrap([{"name": ".", "sql": {"n": sql}}])
 
 

@@ -440,6 +440,25 @@ class TestEdge2(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
+    def test_edge_find_w_start(self):
+        test = {
+            "data": [{"url": "/"}],
+            "query": {
+                "from": TEST_TABLE,
+                "groupby": [
+                    {
+                        "name": "suffix missing",
+                        "value": {"missing": {"find": ["url", {"literal": "/"}], "start": {"literal": 23}}}
+                    }
+                ]
+            },
+            "expecting_list": {
+                "meta": {"format": "list"},
+                "data": [{"suffix missing": True}]}
+
+        }
+        self.utils.execute_tests(test)
+
 
 two_dim_test_data = [
     {"a": "x", "b": "m", "v": 2},

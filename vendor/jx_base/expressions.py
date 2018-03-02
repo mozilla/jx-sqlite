@@ -278,6 +278,12 @@ class Variable(Expression):
 
     def __str__(self):
         return str(self.var)
+
+    def missing(self):
+        if self.var == "_id":
+            return FALSE
+        else:
+            return MissingOp("missing", self)
 IDENTITY = Variable(".")
 
 
@@ -1904,18 +1910,11 @@ class MissingOp(Expression):
 
     @simplified
     def partial_eval(self):
-        expr = self.expr.partial_eval()
-        if isinstance(expr, Variable) and expr.var == "_id":
-            return FALSE
-        if isinstance(expr, Literal):
-            if expr is NULL:
-                return TRUE
-            elif expr.value == None:
-                Log.error("not expected")
-            else:
-                return FALSE
-        self.simplified = True
-        return self
+        output = self.expr.partial_eval().missing()
+        if isinstance(output, MissingOp):
+            return output
+        else:
+            return output.partial_eval()
 
 
 class ExistsOp(Expression):
@@ -2299,7 +2298,7 @@ class FindOp(Expression):
         self.value, self.find = term
         self.default = kwargs.get("default", NULL)
         self.start = kwargs.get("start", ZERO).partial_eval()
-        if isinstance(self.start, NullOp):
+        if self.start is NULL:
             self.start = ZERO
 
     def __data__(self):
@@ -2329,7 +2328,7 @@ class FindOp(Expression):
         )
 
     def missing(self):
-        return AndOp("and", [
+        output = AndOp("and", [
             self.default.missing(),
             OrOp("or", [
                 self.value.missing(),
@@ -2341,6 +2340,7 @@ class FindOp(Expression):
                 ]), Literal(None, -1)])
             ])
         ]).partial_eval()
+        return output
 
     def exists(self):
         return TRUE
@@ -2460,9 +2460,6 @@ class BetweenOp(Expression):
             default=self.default.map(map_),
             start=self.start.map(map_)
         )
-
-    def missing(self):
-        return self.partial_eval().missing()
 
     def __data__(self):
         if isinstance(self.value, Variable) and isinstance(self.prefix, Literal) and isinstance(self.suffix, Literal):
@@ -2702,7 +2699,6 @@ class CaseOp(Expression):
             return OBJECT
         else:
             return list(types)[0]
-
 
 
 class BasicIndexOfOp(Expression):

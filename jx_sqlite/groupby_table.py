@@ -20,7 +20,7 @@ from jx_sqlite.expressions import sql_type_to_json_type
 from mo_dots import listwrap, split_field, join_field, startswith_field, concat_field
 from mo_future import unichr
 from mo_logs import Log
-from pyLibrary.sql import SQL_LEFT_JOIN, SQL_WHERE, SQL_GROUPBY, SQL_SELECT, SQL_FROM, SQL_ORDERBY, SQL_ON, sql_list, SQL_IS_NULL, sql_iso, sql_count, SQL_ONE, sql_alias
+from pyLibrary.sql import SQL_LEFT_JOIN, SQL_WHERE, SQL_GROUPBY, SQL_SELECT, SQL_FROM, SQL_ORDERBY, SQL_ON, sql_list, SQL_IS_NULL, sql_iso, sql_count, SQL_ONE, sql_alias, SQL_NULL
 from pyLibrary.sql.sqlite import quote_column, join_column
 
 
@@ -52,17 +52,17 @@ class GroupbyTable(EdgesTable):
         selects = []
         groupby = []
         for i, e in enumerate(query.groupby):
-            for s in e.value.to_sql(schema):
+            for edge_sql in e.value.to_sql(schema):
                 column_number = len(selects)
-                sql_type, sql = s.sql.items()[0]
-                if sql == 'NULL' and not e.value.var in schema.keys():
+                sql_type, sql = edge_sql.sql.items()[0]
+                if sql is SQL_NULL and not e.value.var in schema.keys():
                     Log.error("No such column {{var}}", var=e.value.var)
 
                 column_alias = _make_column_name(column_number)
                 groupby.append(sql)
                 selects.append(sql_alias(sql, column_alias))
-                if s.nested_path == ".":
-                    select_name = s.name
+                if edge_sql.nested_path == ".":
+                    select_name = edge_sql.name
                 else:
                     select_name = "."
                 index_to_column[column_number] = ColumnMapping(
@@ -77,25 +77,25 @@ class GroupbyTable(EdgesTable):
                     type=sql_type_to_json_type[sql_type]
                 )
 
-        for i, s in enumerate(listwrap(query.select)):
+        for i, select in enumerate(listwrap(query.select)):
             column_number = len(selects)
-            sql_type, sql = s.value.to_sql(schema)[0].sql.items()[0]
-            if sql == 'NULL' and not s.value.var in schema.keys():
-                Log.error("No such column {{var}}", var=s.value.var)
+            sql_type, sql = select.value.to_sql(schema)[0].sql.items()[0]
+            if sql == 'NULL' and not select.value.var in schema.keys():
+                Log.error("No such column {{var}}", var=select.value.var)
 
-            if s.value == "." and s.aggregate == "count":
-                selects.append(sql_alias(sql_count(SQL_ONE) , quote_column(s.name)))
+            if select.value == "." and select.aggregate == "count":
+                selects.append(sql_alias(sql_count(SQL_ONE) , quote_column(select.name)))
             else:
-                selects.append(sql_alias(sql_aggs[s.aggregate] + sql_iso(sql),quote_column(s.name)))
+                selects.append(sql_alias(sql_aggs[select.aggregate] + sql_iso(sql),quote_column(select.name)))
 
             index_to_column[column_number] = ColumnMapping(
-                push_name=s.name,
-                push_column_name=s.name,
+                push_name=select.name,
+                push_column_name=select.name,
                 push_column=i + len(query.groupby),
                 push_child=".",
                 pull=get_column(column_number),
                 sql=sql,
-                column_alias=quote_column(s.name),
+                column_alias=quote_column(select.name),
                 type=sql_type_to_json_type[sql_type]
             )
 
