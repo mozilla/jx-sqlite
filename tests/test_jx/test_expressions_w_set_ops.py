@@ -846,6 +846,33 @@ class TestSetOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
+    def test_right(self):
+        test = {
+            "data": [
+                {"v": "this-is-a-test"},
+                {"v": "this-is-a-vest"},
+                {"v": "test"},
+                {"v": ""},
+                {"v": None}
+            ],
+            "query": {
+                "select": [{"name": "v", "value": {"right": {"v": 4}}}],
+                "from": TEST_TABLE
+            },
+            "expecting_list": {
+                "meta": {
+                    "format": "list"},
+                "data": [
+                    {"v": "test"},
+                    {"v": "vest"},
+                    {"v": "test"},
+                    {"v": NULL},
+                    {"v": NULL}
+                ]
+            }
+        }
+        self.utils.execute_tests(test)
+
     def test_param_left(self):
         test = {
             "data": [

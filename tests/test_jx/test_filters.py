@@ -250,7 +250,6 @@ class TestFilters(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-
     def test_suffix(self):
         test = {
             "data": [
