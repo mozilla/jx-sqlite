@@ -469,7 +469,8 @@ _sql_operators = {
     "sum": (SQL(" + "), SQL_ZERO),
     "mul": (SQL(" * "), SQL_ONE),
     "mult": (SQL(" * "), SQL_ONE),
-    "multiply": (SQL(" * "), SQL_ONE)
+    "multiply": (SQL(" * "), SQL_ONE),
+    "basic.mult": (SQL(" * "), SQL_ONE)
 }
 
 
@@ -750,8 +751,8 @@ def to_sql(self, schema, not_null=False, boolean=False):
             "when",
             EqOp("eq", [test, ZERO]),
             **{
-                "then": index,
-                "else": self.default
+                "then": self.default,
+                "else": index
             }
         ).partial_eval().to_sql(schema)
 

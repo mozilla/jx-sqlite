@@ -437,7 +437,7 @@ class EdgesTable(SetOpTable):
                             type="number"
                         )
             else:  # STANDARD AGGREGATES
-                for details in s.value.to_sql(schema):
+                for details in s.value.partial_eval().to_sql(schema):
                     for sql_type, sql in details.sql.items():
                         column_number = len(outer_selects)
                         sql = sql_aggs[s.aggregate] + sql_iso(sql)

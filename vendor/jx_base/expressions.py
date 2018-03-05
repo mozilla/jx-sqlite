@@ -1724,6 +1724,15 @@ class MinOp(Expression):
         return output
 
 
+_jx_identity = {
+    "add": ZERO,
+    "sum": ZERO,
+    "mul": ONE,
+    "mult": ONE,
+    "multiply": ONE
+}
+
+
 class MultiOp(Expression):
     has_simple_form = True
     data_type = NUMBER
@@ -1785,16 +1794,31 @@ class MultiOp(Expression):
                 return NULL
             else:
                 return Literal(None, acc)
+        elif self.nulls:
+            if acc is not None:
+                terms.append(Literal("literal", acc))
+
+            output = WhenOp(
+                "when",
+                AndOp("and", [t.missing() for t in terms]),
+                **{
+                    "then": self.default,
+                    "else": BasicMultiOp("basic." + self.op, [
+                        CoalesceOp("coalesce", [t, _jx_identity[self.op]])
+                        for t in terms
+                    ])
+                }
+            ).partial_eval()
         else:
             if acc is not None:
                 terms.append(Literal("literal", acc))
 
             output = WhenOp(
                 "when",
-                self.missing(),
+                AndOp("or", [t.missing() for t in terms]),
                 **{
                     "then": self.default,
-                    "else": BasicMultiOp("basic."+self.op, terms)
+                    "else": BasicMultiOp("basic." + self.op, terms)
                 }
             ).partial_eval()
 
