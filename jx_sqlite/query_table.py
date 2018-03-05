@@ -20,7 +20,7 @@ from jx_base.expressions import jx_expression, Variable, TupleOp
 from jx_base.query import QueryOp
 from jx_python import jx
 from jx_python.meta import Column
-from jx_sqlite import sql_aggs, unique_name, untyped_column
+from jx_sqlite import sql_aggs, unique_name, untyped_column, GUID
 from jx_sqlite.groupby_table import GroupbyTable
 from mo_collections.matrix import Matrix, index_to_coordinate
 from mo_dots import listwrap, coalesce, Data, wrap, startswith_field, unwrap, unwraplist, concat_field, relative_field, Null
@@ -119,7 +119,7 @@ class QueryTable(GroupbyTable):
         if query.format == "container":
             output = QueryTable(new_table, db=self.db, uid=self.uid, exists=True)
         elif query.format == "cube" or (not query.format and query.edges):
-            column_names= [None]*(max(c.push_column for c in index_to_columns.values()) + 1)
+            column_names = [None] * (max(c.push_column for c in index_to_columns.values()) + 1)
             for c in index_to_columns.values():
                 column_names[c.push_column] = c.push_column_name
 
@@ -212,8 +212,8 @@ class QueryTable(GroupbyTable):
                         allowNulls = True
                     parts -= {None}
 
-                    if query.sort[i].sort==-1:
-                        domain = SimpleSetDomain(partitions=wrap(sorted(parts,reverse=True)))
+                    if query.sort[i].sort == -1:
+                        domain = SimpleSetDomain(partitions=wrap(sorted(parts, reverse=True)))
                     else:
                         domain = SimpleSetDomain(partitions=jx.sort(parts))
 
@@ -257,9 +257,9 @@ class QueryTable(GroupbyTable):
                 data={k: v.cube for k, v in data_cubes.items()}
             )
         elif query.format == "table" or (not query.format and query.groupby):
-            column_names= [None]*(max(c.push_column for c in index_to_columns.values()) + 1)
+            column_names = [None] * (max(c.push_column for c in index_to_columns.values()) + 1)
             for c in index_to_columns.values():
-                    column_names[c.push_column] = c.push_column_name
+                column_names[c.push_column] = c.push_column_name
             data = []
             for d in result.data:
                 row = [None for _ in column_names]
@@ -345,16 +345,16 @@ class QueryTable(GroupbyTable):
         query = QueryOp.wrap(query, schema)
         columns = self.sf.columns
         where = query.where
-        tableName = None
-        columnName = None
+        table_name = None
+        column_name = None
 
         if query.edges or query.groupby:
             Log.error("Aggregates(groupby or edge) are not supported")
 
         if where.op == "eq" and where.lhs.var == "table":
-            tableName = mo_json.json2value(where.rhs.json)
-        elif where.op =="eq" and where.lhs.var =="name":
-            columnName = mo_json.json2value(where.rhs.json)
+            table_name = mo_json.json2value(where.rhs.json)
+        elif where.op == "eq" and where.lhs.var == "name":
+            column_name = mo_json.json2value(where.rhs.json)
         else:
             Log.error("Only simple filters are expected like: \"eq\" on table and column name")
 
@@ -362,7 +362,7 @@ class QueryTable(GroupbyTable):
         tables = [concat_field(self.sf.fact, i) for i in t]
 
         metadata = []
-        if columns[-1].es_column!=GUID:
+        if columns[-1].es_column != GUID:
             columns.append(Column(
                 names={i: relative_field(GUID, i) for i in t},
                 type="string",
@@ -372,12 +372,12 @@ class QueryTable(GroupbyTable):
             ))
 
         for tname, table in zip(t, tables):
-            if tableName != None and tableName != table:
+            if table_name != None and table_name != table:
                 continue
 
             for col in columns:
                 cname, ctype = untyped_column(col.es_column)
-                if columnName != None and columnName != cname:
+                if column_name != None and column_name != cname:
                     continue
 
                 metadata.append((table, col.names[tname], col.type, unwraplist(col.nested_path)))
@@ -409,9 +409,9 @@ class QueryTable(GroupbyTable):
         else:
             header = ["table", "name", "type", "nested_path"]
             return Data(
-                    meta={"format": "list"},
-                    data=[dict(zip(header, r)) for r in metadata]
-                )
+                meta={"format": "list"},
+                data=[dict(zip(header, r)) for r in metadata]
+            )
 
     def _window_op(self, query, window):
         # http://www2.sqlite.org/cvstrac/wiki?p=UnsupportedSqlAnalyticalFunctions
@@ -427,7 +427,7 @@ class QueryTable(GroupbyTable):
         range_max = text_type(coalesce(window.range.max, "UNBOUNDED"))
 
         return (
-            sql_aggs[window.aggregate] + sql_iso(window.value.to_sql())+" OVER (" +
+            sql_aggs[window.aggregate] + sql_iso(window.value.to_sql()) + " OVER (" +
             " PARTITION BY " + sql_iso(sql_list(window.edges.values)) +
             SQL_ORDERBY + sql_iso(sql_list(window.edges.sort)) +
             " ROWS BETWEEN " + range_min + " PRECEDING AND " + range_max + " FOLLOWING " +
