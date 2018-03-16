@@ -10,10 +10,11 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
-from collections import OrderedDict, Container
+from collections import OrderedDict
 from copy import copy
 
 from jx_base import STRUCT, OBJECT, EXISTS, STRING
+from jx_base.container import Container
 from jx_base.queries import get_property_name
 from jx_python import jx
 from jx_python.meta import Column
