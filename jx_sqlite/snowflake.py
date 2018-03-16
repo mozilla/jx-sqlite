@@ -10,16 +10,14 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
-from collections import OrderedDict
+from collections import OrderedDict, Container
 from copy import copy
 
 from jx_base import STRUCT, OBJECT, EXISTS, STRING
-from jx_base.container import Container
 from jx_base.queries import get_property_name
 from jx_python import jx
 from jx_python.meta import Column
-from jx_sqlite import typed_column, UID, quoted_UID, quoted_GUID, sql_types, quoted_PARENT, quoted_ORDER, GUID
-from jx_sqlite import untyped_column
+from jx_sqlite import typed_column, UID, quoted_UID, quoted_GUID, sql_types, quoted_PARENT, quoted_ORDER, GUID, untyped_column
 from mo_dots import relative_field, listwrap, split_field, join_field, wrap, startswith_field, concat_field, Null, coalesce, set_default
 from mo_future import text_type
 from mo_logs import Log
@@ -101,12 +99,11 @@ class Snowflake(object):
                 new_columns.append(c)
 
         command = (
-            "CREATE TABLE " + quote_column(self.fact) +
-            sql_iso(sql_list(
+            "CREATE TABLE " + quote_column(self.fact) + sql_iso(sql_list(
                 [quoted_GUID + " TEXT "] +
                 [quoted_UID + " INTEGER"] +
                 [quote_column(c.es_column) + " " + sql_types[c.type] for c in self.tables["."].schema.columns] +
-                [" PRIMARY KEY " + sql_iso(sql_list(
+                ["PRIMARY KEY " + sql_iso(sql_list(
                     [quoted_GUID] +
                     [quoted_UID] +
                     [quote_column(c.es_column) for c in self.tables["."].schema.columns]
@@ -166,11 +163,13 @@ class Snowflake(object):
         details = self.db.query(command)
         if not details.data:
             command = (
-                "CREATE TABLE " + quote_column(destination_table) + sql_iso(sql_list(
-                [quoted_UID + " INTEGER", quoted_PARENT + " INTEGER", quoted_ORDER + " INTEGER"] +
-                ["PRIMARY KEY " + sql_iso(quoted_UID)] +
-                ["FOREIGN KEY " + sql_iso(quoted_PARENT) + " REFERENCES " + quote_column(existing_table) + sql_iso(quoted_UID)]
-            ))
+                "CREATE TABLE " + quote_column(destination_table) + sql_iso(sql_list([
+                    quoted_UID + "INTEGER",
+                    quoted_PARENT + "INTEGER",
+                    quoted_ORDER + "INTEGER",
+                    "PRIMARY KEY " + sql_iso(quoted_UID),
+                    "FOREIGN KEY " + sql_iso(quoted_PARENT) + " REFERENCES " + quote_column(existing_table) + sql_iso(quoted_UID)
+                ]))
             )
             self.db.execute(command)
             self.add_table_to_schema(new_path)

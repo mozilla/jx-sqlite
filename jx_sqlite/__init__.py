@@ -20,6 +20,7 @@ from jx_base import DataClass
 from mo_dots import Data, split_field, join_field, concat_field
 from mo_future import text_type
 from mo_json import json2value
+from mo_kwargs import override
 from mo_math.randoms import Random
 from mo_times import Date
 from pyLibrary.sql import SQL
@@ -285,3 +286,18 @@ json_types = {
     "TINYINT": "boolean",
     "OBJECT": "nested"
 }
+
+
+from jx_sqlite.base_table import BaseTable
+from jx_sqlite.query_table import QueryTable
+
+
+class Container(QueryTable):
+
+    @override
+    def __init__(self, name, db=None, uid=UID, kwargs=None):
+        BaseTable.__init__(self, name, db, uid, kwargs)
+
+
+
+
