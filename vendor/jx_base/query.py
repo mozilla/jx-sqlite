@@ -441,7 +441,7 @@ def _normalize_edge(edge, dim_index, limit, schema=None):
     if not _Column:
         _late_import()
 
-    if edge == None:
+    if not edge:
         Log.error("Edge has no value, or expression is empty")
     elif isinstance(edge, text_type):
         if schema:

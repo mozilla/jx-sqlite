@@ -1061,7 +1061,7 @@ def intervals(_min, _max=None, size=1):
 def prefixes(vals):
     """
     :param vals: iterable
-    :return: vals[:1], vals[:1], ... , vals[:n]
+    :return: vals[:1], vals[:2], ... , vals[:n]
     """
     for i in range(len(vals)):
         yield vals[:i + 1]
