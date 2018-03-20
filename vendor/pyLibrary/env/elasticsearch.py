@@ -15,14 +15,13 @@ import re
 from collections import Mapping
 from copy import deepcopy
 
-import mo_json
 from jx_python import jx
 from jx_python.expressions import jx_expression_to_function
 from jx_python.meta import Column
 from mo_dots import coalesce, Null, Data, set_default, listwrap, literal_field, ROOT_PATH, concat_field, split_field
 from mo_dots import wrap, FlatList
 from mo_future import text_type, binary_type
-from mo_json import value2json
+from mo_json import value2json, json2value
 from mo_json.typed_encoder import EXISTS_TYPE, BOOLEAN_TYPE, STRING_TYPE, NUMBER_TYPE, NESTED_TYPE, TYPE_PREFIX
 from mo_kwargs import override
 from mo_logs import Log, strings
@@ -189,7 +188,8 @@ class Index(Features):
                     {"add": {"index": self.settings.index, "alias": alias}}
                 ]
             },
-            timeout=coalesce(self.settings.timeout, 30)
+            timeout=coalesce(self.settings.timeout, 30),
+            stream=False
         )
         self.settings.alias = alias
 
@@ -398,7 +398,7 @@ class Index(Features):
                 **kwargs
             )
 
-            result = mo_json.json2value(utf82unicode(response.all_content))
+            result = json2value(utf82unicode(response.all_content))
             if not result.ok:
                 Log.error("Can not set refresh interval ({{error}})", {
                     "error": utf82unicode(response.all_content)
@@ -658,27 +658,33 @@ class Cluster(object):
             Log.error("Expecting a schema")
         elif isinstance(schema, text_type):
             Log.error("Expecting a schema")
-        elif self.version.startswith("5."):
-            schema.settings.index.max_inner_result_window = None  # NOT ACCEPTED BY ES5
-            schema = mo_json.json2value(value2json(schema), leaves=True)
-        elif self.version.startswith("6."):
-            schema = mo_json.json2value(value2json(schema), leaves=True)
-        else:
-            schema = retro_schema(mo_json.json2value(value2json(schema), leaves=True))
 
         for m in schema.mappings.values():
             if tjson:
                 m.properties[EXISTS_TYPE] = {"type": "long", "store": True}
-            m.dynamic_templates = DEFAULT_DYNAMIC_TEMPLATES + m.dynamic_templates + [{
-                "default_all": {
-                    "mapping": {"store": True},
-                    "match": "*"
-                }
-            }]
+            m.dynamic_templates = (
+                DEFAULT_DYNAMIC_TEMPLATES +
+                m.dynamic_templates #+
+                # [{
+                #     "default_all": {
+                #         "mapping": {"store": True},
+                #         "match": "*"
+                #     }
+                # }]
+            )
+
+        if self.version.startswith("5."):
+            schema.settings.index.max_inner_result_window = None  # NOT ACCEPTED BY ES5
+            schema = json2value(value2json(schema), leaves=True)
+        elif self.version.startswith("6."):
+            schema = json2value(value2json(schema), leaves=True)
+        else:
+            schema = retro_schema(json2value(value2json(schema), leaves=True))
+
 
         if limit_replicas:
             # DO NOT ASK FOR TOO MANY REPLICAS
-            health = self.get("/_cluster/health")
+            health = self.get("/_cluster/health", stream=False)
             if schema.settings.index.number_of_replicas >= health.number_of_nodes:
                 if limit_replicas_warning:
                     Log.warning(
@@ -691,13 +697,14 @@ class Cluster(object):
         self.put(
             "/" + index,
             data=schema,
-            headers={text_type("Content-Type"): text_type("application/json")}
+            headers={text_type("Content-Type"): text_type("application/json")},
+            stream=False
         )
 
         # CONFIRM INDEX EXISTS
         while True:
             try:
-                state = self.get("/_cluster/state", retry={"times": 5}, timeout=3)
+                state = self.get("/_cluster/state", retry={"times": 5}, timeout=3, stream=False)
                 if index in state.metadata.indices:
                     self._metadata = None
                     break
@@ -730,7 +737,7 @@ class Cluster(object):
             response = http.delete(url)
             if response.status_code != 200:
                 Log.error("Expecting a 200, got {{code}}", code=response.status_code)
-            details = mo_json.json2value(utf82unicode(response.content))
+            details = json2value(utf82unicode(response.content))
             if self.debug:
                 Log.note("delete response {{response}}", response=details)
             return response
@@ -742,7 +749,7 @@ class Cluster(object):
         RETURN LIST OF {"alias":a, "index":i} PAIRS
         ALL INDEXES INCLUDED, EVEN IF NO ALIAS {"alias":Null}
         """
-        data = self.get("/_aliases", retry={"times": 5}, timeout=3)
+        data = self.get("/_aliases", retry={"times": 5}, timeout=3, stream=False)
         output = []
         for index, desc in data.items():
             if not desc["aliases"]:
@@ -757,7 +764,7 @@ class Cluster(object):
             Log.error("Metadata exploration has been disabled")
 
         if not self._metadata or force:
-            response = self.get("/_cluster/state", retry={"times": 3}, timeout=30)
+            response = self.get("/_cluster/state", retry={"times": 3}, timeout=30, stream=False)
             with self.metadata_locker:
                 self._metadata = wrap(response.metadata)
                 # REPLICATE MAPPING OVER ALL ALIASES
@@ -767,7 +774,7 @@ class Cluster(object):
                     for a in m.aliases:
                         if not indices[a]:
                             indices[a] = m
-                self.cluster_state = wrap(self.get("/"))
+                self.cluster_state = wrap(self.get("/", stream=False))
                 self.version = self.cluster_state.version.number
             return self._metadata
 
@@ -802,7 +809,7 @@ class Cluster(object):
                 Log.error(response.reason.decode("latin1") + ": " + strings.limit(response.content.decode("latin1"), 100 if self.debug else 10000))
             if self.debug:
                 Log.note("response: {{response}}", response=utf82unicode(response.content)[:130])
-            details = mo_json.json2value(utf82unicode(response.content))
+            details = json2value(utf82unicode(response.content))
             if details.error:
                 Log.error(convert.quote2string(details.error))
             if details._shards.failed > 0:
@@ -835,7 +842,7 @@ class Cluster(object):
                 Log.error(response.reason+": "+response.all_content)
             if self.debug:
                 Log.note("response: {{response}}", response=strings.limit(utf82unicode(response.all_content), 130))
-            details = wrap(mo_json.json2value(utf82unicode(response.all_content)))
+            details = wrap(json2value(utf82unicode(response.all_content)))
             if details.error:
                 Log.error(details.error)
             return details
@@ -852,7 +859,7 @@ class Cluster(object):
                 Log.error(response.reason + ": " + response.all_content)
             if self.debug:
                 Log.note("response: {{response}}", response=strings.limit(utf82unicode(response.all_content), 130))
-            details = wrap(mo_json.json2value(utf82unicode(response.all_content)))
+            details = wrap(json2value(utf82unicode(response.all_content)))
             if details.error:
                 Log.error(details.error)
             return details
@@ -868,7 +875,7 @@ class Cluster(object):
             if self.debug:
                 Log.note("response: {{response}}", response=strings.limit(utf82unicode(response.all_content), 130))
             if response.all_content:
-                details = wrap(mo_json.json2value(utf82unicode(response.all_content)))
+                details = wrap(json2value(utf82unicode(response.all_content)))
                 if details.error:
                     Log.error(details.error)
                 return details
@@ -888,7 +895,7 @@ class Cluster(object):
         if data == None:
             pass
         elif isinstance(data, Mapping):
-            data = kwargs[DATA_KEY] = unicode2utf8(convert.value2json(data))
+            kwargs[DATA_KEY] = unicode2utf8(convert.value2json(data))
         elif isinstance(kwargs[DATA_KEY], text_type):
             pass
         else:
@@ -904,7 +911,7 @@ class Cluster(object):
             if self.debug:
                 Log.note("response: {{response}}", response=utf82unicode(response.all_content)[0:300:])
 
-            details = mo_json.json2value(utf82unicode(response.content))
+            details = json2value(utf82unicode(response.content))
             if details.error:
                 Log.error(convert.quote2string(details.error))
             if details._shards.failed > 0:
@@ -1288,23 +1295,10 @@ def retro_schema(schema):
     output = wrap({
         "mappings":{
             typename: {
-                "dynamic_templates": (
-                    [
-                        retro_dynamic_template(*(t.items()[0])) for t in details.dynamic_templates
-                    ] + [
-                        {
-                            "default_strings": {
-                                "mapping": {
-                                    "index": "not_analyzed",
-                                    "type": "keyword",
-                                    "store": True
-                                },
-                                "match_mapping_type": "string",
-                                "match": "*"
-                            }
-                        }
-                    ]
-                ),
+                "dynamic_templates": [
+                    retro_dynamic_template(*(t.items()[0]))
+                    for t in details.dynamic_templates
+                ],
                 "properties": retro_properties(details.properties)
             }
             for typename, details in schema.mappings.items()
@@ -1320,6 +1314,9 @@ def retro_dynamic_template(name, template):
         template.mapping.type = "string"
         template.mapping.index = "not_analyzed"
     elif template.mapping.type == "text":
+        template.mapping.type = "string"
+        template.mapping.index = "analyzed"
+    elif template.mapping.type == "string":
         template.mapping.type = "string"
         template.mapping.index = "analyzed"
     return {name: template}
@@ -1341,37 +1338,49 @@ def retro_properties(properties):
         if v.properties:
             v.properties = retro_properties(v.properties)
 
+        if v.fields:
+            v.fields = retro_properties(v.fields)
+            v.fields[k] = {
+                "type": v.type,
+                "index": v.index,
+                "doc_values": v.doc_values,
+                "analyzer": v.analyzer
+            }
+            v.type = "multi_field"
+            v.index = None
+            v.doc_values = None
+            v.analyzer = None
         output[k] = v
     return output
 
 
 DEFAULT_DYNAMIC_TEMPLATES = wrap([
     {
-        "default_boolean": {
+        "default_typed_boolean": {
             "mapping": {"type": "boolean", "store": True},
             "match": BOOLEAN_TYPE
         }
     },
     {
-        "default_number": {
+        "default_typed_number": {
             "mapping": {"type": "double", "store": True},
             "match": NUMBER_TYPE
         }
     },
     {
-        "default_string": {
+        "default_typed_string": {
             "mapping": {"type": "keyword", "store": True},
             "match": STRING_TYPE
         }
     },
     {
-        "default_exist": {
+        "default_typed_exist": {
             "mapping": {"type": "long", "store": True},
             "match": EXISTS_TYPE
         }
     },
     {
-        "default_nested": {
+        "default_typed_nested": {
             "mapping": {"type": "nested", "store": True},
             "match": NESTED_TYPE
         }

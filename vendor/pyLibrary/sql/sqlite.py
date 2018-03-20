@@ -49,7 +49,7 @@ def _upgrade():
 
     try:
         import sys
-
+        Log.error("Fix to work with 64bit windows too")
         original_dll = File.new_instance(sys.exec_prefix, "dlls/sqlite3.dll")
         source_dll = File("vendor/pyLibrary/vendor/sqlite/sqlite3.dll")
         if not all(a==b for a, b in zip_longest(source_dll.read_bytes(), original_dll.read_bytes())):

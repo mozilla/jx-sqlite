@@ -19,6 +19,7 @@
 from __future__ import absolute_import
 from __future__ import division
 
+from contextlib import closing
 from copy import copy
 from mmap import mmap
 from numbers import Number
@@ -26,12 +27,12 @@ from tempfile import TemporaryFile
 
 from requests import sessions, Response
 
-import mo_json
 from jx_python import jx
-from mo_dots import Data, coalesce, wrap, set_default, unwrap
+from mo_dots import Data, coalesce, wrap, set_default, unwrap, Null
 from mo_future import text_type, PY2
-from mo_json import value2json
+from mo_json import value2json, json2value
 from mo_logs import Log
+from mo_logs.strings import utf82unicode, unicode2utf8
 from mo_logs.exceptions import Except
 from mo_math import Math
 from mo_threads import Lock
@@ -48,6 +49,8 @@ default_headers = Data()  # TODO: MAKE THIS VARIABLE A SPECIAL TYPE OF EXPECTED 
 default_timeout = 600
 
 _warning_sent = False
+
+request_count = 0
 
 
 def request(method, url, zip=None, retry=None, **kwargs):
@@ -68,14 +71,16 @@ def request(method, url, zip=None, retry=None, **kwargs):
     INCLUDES url AND headers
     """
     global _warning_sent
+    global request_count
+
     if not default_headers and not _warning_sent:
         _warning_sent = True
-        Log.warning(
-            "The pyLibrary.env.http module was meant to add extra "
-            "default headers to all requests, specifically the 'Referer' "
-            "header with a URL to the project. Use the `pyLibrary.debug.constants.set()` "
+        Log.warning(text_type(
+            "The pyLibrary.env.http module was meant to add extra " +
+            "default headers to all requests, specifically the 'Referer' " +
+            "header with a URL to the project. Use the `pyLibrary.debug.constants.set()` " +
             "function to set `pyLibrary.env.http.default_headers`"
-        )
+        ))
 
     if isinstance(url, list):
         # TRY MANY URLS
@@ -95,65 +100,68 @@ def request(method, url, zip=None, retry=None, **kwargs):
     if 'session' in kwargs:
         session = kwargs['session']
         del kwargs['session']
+        sess = Null
     else:
-        session = sessions.Session()
+        sess = session = sessions.Session()
     session.headers.update(default_headers)
 
-    if zip is None:
-        zip = ZIP_REQUEST
+    with closing(sess):
+        if zip is None:
+            zip = ZIP_REQUEST
 
-    if isinstance(url, text_type):
-        # httplib.py WILL **FREAK OUT** IF IT SEES ANY UNICODE
-        url = url.encode('ascii')
+        if isinstance(url, text_type):
+            # httplib.py WILL **FREAK OUT** IF IT SEES ANY UNICODE
+            url = url.encode('ascii')
 
-    _to_ascii_dict(kwargs)
-    timeout = kwargs['timeout'] = coalesce(kwargs.get('timeout'), default_timeout)
+        _to_ascii_dict(kwargs)
+        timeout = kwargs['timeout'] = coalesce(kwargs.get('timeout'), default_timeout)
 
-    if retry == None:
-        retry = Data(times=1, sleep=0)
-    elif isinstance(retry, Number):
-        retry = Data(times=retry, sleep=1)
-    else:
-        retry = wrap(retry)
-        if isinstance(retry.sleep, Duration):
-            retry.sleep = retry.sleep.seconds
-        set_default(retry, {"times": 1, "sleep": 0})
-
-    if 'json' in kwargs:
-        kwargs['data'] = value2json(kwargs['json']).encode('utf8')
-        del kwargs['json']
-
-    try:
-        headers = kwargs['headers'] = unwrap(coalesce(kwargs.get('headers'), {}))
-        set_default(headers, {'Accept-Encoding': 'compress, gzip'})
-
-        if zip and len(coalesce(kwargs.get('data'))) > 1000:
-            compressed = convert.bytes2zip(kwargs['data'])
-            headers['content-encoding'] = 'gzip'
-            kwargs['data'] = compressed
-
-            _to_ascii_dict(headers)
+        if retry == None:
+            retry = Data(times=1, sleep=0)
+        elif isinstance(retry, Number):
+            retry = Data(times=retry, sleep=1)
         else:
-            _to_ascii_dict(headers)
-    except Exception as e:
-        Log.error(u"Request setup failure on {{url}}", url=url, cause=e)
+            retry = wrap(retry)
+            if isinstance(retry.sleep, Duration):
+                retry.sleep = retry.sleep.seconds
+            set_default(retry, {"times": 1, "sleep": 0})
 
-    errors = []
-    for r in range(retry.times):
-        if r:
-            Till(seconds=retry.sleep).wait()
+        if 'json' in kwargs:
+            kwargs['data'] = value2json(kwargs['json']).encode('utf8')
+            del kwargs['json']
 
         try:
-            if DEBUG:
-                Log.note(u"http {{method}} to {{url}}", method=method, url=url)
-            return session.request(method=method, url=url, **kwargs)
-        except Exception as e:
-            errors.append(Except.wrap(e))
+            headers = kwargs['headers'] = unwrap(coalesce(kwargs.get('headers'), {}))
+            set_default(headers, {'Accept-Encoding': 'compress, gzip'})
 
-    if " Read timed out." in errors[0]:
-        Log.error(u"Tried {{times}} times: Timeout failure (timeout was {{timeout}}", timeout=timeout, times=retry.times, cause=errors[0])
-    else:
-        Log.error(u"Tried {{times}} times: Request failure of {{url}}", url=url, times=retry.times, cause=errors[0])
+            if zip and len(coalesce(kwargs.get('data'))) > 1000:
+                compressed = convert.bytes2zip(kwargs['data'])
+                headers['content-encoding'] = 'gzip'
+                kwargs['data'] = compressed
+
+                _to_ascii_dict(headers)
+            else:
+                _to_ascii_dict(headers)
+        except Exception as e:
+            Log.error(u"Request setup failure on {{url}}", url=url, cause=e)
+
+        errors = []
+        for r in range(retry.times):
+            if r:
+                Till(seconds=retry.sleep).wait()
+
+            try:
+                if DEBUG:
+                    Log.note(u"http {{method}} to {{url}}", method=method, url=url)
+                request_count += 1
+                return session.request(method=method, url=url, **kwargs)
+            except Exception as e:
+                errors.append(Except.wrap(e))
+
+        if " Read timed out." in errors[0]:
+            Log.error(u"Tried {{times}} times: Timeout failure (timeout was {{timeout}}", timeout=timeout, times=retry.times, cause=errors[0])
+        else:
+            Log.error(u"Tried {{times}} times: Request failure of {{url}}", url=url, times=retry.times, cause=errors[0])
 
 
 if PY2:
@@ -173,9 +181,10 @@ else:
     def _to_ascii_dict(headers):
         pass
 
+
 def get(url, **kwargs):
     kwargs.setdefault('allow_redirects', True)
-    kwargs['stream'] = True
+    kwargs.setdefault('stream', True)
     return HttpResponse(request('get', url, **kwargs))
 
 
@@ -186,7 +195,7 @@ def get_json(url, **kwargs):
     response = get(url, **kwargs)
     try:
         c = response.all_content
-        return mo_json.json2value(convert.utf82unicode(c))
+        return json2value(utf82unicode(c))
     except Exception as e:
         if Math.round(response.status_code, decimal=-2) in [400, 500]:
             Log.error(u"Bad GET response: {{code}}", code=response.status_code)
@@ -196,18 +205,18 @@ def get_json(url, **kwargs):
 
 def options(url, **kwargs):
     kwargs.setdefault('allow_redirects', True)
-    kwargs['stream'] = True
+    kwargs.setdefault('stream', True)
     return HttpResponse(request('options', url, **kwargs))
 
 
 def head(url, **kwargs):
     kwargs.setdefault('allow_redirects', False)
-    kwargs['stream'] = True
+    kwargs.setdefault('stream', True)
     return HttpResponse(request('head', url, **kwargs))
 
 
 def post(url, **kwargs):
-    kwargs['stream'] = True
+    kwargs.setdefault('stream', True)
     return HttpResponse(request('post', url, **kwargs))
 
 
@@ -229,7 +238,7 @@ def post_json(url, **kwargs):
     response = post(url, **kwargs)
     c = response.content
     try:
-        details = mo_json.json2value(convert.utf82unicode(c))
+        details = json2value(utf82unicode(c))
     except Exception as e:
         Log.error(u"Unexpected return value {{content}}", content=c, cause=e)
 
@@ -244,12 +253,12 @@ def put(url, **kwargs):
 
 
 def patch(url, **kwargs):
-    kwargs['stream'] = True
+    kwargs.setdefault('stream', True)
     return HttpResponse(request('patch', url, **kwargs))
 
 
 def delete(url, **kwargs):
-    kwargs['stream'] = True
+    kwargs.setdefault('stream', False)
     return HttpResponse(request('delete', url, **kwargs))
 
 

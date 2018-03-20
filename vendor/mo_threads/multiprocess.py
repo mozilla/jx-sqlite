@@ -13,8 +13,8 @@ from __future__ import unicode_literals
 import os
 import subprocess
 
-from mo_dots import set_default, unwrap, NullType
-from mo_future import none_type, binary_type, text_type
+from mo_dots import set_default, NullType
+from mo_future import none_type
 from mo_logs import Log, strings
 from mo_logs.exceptions import Except
 from mo_threads.lock import Lock
@@ -41,8 +41,8 @@ class Process(object):
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 bufsize=bufsize,
-                cwd=cwd if isinstance(cwd, (text_type, binary_type, NullType, none_type)) else cwd.abspath,
-                env=unwrap(set_default(env, os.environ)),
+                cwd=cwd if isinstance(cwd, (str, NullType, none_type)) else cwd.abspath,
+                env={str(k): str(v) for k, v in set_default(env, os.environ).items()},
                 shell=shell
             )
 

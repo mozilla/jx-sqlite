@@ -35,7 +35,7 @@ class ListContainer(Container):
     def __init__(self, name, data, schema=None):
         # TODO: STORE THIS LIKE A CUBE FOR FASTER ACCESS AND TRANSFORMATION
         data = list(unwrap(data))
-        Container.__init__(self)
+        Container.__init__(self, data, schema)
         if schema == None:
             self._schema = get_schema_from_list(name, data)
         else:

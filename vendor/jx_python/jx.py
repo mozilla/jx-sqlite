@@ -69,7 +69,7 @@ def run(query, frum=Null):
         frum = wrap(query)['from']
         query_op = QueryOp.wrap(query, table=frum, schema=frum.schema)
     else:
-        query_op = QueryOp.wrap(query, frum.schema)
+        query_op = QueryOp.wrap(query, frum, frum.schema)
 
     if frum == None:
         from jx_python.containers.list_usingPythonList import DUAL

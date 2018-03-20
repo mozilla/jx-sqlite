@@ -45,6 +45,7 @@ if PY3:
     from html.parser import HTMLParser
     from urllib.parse import urlparse
     from io import StringIO
+    from io import BytesIO
     from _thread import allocate_lock, get_ident, start_new_thread, interrupt_main
 
     def transpose(*args):
@@ -103,6 +104,7 @@ else:
     import HTMLParser
     from urlparse import urlparse
     from StringIO import StringIO
+    from io import BytesIO
     from thread import allocate_lock, get_ident, start_new_thread, interrupt_main
 
     def get_function_name(func):

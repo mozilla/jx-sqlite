@@ -51,7 +51,9 @@ def argparse(defs):
         name = args.name
         args.name = None
         parser.add_argument(*unwrap(listwrap(name)), **args)
-    namespace = parser.parse_args()
+    namespace, unknown = parser.parse_known_args()
+    if unknown:
+        Log.warning("Ignoring arguments: {{unknown|json}}", unknown=unknown)
     output = {k: getattr(namespace, k) for k in vars(namespace)}
     return wrap(output)
 
@@ -137,10 +139,10 @@ class SingleInstance:
                 fcntl.lockf(self.fp, fcntl.LOCK_EX | fcntl.LOCK_NB)
             except IOError:
                 Log.note(
-                    "\n"
-                    "**********************************************************************\n"
-                    "** Another instance is already running, quitting.\n"
-                    "**********************************************************************\n"
+                    "\n" +
+                    "**********************************************************************\n" +
+                    "** Another instance is already running, quitting.\n" +
+                    "******************************************************  ****************\n"
                 )
                 sys.exit(-1)
         self.initialized = True

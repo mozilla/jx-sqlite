@@ -23,9 +23,11 @@ from datetime import timedelta, date
 from json.encoder import encode_basestring
 
 from mo_dots import coalesce, wrap, get_module
-from mo_future import text_type, xrange, binary_type, round as _round, PY3
+from mo_future import text_type, xrange, binary_type, round as _round, PY3, get_function_name
 from mo_logs.convert import datetime2unix, datetime2string, value2json, milli2datetime, unix2datetime
 from mo_logs.url import value2url_param
+
+FORMATTERS = {}
 
 _json_encoder = None
 _Log = None
@@ -53,20 +55,21 @@ def _late_import():
     _ = _Duration
 
 
-def expand_template(template, value):
+def formatter(func):
     """
-    :param template: A UNICODE STRING WITH VARIABLE NAMES IN MOUSTACHES `{{}}`
-    :param value: Data HOLDING THE PARAMTER VALUES
-    :return: UNICODE STRING WITH VARIABLES EXPANDED
+    register formatters
     """
-    value = wrap(value)
-    if isinstance(template, text_type):
-        return _simple_expand(template, (value,))
-
-    return _expand(template, (value,))
+    FORMATTERS[get_function_name(func)]=func
+    return func
 
 
+@formatter
 def datetime(value):
+    """
+    Convert from unix timestamp to GMT string
+    :param value:  unix timestamp
+    :return: string with GMT time
+    """
     if isinstance(value, (date, builtin_datetime)):
         pass
     elif value < 10000000000:
@@ -77,13 +80,25 @@ def datetime(value):
     return datetime2string(value, "%Y-%m-%d %H:%M:%S")
 
 
+@formatter
 def unicode(value):
+    """
+    Convert to a unicode string
+    :param value: any value
+    :return: unicode
+    """
     if value == None:
         return ""
     return text_type(value)
 
 
+@formatter
 def unix(value):
+    """
+    Convert a date, or datetime to unix timestamp
+    :param value:
+    :return:
+    """
     if isinstance(value, (date, builtin_datetime)):
         pass
     elif value < 10000000000:
@@ -94,6 +109,7 @@ def unix(value):
     return str(datetime2unix(value))
 
 
+@formatter
 def url(value):
     """
     convert FROM dict OR string TO URL PARAMETERS
@@ -101,6 +117,7 @@ def url(value):
     return value2url_param(value)
 
 
+@formatter
 def html(value):
     """
     convert FROM unicode TO HTML OF THE SAME
@@ -108,14 +125,27 @@ def html(value):
     return cgi.escape(value)
 
 
+@formatter
 def upper(value):
+    """
+    convert to uppercase
+    :param value:
+    :return:
+    """
     return value.upper()
 
 
+@formatter
 def lower(value):
+    """
+    convert to lowercase
+    :param value:
+    :return:
+    """
     return value.lower()
 
 
+@formatter
 def newline(value):
     """
     ADD NEWLINE, IF SOMETHING
@@ -123,17 +153,37 @@ def newline(value):
     return "\n" + toString(value).lstrip("\n")
 
 
+@formatter
 def replace(value, find, replace):
+    """
+    :param value: focal value
+    :param find: string to find
+    :param replace: string to replace with
+    :return:
+    """
     return value.replace(find, replace)
 
 
+@formatter
 def json(value, pretty=True):
+    """
+    convert value to JSON
+    :param value:
+    :param pretty:
+    :return:
+    """
     if not _Duration:
         _late_import()
     return _json_encoder(value, pretty=pretty)
 
 
+@formatter
 def tab(value):
+    """
+    convert single value to tab-delimited form, including a header
+    :param value:
+    :return:
+    """
     if isinstance(value, Mapping):
         h, d = zip(*wrap(value).leaves())
         return (
@@ -145,7 +195,15 @@ def tab(value):
         text_type(value)
 
 
+@formatter
 def indent(value, prefix=u"\t", indent=None):
+    """
+    indent given string, using prefix * indent as prefix for each line
+    :param value:
+    :param prefix:
+    :param indent:
+    :return:
+    """
     if indent != None:
         prefix = prefix * indent
 
@@ -159,7 +217,13 @@ def indent(value, prefix=u"\t", indent=None):
         raise Exception(u"Problem with indent of value (" + e.message + u")\n" + text_type(toString(value)))
 
 
+@formatter
 def outdent(value):
+    """
+    remove common whitespace prefix from lines
+    :param value:
+    :return:
+    """
     try:
         num = 100
         lines = toString(value).splitlines()
@@ -175,6 +239,7 @@ def outdent(value):
         _Log.error("can not outdent value", e)
 
 
+@formatter
 def round(value, decimal=None, digits=None, places=None):
     """
     :param value:  THE VALUE TO ROUND
@@ -197,7 +262,16 @@ def round(value, decimal=None, digits=None, places=None):
     return format.format(_round(value, decimal))
 
 
+@formatter
 def percent(value, decimal=None, digits=None, places=None):
+    """
+    display value as a percent (1 = 100%)
+    :param value:
+    :param decimal:
+    :param digits:
+    :param places:
+    :return:
+    """
     value = float(value)
     if value == 0.0:
         return "0%"
@@ -213,9 +287,14 @@ def percent(value, decimal=None, digits=None, places=None):
     return format.format(_round(value, decimal + 2))
 
 
+@formatter
 def find(value, find, start=0):
     """
-    MUCH MORE USEFUL VERSION OF string.find()
+    Return index of `find` in `value` beginning at `start`
+    :param value:
+    :param find:
+    :param start:
+    :return: If NOT found, return the length of `value` string
     """
     l = len(value)
     if isinstance(find, list):
@@ -233,6 +312,7 @@ def find(value, find, start=0):
         return i
 
 
+@formatter
 def strip(value):
     """
     REMOVE WHITESPACE (INCLUDING CONTROL CHARACTERS)
@@ -256,11 +336,26 @@ def strip(value):
     return ""
 
 
+@formatter
 def trim(value):
+    """
+    Alias for `strip`
+    :param value:
+    :return:
+    """
     return strip(value)
 
 
+@formatter
 def between(value, prefix, suffix, start=0):
+    """
+    Return first substring between `prefix` and `suffix`
+    :param value:
+    :param prefix: if None then return the prefix that ends with `suffix`
+    :param suffix: if None then return the suffix that begins with `prefix`
+    :param start: where to start the search
+    :return:
+    """
     value = toString(value)
     if prefix == None:
         e = value.find(suffix, start)
@@ -283,13 +378,26 @@ def between(value, prefix, suffix, start=0):
     return value[s:e]
 
 
+@formatter
 def right(value, len):
+    """
+    Return the `len` last characters of a string
+    :param value:
+    :param len:
+    :return:
+    """
     if len <= 0:
         return u""
     return value[-len:]
 
 
+@formatter
 def right_align(value, length):
+    """
+    :param value: string to right align
+    :param length: the number of characters to output (spaces added to left)
+    :return:
+    """
     if length <= 0:
         return u""
 
@@ -301,6 +409,7 @@ def right_align(value, length):
         return value[-length:]
 
 
+@formatter
 def left_align(value, length):
     if length <= 0:
         return u""
@@ -313,12 +422,20 @@ def left_align(value, length):
         return value[:length]
 
 
+@formatter
 def left(value, len):
+    """
+    return the `len` left-most characters in value
+    :param value:
+    :param len:
+    :return:
+    """
     if len <= 0:
         return u""
     return value[0:len]
 
 
+@formatter
 def comma(value):
     """
     FORMAT WITH THOUSANDS COMMA (,) SEPARATOR
@@ -334,7 +451,13 @@ def comma(value):
     return output
 
 
+@formatter
 def quote(value):
+    """
+    return JSON-quoted value
+    :param value:
+    :return:
+    """
     if value == None:
         output = ""
     elif isinstance(value, text_type):
@@ -344,16 +467,22 @@ def quote(value):
     return output
 
 
+@formatter
 def hex(value):
+    """
+    return `value` in hex format
+    :param value:
+    :return:
+    """
     return hex(value)
-
 
 
 _SNIP = "...<snip>..."
 
 
+@formatter
 def limit(value, length):
-    # LIMIT THE STRING value TO GIVEN LENGTH
+    # LIMIT THE STRING value TO GIVEN LENGTH, CHOPPING OUT THE MIDDLE IF REQUIRED
     if len(value) <= length:
         return value
     elif length < len(_SNIP) * 2:
@@ -364,6 +493,7 @@ def limit(value, length):
         return value[:lhs] + _SNIP + value[-rhs:]
 
 
+@formatter
 def split(value, sep="\n"):
     # GENERATOR VERSION OF split()
     # SOMETHING TERRIBLE HAPPENS, SOMETIMES, IN PYPY
@@ -376,6 +506,23 @@ def split(value, sep="\n"):
         n = value.find(sep, s)
     yield value[s:]
     value = None
+
+"""
+THE REST OF THIS FILE IS TEMPLATE EXPANSION CODE USED BY mo-logs 
+"""
+
+
+def expand_template(template, value):
+    """
+    :param template: A UNICODE STRING WITH VARIABLE NAMES IN MOUSTACHES `{{}}`
+    :param value: Data HOLDING THE PARAMTER VALUES
+    :return: UNICODE STRING WITH VARIABLES EXPANDED
+    """
+    value = wrap(value)
+    if isinstance(template, text_type):
+        return _simple_expand(template, (value,))
+
+    return _expand(template, (value,))
 
 
 def common_prefix(*args):
@@ -402,7 +549,29 @@ def is_hex(value):
     return all(c in string.hexdigits for c in value)
 
 
-pattern = re.compile(r"\{\{([\w_\.]+(\|[^\}^\|]+)*)\}\}")
+if PY3:
+    delchars = "".join(c for c in map(chr, range(256)) if not c.isalnum())
+else:
+    delchars = "".join(c.decode("latin1") for c in map(chr, range(256)) if not c.decode("latin1").isalnum())
+
+
+def deformat(value):
+    """
+    REMOVE NON-ALPHANUMERIC CHARACTERS
+
+    FOR SOME REASON translate CAN NOT BE CALLED:
+        ERROR: translate() takes exactly one argument (2 given)
+        File "C:\Python27\lib\string.py", line 493, in translate
+    """
+    output = []
+    for c in value:
+        if c in delchars:
+            continue
+        output.append(c)
+    return "".join(output)
+
+
+_variable_pattern = re.compile(r"\{\{([\w_\.]+(\|[^\}^\|]+)*)\}\}")
 
 
 def _expand(template, seq):
@@ -455,7 +624,7 @@ def _simple_expand(template, seq):
                 if len(parts) > 1:
                     val = eval(parts[0] + "(val, " + ("(".join(parts[1::])))
                 else:
-                    val = globals()[func_name](val)
+                    val = FORMATTERS[func_name](val)
             val = toString(val)
             return val
         except Exception as e:
@@ -478,29 +647,7 @@ def _simple_expand(template, seq):
                 )
             return "[template expansion error: (" + str(e.message) + ")]"
 
-    return pattern.sub(replacer, template)
-
-
-if PY3:
-    delchars = "".join(c for c in map(chr, range(256)) if not c.isalnum())
-else:
-    delchars = "".join(c.decode("latin1") for c in map(chr, range(256)) if not c.decode("latin1").isalnum())
-
-
-def deformat(value):
-    """
-    REMOVE NON-ALPHANUMERIC CHARACTERS
-
-    FOR SOME REASON translate CAN NOT BE CALLED:
-        ERROR: translate() takes exactly one argument (2 given)
-        File "C:\Python27\lib\string.py", line 493, in translate
-    """
-    output = []
-    for c in value:
-        if c in delchars:
-            continue
-        output.append(c)
-    return "".join(output)
+    return _variable_pattern.sub(replacer, template)
 
 
 def toString(val):
