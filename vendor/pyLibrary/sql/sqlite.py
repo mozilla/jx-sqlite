@@ -93,6 +93,7 @@ class Sqlite(DB):
         self.worker = Thread.run("sqlite db thread", self._worker)
         self.get_trace = TRACE
         self.upgrade = upgrade
+        self.closed = False
 
     def _enhancements(self):
         def regex(pattern, value):
@@ -119,6 +120,8 @@ class Sqlite(DB):
         :param command: COMMAND FOR SQLITE
         :return: Signal FOR IF YOU WANT TO BE NOTIFIED WHEN DONE
         """
+        if self.closed:
+            Log.error("database is closed")
         if DEBUG_EXECUTE:  # EXECUTE IMMEDIATELY FOR BETTER STACK TRACE
             self.query(command)
             return DONE
@@ -132,12 +135,27 @@ class Sqlite(DB):
         self.queue.add((command, None, is_done, trace))
         return is_done
 
+    def commit(self):
+        """
+        WILL BLOCK CALLING THREAD UNTIL ALL PREVIOUS execute() CALLS ARE COMPLETED
+        :return:
+        """
+        if self.closed:
+            Log.error("database is closed")
+        signal = _allocate_lock()
+        signal.acquire()
+        self.queue.add((COMMIT, None, signal, None))
+        signal.acquire()
+        return
+
     def query(self, command):
         """
         WILL BLOCK CALLING THREAD UNTIL THE command IS COMPLETED
         :param command: COMMAND FOR SQLITE
         :return: list OF RESULTS
         """
+        if self.closed:
+            Log.error("database is closed")
         if not self.worker:
             self.worker = Thread.run("sqlite db thread", self._worker)
 
@@ -149,6 +167,26 @@ class Sqlite(DB):
         if result.exception:
             Log.error("Problem with Sqlite call", cause=result.exception)
         return result
+
+    def close(self):
+        """
+        OPTIONAL COMMIT-AND-CLOSE
+        IF THIS IS NOT DONE, THEN THE THREAD THAT SPAWNED THIS INSTANCE
+        :return:
+        """
+        self.closed = True
+        signal = _allocate_lock()
+        signal.acquire()
+        self.queue.add((COMMIT, None, signal, None))
+        signal.acquire()
+        self.worker.please_stop.go()
+        return
+
+    def __enter__(self):
+        pass
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
 
     def _worker(self, please_stop):
         global _load_extension_warning_sent
@@ -180,20 +218,25 @@ class Sqlite(DB):
                         Log.warning("Could not load {{file}}}, doing without. (no SQRT for you!)", file=full_path, cause=e)
 
             while not please_stop:
-                command, result, signal, trace = self.queue.pop(till=please_stop)
+                quad = self.queue.pop(till=please_stop)
+                if quad is None:
+                    break
+                command, result, signal, trace = quad
 
                 show_timing = False
                 if DEBUG_INSERT and command.strip().lower().startswith("insert"):
-                    Log.note("Running command\n{{command|indent}}", command=command)
+                    Log.note("Running command\n{{command|limit(100)|indent}}", command=command)
                     show_timing = True
                 if DEBUG and not command.strip().lower().startswith("insert"):
-                    Log.note("Running command\n{{command|indent}}", command=command)
+                    Log.note("Running command\n{{command|limit(100)|indent}}", command=command)
                     show_timing = True
                 with Timer("SQL Timing", silent=not show_timing):
-                    if signal is not None:
+                    if command is COMMIT:
+                        self.db.commit()
+                        signal.release()
+                    elif signal is not None:
                         try:
                             curr = self.db.execute(command)
-                            self.db.commit()
                             if result is not None:
                                 result.meta.format = "table"
                                 result.header = [d[0] for d in curr.description] if curr.description else None
@@ -220,7 +263,6 @@ class Sqlite(DB):
                     else:
                         try:
                             self.db.execute(command)
-                            self.db.commit()
                         except Exception as e:
                             e = Except.wrap(e)
                             e.cause = Except(
@@ -234,9 +276,9 @@ class Sqlite(DB):
             if not please_stop:
                 Log.warning("Problem with sql thread", cause=e)
         finally:
+            self.closed = True
             if DEBUG:
                 Log.note("Database is closed")
-            self.db.commit()
             self.db.close()
 
     def quote_column(self, column_name, table=None):
@@ -293,3 +335,6 @@ def join_column(a, b):
     a = quote_column(a)
     b = quote_column(b)
     return SQL(a.template.rstrip() + "." + b.template.lstrip())
+
+
+COMMIT = "commit"

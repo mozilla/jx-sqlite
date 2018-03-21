@@ -593,7 +593,7 @@ def to_sql(self, schema, not_null=False, boolean=False):
 
 @extend(SuffixOp)
 def to_sql(self, schema, not_null=False, boolean=False):
-    if not self.term:
+    if not self.expr:
         return wrap([{"name": ".", "sql": {"b": SQL_FALSE}}])
     elif isinstance(self.suffix, Literal) and not self.suffix.value:
         return wrap([{"name": ".", "sql": {"b": SQL_TRUE}}])
@@ -601,7 +601,7 @@ def to_sql(self, schema, not_null=False, boolean=False):
         return EqOp(
             "eq",
             [
-                RightOp("right", [self.term, LengthOp("length", self.suffix)]),
+                RightOp("right", [self.expr, LengthOp("length", self.suffix)]),
                 self.suffix
             ]
         ).partial_eval().to_sql(schema)
