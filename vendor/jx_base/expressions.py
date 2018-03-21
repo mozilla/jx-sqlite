@@ -2014,30 +2014,30 @@ class SuffixOp(Expression):
     def __init__(self, op, term):
         Expression.__init__(self, op, term)
         if not term:
-            self.term = self.suffix = None
+            self.expr = self.suffix = None
         elif isinstance(term, Mapping):
-            self.term, self.suffix = term.items()[0]
+            self.expr, self.suffix = term.items()[0]
         else:
-            self.term, self.suffix = term
+            self.expr, self.suffix = term
 
     def __data__(self):
-        if self.term is None:
+        if self.expr is None:
             return {"suffix": {}}
-        elif isinstance(self.term, Variable) and isinstance(self.suffix, Literal):
-            return {"suffix": {self.term.var: self.suffix.value}}
+        elif isinstance(self.expr, Variable) and isinstance(self.suffix, Literal):
+            return {"suffix": {self.expr.var: self.suffix.value}}
         else:
-            return {"suffix": [self.term.__data__(), self.suffix.__data__()]}
+            return {"suffix": [self.expr.__data__(), self.suffix.__data__()]}
 
     def vars(self):
-        if self.term is None:
+        if self.expr is None:
             return set()
-        return self.term.vars() | self.suffix.vars()
+        return self.expr.vars() | self.suffix.vars()
 
     def map(self, map_):
-        if self.term is None:
+        if self.expr is None:
             return TRUE
         else:
-            return SuffixOp("suffix", [self.term.map(map_), self.suffix.map(map_)])
+            return SuffixOp("suffix", [self.expr.map(map_), self.suffix.map(map_)])
 
 
 class ConcatOp(Expression):

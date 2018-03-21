@@ -793,13 +793,13 @@ class Cluster(object):
                 pass
             elif isinstance(data, Mapping):
                 kwargs[DATA_KEY] = unicode2utf8(value2json(data))
-            elif isinstance(kwargs[DATA_KEY], text_type):
-                kwargs[DATA_KEY] = unicode2utf8(kwargs[DATA_KEY])
+            elif isinstance(data, text_type):
+                kwargs[DATA_KEY] = unicode2utf8(data)
             else:
                 Log.error("data must be utf8 encoded string")
 
             if self.debug:
-                sample = kwargs.get(DATA_KEY, "")[:300]
+                sample = kwargs.get(DATA_KEY, b"")[:300]
                 Log.note("{{url}}:\n{{data|indent}}", url=url, data=sample)
 
             if self.debug:

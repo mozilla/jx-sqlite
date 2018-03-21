@@ -290,12 +290,12 @@ def to_python(self, not_null=False, boolean=False, many=False):
 
 @extend(PrefixOp)
 def to_python(self, not_null=False, boolean=False, many=False):
-    return "(" + self.term.to_python() + ").startswith(" + self.prefix.to_python() + ")"
+    return "(" + self.expr.to_python() + ").startswith(" + self.prefix.to_python() + ")"
 
 
 @extend(SuffixOp)
 def to_python(self, not_null=False, boolean=False, many=False):
-    return "(" + self.term.to_python() + ").endswith(" + self.suffix.to_python() + ")"
+    return "(" + self.expr.to_python() + ").endswith(" + self.suffix.to_python() + ")"
 
 
 @extend(ConcatOp)
