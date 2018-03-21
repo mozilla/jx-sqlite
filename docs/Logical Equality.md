@@ -13,7 +13,7 @@ Let `●` represent a logic operator; an operator that returns a Boolean. We def
 
 ### Coordinate-wise structural comparison
 
-The conservative `eq` operator, common in databases, is not very useful; a common SQL pattern is `WHERE a=b OR (a IS NULL and b IS NULL)` that is used to detect structural similarity.  We define `eq` to represent this structural comparison, and further demand it is decisive.
+The conservative `eq` operator, common in databases, is not very useful; a common SQL pattern is `WHERE a=b OR (a IS NULL and b IS NULL)` that is used to detect structural similarity.  We define a new operator, called `eq`, to represent this structural comparison, and we further demand it is decisive.
 
 Given 
 
@@ -26,7 +26,7 @@ We would like
 	{"eq": ["x", y"]} => false
 	{"eq": ["z", z"]} => true
 
-Since JSON documents are seen as points in a multidimensional Cartesian space; object comparison should be he same as point comparison; each coordinate can be independently checked for a match; `{"eq": ["x", y"]}` expands to:
+Since JSON documents are seen as points in a multidimensional Cartesian space; object comparison should be the same as point comparison; each coordinate can be independently checked for a match; `{"eq": ["x", y"]}` expands to:
 
     {"and": [
         {"eq":["x.a", "y.a"]}, 
@@ -104,21 +104,23 @@ Decision code, like `if/else` or `when/then`, are easier to reason about when `n
 
 
 
-## Problems with conservative `eq`
+## Problems with conservative equality`
 
-**Truth table for a *conservative* `eq`**
+We will let `==` represent conservative equality
 
-    {"eq": ["a", "a"]} == true
-    {"eq": ["a", "b"]} == false
-    {"eq": ["a", null]} == null
-    {"eq": ["b", "a"]} == false
-    {"eq": ["b", "b"]} == true
-    {"eq": ["b", null]} == null
-    {"eq": [null, "a"]} == null
-    {"eq": [null, "b"]} == null
-    {"eq": [null, null]} == null
+**Truth table for a *conservative* equality**
 
-### Using conservative `eq` with decisive `and`: Inconsistent
+    {"==": ["a", "a"]} == true
+    {"==": ["a", "b"]} == false
+    {"==": ["a", null]} == null
+    {"==": ["b", "a"]} == false
+    {"==": ["b", "b"]} == true
+    {"==": ["b", null]} == null
+    {"==": [null, "a"]} == null
+    {"==": [null, "b"]} == null
+    {"==": [null, null]} == null
+
+### Using conservative `==` with decisive `and`: Inconsistent
  
 Suppose we want to check that two data structures `x` and `y` are structurally identical. What works for values does not work with `nulls`:
 
@@ -153,7 +155,7 @@ Suppose we want to check that two data structures `x` and `y` are structurally i
 Which is the wrong conclusion
 
 
-### Using conservative `eq` with conservative `and`: Inconsistent
+### Using conservative `==` with conservative `and`: Inconsistent
  
 Given the above, we can conclude that mixing conservative and decisive operators can be dangerous. But sticking to the conservative logical operators is also dangerous:  
 
@@ -179,7 +181,7 @@ Given the above, we can conclude that mixing conservative and decisive operators
 
 which is an unfortunate conclusion
 
-### Using conservative `eq` with control flow code: Inconsistent
+### Using conservative `==` with control flow code: Inconsistent
 
 The conservative operators require care when used in control flow code. What does this expression return?
 
@@ -193,8 +195,10 @@ The problem can be seen in the example where `a=1` and `b=NULL`:
     CASE WHEN null THEN "not equal" ELSE "equal" END
     "equal"
 
-The problem is the control flow statement is decisive: It treats `NULL` as falsey. Our solution is to ensure our logical operators are decisive. Another solution is to define conservative control flow: statements that explicitly deal with `null` or a three-way branching statement. Conservative control flow is not explored here.  
+The problem is the control flow statement is decisive: It treats `NULL` as falsey. Our solution is to ensure our logical operators are decisive. 
+
+Maybe we could define conservative control flow: Statements that explicitly deal with `null` or a three-way branching statement. Conservative control flow is not explored here.  
 
 ## Summary
 
-The conservative `eq` available in SQL is not useful when performing structural comparisons. The decisive `eq` is a more effective choice.
+The conservative equality `==`, which is used in SQL, is not useful when performing structural comparisons. The decisive `eq` is a more effective choice.
