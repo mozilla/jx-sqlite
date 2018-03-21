@@ -29,11 +29,9 @@ def gzip_wrapper(func, compress_lower_limit=None):
             return response
 
         resp = response.data
-        response.headers['Content-Encoding'] = 'gzip'
         if isinstance(resp, binary_type) and len(resp) > compress_lower_limit:
+            response.headers['Content-Encoding'] = 'gzip'
             response.set_data(b''.join(ibytes2icompressed([resp])))
-        else:
-            response.data = ibytes2icompressed(resp)
 
         return response
 
