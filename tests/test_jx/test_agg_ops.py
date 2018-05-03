@@ -13,6 +13,7 @@ from __future__ import unicode_literals
 
 from unittest import skipIf
 
+from jx_base.expressions import NULL
 from tests.test_jx import BaseTestCase, TEST_TABLE, global_settings
 
 
@@ -370,17 +371,16 @@ class TestAggOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.use == "elasticsearch", "requires scripted metric aggregations")  # https://www.elastic.co/guide/en/elasticsearch/reference/current/search-aggregations-metrics-scripted-metric-aggregation.html
     def test_max_on_tuple(self):
         test = {
             "data": [
-                {"a": 1, "b": 1},
                 {"a": 1, "b": 2},
+                {"a": 1, "b": 1},
                 {"a": 2, "b": 1},
                 {"a": 2, "b": 2},
                 {"a": 3, "b": 1},
                 {"a": 3, "b": 2},
-                {"a": 3, "b": 3}
+                {"a": 3, "b": 3},
             ],
             "query": {
                 "from": TEST_TABLE,
@@ -392,6 +392,30 @@ class TestAggOps(BaseTestCase):
             "expecting_list": {
                 "meta": {"format": "value"},
                 "data": {"max": [3, 3], "min": [1, 1]}
+            }
+        }
+        self.utils.execute_tests(test)
+
+    def test_max_on_tuple2(self):
+        test = {
+            "data": [
+                {"a": None, "b": True},
+                {"a": None, "b": False},
+                {"a": "a", "b": True},
+                {"a": "a", "b": False},
+                {"a": "b", "b": True},
+                {"a": "b", "b": False},
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "select": [
+                    {"name": "max", "value": ["a", "b"], "aggregate": "max"},
+                    {"name": "min", "value": ["a", "b"], "aggregate": "min"}
+                ]
+            },
+            "expecting_list": {
+                "meta": {"format": "value"},
+                "data": {"max": ["b", True], "min": ["a", False]}
             }
         }
         self.utils.execute_tests(test)

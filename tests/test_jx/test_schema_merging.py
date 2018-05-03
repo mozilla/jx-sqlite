@@ -270,3 +270,36 @@ class TestSchemaMerging(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
+    def test_sum(self):
+        test = {
+            "data": [
+                {"a": "b"},
+                {"a": {"b": 1}},
+                {"a": {}},
+                {"a": [{"b": 1}, {"b": 2}]},  # TEST THAT INNER CAN BE MAPPED TO NESTED
+                {"a": {"b": 4}},  # TEST THAT INNER IS MAPPED TO NESTED, AFTER SEEING NESTED
+                {"a": 3},
+                {}
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "select": {"value": "a.b", "aggregate": "sum"}
+            },
+            "expecting_list": {
+                "meta": {"format": "value"},
+                "data": 6
+            },
+            "expecting_table": {
+                "meta": {"format": "table"},
+                "header": ["a.b"],
+                "data": [[6]]
+            },
+            "expecting_cube": {
+                "meta": {"format": "cube"},
+                "data": {
+                    "a.b": 6
+                }
+            }
+        }
+        self.utils.execute_tests(test)
+

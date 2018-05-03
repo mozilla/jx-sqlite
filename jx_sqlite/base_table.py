@@ -13,8 +13,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
-from mo_future import text_type
-
 from jx_base import generateGuid
 from jx_base.container import Container
 from jx_python import jx
@@ -37,10 +35,10 @@ class BaseTable(Container):
         :return: HANDLE FOR TABLE IN db
         """
         global _config
-        if db:
+        if isinstance(db, Sqlite):
             self.db = db
         else:
-            self.db = db = Sqlite()
+            self.db = db = Sqlite(db)
 
         if not _config:
             # REGISTER sqlite AS THE DEFAULT CONTAINER TYPE

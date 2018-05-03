@@ -20,6 +20,7 @@ from collections import Mapping
 from mo_future import allocate_lock as _allocate_lock, text_type, zip_longest
 from mo_dots import Data, coalesce
 from mo_files import File
+from mo_kwargs import override
 from mo_logs import Log
 from mo_logs.exceptions import Except, extract_stack, ERROR
 from mo_logs.strings import quote
@@ -44,9 +45,6 @@ _upgraded = False
 
 
 def _upgrade():
-    global _upgraded
-    global sqlite3
-
     try:
         Log.error("no upgrade")
         import sys
@@ -66,10 +64,6 @@ def _upgrade():
     except Exception as e:
         Log.warning("could not upgrade python's sqlite", cause=e)
 
-    import sqlite3
-    _ = sqlite3
-    _upgraded = True
-
 
 class Sqlite(DB):
     """
@@ -79,13 +73,21 @@ class Sqlite(DB):
 
     canonical = None
 
-    def __init__(self, filename=None, db=None, upgrade=True):
+    @override
+    def __init__(self, filename=None, db=None, upgrade=True, kwargs=None):
         """
         :param db:  Optional, wrap a sqlite db in a thread
         :return: Multithread-safe database
         """
-        if upgrade and not _upgraded:
-            _upgrade()
+        global _upgraded
+        global sqlite3
+
+        if not _upgraded:
+            if upgrade:
+                _upgrade()
+            _upgraded = True
+            import sqlite3
+            _ = sqlite3
 
         self.filename = File(filename).abspath if filename else None
         self.db = db
@@ -197,7 +199,7 @@ class Sqlite(DB):
             if Sqlite.canonical:
                 self.db = Sqlite.canonical
             else:
-                self.db = sqlite3.connect(coalesce(self.filename, ':memory:'), check_same_thread = False)
+                self.db = sqlite3.connect(coalesce(self.filename, ':memory:'), check_same_thread=False)
 
                 library_loc = File.new_instance(sys.modules[__name__].__file__, "../..")
                 full_path = File.new_instance(library_loc, "vendor/sqlite/libsqlitefunctions.so").abspath

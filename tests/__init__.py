@@ -17,6 +17,8 @@ import signal
 import subprocess
 from copy import deepcopy
 
+from pyLibrary.sql.sqlite import Sqlite
+
 import mo_json_config
 from mo_future import text_type
 from mo_dots import wrap, coalesce, unwrap, listwrap, Data, startswith_field
@@ -42,9 +44,10 @@ class SQLiteUtils(object):
         self._index = None
 
     def setUp(self):
-        self._index = QueryTable("testing")
+        self._index = QueryTable(name="testing", kwargs=test_jx.global_settings)
 
     def tearDown(self):
+
         pass
 
     def setUpClass(self):
@@ -263,7 +266,6 @@ def run_app(please_stop, server_is_ready):
         Log.note("SERVER: {{line}}", {"line": line.strip()})
 
     proc.send_signal(signal.CTRL_C_EVENT)
-
 
 # read_alternate_settings
 try:

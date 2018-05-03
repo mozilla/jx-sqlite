@@ -13,10 +13,9 @@ from __future__ import unicode_literals
 
 from unittest import skipIf
 
-from mo_future import text_type
-
 from jx_base.expressions import NULL
 from mo_dots import wrap, set_default
+from mo_future import text_type
 from tests.test_jx import BaseTestCase, TEST_TABLE, global_settings
 
 
@@ -362,6 +361,7 @@ class TestgroupBy1(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
+    @skipIf(global_settings.elasticsearch.version.startswith("5."), "Not supported by es5")
     def test_groupby_left_id(self):
         test = {
             "data": [set_default(d, {"_id": "aa" + text_type(i)}) for i, d in enumerate(simple_test_data)],
@@ -379,7 +379,7 @@ class TestgroupBy1(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.es14, "not implemented yet")
+    @skipIf(global_settings.elasticsearch, "not implemented yet")
     def test_groupby_multivalue_nested(self):
         test = {
             "data": [

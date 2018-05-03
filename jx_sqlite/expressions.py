@@ -188,7 +188,7 @@ def partial_eval(self):
 
 @extend(NeOp)
 def to_sql(self, schema, not_null=False, boolean=False):
-    return NotOp('not', EqOp('eq', self.terms).partial_eval()).partial_eval().to_sql(schema)
+    return NotOp('not', EqOp('eq', [self.lhs, self.rhs]).partial_eval()).partial_eval().to_sql(schema)
 
 
 @extend(BasicIndexOfOp)
