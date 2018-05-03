@@ -39,18 +39,18 @@ def _delayed_imports():
         MySQL = None
 
     try:
-        from jx_elasticsearch.meta import FromESMetadata
+        from jx_elasticsearch.meta import ElasticsearchMetadata
     except Exception:
-        FromESMetadata = None
+        ElasticsearchSnowflake = None
 
     set_default(container.type2container, {
         "mysql": MySQL,
         "memory": None,
-        "meta": FromESMetadata
+        "meta": ElasticsearchMetadata
     })
 
 
-def wrap_from(frum, schema=None):
+def find_container(frum, schema=None):
     """
     :param frum:
     :param schema:
@@ -66,7 +66,6 @@ def wrap_from(frum, schema=None):
             Log.error("expecting jx_base.container.config.default.settings to contain default elasticsearch connection info")
 
         type_ = None
-        index = frum
         if frum.startswith("meta."):
             if frum == "meta.columns":
                 return _meta.singlton.meta.columns.denormalized()
@@ -74,13 +73,13 @@ def wrap_from(frum, schema=None):
                 return _meta.singlton.meta.tables
             else:
                 Log.error("{{name}} not a recognized table", name=frum)
-        else:
-            type_ = container.config.default.type
-            index = split_field(frum)[0]
+
+        type_ = container.config.default.type
+        fact_table_name = split_field(frum)[0]
 
         settings = set_default(
             {
-                "index": index,
+                "index": fact_table_name,
                 "name": frum,
                 "exists": True,
             },
@@ -95,7 +94,7 @@ def wrap_from(frum, schema=None):
         return container.type2container[frum.type](frum.settings)
     elif isinstance(frum, Mapping) and (frum["from"] or isinstance(frum["from"], (list, set))):
         from jx_base.query import QueryOp
-        return QueryOp.wrap(frum, schema=schema)
+        return QueryOp.wrap(frum, namespace=schema)
     elif isinstance(frum, (list, set)):
         return _ListContainer("test_list", frum)
     else:

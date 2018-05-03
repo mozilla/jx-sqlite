@@ -941,8 +941,8 @@ class TestSetOps(BaseTestCase):
             ],
             "query": {
                 "from": TEST_TABLE,
-                "where": {"and":[
-                    {"prefix":{"url": "https://hg.mozilla.org/"}},
+                "where": {"and": [
+                    {"prefix": {"url": "https://hg.mozilla.org/"}},
                     {"not": {"find": [{"not_left": {"url": 23}}, {"literal": "/"}]}}
                 ]}
             },

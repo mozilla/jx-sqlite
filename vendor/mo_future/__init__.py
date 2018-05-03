@@ -37,8 +37,15 @@ if PY3:
     unichr = chr
 
     xrange = range
-    filter_type = type(filter(lambda x: True, []))
-    generator_types = (collections.Iterable, filter_type)
+    def _gen():
+        yield
+
+    generator_types = (
+        type(_gen()),
+        type(filter(lambda x: True, [])),
+        type({}.items()),
+        type({}.values())
+    )
     unichr = chr
 
     round = round

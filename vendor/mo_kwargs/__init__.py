@@ -97,9 +97,10 @@ def override(func):
             if e.message.startswith(func_name) and "takes at least" in e:
                 missing = [p for p in params if str(p) not in packed]
                 get_logger().error(
-                    "Problem calling {{func_name}}:  Expecting parameter {{missing}}",
+                    "Problem calling {{func_name}}:  Expecting parameter {{missing}}, given {{given}}",
                     func_name=func_name,
                     missing=missing,
+                    given=packed.keys(),
                     stack_depth=1
                 )
             get_logger().error("Error dispatching call", e)

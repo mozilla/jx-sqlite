@@ -133,8 +133,8 @@ def to_sql(self, schema, not_null=False, boolean=False):
         }
         for c in schema.columns
         if startswith_field(c.names['.'], term) and (
-            (c.type not in (EXISTS, OBJECT, NESTED) and startswith_field(schema.nested_path[0], c.nested_path[0])) or
-            (c.type not in (EXISTS, OBJECT) and schema.nested_path[0] == c.nested_path[0])
+            (c.jx_type not in (EXISTS, OBJECT, NESTED) and startswith_field(schema.nested_path[0], c.nested_path[0])) or
+            (c.jx_type not in (EXISTS, OBJECT) and schema.nested_path[0] == c.nested_path[0])
         )
     ])
     return output

@@ -11,17 +11,16 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
-import StringIO
 import gzip
 import zipfile
 from tempfile import TemporaryFile
 
 import boto
-from BeautifulSoup import BeautifulSoup
 from boto.s3.connection import Location
-from mo_future import text_type
+from bs4 import BeautifulSoup
 
 from mo_dots import wrap, Null, coalesce, unwrap, Data
+from mo_future import text_type, StringIO
 from mo_kwargs import override
 from mo_logs import Log, Except
 from mo_logs.strings import utf82unicode, unicode2utf8
@@ -472,7 +471,7 @@ def strip_extension(key):
 
 
 def _unzip(compressed):
-    buff = StringIO.StringIO(compressed)
+    buff = StringIO(compressed)
     archive = zipfile.ZipFile(buff, mode='r')
     return archive.read(archive.namelist()[0])
 

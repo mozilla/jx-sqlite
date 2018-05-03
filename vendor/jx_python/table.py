@@ -10,10 +10,12 @@
 from __future__ import unicode_literals
 from __future__ import division
 from __future__ import absolute_import
+
+import jx_base
 from mo_dots import Data
 
 
-class Table(object):
+class Table(jx_base.Table):
 
     __slots__ = ['header', 'data', 'meta']
 

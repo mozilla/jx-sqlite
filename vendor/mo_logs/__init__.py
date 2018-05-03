@@ -98,12 +98,18 @@ class Log(object):
             for log in listwrap(settings.log):
                 Log.add_log(Log.new_instance(log))
 
-        if settings.cprofile.enabled==True:
+        if settings.cprofile.enabled == True:
             Log.alert("cprofiling is enabled, writing to {{filename}}", filename=os.path.abspath(settings.cprofile.filename))
 
     @classmethod
     def stop(cls):
-        from mo_logs import profiles
+        """
+        DECONSTRUCTS ANY LOGGING, AND RETURNS TO DIRECT-TO-stdout LOGGING
+        EXECUTING MULUTIPLE TIMES IN A ROW IS SAFE, IT HAS NO NET EFFECT, IT STILL LOGS TO stdout
+        :return: NOTHING
+        """
+
+        from mo_threads import profiles
 
         if cls.cprofiler and hasattr(cls, "settings"):
             if cls.cprofiler == None:
@@ -429,7 +435,6 @@ class Log(object):
         trace = exceptions.extract_stack(stack_depth + 1)
 
         e = Except(exceptions.ERROR, template, params, cause, trace)
-        str_e = text_type(e)
 
         error_mode = cls.error_mode
         with suppress_exception:
@@ -443,7 +448,7 @@ class Log(object):
                 )
         cls.error_mode = error_mode
 
-        sys.stderr.write(str_e.encode('utf8'))
+        sys.stderr.write(str(e))
 
 
     def write(self):
@@ -454,6 +459,7 @@ def write_profile(profile_settings, stats):
     from pyLibrary import convert
     from mo_files import File
 
+    Log.note("aggregating {{num}} profile stats", num=len(stats))
     acc = stats[0]
     for s in stats[1:]:
         acc.add(s)
@@ -472,6 +478,10 @@ def write_profile(profile_settings, stats):
     ]
     stats_file = File(profile_settings.filename, suffix=convert.datetime2string(datetime.now(), "_%Y%m%d_%H%M%S"))
     stats_file.write(convert.list2tab(stats))
+
+
+def _same_frame(frameA, frameB):
+    return (frameA.line, frameA.file) == (frameB.line, frameB.file)
 
 
 # GET THE MACHINE METADATA

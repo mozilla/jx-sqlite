@@ -61,7 +61,7 @@ class QueryTable(GroupbyTable):
         select = []
         column_names = []
         for cname, cs in self.columns.items():
-            cs = [c for c in cs if c.type not in STRUCT and len(c.nested_path) == 1]
+            cs = [c for c in cs if c.jx_type not in STRUCT and len(c.nested_path) == 1]
             if len(cs) == 0:
                 continue
             column_names.append(cname)
@@ -91,7 +91,7 @@ class QueryTable(GroupbyTable):
         frum, query['from'] = query['from'], self
         table = self.sf.tables[relative_field(frum, self.sf.fact)]
         schema = table.schema
-        query = QueryOp.wrap(query, table=table, schema=schema)
+        query = QueryOp.wrap(query, self, self.namespace)
         new_table = "temp_" + unique_name()
 
         if query.format == "container":
@@ -365,7 +365,7 @@ class QueryTable(GroupbyTable):
         if columns[-1].es_column != GUID:
             columns.append(Column(
                 names={i: relative_field(GUID, i) for i in t},
-                type="string",
+                jx_type="string",
                 es_column=GUID,
                 es_index=self.sf.fact,
                 nested_path=["."]
@@ -439,7 +439,7 @@ class QueryTable(GroupbyTable):
         if select.value == ".":
             for cname, cs in self.columns.items():
                 for c in cs:
-                    if c.type in STRUCT:
+                    if c.jx_type in STRUCT:
                         continue
 
                     new_select = select.copy()

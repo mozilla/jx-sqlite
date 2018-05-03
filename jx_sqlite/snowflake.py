@@ -13,8 +13,8 @@ from __future__ import unicode_literals
 from collections import OrderedDict
 from copy import copy
 
+import jx_base
 from jx_base import STRUCT, OBJECT, EXISTS, STRING
-from jx_base.container import Container
 from jx_base.queries import get_property_name
 from jx_python import jx
 from jx_python.meta import Column
@@ -26,16 +26,14 @@ from pyLibrary.sql import SQL_FROM, sql_iso, sql_list, SQL_LIMIT, SQL_SELECT, SQ
 from pyLibrary.sql.sqlite import quote_column
 
 
-class Snowflake(object):
+class Container(jx_base.Container):
     """
     MANAGE SQLITE DATABASE
     """
-    def __init__(self, fact, uid, db):
-        self.fact = fact  # THE CENTRAL FACT TABLE
-        self.uid = uid
+    def __init__(self, db):
         self.db = db
-        self._columns = []  # EVERY COLUMN IS ACCESSIBLE BY EVERY TABLE IN THE SNOWFLAKE
         self.tables = OrderedDict()  # MAP FROM NESTED PATH TO Table OBJECT, PARENTS PROCEED CHILDREN
+        self._columns = []  # EVERY COLUMN IS ACCESSIBLE BY EVERY TABLE IN THE SNOWFLAKE
         if not self.read_db():
             self.create_fact(uid)
 
@@ -66,7 +64,8 @@ class Snowflake(object):
                 cname, ctype = untyped_column(name)
                 column = Column(
                     names={np: relative_field(cname, np) for np in nested_path},
-                    type=coalesce(ctype, {"TEXT": "string", "REAL": "number", "INTEGER": "integer"}.get(dtype)),
+                    jx_type=coalesce(ctype, {"TEXT": "string", "REAL": "number", "INTEGER": "integer"}.get(dtype)),
+                    es_type=dtype,
                     nested_path=nested_path,
                     es_column=name,
                     es_index=table.name
@@ -76,7 +75,7 @@ class Snowflake(object):
 
         return tables_found
 
-    def create_fact(self, uid=UID):
+    def create_fact(self, fact_name, uid=UID):
         """
         MAKE NEW TABLE WITH GIVEN guid
         :param uid: name, or list of names, for the GUID
@@ -92,18 +91,18 @@ class Snowflake(object):
             else:
                 c = Column(
                     names={".": u},
-                    type="string",
+                    jx_type="string",
                     es_column=typed_column(u, "string"),
-                    es_index=self.fact
+                    es_index=fact_name
                 )
                 self.add_column_to_schema(c)
                 new_columns.append(c)
 
         command = (
-            "CREATE TABLE " + quote_column(self.fact) + sql_iso(sql_list(
+            "CREATE TABLE " + quote_column(fact_name) + sql_iso(sql_list(
                 [quoted_GUID + " TEXT "] +
                 [quoted_UID + " INTEGER"] +
-                [quote_column(c.es_column) + " " + sql_types[c.type] for c in self.tables["."].schema.columns] +
+                [quote_column(c.es_column) + " " + sql_types[c.jx_type] for c in self.tables["."].schema.columns] +
                 ["PRIMARY KEY " + sql_iso(sql_list(
                     [quoted_GUID] +
                     [quoted_UID] +
@@ -113,6 +112,19 @@ class Snowflake(object):
         )
 
         self.db.execute(command)
+
+
+class Snowflake(jx_base.Snowflake):
+    """
+    MANAGE SQLITE DATABASE
+    """
+    def __init__(self, fact, db):
+        self.fact = fact  # THE CENTRAL FACT TABLE
+        self.db = db
+        self._columns = []  # EVERY COLUMN IS ACCESSIBLE BY EVERY TABLE IN THE SNOWFLAKE
+        self.tables = OrderedDict()  # MAP FROM NESTED PATH TO Table OBJECT, PARENTS PROCEED CHILDREN
+        if not self.read_db():
+            self.create_fact(uid)
 
     def change_schema(self, required_changes):
         """
@@ -254,14 +266,16 @@ class Schema(object):
             Log.error("Expecting full nested path")
         source = Column(
             names={".": "."},
-            type=OBJECT,
+            jx_type=OBJECT,
+            es_type=OBJECT,
             es_column="_source",
             es_index=nested_path,
             nested_path=nested_path
         )
         guid = Column(
             names={".": GUID},
-            type=STRING,
+            jx_type=STRING,
+            es_type='TEXT',
             es_column=GUID,
             es_index=nested_path,
             nested_path=nested_path
@@ -337,7 +351,7 @@ class Schema(object):
             for k, cs in self.namespace.items()
             if startswith_field(k, full_name) and k != GUID or k == full_name
             for c in cs
-            if c.type not in [OBJECT, EXISTS]
+            if c.jx_type not in [OBJECT, EXISTS]
         )
 
     def map_to_sql(self, var=""):
@@ -351,7 +365,7 @@ class Schema(object):
         origin_dict = {}
         for k, cs in self.namespace.items():
             for c in cs:
-                if c.type in STRUCT:
+                if c.jx_type in STRUCT:
                     continue
 
                 if startswith_field(get_property_name(k), var):

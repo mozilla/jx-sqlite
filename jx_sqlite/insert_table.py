@@ -56,7 +56,7 @@ class InsertTable(BaseTable):
             v: c.es_column
             for v in _vars
             for c in self.columns.get(v, Null)
-            if c.type not in STRUCT
+            if c.jx_type not in STRUCT
         }
         where_sql = where.map(_map).to_sql()
         new_columns = set(command.set.keys()) - set(self.columns.keys())
@@ -65,7 +65,7 @@ class InsertTable(BaseTable):
             ctype = get_type(nested_value)
             column = Column(
                 names={".": new_column_name},
-                type=ctype,
+                jx_type=ctype,
                 es_index=self.sf.fact,
                 es_column=typed_column(new_column_name, ctype)
             )
@@ -154,32 +154,33 @@ class InsertTable(BaseTable):
                     for c in cs:
                         column = Column(
                             names={".": c.name},
-                            type=c.type,
+                            jx_type=c.jx_type,
+                            es_type=c.es_type,
                             es_index=c.es_index,
                             es_column=c.es_column,
                             nested_path=[nested_column_name] + c.nested_path
                         )
                         if c.name not in self.columns:
                             self.columns[column.name] = {column}
-                        elif c.type not in [c.type for c in self.columns[c.name]]:
+                        elif c.jx_type not in [c.jx_type for c in self.columns[c.name]]:
                             self.columns[column.name].add(column)
 
         command = (
             "UPDATE " + quote_column(self.sf.fact) + " SET " +
             sql_list(
                 [
-                    quote_column(c) + "=" + quote_value(get_if_type(v, c.type))
+                    quote_column(c) + "=" + quote_value(get_if_type(v, c.jx_type))
                     for k, v in command.set.items()
                     if get_type(v) != "nested"
                     for c in self.columns[k]
-                    if c.type != "nested" and len(c.nested_path) == 1
+                    if c.jx_type != "nested" and len(c.nested_path) == 1
                 ] +
                 [
                     quote_column(c) + "=" + SQL_NULL
                     for k in listwrap(command['clear'])
                     if k in self.columns
                     for c in self.columns[k]
-                    if c.type != "nested" and len(c.nested_path) == 1
+                    if c.jx_type != "nested" and len(c.nested_path) == 1
                 ]
             ) +
             SQL_WHERE + where_sql
@@ -253,9 +254,9 @@ class InsertTable(BaseTable):
                     continue
 
                 if value_type in STRUCT:
-                    c = unwraplist([cc for cc in abs_schema[cname] if cc.type in STRUCT])
+                    c = unwraplist([cc for cc in abs_schema[cname] if cc.jx_type in STRUCT])
                 else:
-                    c = unwraplist([cc for cc in abs_schema[cname] if cc.type == value_type])
+                    c = unwraplist([cc for cc in abs_schema[cname] if cc.jx_type == value_type])
 
                 if not c:
                     # WHAT IS THE NESTING LEVEL FOR THIS PATH?
@@ -266,7 +267,7 @@ class InsertTable(BaseTable):
 
                     c = Column(
                         names={".": cname},
-                        type=value_type,
+                        jx_type=value_type,
                         es_column=typed_column(cname, value_type),
                         es_index=table,
                         nested_path=nested_path
@@ -279,7 +280,7 @@ class InsertTable(BaseTable):
 
                     # INSIDE IF BLOCK BECAUSE WE DO NOT WANT IT TO ADD WHAT WE columns.get() ALREADY
                     insertion.active_columns.add(c)
-                elif c.type == "nested" and value_type == "object":
+                elif c.jx_type == "nested" and value_type == "object":
                     value_type = "nested"
                     v = [v]
                 elif len(c.nested_path) < len(nested_path):
@@ -290,7 +291,7 @@ class InsertTable(BaseTable):
                     required_changes.append({"nest": (c, nested_path)})
                     deep_c = Column(
                         names={".": cname},
-                        type=value_type,
+                        jx_type=value_type,
                         es_column=typed_column(cname, value_type),
                         es_index=table,
                         nested_path=nested_path
@@ -325,7 +326,7 @@ class InsertTable(BaseTable):
                 elif value_type == "object":
                     row[c.es_column] = "."
                     _flatten(v, uid, parent_id, order, cname, nested_path, row=row)
-                elif c.type:
+                elif c.jx_type:
                     row[c.es_column] = v
 
         for doc in docs:

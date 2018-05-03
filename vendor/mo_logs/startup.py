@@ -20,7 +20,7 @@ import tempfile
 import mo_json_config
 from mo_files import File
 from mo_logs import Log
-from mo_dots import listwrap, wrap, unwrap
+from mo_dots import listwrap, wrap, unwrap, coalesce
 
 
 # PARAMETERS MATCH argparse.ArgumentParser.add_argument()
@@ -58,41 +58,34 @@ def argparse(defs):
     return wrap(output)
 
 
-def read_settings(filename=None, defs=None, env_filename=None):
+def read_settings(filename=None, defs=None):
     """
     :param filename: Force load a file
     :param defs: arguments you want to accept
-    :param env_filename: A config file from an environment variable (a fallback config file, if no other provided)
+    :param default_filename: A config file from an environment variable (a fallback config file, if no other provided)
     :return:
     """
     # READ SETTINGS
-    if filename:
-        settings_file = File(filename)
-        if not settings_file.exists:
-            Log.error("Can not file settings file {{filename}}", {
-                "filename": settings_file.abspath
-            })
-        settings = mo_json_config.get("file:///" + settings_file.abspath)
-        if defs:
-            settings.args = argparse(defs)
-        return settings
-    else:
-        defs = listwrap(defs)
-        defs.append({
-            "name": ["--config", "--settings", "--settings-file", "--settings_file"],
-            "help": "path to JSON file with settings",
-            "type": str,
-            "dest": "filename",
-            "default": "./config.json",
-            "required": False
-        })
-        args = argparse(defs)
+    defs = listwrap(defs)
+    defs.append({
+        "name": ["--config", "--settings", "--settings-file", "--settings_file"],
+        "help": "path to JSON file with settings",
+        "type": str,
+        "dest": "filename",
+        "default": None,
+        "required": False
+    })
+    args = argparse(defs)
 
-        if env_filename:
-            args.filename = env_filename
-        settings = mo_json_config.get("file://" + args.filename.replace(os.sep, "/"))
-        settings.args = args
-        return settings
+    args.filename = coalesce(filename, args.filename, "./config.json")
+    settings_file = File(args.filename)
+    if not settings_file.exists:
+        Log.error("Can not read configuration file {{filename}}", {
+            "filename": settings_file.abspath
+        })
+    settings = mo_json_config.get("file:///" + settings_file.abspath)
+    settings.args = args
+    return settings
 
 
 # snagged from https://github.com/pycontribs/tendo/blob/master/tendo/singleton.py (under licence PYTHON SOFTWARE FOUNDATION LICENSE VERSION 2)

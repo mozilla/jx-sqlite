@@ -22,6 +22,7 @@ class TestSchemaMerging(BaseTestCase):
     TESTS THAT DEMONSTRATE DIFFERENT SCHEMAS
     """
 
+    @skipIf(True, "not implemented yet")
     def test_select(self):
         test = {
             "data": [
@@ -113,7 +114,6 @@ class TestSchemaMerging(BaseTestCase):
         }
         self.utils.execute_tests(test, tjson=True)
 
-    @skipIf(global_settings.is_travis, "not expected to pass yet")
     def test_dots_in_property_names(self):
         test = {
             "data": [
@@ -154,7 +154,6 @@ class TestSchemaMerging(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.is_travis, "not expected to pass yet")
     def test_dots_in_property_names2(self):
         test = {
             "data": [
@@ -195,7 +194,7 @@ class TestSchemaMerging(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.is_travis, "not expected to pass yet")
+    @skipIf(True, "not implemented yet")
     def test_dots_in_property_names3(self):
         test = {
             "data": [
@@ -237,6 +236,7 @@ class TestSchemaMerging(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
+    @skipIf(True, "not implemented yet")
     def test_count(self):
         test = {
             "data": [
@@ -270,6 +270,7 @@ class TestSchemaMerging(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
+    @skipIf(True, "not implemented yet")
     def test_sum(self):
         test = {
             "data": [

@@ -379,7 +379,7 @@ class TestgroupBy1(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.elasticsearch, "not implemented yet")
+    @skipIf(True, "not implemented yet")
     def test_groupby_multivalue_nested(self):
         test = {
             "data": [
@@ -500,7 +500,6 @@ class TestgroupBy1(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.es14, "not implemented yet")
     def test_groupby_multivalue_naive(self):
         test = {
             "data": [
@@ -534,6 +533,15 @@ class TestgroupBy1(BaseTestCase):
             }
         }
         self.utils.execute_tests(test)
+
+
+# TODO: GROUPBY NUMBER SHOULD NOT RESULT IN A STRING
+#         "groupby":[{
+#        		"name":"date",
+#        		"value":{"floor":[{"div":{"run.timestamp":86400}},1]}
+#        	}],
+
+
 
 # TODO: AGG SHALLOW FIELD WITH DEEP GROUPBY
 # {

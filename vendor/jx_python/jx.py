@@ -60,64 +60,64 @@ def get(expr):
     return jx_expression_to_function(expr)
 
 
-def run(query, frum=Null):
+def run(query, container=Null):
     """
     THIS FUNCTION IS SIMPLY SWITCHING BASED ON THE query["from"] CONTAINER,
     BUT IT IS ALSO PROCESSING A list CONTAINER; SEPARATE TO A ListContainer
     """
-    if frum == None:
-        frum = wrap(query)['from']
-        query_op = QueryOp.wrap(query, table=frum, schema=frum.schema)
+    if container == None:
+        container = wrap(query)['from'].container
+        query_op = QueryOp.wrap(query, container=container, namespace=container.schema)
     else:
-        query_op = QueryOp.wrap(query, frum, frum.schema)
+        query_op = QueryOp.wrap(query, container, container.namespace)
 
-    if frum == None:
+    if container == None:
         from jx_python.containers.list_usingPythonList import DUAL
         return DUAL.query(query_op)
-    elif isinstance(frum, Container):
-        return frum.query(query_op)
-    elif isinstance(frum, (list, set) + generator_types):
-        frum = wrap(list(frum))
-    elif isinstance(frum, Cube):
+    elif isinstance(container, Container):
+        return container.query(query_op)
+    elif isinstance(container, (list, set) + generator_types):
+        container = wrap(list(container))
+    elif isinstance(container, Cube):
         if is_aggs(query_op):
-            return cube_aggs(frum, query_op)
-    elif isinstance(frum, QueryOp):
-        frum = run(frum)
+            return cube_aggs(container, query_op)
+    elif isinstance(container, QueryOp):
+        container = run(container)
     else:
-        Log.error("Do not know how to handle {{type}}", type=frum.__class__.__name__)
+        Log.error("Do not know how to handle {{type}}", type=container.__class__.__name__)
 
     if is_aggs(query_op):
-        frum = list_aggs(frum, query_op)
+        container = list_aggs(container, query_op)
     else:  # SETOP
         if query_op.where is not TRUE:
-            frum = filter(frum, query_op.where)
+            container = filter(container, query_op.where)
 
         if query_op.sort:
-            frum = sort(frum, query_op.sort, already_normalized=True)
+            container = sort(container, query_op.sort, already_normalized=True)
 
         if query_op.select:
-            frum = select(frum, query_op.select)
+            container = select(container, query_op.select)
 
     if query_op.window:
-        if isinstance(frum, Cube):
-            frum = list(frum.values())
+        if isinstance(container, Cube):
+            container = list(container.values())
 
         for param in query_op.window:
-            window(frum, param)
+            window(container, param)
 
     # AT THIS POINT frum IS IN LIST FORMAT, NOW PACKAGE RESULT
     if query_op.format == "cube":
-        frum = convert.list2cube(frum)
+        container = convert.list2cube(container)
     elif query_op.format == "table":
-        frum = convert.list2table(frum)
-        frum.meta.format = "table"
+        container = convert.list2table(container)
+        container.meta.format = "table"
     else:
-        frum = wrap({
+        container = wrap({
             "meta": {"format": "list"},
-            "data": frum
+            "data": container
         })
 
-    return frum
+    return container
 
 
 groupby = group_by.groupby
@@ -487,8 +487,8 @@ def _deeper_iterator(columns, nested_path, path, data):
             c = columns.get(leaf)
             if not c:
                 c = columns[leaf] = _Column(name=leaf, type=type_to_name[v.__class__], table=None, es_column=leaf)
-            c.type = _merge_type[c.type][type_to_name[v.__class__]]
-            if c.type == "nested" and not nested_path[0].startswith(leaf + "."):
+            c.jx_type = _merge_type[c.jx_type][type_to_name[v.__class__]]
+            if c.jx_type == "nested" and not nested_path[0].startswith(leaf + "."):
                 if leaf.startswith(nested_path[0] + ".") or leaf == nested_path[0] or not nested_path[0]:
                     nested_path[0] = leaf
                 else:
@@ -503,7 +503,7 @@ def _deeper_iterator(columns, nested_path, path, data):
                 for o in _deeper_iterator(columns, nested_path, leaf, [v]):
                     set_default(output, o)
             else:
-                if c.type not in ["object", "nested"]:
+                if c.jx_type not in ["object", "nested"]:
                     output[leaf] = v
 
         if deep_leaf:
@@ -570,6 +570,11 @@ def value_compare(left, right, ordering=1):
 
     try:
         if isinstance(left, list) or isinstance(right, list):
+            if left == None:
+                return ordering
+            elif right == None:
+                return - ordering
+
             left = listwrap(left)
             right = listwrap(right)
             for a, b in zip(left, right):

@@ -17,6 +17,8 @@ import re
 import sys
 from collections import Mapping
 
+from mo_kwargs import override
+
 from mo_future import allocate_lock as _allocate_lock, text_type, zip_longest
 from mo_dots import Data, coalesce
 from mo_files import File
@@ -46,21 +48,23 @@ _upgraded = False
 
 def _upgrade():
     try:
-        Log.error("no upgrade")
-        import sys
-        import platform
-        if "windows" in platform.system().lower():
-            original_dll = File.new_instance(sys.exec_prefix, "dlls/sqlite3.dll")
-            if platform.architecture()[0]=='32bit':
-                source_dll = File("vendor/pyLibrary/vendor/sqlite/sqlite3_32.dll")
-            else:
-                source_dll = File("vendor/pyLibrary/vendor/sqlite/sqlite3_64.dll")
-
-            if not all(a == b for a, b in zip_longest(source_dll.read_bytes(), original_dll.read_bytes())):
-                original_dll.backup()
-                File.copy(source_dll, original_dll)
-        else:
-            pass
+        Log.note("sqlite not upgraded")
+        # return
+        #
+        # import sys
+        # import platform
+        # if "windows" in platform.system().lower():
+        #     original_dll = File.new_instance(sys.exec_prefix, "dlls/sqlite3.dll")
+        #     if platform.architecture()[0]=='32bit':
+        #         source_dll = File("vendor/pyLibrary/vendor/sqlite/sqlite3_32.dll")
+        #     else:
+        #         source_dll = File("vendor/pyLibrary/vendor/sqlite/sqlite3_64.dll")
+        #
+        #     if not all(a == b for a, b in zip_longest(source_dll.read_bytes(), original_dll.read_bytes())):
+        #         original_dll.backup()
+        #         File.copy(source_dll, original_dll)
+        # else:
+        #     pass
     except Exception as e:
         Log.warning("could not upgrade python's sqlite", cause=e)
 
@@ -74,7 +78,7 @@ class Sqlite(DB):
     canonical = None
 
     @override
-    def __init__(self, filename=None, db=None, upgrade=True, kwargs=None):
+    def __init__(self, filename=None, db=None, upgrade=True, load_functions=False, kwargs=None):
         """
         :param db:  Optional, wrap a sqlite db in a thread
         :return: Multithread-safe database
@@ -82,6 +86,7 @@ class Sqlite(DB):
         global _upgraded
         global sqlite3
 
+        self.settings = kwargs
         if not _upgraded:
             if upgrade:
                 _upgrade()
@@ -96,6 +101,8 @@ class Sqlite(DB):
         self.get_trace = TRACE
         self.upgrade = upgrade
         self.closed = False
+        if DEBUG:
+            Log.note("Sqlite version {{version}}", version=self.query("select sqlite_version()").data[0][0])
 
     def _enhancements(self):
         def regex(pattern, value):
@@ -196,28 +203,16 @@ class Sqlite(DB):
         try:
             if DEBUG:
                 Log.note("Sqlite version {{version}}", version=sqlite3.sqlite_version)
-            if Sqlite.canonical:
-                self.db = Sqlite.canonical
-            else:
-                self.db = sqlite3.connect(coalesce(self.filename, ':memory:'), check_same_thread=False)
+            try:
+                if Sqlite.canonical:
+                    self.db = Sqlite.canonical
+                else:
+                    self.db = sqlite3.connect(coalesce(self.filename, ':memory:'), check_same_thread=False)
+            except Exception as e:
+                Log.error("could not open file {{filename}}", filename=self.filename)
 
-                library_loc = File.new_instance(sys.modules[__name__].__file__, "../..")
-                full_path = File.new_instance(library_loc, "vendor/sqlite/libsqlitefunctions.so").abspath
-                try:
-                    trace = extract_stack(0)[0]
-                    if self.upgrade:
-                        if os.name == 'nt':
-                            file = File.new_instance(trace["file"], "../../vendor/sqlite/libsqlitefunctions.so")
-                        else:
-                            file = File.new_instance(trace["file"], "../../vendor/sqlite/libsqlitefunctions")
-
-                        full_path = file.abspath
-                        self.db.enable_load_extension(True)
-                        self.db.execute(SQL_SELECT + "load_extension" + sql_iso(self.quote_value(full_path)))
-                except Exception as e:
-                    if not _load_extension_warning_sent:
-                        _load_extension_warning_sent = True
-                        Log.warning("Could not load {{file}}}, doing without. (no SQRT for you!)", file=full_path, cause=e)
+            if self.settings.load_functions:
+                self._load_functions()
 
             while not please_stop:
                 quad = self.queue.pop(till=please_stop)
@@ -283,11 +278,25 @@ class Sqlite(DB):
                 Log.note("Database is closed")
             self.db.close()
 
-    def quote_column(self, column_name, table=None):
-        return quote_column(column_name, table)
+    def _load_functions(self):
+        global _load_extension_warning_sent
+        library_loc = File.new_instance(sys.modules[__name__].__file__, "../..")
+        full_path = File.new_instance(library_loc, "vendor/sqlite/libsqlitefunctions.so").abspath
+        try:
+            trace = extract_stack(0)[0]
+            if self.upgrade:
+                if os.name == 'nt':
+                    file = File.new_instance(trace["file"], "../../vendor/sqlite/libsqlitefunctions.so")
+                else:
+                    file = File.new_instance(trace["file"], "../../vendor/sqlite/libsqlitefunctions")
 
-    def quote_value(self, value):
-        return quote_value(value)
+                full_path = file.abspath
+                self.db.enable_load_extension(True)
+                self.db.execute(SQL_SELECT + "load_extension" + sql_iso(quote_value(full_path)))
+        except Exception as e:
+            if not _load_extension_warning_sent:
+                _load_extension_warning_sent = True
+                Log.warning("Could not load {{file}}, doing without. (no SQRT for you!)", file=full_path, cause=e)
 
     def create_new_functions(self):
 
@@ -296,6 +305,7 @@ class Sqlite(DB):
             return reg.search(item) is not None
 
         self.db.create_function("REGEXP", 2, regexp)
+
 
 _no_need_to_quote = re.compile(r"^\w+$", re.UNICODE)
 

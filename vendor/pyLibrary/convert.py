@@ -46,6 +46,15 @@ def string2datetime(value, format=None):
     return unix2datetime(Date(value, format).unix)
 
 
+def string2boolean(value):
+    if value in ["true", "T"]:
+        return True
+    elif value in ["false", "F"]:
+        return False
+    else:
+        return None
+
+
 def str2datetime(value, format=None):
     return unix2datetime(Date(value, format).unix)
 

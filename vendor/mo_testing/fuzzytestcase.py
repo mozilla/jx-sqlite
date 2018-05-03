@@ -86,6 +86,8 @@ def assertAlmostEqual(test, expected, digits=None, places=None, msg=None, delta=
             return
         elif test is expected:
             return
+        elif isinstance(expected, text_type):
+            assertAlmostEqualValue(test, expected, msg=msg, digits=digits, places=places, delta=delta)
         elif isinstance(test, UniqueIndex):
             if test ^ expected:
                 Log.error("Sets do not match")
@@ -195,7 +197,6 @@ def assertAlmostEqualValue(test, expected, digits=None, places=None, msg=None, d
             diff = Math.log10(abs(test-expected))
             if diff < Math.ceiling(Math.log10(abs(test)))-places:
                 return
-
 
         standardMsg = expand_template("{{test|json}} != {{expected|json}} within {{places}} places", locals())
 

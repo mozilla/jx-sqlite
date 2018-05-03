@@ -15,11 +15,10 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
-from mo_future import allocate_lock as _allocate_lock
 from time import sleep, time
 
+from mo_future import allocate_lock as _allocate_lock
 from mo_future import text_type
-
 from mo_threads.signal import Signal
 
 DEBUG = False
@@ -39,7 +38,7 @@ class Till(Signal):
     def __new__(cls, till=None, timeout=None, seconds=None):
         if not Till.enabled:
             return Till.done
-        elif till is None and timeout is None and seconds is None:
+        elif till == None and timeout == None and seconds == None:
             return None
         else:
             return object.__new__(cls)
@@ -131,7 +130,7 @@ def daemon(please_stop):
                         s.go()
 
     except Exception as e:
-        Log.warning("timer shutdown", cause=e)
+        Log.warning("unexpected timer shutdown", cause=e)
     finally:
         if DEBUG:
             Log.alert("TIMER SHUTDOWN")

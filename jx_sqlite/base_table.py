@@ -13,8 +13,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
+import jx_base
 from jx_base import generateGuid
-from jx_base.container import Container
 from jx_python import jx
 from jx_sqlite import UID
 from jx_sqlite.snowflake import Snowflake
@@ -25,7 +25,7 @@ from pyLibrary.sql.sqlite import Sqlite, quote_value
 _config=None
 
 
-class BaseTable(Container):
+class BaseTable(jx_base.Facts):
     @override
     def __init__(self, name, db=None, uid=UID, kwargs=None):
         """
@@ -54,7 +54,7 @@ class BaseTable(Container):
         self._next_guid = generateGuid()
         self._next_uid = 1
         self._make_digits_table()
-        self.uid_accessor = jx.get(self.sf.uid)
+        self.uid_accessor = jx.get(uid)
 
 
     def _make_digits_table(self):
@@ -62,6 +62,12 @@ class BaseTable(Container):
         if not existence.data:
             self.db.execute("CREATE TABLE __digits__(value INTEGER)")
             self.db.execute("INSERT INTO __digits__ " + SQL_UNION_ALL.join(SQL_SELECT + SQL(quote_value(i)) for i in range(10)))
+
+    @property
+    def namespace(self):
+        namespace
+
+    def
 
     @property
     def schema(self):

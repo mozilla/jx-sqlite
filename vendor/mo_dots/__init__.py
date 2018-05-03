@@ -411,6 +411,12 @@ def lower_match(value, candidates):
 
 
 def wrap(v):
+    """
+    WRAP AS Data OBJECT FOR DATA PROCESSING: https://github.com/klahnakoski/mo-dots/tree/dev/docs
+    :param v:  THE VALUE TO WRAP
+    :return:  Data INSTANCE
+    """
+
     type_ = _get(v, "__class__")
 
     if type_ is dict:
@@ -422,7 +428,7 @@ def wrap(v):
     elif type_ is list:
         return FlatList(v)
     elif type_ in generator_types:
-        return FlatList(list(v))
+        return FlatList(list(unwrap(vv) for vv in v))
     else:
         return v
 

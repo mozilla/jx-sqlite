@@ -297,6 +297,12 @@ def MIN(values, *others):
 
 
 def MAX(values, *others):
+    """
+    DECISIVE MAX
+    :param values:
+    :param others:
+    :return:
+    """
 
     if others:
         from mo_logs import Log

@@ -23,6 +23,8 @@ class SQL(text_type):
     """
     def __init__(self, template='', param=None):
         text_type.__init__(self)
+        if isinstance(template, SQL):
+            Log.error("Expecting text, not SQL")
         self.template = template
         self.param = param
 
@@ -65,6 +67,7 @@ SQL_STAR = SQL(" * ")
 
 SQL_AND = SQL(" AND ")
 SQL_OR = SQL(" OR ")
+SQL_NOT = SQL(" NOT ")
 SQL_ON = SQL(" ON ")
 
 SQL_CASE = SQL(" CASE ")
@@ -83,6 +86,7 @@ SQL_TRUE = SQL(" 1 ")
 SQL_FALSE = SQL(" 0 ")
 SQL_ONE = SQL(" 1 ")
 SQL_ZERO = SQL(" 0 ")
+SQL_NEG_ONE = SQL(" -1 ")
 SQL_NULL = SQL(" NULL ")
 SQL_IS_NULL = SQL(" IS NULL ")
 SQL_IS_NOT_NULL = SQL(" IS NOT NULL ")

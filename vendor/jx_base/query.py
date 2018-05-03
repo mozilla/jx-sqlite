@@ -14,23 +14,20 @@ from __future__ import unicode_literals
 from collections import Mapping
 from copy import copy
 
-from mo_future import text_type
-
+import jx_base
 from jx_base import STRUCT
-from jx_base.container import Container
 from jx_base.dimensions import Dimension
 from jx_base.domains import Domain, SetDomain, DefaultDomain
 from jx_base.expressions import jx_expression, Expression, Variable, LeavesOp, ScriptOp, OffsetOp, TRUE, FALSE
 from jx_base.queries import is_variable_name
-from jx_base.schema import Schema
 from mo_dots import Data, relative_field, concat_field
 from mo_dots import coalesce, Null, set_default, unwraplist, literal_field
 from mo_dots import wrap, unwrap, listwrap
 from mo_dots.lists import FlatList
+from mo_future import text_type
 from mo_json.typed_encoder import untype_path
 from mo_logs import Log
-from mo_math import AND, UNION
-from mo_math import Math
+from mo_math import AND, UNION, Math
 
 DEFAULT_LIMIT = 10
 MAX_LIMIT = 10000
@@ -62,7 +59,7 @@ class QueryOp(Expression):
     #     return output
 
     def __init__(self, op, frum, select=None, edges=None, groupby=None, window=None, where=None, sort=None, limit=None, format=None):
-        if isinstance(frum, Container):
+        if isinstance(frum, jx_base.Table):
             pass
         else:
             Expression.__init__(self, op, frum)
@@ -206,7 +203,7 @@ class QueryOp(Expression):
         return FALSE
 
     @staticmethod
-    def wrap(query, table, schema):
+    def wrap(query, container, namespace):
         """
         NORMALIZE QUERY SO IT CAN STILL BE JSON
         """
@@ -214,10 +211,14 @@ class QueryOp(Expression):
             return query
 
         query = wrap(query)
-
-        output = QueryOp("from", table)
-        output.format = query.format
-        output.limit = Math.min(MAX_LIMIT, coalesce(query.limit, DEFAULT_LIMIT))
+        table = container.get_table(query['from'])
+        schema = table.schema
+        output = QueryOp(
+            op="from",
+            frum=table,
+            format=query.format,
+            limit=Math.min(MAX_LIMIT, coalesce(query.limit, DEFAULT_LIMIT))
+        )
 
         if query.select or isinstance(query.select, (Mapping, list)):
             output.select = _normalize_selects(query.select, query.frum, schema=schema)
@@ -361,7 +362,7 @@ def _normalize_select(select, frum, schema=None):
                         canonical
                     )
                     for c in frum.get_columns()
-                    if c.type not in STRUCT
+                    if c.jx_type not in STRUCT
                 ])
             else:
                 Log.error("do not know what to do")
@@ -773,9 +774,11 @@ def _normalize_sort(sort=None):
             output.append({"value": s, "sort": 1})
         elif Math.is_integer(s):
             output.append({"value": OffsetOp("offset", s), "sort": 1})
-        elif all(d in sort_direction for d in s.values()) and not s.sort and not s.value:
+        elif not s.sort and not s.value and all(d in sort_direction for d in s.values()):
             for v, d in s.items():
                 output.append({"value": jx_expression(v), "sort": sort_direction[d]})
+        elif not s.sort and not s.value:
+            Log.error("`sort` clause must have a `value` property")
         else:
             output.append({"value": jx_expression(coalesce(s.value, s.field)), "sort": coalesce(sort_direction[s.sort], 1)})
     return output

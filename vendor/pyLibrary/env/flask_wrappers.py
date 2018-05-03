@@ -11,6 +11,7 @@ from __future__ import division
 from __future__ import unicode_literals
 
 import flask
+from flask import Response
 from mo_dots import coalesce
 
 from mo_future import binary_type
@@ -28,10 +29,8 @@ def gzip_wrapper(func, compress_lower_limit=None):
         if 'gzip' not in accept_encoding.lower():
             return response
 
-        resp = response.data
-        if isinstance(resp, binary_type) and len(resp) > compress_lower_limit:
-            response.headers['Content-Encoding'] = 'gzip'
-            response.set_data(b''.join(ibytes2icompressed([resp])))
+        response.headers['Content-Encoding'] = 'gzip'
+        response.response = ibytes2icompressed(response.response)
 
         return response
 

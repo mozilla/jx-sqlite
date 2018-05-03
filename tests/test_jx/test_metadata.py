@@ -11,10 +11,11 @@
 from __future__ import division
 from __future__ import unicode_literals
 
-from mo_dots import set_default, wrap
+from unittest import skipIf
 
+from mo_dots import wrap
 from pyLibrary.meta import extenstion_method
-from tests.test_jx import BaseTestCase, TEST_TABLE
+from tests.test_jx import BaseTestCase, TEST_TABLE, global_settings
 
 
 class TestMetadata(BaseTestCase):
@@ -82,6 +83,7 @@ class TestMetadata(BaseTestCase):
         }
         self.utils.send_queries(test)
 
+    @skipIf(True, "not implemented yet")
     def test_get_nested_columns(self):
         settings = self.utils.fill_container({
             "query": {"from": TEST_TABLE},  # DUMMY QUERY

@@ -371,6 +371,7 @@ class TestAggOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
+    @skipIf(global_settings.elasticsearch.version.startswith("1."), "ES14 does not support max on tuples")
     def test_max_on_tuple(self):
         test = {
             "data": [
@@ -396,6 +397,7 @@ class TestAggOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
+    @skipIf(global_settings.elasticsearch.version.startswith("1."), "ES14 does not support max on tuples")
     def test_max_on_tuple2(self):
         test = {
             "data": [

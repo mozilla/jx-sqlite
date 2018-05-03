@@ -47,7 +47,7 @@ class SetOpTable(InsertTable):
             if not any(startswith_field(cname, v) for cname in schema.keys()):
                 active_columns["."].add(Column(
                     names={".": v},
-                    type="null",
+                    jx_type="null",
                     es_column=".",
                     es_index=".",
                     nested_path=["."]

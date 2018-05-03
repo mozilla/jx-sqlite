@@ -16,13 +16,10 @@ import subprocess
 from collections import Mapping
 from datetime import datetime
 
-from pymysql import connect, InterfaceError, cursors
-
 import mo_json
 from jx_python import jx
 from mo_dots import coalesce, wrap, listwrap, unwrap
 from mo_files import File
-from mo_future import text_type, utf8_json_encoder
 from mo_kwargs import override
 from mo_logs import Log
 from mo_logs.exceptions import Except, suppress_exception
@@ -31,12 +28,15 @@ from mo_logs.strings import indent
 from mo_logs.strings import outdent
 from mo_math import Math
 from mo_times import Date
-from pyLibrary.sql import SQL, SQL_NULL, SQL_SELECT, SQL_LIMIT, SQL_WHERE, SQL_LEFT_JOIN, SQL_COMMA, SQL_FROM, SQL_AND, sql_list, sql_iso, SQL_ASC, SQL_TRUE, SQL_ONE, SQL_DESC, SQL_IS_NULL, sql_alias
+from pymysql import connect, InterfaceError, cursors
+
+from mo_future import text_type, utf8_json_encoder
+from pyLibrary.sql import SQL, SQL_NULL, SQL_SELECT, SQL_LIMIT, SQL_WHERE, SQL_LEFT_JOIN, SQL_FROM, SQL_AND, sql_list, sql_iso, SQL_ASC, SQL_TRUE, SQL_ONE, SQL_DESC, SQL_IS_NULL, sql_alias
 from pyLibrary.sql.sqlite import join_column
 
 DEBUG = False
 MAX_BATCH_SIZE = 100
-EXECUTE_TIMEOUT = 5 * 600 * 1000  # in milliseconds
+EXECUTE_TIMEOUT = 5 * 600 * 1000  # in milliseconds  SET TO ZERO (OR None) FOR HOST DEFAULT TIMEOUT
 
 all_db = []
 
@@ -97,7 +97,7 @@ class MySQL(object):
                 user=coalesce(self.settings.username, self.settings.user),
                 passwd=coalesce(self.settings.password, self.settings.passwd),
                 db=coalesce(self.settings.schema, self.settings.db),
-                read_timeout=coalesce(self.settings.read_timeout, (EXECUTE_TIMEOUT / 1000) - 10),
+                read_timeout=coalesce(self.settings.read_timeout, (EXECUTE_TIMEOUT / 1000) - 10 if EXECUTE_TIMEOUT else None, 5*60),
                 charset=u"utf8",
                 use_unicode=True,
                 ssl=coalesce(self.settings.ssl, None),
@@ -158,7 +158,8 @@ class MySQL(object):
             self.cursor = self.db.cursor()
         self.transaction_level += 1
         self.execute("SET TIME_ZONE='+00:00'")
-        self.execute("SET MAX_EXECUTION_TIME=" + text_type(EXECUTE_TIMEOUT))
+        if EXECUTE_TIMEOUT:
+            self.execute("SET MAX_EXECUTION_TIME=" + text_type(EXECUTE_TIMEOUT))
 
     def close(self):
         if self.transaction_level > 0:
@@ -558,15 +559,11 @@ class MySQL(object):
             if value == None:
                 return SQL_NULL
             elif isinstance(value, SQL):
-                if not value.param:
-                    # value.template CAN BE MORE THAN A TEMPLATE STRING
-                    return self.quote_sql(value.template)
-                param = {k: self.quote_sql(v) for k, v in value.param.items()}
-                return SQL(expand_template(value.template, param))
+                return self.quote_sql(value.template, value.param)
             elif isinstance(value, text_type):
-                return SQL(self.db.literal(value))
+                return SQL("'" + value.replace("'", "''") + "'")
             elif isinstance(value, Mapping):
-                return SQL(self.db.literal(json_encode(value)))
+                return self.quote_value(json_encode(value))
             elif Math.is_number(value):
                 return SQL(text_type(value))
             elif isinstance(value, datetime):
@@ -574,11 +571,14 @@ class MySQL(object):
             elif isinstance(value, Date):
                 return SQL("str_to_date('" + value.format("%Y%m%d%H%M%S.%f") + "', '%Y%m%d%H%i%s.%f')")
             elif hasattr(value, '__iter__'):
-                return SQL(self.db.literal(json_encode(value)))
+                return self.quote_value(json_encode(value))
             else:
-                return self.db.literal(value)
+                return self.quote_value(text_type(value))
         except Exception as e:
-            Log.error("problem quoting SQL", e)
+            Log.error("problem quoting SQL {{value}}", value=repr(value), cause=e)
+
+    def quote_list(self, values):
+        return sql_iso(sql_list(map(self.quote_value, values)))
 
     def quote_sql(self, value, param=None):
         """
@@ -589,13 +589,13 @@ class MySQL(object):
                 if not param:
                     return value
                 param = {k: self.quote_sql(v) for k, v in param.items()}
-                return expand_template(value, param)
+                return SQL(expand_template(value, param))
             elif isinstance(value, text_type):
-                return value
+                return SQL(value)
             elif isinstance(value, Mapping):
-                return self.db.literal(json_encode(value))
+                return self.quote_value(json_encode(value))
             elif hasattr(value, '__iter__'):
-                return sql_iso(sql_list([self.quote_sql(vv) for vv in value]))
+                return sql_iso(sql_list(map(self.quote_value, value)))
             else:
                 return text_type(value)
         except Exception as e:

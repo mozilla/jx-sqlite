@@ -15,20 +15,19 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
+import signal as _signal
 import sys
-
 from copy import copy
 from datetime import datetime, timedelta
 from time import sleep
 
-from mo_future import get_ident, start_new_thread, interrupt_main
-
 from mo_dots import Data, unwraplist, Null
+from mo_future import get_ident, start_new_thread, interrupt_main, get_function_name, text_type
 from mo_logs import Log, Except
-from mo_logs.profiles import CProfiler
-from mo_threads import Till, Lock, Signal, till
-
-from mo_threads.signal import AndSignals
+from mo_threads.lock import Lock
+from mo_threads.profiles import CProfiler
+from mo_threads.signal import AndSignals, Signal
+from mo_threads.till import Till
 
 DEBUG = False
 
@@ -81,7 +80,9 @@ class MainThread(object):
     def __init__(self):
         self.name = "Main Thread"
         self.id = get_ident()
+        self.please_stop = Signal()
         self.children = []
+        self.stop_logging = Log.stop
         self.timers = None
 
     def add_child(self, child):
@@ -96,9 +97,15 @@ class MainThread(object):
     def stop(self):
         """
         BLOCKS UNTIL ALL THREADS HAVE STOPPED
+        THEN RUNS sys.exit(0)
         """
-        join_errors = []
+        self.please_stop.go()
 
+        self_thread = Thread.current()
+        if self_thread != MAIN_THREAD or self_thread != self:
+            Log.error("Only the main thread can call stop() on main thread")
+
+        join_errors = []
         children = copy(self.children)
         for c in reversed(children):
             if DEBUG and c.name:
@@ -122,11 +129,57 @@ class MainThread(object):
         if join_errors:
             Log.error("Problem while stopping {{name|quote}}", name=self.name, cause=unwraplist(join_errors))
 
+        self.stop_logging()
         self.timers.stop()
         self.timers.join()
 
         if DEBUG:
             Log.note("Thread {{name|quote}} now stopped", name=self.name)
+        sys.exit(0)
+
+    def wait_for_shutdown_signal(
+        self,
+        please_stop=False,  # ASSIGN SIGNAL TO STOP EARLY
+        allow_exit=False,  # ALLOW "exit" COMMAND ON CONSOLE TO ALSO STOP THE APP
+        wait_forever=True  # IGNORE CHILD THREADS, NEVER EXIT.  False => IF NO CHILD THREADS LEFT, THEN EXIT
+    ):
+        """
+        FOR USE BY PROCESSES THAT NEVER DIE UNLESS EXTERNAL SHUTDOWN IS REQUESTED
+
+        CALLING THREAD WILL SLEEP UNTIL keyboard interrupt, OR please_stop, OR "exit"
+
+        :param please_stop:
+        :param allow_exit:
+        :param wait_forever:: Assume all needed threads have been launched. When done
+        :return:
+        """
+        self_thread = Thread.current()
+        if self_thread != MAIN_THREAD or self_thread != self:
+            Log.error("Only the main thread can sleep forever (waiting for KeyboardInterrupt)")
+
+        if isinstance(please_stop, Signal):
+            self.please_stop.on_go(please_stop.go)
+        else:
+            please_stop = self.please_stop
+
+        if not wait_forever:
+            # TRIGGER SIGNAL WHEN ALL CHILDREN THEADS ARE DONE
+            pending = copy(self_thread.children)
+            all = AndSignals(please_stop, len(pending))
+            for p in pending:
+                p.stopped.on_go(all.done)
+
+        try:
+            if allow_exit:
+                _wait_for_exit(please_stop)
+            else:
+                _wait_for_interrupt(please_stop)
+        except KeyboardInterrupt as _:
+            Log.alert("SIGINT Detected!  Stopping...")
+        except SystemExit as _:
+            Log.alert("SIGTERM Detected!  Stopping...")
+        finally:
+            self.stop()
 
 
 class Thread(object):
@@ -161,7 +214,6 @@ class Thread(object):
         else:
             self.parent = Thread.current()
             self.parent.add_child(self)
-
 
     def __enter__(self):
         return self
@@ -203,67 +255,66 @@ class Thread(object):
             pass
 
     def _run(self):
-        with CProfiler():
+        self.id = get_ident()
+        with ALL_LOCK:
+            ALL[self.id] = self
 
-            self.id = get_ident()
-            with ALL_LOCK:
-                ALL[self.id] = self
-
-            try:
-                if self.target is not None:
-                    a, k, self.args, self.kwargs = self.args, self.kwargs, None, None
+        try:
+            if self.target is not None:
+                a, k, self.args, self.kwargs = self.args, self.kwargs, None, None
+                with CProfiler():  # PROFILE IN HERE SO THAT __exit__() IS RUN BEFORE THREAD MARKED AS stopped
                     response = self.target(*a, **k)
-                    with self.synch_lock:
-                        self.end_of_thread = Data(response=response)
-                else:
-                    with self.synch_lock:
-                        self.end_of_thread = Null
-            except Exception as e:
-                e = Except.wrap(e)
                 with self.synch_lock:
-                    self.end_of_thread = Data(exception=e)
-                if self not in self.parent.children:
-                    # THREAD FAILURES ARE A PROBLEM ONLY IF NO ONE WILL BE JOINING WITH IT
-                    try:
-                        Log.fatal("Problem in thread {{name|quote}}", name=self.name, cause=e)
-                    except Exception:
-                        sys.stderr.write(b"ERROR in thread: " + str(self.name) + b" " + str(e) + b"\n")
-            finally:
+                    self.end_of_thread = Data(response=response)
+            else:
+                with self.synch_lock:
+                    self.end_of_thread = Null
+        except Exception as e:
+            e = Except.wrap(e)
+            with self.synch_lock:
+                self.end_of_thread = Data(exception=e)
+            if self not in self.parent.children:
+                # THREAD FAILURES ARE A PROBLEM ONLY IF NO ONE WILL BE JOINING WITH IT
                 try:
-                    children = copy(self.children)
-                    for c in children:
-                        try:
-                            if DEBUG:
-                                sys.stdout.write(b"Stopping thread " + str(c.name) + b"\n")
-                            c.stop()
-                        except Exception as e:
-                            Log.warning("Problem stopping thread {{thread}}", thread=c.name, cause=e)
+                    Log.fatal("Problem in thread {{name|quote}}", name=self.name, cause=e)
+                except Exception:
+                    sys.stderr.write(str("ERROR in thread: " + self.name + " " + text_type(e) + "\n"))
+        finally:
+            try:
+                children = copy(self.children)
+                for c in children:
+                    try:
+                        if DEBUG:
+                            sys.stdout.write(b"Stopping thread " + str(c.name) + b"\n")
+                        c.stop()
+                    except Exception as e:
+                        Log.warning("Problem stopping thread {{thread}}", thread=c.name, cause=e)
 
-                    for c in children:
-                        try:
-                            if DEBUG:
-                                sys.stdout.write(b"Joining on thread " + str(c.name) + b"\n")
-                            c.join()
-                        except Exception as e:
-                            Log.warning("Problem joining thread {{thread}}", thread=c.name, cause=e)
-                        finally:
-                            if DEBUG:
-                                sys.stdout.write(b"Joined on thread " + str(c.name) + b"\n")
+                for c in children:
+                    try:
+                        if DEBUG:
+                            sys.stdout.write(b"Joining on thread " + str(c.name) + b"\n")
+                        c.join()
+                    except Exception as e:
+                        Log.warning("Problem joining thread {{thread}}", thread=c.name, cause=e)
+                    finally:
+                        if DEBUG:
+                            sys.stdout.write(b"Joined on thread " + str(c.name) + b"\n")
 
-                    self.stopped.go()
-                    if DEBUG:
-                        Log.note("thread {{name|quote}} stopping", name=self.name)
-                    del self.target, self.args, self.kwargs
-                    with ALL_LOCK:
-                        del ALL[self.id]
+                self.stopped.go()
+                if DEBUG:
+                    Log.note("thread {{name|quote}} stopping", name=self.name)
+                del self.target, self.args, self.kwargs
+                with ALL_LOCK:
+                    del ALL[self.id]
 
-                except Exception as e:
-                    if DEBUG:
-                        Log.warning("problem with thread {{name|quote}}", cause=e, name=self.name)
-                finally:
-                    self.stopped.go()
-                    if DEBUG:
-                        Log.note("thread {{name|quote}} is done", name=self.name)
+            except Exception as e:
+                if DEBUG:
+                    Log.warning("problem with thread {{name|quote}}", cause=e, name=self.name)
+            finally:
+                if DEBUG:
+                    Log.note("thread {{name|quote}} is done", name=self.name)
+                self.stopped.go()
 
     def is_alive(self):
         return not self.stopped
@@ -294,7 +345,9 @@ class Thread(object):
     @staticmethod
     def run(name, target, *args, **kwargs):
         # ENSURE target HAS please_stop ARGUMENT
-        if "please_stop" not in target.__code__.co_varnames:
+        if get_function_name(target) == 'wrapper':
+            pass  # GIVE THE override DECORATOR A PASS
+        elif "please_stop" not in target.__code__.co_varnames:
             Log.error("function must have please_stop argument for signalling emergency shutdown")
 
         Thread.num_threads += 1
@@ -303,48 +356,6 @@ class Thread(object):
         output.start()
         return output
 
-    @staticmethod
-    def wait_for_shutdown_signal(
-        please_stop=False,  # ASSIGN SIGNAL TO STOP EARLY
-        allow_exit=False,  # ALLOW "exit" COMMAND ON CONSOLE TO ALSO STOP THE APP
-        wait_forever=True  # IGNORE CHILD THREADS, NEVER EXIT.  False -> IF NO CHILD THREADS LEFT, THEN EXIT
-    ):
-        """
-        FOR USE BY PROCESSES NOT EXPECTED TO EVER COMPLETE UNTIL EXTERNAL
-        SHUTDOWN IS REQUESTED
-
-        SLEEP UNTIL keyboard interrupt, OR please_stop, OR "exit"
-
-        :param please_stop:
-        :param allow_exit:
-        :param wait_forever:: Assume all needed threads have been launched. When done
-        :return:
-        """
-        if not isinstance(please_stop, Signal):
-            please_stop = Signal()
-
-        please_stop.on_go(lambda: start_new_thread(_stop_main_thread, ()))
-
-        self_thread = Thread.current()
-        if self_thread != MAIN_THREAD:
-            Log.error("Only the main thread can sleep forever (waiting for KeyboardInterrupt)")
-
-        if not wait_forever:
-            # TRIGGER SIGNAL WHEN ALL EXITING THREADS ARE DONE
-            pending = copy(self_thread.children)
-            all = AndSignals(please_stop, len(pending))
-            for p in pending:
-                p.stopped.on_go(all.done)
-
-        try:
-            if allow_exit:
-                _wait_for_exit(please_stop)
-            else:
-                _wait_for_interrupt(please_stop)
-        except (KeyboardInterrupt, SystemExit) as _:
-            Log.alert("SIGINT Detected!  Stopping...")
-        finally:
-            please_stop.go()
 
     @staticmethod
     def current():
@@ -356,15 +367,26 @@ class Thread(object):
                 return MAIN_THREAD
 
 
-def _stop_main_thread():
+def stop_main_thread(*args):
+    global DEBUG
+
+    DEBUG = True
     try:
+        if len(args):
+            Log.warning("exit with {{value}}", value=_describe_exit_codes.get(args[0], args[0]))
+    except Exception as _:
+        pass
+    finally:
         MAIN_THREAD.stop()
-    except Exception as e:
-        e = Except.wrap(e)
-        Log.warning("Problem with threads", cause=e)
-    sys.exit(0)
 
 
+_describe_exit_codes = {
+    _signal.SIGTERM: "SIGTERM",
+    _signal.SIGINT: "SIGINT"
+}
+
+_signal.signal(_signal.SIGTERM, stop_main_thread)
+_signal.signal(_signal.SIGINT, stop_main_thread)
 
 
 def _wait_for_exit(please_stop):
@@ -417,11 +439,10 @@ def _interrupt_main_safely():
         # WE COULD BE INTERRUPTING SELF
         pass
 
+
 MAIN_THREAD = MainThread()
 
 ALL_LOCK = Lock("threads ALL_LOCK")
 ALL = dict()
 ALL[get_ident()] = MAIN_THREAD
 
-MAIN_THREAD.timers = Thread.run("timers daemon", till.daemon)
-MAIN_THREAD.children.remove(MAIN_THREAD.timers)

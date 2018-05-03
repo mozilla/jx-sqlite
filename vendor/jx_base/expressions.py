@@ -11,7 +11,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
-import itertools
 import operator
 from collections import Mapping
 from decimal import Decimal
@@ -20,7 +19,7 @@ import mo_json
 from jx_base import OBJECT, python_type_to_json_type, BOOLEAN, NUMBER, INTEGER, STRING, IS_NULL
 from jx_base.queries import is_variable_name, get_property_name
 from mo_dots import coalesce, wrap, Null, split_field
-from mo_future import text_type, utf8_json_encoder, get_function_name
+from mo_future import text_type, utf8_json_encoder, get_function_name, zip_longest
 from mo_json import scrub
 from mo_logs import Log, Except
 from mo_math import Math, MAX, MIN, UNION
@@ -65,7 +64,7 @@ def jx_expression(expr, schema=None):
         if len(leaves) == 0:
             v.data_type = IS_NULL
         if len(leaves) == 1:
-            v.data_type = list(leaves)[0].type
+            v.data_type = list(leaves)[0].jx_type
     return output
 
 
@@ -76,7 +75,9 @@ def _jx_expression(expr):
     if isinstance(expr, Expression):
         Log.error("Expecting JSON, not expression")
 
-    if expr in (True, False, None) or expr == None or isinstance(expr, (float, int, Decimal, Date)):
+    if expr is None:
+        return TRUE
+    elif expr in (True, False, None) or expr == None or isinstance(expr, (float, int, Decimal, Date)):
         return Literal(None, expr)
     elif isinstance(expr, text_type):
         return Variable(expr)
@@ -264,16 +265,17 @@ class Variable(Expression):
         return {self}
 
     def map(self, map_):
-        if not isinstance(map_, Mapping):
-            Log.error("Expecting Mapping")
-
         return Variable(coalesce(map_.get(self.var), self.var))
 
     def __hash__(self):
         return self.var.__hash__()
 
     def __eq__(self, other):
-        return self.var.__eq__(other)
+        if isinstance(other, Variable):
+            return self.var == other.var
+        elif isinstance(other, text_type):
+            return self.var == other
+        return False
 
     def __unicode__(self):
         return self.var
@@ -427,12 +429,13 @@ class ScriptOp(Expression):
     ONLY FOR WHEN YOU TRUST THE SCRIPT SOURCE
     """
 
-    def __init__(self, op, script):
+    def __init__(self, op, script, data_type=OBJECT):
         Expression.__init__(self, op, None)
         if not isinstance(script, text_type):
             Log.error("expecting text of a script")
         self.simplified = True
         self.script = script
+        self.data_type = data_type
 
     @classmethod
     def define(cls, expr):
@@ -506,15 +509,8 @@ class Literal(Expression):
         elif self.term == None:
             return False
 
-        Log.warning("expensive")
-
-        from mo_testing.fuzzytestcase import assertAlmostEqual
-
-        try:
-            assertAlmostEqual(self.term, other)
-            return True
-        except Exception:
-            return False
+        if isinstance(other, Literal):
+            return (self.term == other.term) or (self.json == other.json)
 
     def __data__(self):
         return {"literal": self.value}
@@ -730,7 +726,10 @@ class DateOp(Literal):
     def __init__(self, op, term):
         if hasattr(self, "date"):
             return
-        self.date = term
+        if isinstance(term, text_type):
+            self.date = term
+        else:
+            self.date = coalesce(term.literal, term)
         v = unicode2Date(self.date)
         if isinstance(v, Date):
             Literal.__init__(self, op, v.unix)
@@ -938,7 +937,11 @@ class FloorOp(Expression):
 
     def __init__(self, op, terms, default=NULL):
         Expression.__init__(self, op, terms)
-        self.lhs, self.rhs = terms
+        if len(terms) == 1:
+            self.lhs = terms[0]
+            self.rhs = ONE
+        else:
+            self.lhs, self.rhs = terms
         self.default = default
 
     def __data__(self):
@@ -993,6 +996,11 @@ class EqOp(Expression):
             return {"eq": {self.lhs.var, self.rhs.value}}
         else:
             return {"eq": [self.lhs.__data__(), self.rhs.__data__()]}
+
+    def __eq__(self, other):
+        if isinstance(other, EqOp):
+            return self.lhs == other.lhs and self.rhs == other.rhs
+        return False
 
     def vars(self):
         return self.lhs.vars() | self.rhs.vars()
@@ -1145,6 +1153,11 @@ class AndOp(Expression):
     def __data__(self):
         return {"and": [t.__data__() for t in self.terms]}
 
+    def __eq__(self, other):
+        if isinstance(other, AndOp):
+            return all(a == b for a, b in zip_longest(self.terms, other.terms))
+        return False
+
     def vars(self):
         output = set()
         for t in self.terms:
@@ -1159,53 +1172,46 @@ class AndOp(Expression):
 
     @simplified
     def partial_eval(self):
-        terms = []
-        ors = []
-        for t in self.terms:
+        or_terms = [[]]  # LIST OF TUPLES FOR or-ing and and-ing
+        for i, t in enumerate(self.terms):
             simple = BooleanOp("boolean", t).partial_eval()
             if simple is TRUE:
-                pass
+                continue
             elif simple is FALSE:
                 return FALSE
             elif isinstance(simple, AndOp):
-                terms.extend([tt for tt in simple.terms if tt not in terms])
+                for and_terms in or_terms:
+                    and_terms.extend([tt for tt in simple.terms if tt not in and_terms])
+                continue
             elif isinstance(simple, OrOp):
-                ors.append(simple.terms)
+                or_terms = [
+                    and_terms + [o]
+                    for o in simple.terms
+                    for and_terms in or_terms
+                ]
+                continue
             elif simple.type != BOOLEAN:
                 Log.error("expecting boolean value")
-            elif NotOp("not", simple).partial_eval() in terms:
-                return FALSE
-            elif simple not in terms:
-                terms.append(simple)
-        if len(ors) == 0:
-            if len(terms) == 0:
+
+            for and_terms in list(or_terms):
+                if NotOp("not", simple).partial_eval() in and_terms:
+                    or_terms.remove(and_terms)
+                elif simple not in and_terms:
+                    and_terms.append(simple)
+
+        if len(or_terms) == 1:
+            and_terms = or_terms[0]
+            if len(and_terms) == 0:
                 return TRUE
-            if len(terms) == 1:
-                return terms[0]
-            output = AndOp("and", terms)
-            return output
-        elif len(ors) == 1:  # SOME SIMPLE COMMON FACTORING
-            if len(terms) == 0:
-                return OrOp("or", ors[0])
-            elif len(terms) == 1 and terms[0] in ors[0]:
-                return terms[0]
+            elif len(and_terms) == 1:
+                return and_terms[0]
             else:
-                agg_terms = []
-                for combo in ors[0]:
-                    agg_terms.append(
-                        AndOp("and", [combo]+terms).partial_eval()
-                    )
-                return OrOp("or", agg_terms).partial_eval()
-        elif len(terms) == 0:
-            return OrOp("or", ors[0])
+                return AndOp("and", and_terms)
 
-        agg_terms = []
-        for combo in itertools.product(*ors):
-            agg_terms.append(
-                AndOp("and", list(combo)+terms).partial_eval()
-            )
-        return OrOp("or", agg_terms)
-
+        return OrOp("or", [
+            AndOp("and", and_terms) if len(and_terms) > 1 else and_terms[0]
+            for and_terms in or_terms
+        ])
 
 class OrOp(Expression):
     data_type = BOOLEAN
@@ -2417,9 +2423,9 @@ class SplitOp(Expression):
         )
 
     def missing(self):
-        v = self.value.to_ruby(not_null=True)
-        find = self.find.to_ruby(not_null=True)
-        index = v + ".indexOf(" + find + ", " + self.start.to_ruby() + ")"
+        v = self.value.to_es_script(not_null=True)
+        find = self.find.to_es_script(not_null=True)
+        index = v + ".indexOf(" + find + ", " + self.start.to_es_script() + ")"
 
         return AndOp("and", [
             self.default.missing(),

@@ -56,6 +56,8 @@ def expand(doc, doc_url="param://", params=None):
     ASSUMING YOU ALREADY PULED THE doc FROM doc_url, YOU CAN STILL USE THE
     EXPANDING FEATURE
 
+    USE mo_json_config.expand({}) TO ASSUME CURRENT WORKING DIRECTORY
+
     :param doc: THE DATA STRUCTURE FROM JSON SOURCE
     :param doc_url: THE URL THIS doc CAME FROM (DEFAULT USES params AS A DOCUMENT SOURCE)
     :param params: EXTRA PARAMETERS NOT FOUND IN THE doc_url PARAMETERS (WILL SUPERSEDE PARAMETERS FROM doc_url)

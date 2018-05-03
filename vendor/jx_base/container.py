@@ -47,7 +47,9 @@ def _delayed_imports():
 
 class Container(object):
     """
-    Containers are data storage capable of handing queries on that storage
+    CONTAINERS HOLD MULTIPLE FACTS AND CAN HANDLE
+    GENERAL JSON QUERY EXPRESSIONS ON ITS CONTENTS
+    METADATA FOR A Container IS CALL A Namespace
     """
 
     __slots__ = ["data", "namespaces"]
@@ -94,16 +96,6 @@ class Container(object):
                 Log.error("Do not know how to handle {{frum|json}}", frum=frum)
         else:
             Log.error("Do not know how to handle {{type}}", type=frum.__class__.__name__)
-
-
-    def __init__(self, frum, schema=None):
-        object.__init__(self)
-        if not type2container:
-            _delayed_imports()
-
-        self.data = frum
-        if isinstance(schema, list):
-            Log.error("expecting map from es_column to column object")
 
     def query(self, query):
         if query.frum != self:

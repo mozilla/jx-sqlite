@@ -17,6 +17,7 @@ from jx_base.expressions import NULL
 from mo_dots import wrap
 from mo_logs import Log
 from mo_logs.exceptions import extract_stack
+from mo_times import Date
 from tests.test_jx import BaseTestCase, TEST_TABLE, global_settings
 
 lots_of_data = wrap([{"a": i} for i in range(30)])
@@ -94,7 +95,6 @@ class TestSorting(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    # @skipIf(global_settings.use in ["travis", "elasticsearch"], "sorting is hard with elasticsearch")
     def test_2edge_and_sort(self):
         test = {
             "data": [
@@ -225,6 +225,58 @@ class TestSorting(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
+    def test_groupby_expression_and_sort(self):
+        test = {
+            "data": [
+                {"a": Date("2018-04-01 12:34:00").unix, "value": 1},
+                {"a": Date("2018-04-01 13:34:00").unix, "value": 3},
+                {"a": Date("2018-04-01 15:34:00").unix, "value": 4},
+                {"a": Date("2018-04-01 08:34:00").unix, "value": 6},
+                {"a": Date("2018-04-02 00:34:00").unix, "value": 7},
+                {"value": 99},
+                {"a": Date("2018-04-02 01:34:00").unix, "value": 8},
+                {"a": Date("2018-04-02 02:44:00").unix, "value": 9},
+                {"a": Date("2018-04-02 04:54:00").unix, "value": 10},
+                {"a": Date("2018-04-02 14:04:00").unix, "value": 11}
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "groupby": {
+                    "name": "date",
+                    "value": {"floor": [{"div": ["a", 86400]}]}
+                },
+                "sort": {"value": {"floor": [{"div": ["a", 86400]}]}}
+            },
+            "expecting_list": {
+                "meta": {"format": "list"},
+                "data": [
+                    {"date": 17622, "count": 4},
+                    {"date": 17623, "count": 5},
+                    {"count": 1}
+                ]
+            },
+            "expecting_table": {
+                "meta": {"format": "table"},
+                "header": ["date", "count"],
+                "data": [
+                    [17622, 4],
+                    [17623, 5],
+                    [NULL, 1]
+                ]
+            },
+            "expecting_cube": {
+                "meta": {"format": "cube"},
+                "edges": [{"name": "date", "domain": {"type": "set", "partitions": [
+                    {"value": 17622},
+                    {"value": 17623}
+                ]}}],
+                "data": {
+                    "count": [4, 5, 1]
+                }
+            }
+        }
+        self.utils.execute_tests(test)
+
     def test_groupby2a_and_sort(self):
         test = {
             "data": [
@@ -272,7 +324,6 @@ class TestSorting(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.is_travis, "not expected to pass yet")
     def test_groupby2b_and_sort(self):
         test = {
             "data": [
@@ -338,7 +389,6 @@ class TestSorting(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.is_travis, "not expected to pass yet")
     def test_groupby2c_and_sort(self):
         test = {
             "data": [
