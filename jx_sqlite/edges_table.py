@@ -18,7 +18,7 @@ from jx_python import jx
 from jx_sqlite import get_column, _make_column_name, sql_text_array_to_set, STATS, sql_aggs, ColumnMapping, untyped_column, quoted_PARENT, quoted_UID
 from jx_sqlite.expressions import Variable, sql_type_to_json_type, TupleOp
 from jx_sqlite.setop_table import SetOpTable
-from mo_dots import listwrap, coalesce, split_field, join_field, startswith_field, relative_field, concat_field
+from mo_dots import listwrap, coalesce, split_field, join_field, startswith_field, relative_field, concat_field, tail_field
 from mo_future import text_type, unichr
 from mo_logs import Log
 from mo_math import Math
@@ -33,9 +33,7 @@ class EdgesTable(SetOpTable):
         query = query.copy()  # WE WILL BE MARKING UP THE QUERY
         index_to_column = {}  # MAP FROM INDEX TO COLUMN (OR SELECT CLAUSE)
         outer_selects = []  # EVERY SELECT CLAUSE (NOT TO BE USED ON ALL TABLES, OF COURSE)
-        frum_path = split_field(frum)
-        base_table = join_field(frum_path[0:1])
-        path = join_field(frum_path[1:])
+        base_table, path = tail_field(frum)
         nest_to_alias = {
             nested_path: quote_column("__" + unichr(ord('a') + i) + "__")
             for i, (nested_path, sub_table) in enumerate(self.sf.tables.items())

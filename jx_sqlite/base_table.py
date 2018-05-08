@@ -67,8 +67,6 @@ class BaseTable(jx_base.Facts):
     def namespace(self):
         namespace
 
-    def
-
     @property
     def schema(self):
         return self.sf.tables['.'].schema

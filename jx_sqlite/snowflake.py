@@ -14,28 +14,25 @@ from collections import OrderedDict
 from copy import copy
 
 import jx_base
-from jx_base import STRUCT, OBJECT, EXISTS, STRING
+from jx_base import STRUCT, OBJECT, EXISTS, STRING, Facts
 from jx_base.queries import get_property_name
-from jx_python import jx
-from jx_python.meta import Column
+from jx_python.meta import Column, ColumnList
 from jx_sqlite import typed_column, UID, quoted_UID, quoted_GUID, sql_types, quoted_PARENT, quoted_ORDER, GUID, untyped_column
-from mo_dots import relative_field, listwrap, split_field, join_field, wrap, startswith_field, concat_field, Null, coalesce, set_default
+from mo_dots import relative_field, listwrap, wrap, startswith_field, concat_field, Null, coalesce, set_default, tail_field
 from mo_future import text_type
 from mo_logs import Log
 from pyLibrary.sql import SQL_FROM, sql_iso, sql_list, SQL_LIMIT, SQL_SELECT, SQL_ZERO, SQL_STAR
 from pyLibrary.sql.sqlite import quote_column
 
 
-class Container(jx_base.Container):
+class Namespace(jx_base.Namespace):
     """
     MANAGE SQLITE DATABASE
     """
     def __init__(self, db):
         self.db = db
         self.tables = OrderedDict()  # MAP FROM NESTED PATH TO Table OBJECT, PARENTS PROCEED CHILDREN
-        self._columns = []  # EVERY COLUMN IS ACCESSIBLE BY EVERY TABLE IN THE SNOWFLAKE
-        if not self.read_db():
-            self.create_fact(uid)
+        self._columns = self.read_db()
 
     def read_db(self):
         """
@@ -43,16 +40,15 @@ class Container(jx_base.Container):
         :return: None
         """
 
+        columns = ColumnList()
+
         # FIND ALL TABLES
         result = self.db.query("SELECT * FROM sqlite_master WHERE type='table' ORDER BY name")
         tables = wrap([{k: d[i] for i, k in enumerate(result.header)} for d in result.data])
-        tables_found = False
         for table in tables:
             if table.name.startswith("__"):
                 continue
-            tables_found = True
-            nested_path = [join_field(split_field(tab.name)[1:]) for tab in jx.reverse(tables) if startswith_field(table.name, tab.name)]
-            self.add_table_to_schema(nested_path)
+            base_table, nested_path = tail_field(table.name)
 
             # LOAD THE COLUMNS
             command = "PRAGMA table_info"+sql_iso(quote_column(table.name))
@@ -62,24 +58,22 @@ class Container(jx_base.Container):
                 if name.startswith("__"):
                     continue
                 cname, ctype = untyped_column(name)
-                column = Column(
-                    names={np: relative_field(cname, np) for np in nested_path},
+                columns.add(Column(
+                    names={'.': cname},  # I THINK COLUMNS HAVE THIER FULL PATH
                     jx_type=coalesce(ctype, {"TEXT": "string", "REAL": "number", "INTEGER": "integer"}.get(dtype)),
-                    es_type=dtype,
                     nested_path=nested_path,
+                    es_type=dtype,
                     es_column=name,
                     es_index=table.name
-                )
+                ))
+        return columns
 
-                self.add_column_to_schema(column)
-
-        return tables_found
-
-    def create_fact(self, fact_name, uid=UID):
+    def create_snowflake(self, fact_name, uid=UID):
         """
         MAKE NEW TABLE WITH GIVEN guid
+        :param fact_name:  NAME FOR THE CENTRAL FACTS
         :param uid: name, or list of names, for the GUID
-        :return: None
+        :return: Facts
         """
         self.add_table_to_schema(["."])
 
@@ -113,18 +107,17 @@ class Container(jx_base.Container):
 
         self.db.execute(command)
 
+        snowflake = Snowflake(fact_name, self)
+        return Facts(self, snowflake)
+
 
 class Snowflake(jx_base.Snowflake):
     """
     MANAGE SQLITE DATABASE
     """
-    def __init__(self, fact, db):
-        self.fact = fact  # THE CENTRAL FACT TABLE
-        self.db = db
-        self._columns = []  # EVERY COLUMN IS ACCESSIBLE BY EVERY TABLE IN THE SNOWFLAKE
-        self.tables = OrderedDict()  # MAP FROM NESTED PATH TO Table OBJECT, PARENTS PROCEED CHILDREN
-        if not self.read_db():
-            self.create_fact(uid)
+    def __init__(self, fact_name, namespace):
+        self.fact_name = fact_name  # THE CENTRAL FACT TABLE
+        self.namespace = namespace
 
     def change_schema(self, required_changes):
         """
@@ -237,7 +230,7 @@ class Snowflake(jx_base.Snowflake):
             table.columns.append(column)
 
 
-class Table(Container):
+class Table(jx_base.Table):
 
     def __init__(self, nested_path):
         self.nested_path = nested_path

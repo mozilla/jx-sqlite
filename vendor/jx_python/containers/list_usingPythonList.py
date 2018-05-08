@@ -14,8 +14,6 @@ from __future__ import unicode_literals
 import itertools
 from collections import Mapping
 
-from mo_math import UNION
-
 import jx_base
 from jx_base import Container
 from jx_base.expressions import jx_expression, Expression, Variable, TRUE

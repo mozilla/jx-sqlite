@@ -88,6 +88,22 @@ def unliteral_field(field):
     return field.replace("\.", ".")
 
 
+def tail_field(field):
+    """
+    RETURN THE FIRST STEP IN PATH, ALONG WITH THE REMAINING TAIL
+    """
+    if field == "." or field==None:
+        return ".", "."
+    elif "." in field:
+        if "\\." in field:
+            return tuple(k.replace("\a", ".") for k in field.replace("\\.", "\a").split(".", maxsplit=1))
+        else:
+            return field.split(".", maxsplit=1)
+    else:
+        return field, "."
+
+
+
 def split_field(field):
     """
     RETURN field AS ARRAY OF DOT-SEPARATED FIELDS
