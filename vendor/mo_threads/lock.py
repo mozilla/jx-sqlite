@@ -49,7 +49,7 @@ def _late_import():
 
 class Lock(object):
     """
-    A NON-RE-ENTRANT LOCK WITH wait() AND
+    A NON-RE-ENTRANT LOCK WITH wait()
     """
     __slots__ = ["name", "lock", "waiting"]
 

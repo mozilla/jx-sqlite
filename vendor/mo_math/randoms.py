@@ -30,7 +30,7 @@ class Random(object):
 
     @staticmethod
     def base64(length):
-        return Random.string(length, string.digits + string.letters + '+/')
+        return Random.string(length, SIMPLE_ALPHABET + '+/')
 
     @staticmethod
     def int(*args):

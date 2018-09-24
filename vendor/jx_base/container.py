@@ -52,7 +52,6 @@ class Container(object):
     METADATA FOR A Container IS CALL A Namespace
     """
 
-    __slots__ = ["data", "namespaces"]
 
     @classmethod
     def new_instance(type, frum, schema=None):
@@ -100,40 +99,40 @@ class Container(object):
     def query(self, query):
         if query.frum != self:
             Log.error("not expected")
-        Log.error("Not implemented")
+        raise NotImplementedError()
 
     def filter(self, where):
         return self.where(where)
 
     def where(self, where):
         _ = where
-        Log.error("not implemented")
+        raise NotImplementedError()
 
     def sort(self, sort):
         _ = sort
-        Log.error("not implemented")
+        raise NotImplementedError()
 
     def select(self, select):
         _ = select
-        Log.error("not implemented")
+        raise NotImplementedError()
 
     def window(self, window):
-        Log.error("not implemented")
+        raise NotImplementedError()
 
     def having(self, having):
         _ = having
-        Log.error("not implemented")
+        raise NotImplementedError()
 
     def format(self, format):
         _ = format
-        Log.error("not implemented")
+        raise NotImplementedError()
 
     def get_columns(self, table_name):
         """
         USE THE frum TO DETERMINE THE COLUMNS
         """
-        Log.error("Not implemented")
+        raise NotImplementedError()
 
     @property
     def schema(self):
-        Log.error("Not implemented")
+        raise NotImplementedError()

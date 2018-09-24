@@ -390,7 +390,7 @@ def value2intlist(value):
     elif isinstance(value, int):
         return [value]
     elif value.strip() == "":
-        return None
+        return []
     else:
         return [int(value)]
 

@@ -8,8 +8,13 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
+from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
+
+from unittest import skip
+
+from jx_base.query import DEFAULT_LIMIT
 
 from jx_base.expressions import NULL
 from mo_dots import wrap
@@ -298,6 +303,20 @@ class TestTime(BaseTestCase):
             "expecting_list": {
                 "meta": {"format": "list"},
                 "data": [2, 2, 3, 13, 17]
+            }
+        }
+        self.utils.execute_tests(test)
+
+    def test_literal_time(self):
+        test = {
+            "data": test_data_3,
+            "query": {
+                "from": TEST_TABLE,
+                "select": {"name": "date", "value": {"date": {"literal": "2018-01-01"}}}
+            },
+            "expecting_list": {
+                "meta": {"format": "list"},
+                "data": [1514764800] * DEFAULT_LIMIT
             }
         }
         self.utils.execute_tests(test)

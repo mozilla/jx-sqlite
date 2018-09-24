@@ -232,7 +232,7 @@ class Max(WindowFunction):
         self.max = mo_math.MAX([self.max, value])
 
     def sub(self, value):
-        Log.error("Not implemented")
+        raise NotImplementedError()
 
     def end(self):
         return self.max

@@ -12,12 +12,11 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
-from mo_times import Date
 
 _range = range
 
+from mo_times import Date
 from collections import Mapping
-
 from jx_base import query
 from jx_python import expressions as _expressions
 from jx_python import flat_list, group_by
@@ -66,7 +65,7 @@ def run(query, container=Null):
     BUT IT IS ALSO PROCESSING A list CONTAINER; SEPARATE TO A ListContainer
     """
     if container == None:
-        container = wrap(query)['from'].container
+        container = wrap(query)['from']
         query_op = QueryOp.wrap(query, container=container, namespace=container.schema)
     else:
         query_op = QueryOp.wrap(query, container, container.namespace)
@@ -591,11 +590,15 @@ def value_compare(left, right, ordering=1):
 
         ltype = type(left)
         rtype = type(right)
-        type_diff = TYPE_ORDER.get(ltype, 10) - TYPE_ORDER.get(rtype, 10)
+        ltype_num = TYPE_ORDER.get(ltype, 10)
+        rtype_num = TYPE_ORDER.get(rtype, 10)
+        type_diff = ltype_num - rtype_num
         if type_diff != 0:
             return ordering if type_diff > 0 else -ordering
 
-        if ltype is builtin_tuple:
+        if ltype_num == 9:
+            return 0
+        elif ltype is builtin_tuple:
             for a, b in zip(left, right):
                 c = value_compare(a, b)
                 if c != 0:
@@ -1084,6 +1087,8 @@ def accumulate(vals):
 
 def reverse(vals):
     # TODO: Test how to do this fastest
+    if not hasattr(vals, "len"):
+        vals = list(vals)
     l = len(vals)
     output = [None] * l
 

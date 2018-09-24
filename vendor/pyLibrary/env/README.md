@@ -36,7 +36,7 @@ selecting only the properties it requires.
 		"type" : "test_result",
 		"debug" : true,
 		"limit_replicas" : true,
-		"schema_file" : "./resources/schema/test_schema.json"
+		"schema_file" : "resources/schema/test_schema.json"
 	},
 
 

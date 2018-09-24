@@ -51,7 +51,7 @@ class Multiset(object):
 class _Multiset(Multiset):
 
     def __new__(cls, *args):
-        return object.__new__(cls, *args)
+        return object.__new__(cls)
 
 
     def __init__(self, list=None, key_field=None, count_field=None, **kwargs):
@@ -150,7 +150,7 @@ class _Multiset(Multiset):
 
 class _NegMultiset(Multiset):
     def __new__(cls, *args, **kwargs):
-            return object.__new__(cls, *args, **kwargs)
+            return object.__new__(cls)
 
     def __init__(self, list=None, key_field=None, count_field=None, **kwargs):
         if not key_field and not count_field:
@@ -230,7 +230,7 @@ class _NegMultiset(Multiset):
         return set(self.dic.keys())
 
     def __len__(self):
-        return sum(self.dic.values())
+        return sum(abs(v) for v in self.dic.values())
 
     def __nonzero__(self):
         if self.dic:

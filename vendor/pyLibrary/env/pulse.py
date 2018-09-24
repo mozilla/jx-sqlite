@@ -82,7 +82,7 @@ class Consumer(Thread):
             count += 1
 
         if self.settings.debug:
-            Log.note("{{data}}",  data= data)
+            Log.note("{{data}}", data=data)
         if self.target_queue != None:
             try:
                 self.target_queue.add(data)
@@ -214,7 +214,7 @@ class ModifiedGenericConsumer(GenericConsumer):
         while True:
             try:
                 self.connection.drain_events(timeout=self.timeout)
-            except socket_timeout, e:
+            except socket_timeout as e:
                 Log.warning("timeout! Restarting {{name}} pulse consumer.", name=self.exchange, cause=e)
                 try:
                     self.disconnect()

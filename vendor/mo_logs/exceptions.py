@@ -16,7 +16,7 @@ from __future__ import unicode_literals
 import sys
 from collections import Mapping
 
-from mo_dots import Data, listwrap, unwraplist, set_default, Null
+from mo_dots import Data, listwrap, unwraplist, set_default, Null, coalesce
 from mo_future import text_type, PY3
 from mo_logs.strings import indent, expand_template
 
@@ -34,11 +34,11 @@ class Except(Exception):
     @staticmethod
     def new_instance(desc):
         return Except(
-            desc.type,
-            desc.template,
-            desc.params,
-            [Except.new_instance(c) for c in listwrap(desc.cause)],
-            desc.trace
+            type=desc.type,
+            template=desc.template,
+            params=desc.params,
+            cause=[Except.new_instance(c) for c in listwrap(desc.cause)],
+            trace=desc.trace
         )
 
     def __init__(self, type=ERROR, template=Null, params=Null, cause=Null, trace=Null, **kwargs):
@@ -46,7 +46,7 @@ class Except(Exception):
         self.type = type
         self.template = template
         self.params = set_default(kwargs, params)
-        self.cause = cause
+        self.cause = Except.wrap(cause)
 
         if not trace:
             self.trace=extract_stack(2)
@@ -55,6 +55,13 @@ class Except(Exception):
 
     @classmethod
     def wrap(cls, e, stack_depth=0):
+        """
+        ENSURE THE STACKTRACE AND CAUSAL CHAIN IS CAPTURED, PLUS ADD FEATURES OF Except
+
+        :param e: AN EXCEPTION OF ANY TYPE
+        :param stack_depth: HOW MANY CALLS TO TAKE OFF THE TOP OF THE STACK TRACE
+        :return: A Except OBJECT OF THE SAME
+        """
         if e == None:
             return Null
         elif isinstance(e, (list, Except)):
@@ -63,14 +70,21 @@ class Except(Exception):
             e.cause = unwraplist([Except.wrap(c) for c in listwrap(e.cause)])
             return Except(**e)
         else:
-            if hasattr(e, "message") and e.message:
-                cause = Except(ERROR, text_type(e.message), trace=_extract_traceback(0))
+            tb = getattr(e, '__traceback__', None)
+            if tb is not None:
+                trace = _parse_traceback(tb)
             else:
-                cause = Except(ERROR, text_type(e), trace=_extract_traceback(0))
+                trace = _extract_traceback(0)
+
+            cause = Except.wrap(getattr(e, '__cause__', None))
+            if hasattr(e, "message") and e.message:
+                output = Except(type=ERROR, template=text_type(e.message), trace=trace, cause=cause)
+            else:
+                output = Except(type=ERROR, template=text_type(e), trace=trace, cause=cause)
 
             trace = extract_stack(stack_depth + 2)  # +2 = to remove the caller, and it's call to this' Except.wrap()
-            cause.trace.extend(trace)
-            return cause
+            output.trace.extend(trace)
+            return output
 
     @property
     def message(self):
@@ -101,7 +115,6 @@ class Except(Exception):
             for c in listwrap(self.cause):
                 with suppress_exception:
                     cause_strings.append(text_type(c))
-
 
             output += "caused by\n\t" + "and caused by\n\t".join(cause_strings)
 
@@ -145,16 +158,13 @@ def extract_stack(start=0):
         f = f.f_back
 
     stack = []
-    n = 0
     while f is not None:
         stack.append({
-            "depth": n,
             "line": f.f_lineno,
             "file": f.f_code.co_filename,
             "method": f.f_code.co_name
         })
         f = f.f_back
-        n += 1
     return stack
 
 
@@ -167,19 +177,19 @@ def _extract_traceback(start):
     tb = sys.exc_info()[2]
     for i in range(start):
         tb = tb.tb_next
+    return _parse_traceback(tb)
 
+
+def _parse_traceback(tb):
     trace = []
-    n = 0
     while tb is not None:
         f = tb.tb_frame
         trace.append({
-            "depth": n,
             "file": f.f_code.co_filename,
             "line": tb.tb_lineno,
             "method": f.f_code.co_name
         })
         tb = tb.tb_next
-        n += 1
     trace.reverse()
     return trace
 
@@ -201,7 +211,7 @@ class Suppress(object):
         self.type = exception_type
 
     def __enter__(self):
-        pass
+        return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if not exc_val or isinstance(exc_val, self.type):

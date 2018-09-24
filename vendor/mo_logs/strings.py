@@ -22,10 +22,11 @@ from datetime import datetime as builtin_datetime
 from datetime import timedelta, date
 from json.encoder import encode_basestring
 
-from mo_dots import coalesce, wrap, get_module
-from mo_future import text_type, xrange, binary_type, round as _round, PY3, get_function_name
+from mo_dots import coalesce, wrap, get_module, Data
+from mo_future import text_type, xrange, binary_type, round as _round, get_function_name, zip_longest, transpose, PY3
 from mo_logs.convert import datetime2unix, datetime2string, value2json, milli2datetime, unix2datetime
-from mo_logs.url import value2url_param
+
+# from mo_files.url import value2url_param
 
 FORMATTERS = {}
 
@@ -44,7 +45,7 @@ def _late_import():
     try:
         _json_encoder = get_module("mo_json.encoder").json_encoder
     except Exception:
-        _json_encoder = _json.dumps
+        _json_encoder = lambda value, pretty: _json.dumps(value)
     from mo_logs import Log as _Log
     from mo_logs.exceptions import Except as _Except
     from mo_times.durations import Duration as _Duration
@@ -109,11 +110,17 @@ def unix(value):
     return str(datetime2unix(value))
 
 
+value2url_param = None
+
+
 @formatter
 def url(value):
     """
     convert FROM dict OR string TO URL PARAMETERS
     """
+    global value2url_param
+    if not value2url_param:
+        from mo_files.url import value2url_param
     return value2url_param(value)
 
 
@@ -185,7 +192,7 @@ def tab(value):
     :return:
     """
     if isinstance(value, Mapping):
-        h, d = zip(*wrap(value).leaves())
+        h, d = transpose(*wrap(value).leaves())
         return (
             "\t".join(map(value2json, h)) +
             "\n" +
@@ -482,16 +489,20 @@ _SNIP = "...<snip>..."
 
 @formatter
 def limit(value, length):
-    # LIMIT THE STRING value TO GIVEN LENGTH, CHOPPING OUT THE MIDDLE IF REQUIRED
-    if len(value) <= length:
-        return value
-    elif length < len(_SNIP) * 2:
-        return value[0:length]
-    else:
-        lhs = int(round((length - len(_SNIP)) / 2, 0))
-        rhs = length - len(_SNIP) - lhs
-        return value[:lhs] + _SNIP + value[-rhs:]
-
+    try:
+        # LIMIT THE STRING value TO GIVEN LENGTH, CHOPPING OUT THE MIDDLE IF REQUIRED
+        if len(value) <= length:
+            return value
+        elif length < len(_SNIP) * 2:
+            return value[0:length]
+        else:
+            lhs = int(round((length - len(_SNIP)) / 2, 0))
+            rhs = length - len(_SNIP) - lhs
+            return value[:lhs] + _SNIP + value[-rhs:]
+    except Exception as e:
+        if not _Duration:
+            _late_import()
+        _Log.error("Not expected", cause=e)
 
 @formatter
 def split(value, sep="\n"):
@@ -514,7 +525,7 @@ THE REST OF THIS FILE IS TEMPLATE EXPANSION CODE USED BY mo-logs
 
 def expand_template(template, value):
     """
-    :param template: A UNICODE STRING WITH VARIABLE NAMES IN MOUSTACHES `{{}}`
+    :param template: A UNICODE STRING WITH VARIABLE NAMES IN MOUSTACHES `{{.}}`
     :param value: Data HOLDING THE PARAMTER VALUES
     :return: UNICODE STRING WITH VARIABLES EXPANDED
     """
@@ -718,7 +729,7 @@ def edit_distance(s1, s2):
 DIFF_PREFIX = re.compile(r"@@ -(\d+(?:\s*,\d+)?) \+(\d+(?:\s*,\d+)?) @@")
 
 
-def apply_diff(text, diff, reverse=False):
+def apply_diff(text, diff, reverse=False, verify=True):
     """
     SOME EXAMPLES OF diff
     #@@ -1 +1 @@
@@ -739,45 +750,105 @@ def apply_diff(text, diff, reverse=False):
     +
     +Content Team Engagement & Tasks : https://appreview.etherpad.mozilla.org/40
     """
+
     if not diff:
         return text
-    if diff[0].strip() == "":
-        return text
+    output = text
+    hunks = [
+        (new_diff[start_hunk], new_diff[start_hunk+1:end_hunk])
+        for new_diff in [[d.lstrip() for d in diff if d.lstrip() and d != "\\ No newline at end of file"] + ["@@"]]  # ANOTHER REPAIR
+        for start_hunk, end_hunk in pairwise(i for i, l in enumerate(new_diff) if l.startswith('@@'))
+    ]
+    for header, hunk_body in (reversed(hunks) if reverse else hunks):
+        matches = DIFF_PREFIX.match(header.strip())
+        if not matches:
+            if not _Log:
+                _late_import()
 
-    matches = DIFF_PREFIX.match(diff[0].strip())
-    if not matches:
-        if not _Log:
-            _late_import()
+            _Log.error("Can not handle \n---\n{{diff}}\n---\n",  diff=diff)
 
-        _Log.error("Can not handle {{diff}}\n",  diff= diff[0])
+        removes = tuple(int(i.strip()) for i in matches.group(1).split(","))  # EXPECTING start_line, length TO REMOVE
+        remove = Data(start=removes[0], length=1 if len(removes) == 1 else removes[1])  # ASSUME FIRST LINE
+        adds = tuple(int(i.strip()) for i in matches.group(2).split(","))  # EXPECTING start_line, length TO ADD
+        add = Data(start=adds[0], length=1 if len(adds) == 1 else adds[1])
 
-    remove = [int(i.strip()) for i in matches.group(1).split(",")]
-    if len(remove) == 1:
-        remove = [remove[0], 1]  # DEFAULT 1
-    add = [int(i.strip()) for i in matches.group(2).split(",")]
-    if len(add) == 1:
-        add = [add[0], 1]
+        if add.length == 0 and add.start == 0:
+            add.start = remove.start
 
-    # UNUSUAL CASE WHERE @@ -x +x, n @@ AND FIRST LINE HAS NOT CHANGED
-    half = int(len(diff[1]) / 2)
-    first_half = diff[1][:half]
-    last_half = diff[1][half:half * 2]
-    if remove[1] == 1 and add[0] == remove[0] and first_half[1:] == last_half[1:]:
-        diff[1] = first_half
-        diff.insert(2, last_half)
+        def repair_hunk(hunk_body):
+            # THE LAST DELETED LINE MAY MISS A "\n" MEANING THE FIRST
+            # ADDED LINE WILL BE APPENDED TO THE LAST DELETED LINE
+            # EXAMPLE: -kward has the details.+kward has the details.
+            # DETECT THIS PROBLEM FOR THIS HUNK AND FIX THE DIFF
+            if reverse:
+                last_lines = [
+                    o
+                    for b, o in zip(reversed(hunk_body), reversed(output))
+                    if b != "+" + o
+                ]
+                if not last_lines:
+                    return hunk_body
 
-    if not reverse:
-        if remove[1] != 0:
-            text = text[:remove[0] - 1] + text[remove[0] + remove[1] - 1:]
-        text = text[:add[0] - 1] + [d[1:] for d in diff[1 + remove[1]:1 + remove[1] + add[1]]] + text[add[0] - 1:]
-        text = apply_diff(text, diff[add[1] + remove[1] + 1:], reverse=reverse)
-    else:
-        text = apply_diff(text, diff[add[1] + remove[1] + 1:], reverse=reverse)
-        if add[1] != 0:
-            text = text[:add[0] - 1] + text[add[0] + add[1] - 1:]
-        text = text[:remove[0] - 1] + [d[1:] for d in diff[1:1 + remove[1]]] + text[remove[0] - 1:]
+                last_line = last_lines[0]
+                for problem_index, problem_line in enumerate(hunk_body):
+                    if problem_line.startswith('-') and problem_line.endswith('+' + last_line):
+                        split_point = len(problem_line) - (len(last_line) + 1)
+                        break
+                    elif problem_line.startswith('+' + last_line + "-"):
+                        split_point = len(last_line) + 1
+                        break
+                else:
+                    return hunk_body
+            else:
+                if not output:
+                    return hunk_body
+                last_line = output[-1]
+                for problem_index, problem_line in enumerate(hunk_body):
+                    if problem_line.startswith('+') and problem_line.endswith('-' + last_line):
+                        split_point = len(problem_line) - (len(last_line) + 1)
+                        break
+                    elif problem_line.startswith('-' + last_line + "+"):
+                        split_point = len(last_line) + 1
+                        break
+                else:
+                    return hunk_body
 
-    return text
+            new_hunk_body = (
+                hunk_body[:problem_index] +
+                [problem_line[:split_point], problem_line[split_point:]] +
+                hunk_body[problem_index + 1:]
+            )
+            return new_hunk_body
+        hunk_body = repair_hunk(hunk_body)
+
+        if reverse:
+            new_output = (
+                output[:add.start - 1] +
+                [d[1:] for d in hunk_body if d and d[0] == '-'] +
+                output[add.start + add.length - 1:]
+            )
+        else:
+            new_output = (
+                output[:add.start - 1] +
+                [d[1:] for d in hunk_body if d and d[0] == '+'] +
+                output[add.start + remove.length - 1:]
+            )
+        output = new_output
+
+    if verify:
+        original = apply_diff(output, diff, not reverse, False)
+        if set(text) != set(original):  # bugzilla-etl diffs are a jumble
+
+            for t, o in zip_longest(text, original):
+                if t in ['reports: https://goo.gl/70o6w6\r']:
+                    break  # KNOWN INCONSISTENCIES
+                if t != o:
+                    if not _Log:
+                        _late_import()
+                    _Log.error("logical verification check failed")
+                    break
+
+    return output
 
 
 def unicode2utf8(value):
@@ -802,7 +873,7 @@ def utf82unicode(value):
             try:
                 c.decode("utf8")
             except Exception as f:
-                _Log.error("Can not convert charcode {{c}} in string  index {{i}}", i=i, c=ord(c), cause=[e, _Except.wrap(f)])
+                _Log.error("Can not convert charcode {{c}} in string index {{i}}", i=i, c=ord(c), cause=[e, _Except.wrap(f)])
 
         try:
             latin1 = text_type(value.decode("latin1"))
@@ -824,3 +895,15 @@ def wordify(value):
 
 
 
+
+def pairwise(values):
+    """
+    WITH values = [a, b, c, d, ...]
+    RETURN [(a, b), (b, c), (c, d), ...]
+    """
+    i = iter(values)
+    a = next(i)
+
+    for b in i:
+        yield (a, b)
+        a = b

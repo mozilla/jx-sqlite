@@ -12,9 +12,14 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
+from itertools import groupby
+from operator import itemgetter
+
 from mo_future import text_type, PY3
 from mo_logs import Log
 from mo_logs.strings import expand_template
+
+import pyLibrary.sql
 
 
 class SQL(text_type):
@@ -127,9 +132,14 @@ def sql_concat(list_):
     return SQL(" || ").join(sql_iso(l) for l in list_)
 
 
+def quote_set(list_):
+    return sql_iso(sql_list(map(pyLibrary.sql.sqlite.quote_value, list_)))
+
+
 def sql_alias(value, alias):
     return SQL(value.template + " AS " + alias.template)
 
 
 def sql_coalesce(list_):
     return "COALESCE(" + SQL_COMMA.join(list_) + ")"
+

@@ -8,17 +8,16 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
+from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
-
-from unittest import skipIf
 
 from jx_base.expressions import NULL
 from mo_dots import wrap
 from mo_logs import Log
 from mo_logs.exceptions import extract_stack
 from mo_times import Date
-from tests.test_jx import BaseTestCase, TEST_TABLE, global_settings
+from tests.test_jx import BaseTestCase, TEST_TABLE
 
 lots_of_data = wrap([{"a": i} for i in range(30)])
 

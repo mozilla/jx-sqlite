@@ -32,6 +32,7 @@ DEBUG = False
 MIN_READ_SIZE = 8 * 1024
 MAX_STRING_SIZE = 1 * 1024 * 1024
 
+
 class FileString(text_type):
     """
     ACTS LIKE A STRING, BUT IS A FILE
@@ -388,8 +389,7 @@ def icompressed2ibytes(source):
         bytes_count += len(data)
         if Math.floor(last_bytes_count, 1000000) != Math.floor(bytes_count, 1000000):
             last_bytes_count = bytes_count
-            if DEBUG:
-                Log.note("bytes={{bytes}}", bytes=bytes_count)
+            DEBUG and Log.note("bytes={{bytes}}", bytes=bytes_count)
         yield data
 
 

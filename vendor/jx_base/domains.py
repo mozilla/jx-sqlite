@@ -93,7 +93,7 @@ class Domain(object):
         return output
 
     def getDomain(self):
-        Log.error("Not implemented")
+        raise NotImplementedError()
 
     def verify_attributes_not_null(self, attribute_names):
         for name in attribute_names:

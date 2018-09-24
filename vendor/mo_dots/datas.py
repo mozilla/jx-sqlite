@@ -13,14 +13,17 @@ from __future__ import unicode_literals
 
 from collections import MutableMapping, Mapping
 from copy import deepcopy
+from decimal import Decimal
+
+from mo_future import text_type, PY2, iteritems, none_type, generator_types, long
 
 from mo_dots import _getdefault, hash_value, literal_field, coalesce, listwrap, get_logger
-from mo_future import text_type
+from mo_dots.lists import FlatList
 
 _get = object.__getattribute__
 _set = object.__setattr__
 
-
+SLOT = str("_internal_dict")
 DEBUG = False
 
 
@@ -29,7 +32,7 @@ class Data(MutableMapping):
     Please see README.md
     """
 
-    __slots__ = ["_dict"]
+    __slots__ = [SLOT]
 
     def __init__(self, *args, **kwargs):
         """
@@ -37,59 +40,59 @@ class Data(MutableMapping):
         IS UNLIKELY TO BE USEFUL. USE wrap() INSTEAD
         """
         if DEBUG:
-            d = _get(self, "_dict")
+            d = self._internal_dict
             for k, v in kwargs.items():
                 d[literal_field(k)] = unwrap(v)
         else:
             if args:
                 args0 = args[0]
                 if isinstance(args0, Data):
-                    _set(self, "_dict", _get(args0, "_dict"))
+                    _set(self, SLOT, _get(args0, SLOT))
                 elif isinstance(args0, dict):
-                    _set(self, "_dict", args0)
+                    _set(self, SLOT, args0)
                 else:
-                    _set(self, "_dict", dict(args0))
+                    _set(self, SLOT, dict(args0))
             elif kwargs:
-                _set(self, "_dict", unwrap(kwargs))
+                _set(self, SLOT, unwrap(kwargs))
             else:
-                _set(self, "_dict", {})
+                _set(self, SLOT, {})
 
     def __bool__(self):
-        d = _get(self, "_dict")
+        d = self._internal_dict
         if isinstance(d, dict):
             return bool(d)
         else:
             return d != None
 
     def __nonzero__(self):
-        d = _get(self, "_dict")
+        d = self._internal_dict
         if isinstance(d, dict):
             return True if d else False
         else:
             return d != None
 
     def __contains__(self, item):
-        if Data.__getitem__(self, item):
+        value = Data.__getitem__(self, item)
+        if isinstance(value, Mapping) or value:
             return True
         return False
 
     def __iter__(self):
-        d = _get(self, "_dict")
+        d = self._internal_dict
         return d.__iter__()
 
     def __getitem__(self, key):
         if key == None:
             return Null
         if key == ".":
-            output = _get(self, "_dict")
+            output = self._internal_dict
             if isinstance(output, Mapping):
                 return self
             else:
                 return output
 
         key = text_type(key)
-
-        d = _get(self, "_dict")
+        d = self._internal_dict
 
         if key.find(".") >= 0:
             seq = _split_field(key)
@@ -118,11 +121,11 @@ class Data(MutableMapping):
             # SOMETHING TERRIBLE HAPPENS WHEN value IS NOT A Mapping;
             # HOPEFULLY THE ONLY OTHER METHOD RUN ON self IS unwrap()
             v = unwrap(value)
-            _set(self, "_dict", v)
+            _set(self, SLOT, v)
             return v
 
         try:
-            d = _get(self, "_dict")
+            d = self._internal_dict
             value = unwrap(value)
             if key.find(".") == -1:
                 if value is None:
@@ -148,31 +151,53 @@ class Data(MutableMapping):
             raise e
 
     def __getattr__(self, key):
-        d = _get(self, "_dict")
-        o = d.get(key)
-        if o == None:
+        d = self._internal_dict
+        v = d.get(key)
+        t = v.__class__
+
+        # OPTIMIZED wrap()
+        if t is dict:
+            m = object.__new__(Data)
+            _set(m, SLOT, v)
+            return m
+        elif t in (none_type, NullType):
             return NullType(d, key)
-        return wrap(o)
+        elif t is list:
+            return FlatList(v)
+        elif t in generator_types:
+            return FlatList(list(unwrap(vv) for vv in v))
+        else:
+            return v
 
     def __setattr__(self, key, value):
-        d = _get(self, "_dict")
+        d = self._internal_dict
         value = unwrap(value)
         if value is None:
-            d = _get(self, "_dict")
+            d = self._internal_dict
             d.pop(key, None)
         else:
             d[key] = value
         return self
 
+    def __add__(self, other):
+        return _iadd(_iadd({}, self), other)
+
+    def __radd__(self, other):
+        return _iadd(_iadd({}, other), self)
+
+    def __iadd__(self, other):
+        return _iadd(self, other)
+
+
     def __hash__(self):
-        d = _get(self, "_dict")
+        d = self._internal_dict
         return hash_value(d)
 
     def __eq__(self, other):
         if self is other:
             return True
 
-        d = _get(self, "_dict")
+        d = self._internal_dict
         if not isinstance(d, dict):
             return d == other
 
@@ -194,11 +219,11 @@ class Data(MutableMapping):
         return not self.__eq__(other)
 
     def get(self, key, default=None):
-        d = _get(self, "_dict")
+        d = self._internal_dict
         return d.get(key, default)
 
     def items(self):
-        d = _get(self, "_dict")
+        d = self._internal_dict
         return [(k, wrap(v)) for k, v in d.items() if v != None or isinstance(v, Mapping)]
 
     def leaves(self, prefix=None):
@@ -209,42 +234,42 @@ class Data(MutableMapping):
 
     def iteritems(self):
         # LOW LEVEL ITERATION, NO WRAPPING
-        d = _get(self, "_dict")
-        return ((k, wrap(v)) for k, v in d.iteritems())
+        d = self._internal_dict
+        return ((k, wrap(v)) for k, v in iteritems(d))
 
     def keys(self):
-        d = _get(self, "_dict")
+        d = self._internal_dict
         return set(d.keys())
 
     def values(self):
-        d = _get(self, "_dict")
+        d = self._internal_dict
         return listwrap(list(d.values()))
 
     def clear(self):
         get_logger().error("clear() not supported")
 
     def __len__(self):
-        d = _get(self, "_dict")
+        d = self._internal_dict
         return dict.__len__(d)
 
     def copy(self):
         return Data(**self)
 
     def __copy__(self):
-        d = _get(self, "_dict")
+        d = self._internal_dict
         return Data(**d)
 
     def __deepcopy__(self, memo):
-        d = _get(self, "_dict")
+        d = self._internal_dict
         return wrap(deepcopy(d, memo))
 
     def __delitem__(self, key):
         if key.find(".") == -1:
-            d = _get(self, "_dict")
+            d = self._internal_dict
             d.pop(key, None)
             return
 
-        d = _get(self, "_dict")
+        d = self._internal_dict
         seq = _split_field(key)
         for k in seq[:-1]:
             d = d[k]
@@ -252,7 +277,7 @@ class Data(MutableMapping):
 
     def __delattr__(self, key):
         key = text_type(key)
-        d = _get(self, "_dict")
+        d = self._internal_dict
         d.pop(key, None)
 
     def setdefault(self, k, d=None):
@@ -262,13 +287,13 @@ class Data(MutableMapping):
 
     def __str__(self):
         try:
-            return dict.__str__(_get(self, "_dict"))
+            return dict.__str__(self._internal_dict)
         except Exception:
             return "{}"
 
     def __repr__(self):
         try:
-            return "Data("+dict.__repr__(_get(self, "_dict"))+")"
+            return "Data("+dict.__repr__(self._internal_dict)+")"
         except Exception as e:
             return "Data()"
 
@@ -299,7 +324,7 @@ def _split_field(field):
     """
     SIMPLE SPLIT, NO CHECKS
     """
-    return [k.replace("\a", ".") for k in field.replace("\.", "\a").split(".")]
+    return [k.replace("\a", ".") for k in field.replace("\\.", "\a").split(".")]
 
 
 class _DictUsingSelf(dict):
@@ -429,9 +454,15 @@ class _DictUsingSelf(dict):
                 output.append((prefix + literal_field(k), v))
         return output
 
-    def iteritems(self):
-        for k, v in dict.iteritems(self):
-            yield k, wrap(v)
+    if PY2:
+        def iteritems(self):
+            for k, v in dict.iteritems(self):
+                yield k, wrap(v)
+    else:
+        def iteritems(self):
+            for k, v in dict.items(self):
+                yield k, wrap(v)
+
 
     def keys(self):
         return set(dict.keys(self))
@@ -443,7 +474,7 @@ class _DictUsingSelf(dict):
         get_logger().error("clear() not supported")
 
     def __len__(self):
-        d = _get(self, "_dict")
+        d = self._internal_dict
         return d.__len__()
 
     def copy(self):
@@ -509,6 +540,49 @@ def _str(value, depth):
     else:
         return str(type(value))
 
+
+def _iadd(self, other):
+    if not isinstance(other, Mapping):
+        get_logger().error("Expecting a Mapping")
+    d = unwrap(self)
+    for ok, ov in other.items():
+        sv = d.get(ok)
+        if sv == None:
+            d[ok] = deepcopy(ov)
+        elif isinstance(ov, (Decimal, float, long, int)):
+            if isinstance(sv, Mapping):
+                get_logger().error(
+                    "can not add {{stype}} with {{otype}",
+                    stype=sv.__class__.__name__,
+                    otype=ov.__class__.__name__
+                )
+            elif isinstance(sv, list):
+                d[ok].append(ov)
+            else:
+                d[ok] = sv + ov
+        elif isinstance(ov, list):
+            d[ok] = listwrap(sv) + ov
+        elif isinstance(ov, Mapping):
+            if isinstance(sv, Mapping):
+                _iadd(sv, ov)
+            elif isinstance(sv, list):
+                d[ok].append(ov)
+            else:
+                get_logger().error(
+                    "can not add {{stype}} with {{otype}",
+                    stype=sv.__class__.__name__,
+                    otype=ov.__class__.__name__
+                )
+        else:
+            if isinstance(sv, Mapping):
+                get_logger().error(
+                    "can not add {{stype}} with {{otype}",
+                    stype=sv.__class__.__name__,
+                    otype=ov.__class__.__name__
+                )
+            else:
+                d[ok].append(ov)
+    return self
 
 from mo_dots.nones import Null, NullType
 from mo_dots import unwrap, wrap

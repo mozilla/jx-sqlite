@@ -15,7 +15,6 @@ from collections import Mapping
 from copy import copy
 
 import jx_base
-from jx_base import STRUCT
 from jx_base.dimensions import Dimension
 from jx_base.domains import Domain, SetDomain, DefaultDomain
 from jx_base.expressions import jx_expression, Expression, Variable, LeavesOp, ScriptOp, OffsetOp, TRUE, FALSE
@@ -25,7 +24,7 @@ from mo_dots import coalesce, Null, set_default, unwraplist, literal_field
 from mo_dots import wrap, unwrap, listwrap
 from mo_dots.lists import FlatList
 from mo_future import text_type
-from mo_json.typed_encoder import untype_path
+from mo_json.typed_encoder import untype_path, STRUCT
 from mo_logs import Log
 from mo_math import AND, UNION, Math
 

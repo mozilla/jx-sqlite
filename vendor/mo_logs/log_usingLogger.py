@@ -84,7 +84,7 @@ def make_log_from_settings(settings):
     path = ".".join(path[:-1])
     constructor = None
     try:
-        temp = __import__(path, globals(), locals(), [class_name], -1)
+        temp = __import__(path, globals(), locals(), [class_name], 0)
         constructor = object.__getattribute__(temp, class_name)
     except Exception as e:
         if settings.stream and not constructor:
@@ -94,7 +94,7 @@ def make_log_from_settings(settings):
             Log.error("Can not find class {{class}}",  {"class": path}, cause=e)
 
     # IF WE NEED A FILE, MAKE SURE DIRECTORY EXISTS
-    if settings.filename:
+    if settings.filename != None:
         from mo_files import File
 
         f = File(settings.filename)

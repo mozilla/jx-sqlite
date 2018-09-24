@@ -8,6 +8,7 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
+from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
@@ -29,6 +30,8 @@ class BaseTestCase(FuzzyTestCase):
                 import tests
             except Exception:
                 Log.error("Expecting ./tests/__init__.py to set `global_settings` and `utils` so tests can be run")
+        if not utils:
+            Log.error("Expecting ./tests/__init__.py to set `global_settings` and `utils` so tests can be run")
         self.utils = utils
 
     @classmethod

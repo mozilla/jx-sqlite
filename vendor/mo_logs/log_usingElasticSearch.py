@@ -33,21 +33,24 @@ LOG_STRING_LENGTH = 2000
 
 class StructuredLogger_usingElasticSearch(StructuredLogger):
     @override
-    def __init__(self, host, index, port=9200, type="log", max_size=1000, batch_size=100, kwargs=None):
+    def __init__(self, host, index, port=9200, type="log", queue_size=1000, batch_size=100, kwargs=None):
         """
         settings ARE FOR THE ELASTICSEARCH INDEX
         """
+        kwargs.timeout = Duration(coalesce(kwargs.timeout, "30second")).seconds
+        kwargs.retry.times = coalesce(kwargs.retry.times, 3)
+        kwargs.retry.sleep = Duration(coalesce(kwargs.retry.sleep, MINUTE)).seconds
+
         self.es = Cluster(kwargs).get_or_create_index(
             schema=mo_json.json2value(value2json(SCHEMA), leaves=True),
             limit_replicas=True,
-            tjson=True,
+            typed=True,
             kwargs=kwargs
         )
         self.batch_size = batch_size
         self.es.add_alias(coalesce(kwargs.alias, kwargs.index))
-        self.queue = Queue("debug logs to es", max=max_size, silent=True)
-        self.es.settings.retry.times = coalesce(self.es.settings.retry.times, 3)
-        self.es.settings.retry.sleep = Duration(coalesce(self.es.settings.retry.sleep, MINUTE))
+        self.queue = Queue("debug logs to es", max=queue_size, silent=True)
+
         Thread.run("add debug logs to es", self._insert_loop)
 
     def write(self, template, params):
@@ -63,24 +66,26 @@ class StructuredLogger_usingElasticSearch(StructuredLogger):
         bad_count = 0
         while not please_stop:
             try:
-                Till(seconds=1).wait()
                 messages = wrap(self.queue.pop_all())
                 if not messages:
+                    Till(seconds=1).wait()
                     continue
 
                 for g, mm in jx.groupby(messages, size=self.batch_size):
                     scrubbed = []
-                    try:
-                        for i, message in enumerate(mm):
-                            if message is THREAD_STOP:
-                                please_stop.go()
-                                return
+                    for i, message in enumerate(mm):
+                        if message is THREAD_STOP:
+                            please_stop.go()
+                            return
+                        try:
                             scrubbed.append(_deep_json_to_string(message, depth=3))
-                    finally:
-                        self.es.extend(scrubbed)
+                        except Exception as e:
+                            Log.warning("Problem adding to scrubbed list", cause=e)
+
+                    self.es.extend(scrubbed)
                     bad_count = 0
-            except Exception as e:
-                Log.warning("Problem inserting logs into ES", cause=e)
+            except Exception as f:
+                Log.warning("Problem inserting logs into ES", cause=f)
                 bad_count += 1
                 if bad_count > MAX_BAD_COUNT:
                     Log.warning("Given up trying to write debug logs to ES index {{index}}", index=self.es.settings.index)

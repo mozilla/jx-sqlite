@@ -16,7 +16,7 @@ from collections import Mapping, Iterable, Set
 
 from mo_dots import unwrap, tuplewrap, wrap
 from mo_dots.objects import datawrap
-from mo_future import PY2
+from mo_future import PY2, iteritems
 from mo_logs import Log
 from mo_logs.exceptions import suppress_exception
 
@@ -73,7 +73,7 @@ class UniqueIndex(Set, Mapping):
         return self._data.keys()
 
     def pop(self):
-        output = self._data.iteritems().next()[1]
+        output = iteritems(self._data).next()[1]
         self.remove(output)
         return wrap(output)
 

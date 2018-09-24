@@ -11,6 +11,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
+from collections import namedtuple
 from types import FunctionType
 
 import mo_json
@@ -135,7 +136,10 @@ def wrap_function(cache_store, func_):
         using_self = False
         func = lambda self, *args: func_(*args)
 
-    def output(*args):
+    def output(*args, **kwargs):
+        if kwargs:
+            Log.error("Sorry, caching only works with ordered parameter, not keyword arguments")
+
         with cache_store.locker:
             if using_self:
                 self = args[0]
@@ -152,7 +156,7 @@ def wrap_function(cache_store, func_):
 
             if Random.int(100) == 0:
                 # REMOVE OLD CACHE
-                _cache = {k: v for k, v in _cache.items() if v[0]==None or v[0] > now}
+                _cache = {k: v for k, v in _cache.items() if v.timeout == None or v.timeout > now}
                 setattr(self, attr_name, _cache)
 
             timeout, key, value, exception = _cache.get(args, (Null, Null, Null, Null))
@@ -160,7 +164,7 @@ def wrap_function(cache_store, func_):
         if now >= timeout:
             value = func(self, *args)
             with cache_store.locker:
-                _cache[args] = (now + cache_store.timeout, args, value, None)
+                _cache[args] = CacheElement(now + cache_store.timeout, args, value, None)
             return value
 
         if value == None:
@@ -168,12 +172,12 @@ def wrap_function(cache_store, func_):
                 try:
                     value = func(self, *args)
                     with cache_store.locker:
-                        _cache[args] = (now + cache_store.timeout, args, value, None)
+                        _cache[args] = CacheElement(now + cache_store.timeout, args, value, None)
                     return value
                 except Exception as e:
                     e = Except.wrap(e)
                     with cache_store.locker:
-                        _cache[args] = (now + cache_store.timeout, args, None, e)
+                        _cache[args] = CacheElement(now + cache_store.timeout, args, None, e)
                     raise e
             else:
                 raise exception
@@ -183,15 +187,15 @@ def wrap_function(cache_store, func_):
     return output
 
 
+CacheElement = namedtuple("CacheElement", ("timeout", "key", "value", "exception"))
+
+
 class _FakeLock():
-
-
     def __enter__(self):
         pass
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         pass
-
 
 
 def value2quote(value):

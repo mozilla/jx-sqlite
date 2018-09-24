@@ -14,14 +14,13 @@ from __future__ import unicode_literals
 from collections import Mapping
 
 import mo_dots as dot
+from jx_base.domains import Domain, ALGEBRAIC, KNOWN
 from mo_dots import Null, coalesce, join_field, split_field, Data
 from mo_dots import wrap, listwrap
 from mo_dots.lists import FlatList
 from mo_logs import Log
 from mo_math import SUM
 from mo_times.timer import Timer
-
-from jx_base.domains import Domain, ALGEBRAIC, KNOWN
 
 DEFAULT_QUERY_LIMIT = 20
 
@@ -138,7 +137,7 @@ class Dimension(object):
             def edges2value(*values):
                 if isinstance(fields, Mapping):
                     output = Data()
-                    for e, v in zip(edges, values):
+                    for e, v in transpose(edges, values):
                         output[e.name] = v
                     return output
                 else:

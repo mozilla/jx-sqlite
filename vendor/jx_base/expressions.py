@@ -16,11 +16,11 @@ from collections import Mapping
 from decimal import Decimal
 
 import mo_json
-from jx_base import OBJECT, python_type_to_json_type, BOOLEAN, NUMBER, INTEGER, STRING, IS_NULL
 from jx_base.queries import is_variable_name, get_property_name
 from mo_dots import coalesce, wrap, Null, split_field
 from mo_future import text_type, utf8_json_encoder, get_function_name, zip_longest
 from mo_json import scrub
+from mo_json.typed_encoder import IS_NULL, OBJECT, BOOLEAN, python_type_to_json_type, NUMBER, INTEGER, STRING
 from mo_logs import Log, Except
 from mo_math import Math, MAX, MIN, UNION
 from mo_times.dates import Date, unicode2Date
@@ -82,7 +82,7 @@ def _jx_expression(expr):
     elif isinstance(expr, text_type):
         return Variable(expr)
     elif isinstance(expr, (list, tuple)):
-        return TupleOp("tuple", map(jx_expression, expr))  # FORMALIZE
+        return TupleOp("tuple", list(map(jx_expression, expr)))  # FORMALIZE
 
     expr = wrap(expr)
     try:
@@ -882,6 +882,11 @@ class InequalityOp(Expression):
             return {self.op: {self.lhs.var, self.rhs.value}}
         else:
             return {self.op: [self.lhs.__data__(), self.rhs.__data__()]}
+
+    def __eq__(self, other):
+        if not isinstance(other, InequalityOp):
+            return False
+        return self.op == other.op and self.lhs == other.lhs and self.rhs == other.rhs
 
     def vars(self):
         return self.lhs.vars() | self.rhs.vars()
@@ -2581,7 +2586,9 @@ class InOp(Expression):
     def partial_eval(self):
         value = self.value.partial_eval()
         superset = self.superset.partial_eval()
-        if isinstance(value, Literal) and isinstance(superset, Literal):
+        if superset is NULL:
+            return FALSE
+        elif isinstance(value, Literal) and isinstance(superset, Literal):
             return Literal(None, self())
         else:
             return self

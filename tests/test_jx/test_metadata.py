@@ -8,6 +8,7 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
+from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
@@ -20,7 +21,6 @@ from tests.test_jx import BaseTestCase, TEST_TABLE, global_settings
 
 class TestMetadata(BaseTestCase):
 
-
     def test_meta(self):
         test = wrap({
             "query": {"from": TEST_TABLE},
@@ -29,7 +29,7 @@ class TestMetadata(BaseTestCase):
             ]
         })
 
-        settings = self.utils.fill_container(test, tjson=False)
+        settings = self.utils.fill_container(test, typed=False)
 
         table_name = settings.index
 

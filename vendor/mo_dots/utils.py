@@ -14,8 +14,16 @@ from __future__ import unicode_literals
 import importlib
 import sys
 
+from mo_future import PY2
 
 _Log = None
+
+if PY2:
+    STDOUT = sys.stdout
+    STDERR = sys.stderr
+else:
+    STDOUT = sys.stdout.buffer
+    STDERR = sys.stderr.buffer
 
 
 def get_logger():
@@ -31,6 +39,7 @@ def get_logger():
         return _Log
 
 
+
 def get_module(name):
     try:
         return importlib.import_module(name)
@@ -39,16 +48,19 @@ def get_module(name):
 
 
 class PoorLogger(object):
-    def note(self, note, **kwargs):
-        sys.stdout.write(note+"\n")
+    @classmethod
+    def note(cls, note, **kwargs):
+        STDOUT.write(note.encode('utf8')+b"\n")
 
-    def warning(self, note, **kwargs):
-        sys.stdout.write("WARNING: "+note+"\n")
+    @classmethod
+    def warning(cls, note, **kwargs):
+        STDOUT.write(b"WARNING: " + note.encode('utf8') + b"\n")
 
-    def error(self, note, **kwargs):
-        sys.stderr.write(note)
-        if "cause" in kwargs:
-            raise kwargs["cause"]
+    @classmethod
+    def error(cls, note, **kwargs):
+        STDERR.write(note.encode('utf8'))
+        if str("cause") in kwargs:
+            raise kwargs[str("cause")]
         else:
             raise Exception(note)
 

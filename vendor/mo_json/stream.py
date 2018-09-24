@@ -183,8 +183,7 @@ def parse(json, query_path, expected_vars=NO_VARS):
                 child_expected = needed("value", expected_vars)
                 index = _assign_token(index, c, child_expected)
                 c, index = skip_whitespace(index)
-                if DEBUG and not num_items % 1000:
-                    Log.note("{{num}} items iterated", num=num_items)
+                DEBUG and not num_items % 1000 and Log.note("{{num}} items iterated", num=num_items)
                 yield index
                 num_items += 1
             elif c == b"}":

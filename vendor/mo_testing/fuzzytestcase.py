@@ -159,7 +159,7 @@ def assertAlmostEqualValue(test, expected, digits=None, places=None, msg=None, d
 
     if not Math.is_number(expected):
         # SOME SPECIAL CASES, EXPECTING EMPTY CONTAINERS IS THE SAME AS EXPECTING NULL
-        if isinstance(expected, list) and len(expected)==0 and test == None:
+        if isinstance(expected, list) and len(expected) == 0 and test == None:
             return
         if isinstance(expected, Mapping) and not expected.keys() and test == None:
             return

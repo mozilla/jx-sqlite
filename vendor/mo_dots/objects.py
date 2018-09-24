@@ -15,7 +15,7 @@ from collections import Mapping
 from datetime import date, datetime
 from decimal import Decimal
 
-from mo_dots import wrap, unwrap, Data, FlatList, NullType, get_attr, set_attr
+from mo_dots import wrap, unwrap, Data, FlatList, NullType, get_attr, set_attr, SLOT
 from mo_future import text_type, binary_type, get_function_defaults, get_function_arguments, none_type, generator_types
 
 _get = object.__getattribute__
@@ -103,7 +103,7 @@ def datawrap(v):
 
     if type_ is dict:
         m = Data()
-        _set(m, "_dict", v)  # INJECT m.__dict__=v SO THERE IS NO COPY
+        _set(m, SLOT, v)  # INJECT m.__dict__=v SO THERE IS NO COPY
         return m
     elif type_ is Data:
         return v
@@ -127,7 +127,7 @@ def datawrap(v):
 
 class DictClass(object):
     """
-    ALLOW INSTANCES OF class_ TO ACK LIKE dicts
+    ALLOW INSTANCES OF class_ TO ACT LIKE dicts
     ALLOW CONSTRUCTOR TO ACCEPT @override
     """
 

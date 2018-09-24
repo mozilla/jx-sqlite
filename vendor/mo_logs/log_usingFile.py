@@ -38,6 +38,6 @@ class StructuredLogger_usingFile(StructuredLogger):
             with self.file_lock:
                 self.file.append(expand_template(template, params))
         except Exception as e:
-            Log.warning("Problem writing to file {{file}}, waiting...", file=file.name, cause=e)
+            Log.warning("Problem writing to file {{file}}, waiting...", file=self.file.name, cause=e)
             time.sleep(5)
 

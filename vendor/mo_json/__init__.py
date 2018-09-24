@@ -17,9 +17,9 @@ from collections import Mapping
 from datetime import date, timedelta, datetime
 from decimal import Decimal
 
-from mo_dots import FlatList, NullType, Data, wrap_leaves, wrap, Null
+from mo_dots import FlatList, NullType, Data, wrap_leaves, wrap, Null, SLOT
 from mo_dots.objects import DataObject
-from mo_future import text_type, none_type, long, binary_type
+from mo_future import text_type, none_type, long, binary_type, PY2
 from mo_logs import Except, strings, Log
 from mo_logs.strings import expand_template
 from mo_times import Date, Duration
@@ -64,8 +64,8 @@ def float2json(value):
         value = abs(value)
         sci = value.__format__(".15e")
         mantissa, str_exp = sci.split("e")
-        int_exp = int(str_exp)
-        digits = _snap_to_base_10(mantissa)
+        digits, more_digits = _snap_to_base_10(mantissa)
+        int_exp = int(str_exp) + more_digits
         if int_exp > 15:
             return sign + digits[0] + '.' + (digits[1:].rstrip('0') or '0') + u"e" + text_type(int_exp)
         elif int_exp >= 0:
@@ -81,15 +81,17 @@ def float2json(value):
 
 
 def _snap_to_base_10(mantissa):
-    digits = ''.join(mantissa.split('.'))
+    digits = mantissa.replace('.', '')
     if SNAP_TO_BASE_10:
-        f9 = strings.find(digits, '999', start=1)
+        f9 = strings.find(digits, '999')
         f0 = strings.find(digits, '000')
-        if f9 < f0:
-            digits = digits[:f9 - 1] + text_type(int(digits[f9 - 1]) + 1) + ('0' * (16 - f9))  # we know the last digit is not 9
+        if f9 == 0:
+            return '1000000000000000', 1
+        elif f9 < f0:
+            digits = text_type(int(digits[:f9]) + 1) + ('0' * (16 - f9))
         else:
             digits = digits[:f0]+('0'*(16-f0))
-    return digits
+    return digits, 0
 
 
 def _scrub_number(value):
@@ -156,7 +158,7 @@ def _scrub(value, is_done, stack, scrub_text, scrub_number):
     elif type_ is Decimal:
         return scrub_number(value)
     elif type_ is Data:
-        return _scrub(_get(value, '_dict'), is_done, stack, scrub_text, scrub_number)
+        return _scrub(_get(value, SLOT), is_done, stack, scrub_text, scrub_number)
     elif isinstance(value, Mapping):
         _id = id(value)
         if _id in is_done:
@@ -332,13 +334,16 @@ def json2value(json_string, params=Null, flexible=False, leaves=False):
         hexx_str = bytes2hex(base_str, " ")
         try:
             char_str = " " + "  ".join((c.decode("latin1") if ord(c) >= 32 else ".") for c in base_str)
-        except Exception as e:
+        except Exception:
             char_str = " "
         Log.error(CAN_NOT_DECODE_JSON + ":\n{{char_str}}\n{{hexx_str}}\n", char_str=char_str, hexx_str=hexx_str, cause=e)
 
-
-def bytes2hex(value, separator=" "):
-    return separator.join('{:02X}'.format(ord(x)) for x in value)
+if PY2:
+    def bytes2hex(value, separator=" "):
+        return separator.join('{:02X}'.format(ord(x)) for x in value)
+else:
+    def bytes2hex(value, separator=" "):
+        return separator.join('{:02X}'.format(x) for x in value)
 
 
 def utf82unicode(value):

@@ -8,6 +8,7 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
+from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
@@ -1672,7 +1673,7 @@ class TestEdge1(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_tests(test)
+        self.utils.execute_tests(test, places=1.5)  # 1.5 approx +/- 3%
 
     def test_count_constant(self):
         test = {

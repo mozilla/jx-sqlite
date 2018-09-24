@@ -8,12 +8,12 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
+from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
 from unittest import skipIf
 
-from jx_base.expressions import NULL
 from tests.test_jx import BaseTestCase, TEST_TABLE, global_settings
 
 
@@ -104,22 +104,22 @@ class TestAggOps(BaseTestCase):
                 "select": {"value": "a", "aggregate": "percentile", "percentile": 0.90}
             },
             "expecting_list": {
-                "meta": {"format": "value"}, "data": 681.3
+                "meta": {"format": "value"}, "data": 702.5
             },
             "expecting_table": {
                 "meta": {"format": "table"},
                 "header": ["a"],
-                "data": [[681.3]]
+                "data": [[702.5]]
             },
             "expecting_cube": {
                 "meta": {"format": "cube"},
                 "edges": [],
                 "data": {
-                    "a": 681.3
+                    "a": 702.5
                 }
             }
         }
-        self.utils.execute_tests(test, places=2)
+        self.utils.execute_tests(test, places=1.5)  # 1.5 approx +/- 3%
 
     @skipIf(global_settings.use=="sqlite", "not expected to pass yet")
     def test_stats(self):
@@ -240,7 +240,7 @@ class TestAggOps(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_tests(test, tjson=True)
+        self.utils.execute_tests(test, typed=True)
 
     def test_max_on_value(self):
         test = {
@@ -266,7 +266,7 @@ class TestAggOps(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_tests(test, tjson=True)
+        self.utils.execute_tests(test, typed=True)
 
     def test_max_object_on_value(self):
         test = {
@@ -291,7 +291,7 @@ class TestAggOps(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_tests(test, tjson=True)
+        self.utils.execute_tests(test, typed=True)
 
     def test_median_on_value(self):
         test = {
@@ -316,7 +316,7 @@ class TestAggOps(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_tests(test, tjson=True, places=2)
+        self.utils.execute_tests(test, typed=True, places=2)
 
     def test_many_aggs_on_value(self):
         # ES WILL NOT ACCEPT TWO (NAIVE) AGGREGATES ON SAME FIELD, COMBINE THEM USING stats AGGREGATION
@@ -342,7 +342,7 @@ class TestAggOps(BaseTestCase):
                 ]
             }
         }
-        self.utils.execute_tests(test, tjson=True)
+        self.utils.execute_tests(test, typed=True)
 
     def test_cardinality(self):
         test = {

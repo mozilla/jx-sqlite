@@ -20,11 +20,11 @@ from boto.s3.connection import Location
 from bs4 import BeautifulSoup
 
 from mo_dots import wrap, Null, coalesce, unwrap, Data
+from mo_files.url import value2url_param
 from mo_future import text_type, StringIO
 from mo_kwargs import override
 from mo_logs import Log, Except
 from mo_logs.strings import utf82unicode, unicode2utf8
-from mo_logs.url import value2url_param
 from mo_times.dates import Date
 from mo_times.timer import Timer
 from pyLibrary import convert
@@ -362,7 +362,7 @@ class Bucket(object):
         retry = 3
         while retry:
             try:
-                with Timer("Sending {{count}} lines in {{file_length|comma}} bytes", {"file_length": file_length, "count": count}, debug=self.settings.debug):
+                with Timer("Sending {{count}} lines in {{file_length|comma}} bytes", {"file_length": file_length, "count": count}, silent=not self.settings.debug):
                     buff.seek(0)
                     storage.set_contents_from_file(buff)
                 break

@@ -14,16 +14,16 @@ from __future__ import unicode_literals
 from collections import Mapping
 from datetime import date
 from datetime import datetime
+from decimal import Decimal
 
 import jx_base
-from jx_base import python_type_to_json_type
-from jx_base import STRUCT, Column, Table
+from jx_base import Column, Table
 from jx_base.schema import Schema
 from jx_python import jx
 from mo_collections import UniqueIndex
-from mo_dots import Data, concat_field, get_attr, listwrap, unwraplist, NullType, FlatList, set_default, split_field, join_field, ROOT_PATH, wrap
+from mo_dots import Data, concat_field, listwrap, unwraplist, NullType, FlatList, set_default, split_field, join_field, ROOT_PATH, wrap, coalesce
 from mo_future import none_type, text_type, long, PY2
-from mo_json.typed_encoder import untype_path, unnest_path
+from mo_json.typed_encoder import untype_path, unnest_path, python_type_to_json_type, STRUCT
 from mo_logs import Log
 from mo_threads import Lock
 from mo_times.dates import Date
@@ -31,7 +31,7 @@ from mo_times.dates import Date
 singlton = None
 
 
-class ColumnList(Table):
+class ColumnList(Table, jx_base.Container):
     """
     OPTIMIZED FOR THE PARTICULAR ACCESS PATTERNS USED
     """
@@ -89,24 +89,22 @@ class ColumnList(Table):
                 values = set()
                 objects = 0
                 multi = 1
-                for t, cs in self.data.items():
-                    for c, css in cs.items():
-                        for column in css:
-                            value = column[mc.names["."]]
-                            if value == None:
-                                pass
-                            else:
-                                count += 1
-                                if isinstance(value, list):
-                                    multi = max(multi, len(value))
-                                    try:
-                                        values |= set(value)
-                                    except Exception:
-                                        objects += len(value)
-                                elif isinstance(value, Mapping):
-                                    objects += 1
-                                else:
-                                    values.add(value)
+                for column in self._all_columns():
+                    value = column[mc.names["."]]
+                    if value == None:
+                        pass
+                    else:
+                        count += 1
+                        if isinstance(value, list):
+                            multi = max(multi, len(value))
+                            try:
+                                values |= set(value)
+                            except Exception:
+                                objects += len(value)
+                        elif isinstance(value, Mapping):
+                            objects += 1
+                        else:
+                            values.add(value)
                 mc.count = count
                 mc.cardinality = len(values) + objects
                 mc.partitions = jx.sort(values)
@@ -114,12 +112,18 @@ class ColumnList(Table):
                 mc.last_updated = Date.now()
         self.dirty = False
 
+    def _all_columns(self):
+        return [
+            column
+            for t, cs in self.data.items()
+            for _, css in cs.items()
+            for column in css
+        ]
+
     def __iter__(self):
-        self._update_meta()
-        for t, cs in self.data.items():
-            for c, css in cs.items():
-                for column in css:
-                    yield column
+        with self.locker:
+            self._update_meta()
+            return iter(self._all_columns())
 
     def __len__(self):
         return self.data['meta.columns']['es_index'].count
@@ -130,18 +134,49 @@ class ColumnList(Table):
             command = wrap(command)
             eq = command.where.eq
             if eq.es_index:
-                columns = self.find(eq.es_index, eq.name)
-                columns = [c for c in columns if all(get_attr(c, k) == v for k, v in eq.items())]
+                all_columns = self.data.get(eq.es_index, {}).values()
+                if len(eq) == 1:
+                    # FASTEST
+                    with self.locker:
+                        columns = [
+                            c
+                            for cs in all_columns
+                            for c in cs
+                        ]
+                elif eq.es_column and len(eq) == 2:
+                    # FASTER
+                    with self.locker:
+                        columns = [
+                            c
+                            for cs in all_columns
+                            for c in cs
+                            if c.es_column == eq.es_column
+                        ]
+
+                else:
+                    # SLOWER
+                    with self.locker:
+                        columns = [
+                            c
+                            for cs in all_columns
+                            for c in cs
+                            if all(c[k] == v for k, v in eq.items())  # THIS LINE IS VERY SLOW
+                        ]
             else:
-                with self.locker:
-                    columns = list(self)
-                    columns = jx.filter(columns, command.where)
+                columns = list(self)
+                columns = jx.filter(columns, command.where)
 
             with self.locker:
-                for col in list(columns):
+                for col in columns:
                     for k in command["clear"]:
                         if k == ".":
-                            columns.remove(col)
+                            lst = self.data[col.es_index]
+                            cols = lst[col.names['.']]
+                            cols.remove(col)
+                            if len(cols) == 0:
+                                del lst[col.names['.']]
+                                if len(lst) == 0:
+                                    del self.data[col.es_index]
                         else:
                             col[k] = None
 
@@ -151,12 +186,17 @@ class ColumnList(Table):
             Log.error("should not happen", cause=e)
 
     def query(self, query):
+        # NOT EXPECTED TO BE RUN
+        Log.error("not")
         with self.locker:
             self._update_meta()
-            query.frum = self.__iter__()
-            output = jx.run(query)
+            if not self._schema:
+                self._schema = Schema(".", [c for cs in self.data["meta.columns"].values() for c in cs])
+            snapshot = self._all_columns()
 
-        return output
+        from jx_python.containers.list_usingPythonList import ListContainer
+        query.frum = ListContainer("meta.columns", snapshot, self._schema)
+        return jx.run(query)
 
     def groupby(self, keys):
         with self.locker:
@@ -173,6 +213,11 @@ class ColumnList(Table):
 
     @property
     def namespace(self):
+        return self
+
+    def get_table(self, table_name):
+        if table_name != "meta.columns":
+            Log.error("this container has only the meta.columns")
         return self
 
     def denormalized(self):
@@ -218,11 +263,11 @@ def get_schema_from_list(table_name, frum):
     SCAN THE LIST FOR COLUMN TYPES
     """
     columns = UniqueIndex(keys=("names.\\.",))
-    _get_schema_from_list(frum, ".", prefix_path=[], nested_path=ROOT_PATH, columns=columns)
+    _get_schema_from_list(frum, ".", parent=".", nested_path=ROOT_PATH, columns=columns)
     return Schema(table_name=table_name, columns=list(columns))
 
 
-def _get_schema_from_list(frum, table_name, prefix_path, nested_path, columns):
+def _get_schema_from_list(frum, table_name, parent, nested_path, columns):
     """
     :param frum: The list
     :param table_name: Name of the table this list holds records for
@@ -234,8 +279,9 @@ def _get_schema_from_list(frum, table_name, prefix_path, nested_path, columns):
 
     for d in frum:
         row_type = _type_to_name[d.__class__]
+
         if row_type != "object":
-            full_name = join_field(prefix_path)
+            full_name = parent
             column = columns[full_name]
             if not column:
                 column = Column(
@@ -248,10 +294,10 @@ def _get_schema_from_list(frum, table_name, prefix_path, nested_path, columns):
                 )
                 columns.add(column)
             column.es_type = _merge_type[column.es_type][row_type]
-            column.jx_type = _merge_type[column.jx_type][row_type]
+            column.jx_type = _merge_type[coalesce(column.jx_type, "undefined")][row_type]
         else:
             for name, value in d.items():
-                full_name = join_field(prefix_path + [name])
+                full_name = concat_field(parent, name)
                 column = columns[full_name]
                 if not column:
                     column = Column(
@@ -262,13 +308,14 @@ def _get_schema_from_list(frum, table_name, prefix_path, nested_path, columns):
                         nested_path=nested_path
                     )
                     columns.add(column)
-                if isinstance(value, list):
-                    if len(value) == 0:
+                if isinstance(value, (list, set)):  # GET TYPE OF MULTIVALUE
+                    v = list(value)
+                    if len(v) == 0:
                         this_type = "undefined"
-                    elif len(value) == 1:
-                        this_type = _type_to_name[value[0].__class__]
+                    elif len(v) == 1:
+                        this_type = _type_to_name[v[0].__class__]
                     else:
-                        this_type = _type_to_name[value[0].__class__]
+                        this_type = _type_to_name[v[0].__class__]
                         if this_type == "object":
                             this_type = "nested"
                 else:
@@ -277,11 +324,11 @@ def _get_schema_from_list(frum, table_name, prefix_path, nested_path, columns):
                 column.es_type = new_type
 
                 if this_type == "object":
-                    _get_schema_from_list([value], table_name, prefix_path + [name], nested_path, columns)
+                    _get_schema_from_list([value], table_name, full_name, nested_path, columns)
                 elif this_type == "nested":
                     np = listwrap(nested_path)
                     newpath = unwraplist([join_field(split_field(np[0]) + [name])] + np)
-                    _get_schema_from_list(value, table_name, prefix_path + [name], newpath, columns)
+                    _get_schema_from_list(value, table_name, full_name, newpath, columns)
 
 
 METADATA_COLUMNS = (
@@ -368,6 +415,7 @@ _type_to_name = {
     list: "nested",
     FlatList: "nested",
     Date: "double",
+    Decimal: "double",
     datetime: "double",
     date: "double"
 }

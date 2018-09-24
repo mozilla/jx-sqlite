@@ -8,6 +8,7 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
+from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
@@ -112,7 +113,7 @@ class TestSchemaMerging(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_tests(test, tjson=True)
+        self.utils.execute_tests(test, typed=True)
 
     def test_dots_in_property_names(self):
         test = {

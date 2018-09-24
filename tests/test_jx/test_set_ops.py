@@ -8,6 +8,7 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
+from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
@@ -346,6 +347,27 @@ class TestSetOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
+    def test_id_and_value_select(self):
+        """
+        ALWAYS GOOD TO HAVE AN ID, CALL IT "_id"
+        """
+        test = {
+            "data": [
+                {"a": "b"}
+            ],
+            "query": {
+                "select": ["_id", "a"],
+                "from": TEST_TABLE
+            },
+            "expecting_table": {
+                "meta": {"format": "table"},
+                "header":["_id", "a"],
+                "data": [
+                    [Math.is_hex, "b"]
+                ]
+            }
+        }
+        self.utils.execute_tests(test)
 
     def test_single_star_select(self):
         test = {
@@ -1121,6 +1143,48 @@ class TestSetOps(BaseTestCase):
                     "_a": [
                         [{"b": 1, "c": 1}, {"b": 2, "c": 1}],
                         [{"b": 1, "c": 2}, {"b": 2, "c": 2}]
+                    ]
+                }
+            }
+        }
+        self.utils.execute_tests(test)
+
+    def test_select_w_nested_values(self):
+        test = {
+            "data": [
+                {"_a": [{"k": [{"b": 1}, {"b": 2}]}]},
+                {"_a": [{"k": [{"b": 1}, {"b": 2}]}]}
+            ],
+            "query": {
+                "from": TEST_TABLE
+            },
+            "expecting_list": {
+                "meta": {"format": "list"},
+                "data": [
+                    {"_a": {"k": [{"b": 1}, {"b": 2}]}},
+                    {"_a": {"k": [{"b": 1}, {"b": 2}]}}
+                ]
+            },
+            "expecting_table": {
+                "meta": {"format": "table"},
+                "header": ["."],
+                "data": [
+                    [{"_a": {"k": [{"b": 1}, {"b": 2}]}}],
+                    [{"_a": {"k": [{"b": 1}, {"b": 2}]}}]
+                ]
+            },
+            "expecting_cube": {
+                "meta": {"format": "cube"},
+                "edges": [
+                    {
+                        "name": "rownum",
+                        "domain": {"type": "rownum", "min": 0, "max": 2, "interval": 1}
+                    }
+                ],
+                "data": {
+                    ".": [
+                        {"_a": {"k": [{"b": 1}, {"b": 2}]}},
+                        {"_a": {"k": [{"b": 1}, {"b": 2}]}}
                     ]
                 }
             }

@@ -83,7 +83,7 @@ def read_settings(filename=None, defs=None):
         Log.error("Can not read configuration file {{filename}}", {
             "filename": settings_file.abspath
         })
-    settings = mo_json_config.get("file:///" + settings_file.abspath)
+    settings = mo_json_config.get_file(settings_file)
     settings.args = args
     return settings
 
@@ -131,12 +131,7 @@ class SingleInstance:
             try:
                 fcntl.lockf(self.fp, fcntl.LOCK_EX | fcntl.LOCK_NB)
             except IOError:
-                Log.note(
-                    "\n" +
-                    "**********************************************************************\n" +
-                    "** Another instance is already running, quitting.\n" +
-                    "******************************************************  ****************\n"
-                )
+                Log.alarm("Another instance is already running, quitting.")
                 sys.exit(-1)
         self.initialized = True
 

@@ -68,7 +68,7 @@ def literal_field(field):
     RETURN SAME WITH DOTS (`.`) ESCAPED
     """
     try:
-        return field.replace(".", "\.")
+        return field.replace(".", "\\.")
     except Exception as e:
         get_logger().error("bad literal", e)
 
@@ -85,7 +85,7 @@ def unliteral_field(field):
     """
     if len(split_field(field)) > 1:
         get_logger().error("Bad call! Dude!")
-    return field.replace("\.", ".")
+    return field.replace("\\.", ".")
 
 
 def tail_field(field):
@@ -128,7 +128,7 @@ def join_field(field):
     potent = [f for f in field if f != "."]
     if not potent:
         return "."
-    return ".".join([f.replace(".", "\.") for f in potent])
+    return ".".join([f.replace(".", "\\.") for f in potent])
 
 
 def concat_field(prefix, suffix):
@@ -224,7 +224,7 @@ def _all_default(d, default, seen=None):
     if default is None:
         return
     if isinstance(default, Data):
-        default = object.__getattribute__(default, b"_dict")  # REACH IN AND GET THE dict
+        default = object.__getattribute__(default, SLOT)  # REACH IN AND GET THE dict
         # Log = _late_import()
         # Log.error("strictly dict (or object) allowed: got {{type}}", type=default.__class__.__name__)
 
@@ -350,11 +350,11 @@ def _get_attr(obj, path):
                 # WE CAN STILL PUT THE PATH TO THE FILE IN THE from CLAUSE
                 if len(path) == 1:
                     # GET MODULE OBJECT
-                    output = __import__(obj.__name__ + b"." + attr_name.decode('utf8'), globals(), locals(), [attr_name.decode('utf8')], 0)
+                    output = __import__(obj.__name__ + str(".") + str(attr_name), globals(), locals(), [str(attr_name)], 0)
                     return output
                 else:
                     # GET VARIABLE IN MODULE
-                    output = __import__(obj.__name__ + b"." + attr_name.decode('utf8'), globals(), locals(), [path[1].decode('utf8')], 0)
+                    output = __import__(obj.__name__ + str(".") + str(attr_name), globals(), locals(), [str(path[1])], 0)
                     return _get_attr(output, path[1:])
             except Exception as e:
                 Except = get_module("mo_logs.exceptions.Except")
@@ -433,11 +433,11 @@ def wrap(v):
     :return:  Data INSTANCE
     """
 
-    type_ = _get(v, "__class__")
+    type_ = v.__class__
 
     if type_ is dict:
         m = object.__new__(Data)
-        _set(m, "_dict", v)
+        _set(m, SLOT, v)
         return m
     elif type_ is none_type:
         return Null
@@ -505,7 +505,7 @@ def _wrap_leaves(value):
 def unwrap(v):
     _type = _get(v, "__class__")
     if _type is Data:
-        d = _get(v, "_dict")
+        d = _get(v, SLOT)
         return d
     elif _type is FlatList:
         return v.list
@@ -585,6 +585,6 @@ def tuplewrap(value):
 
 
 from mo_dots.nones import Null, NullType
-from mo_dots.datas import Data
+from mo_dots.datas import Data, SLOT
 from mo_dots.lists import FlatList
 from mo_dots.objects import DataObject
