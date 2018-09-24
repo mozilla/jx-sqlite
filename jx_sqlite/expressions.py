@@ -483,7 +483,7 @@ def to_sql(self, schema, not_null=False, boolean=False):
 
 @extend(RegExpOp)
 def to_sql(self, schema, not_null=False, boolean=False):
-    pattern = quote_value(convert.json2value(self.pattern.json))
+    pattern = quote_value(json2value(self.pattern.json))
     value = self.var.to_sql(schema)[0].sql.s
     return wrap([
         {"name": ".", "sql": {"b": value + " REGEXP " + pattern}}

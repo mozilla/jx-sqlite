@@ -365,7 +365,7 @@ class QueryTable(GroupbyTable):
         if columns[-1].es_column != GUID:
             columns.append(Column(
                 names={i: relative_field(GUID, i) for i in t},
-                jx_type="string",
+               jx_type="string",
                 es_column=GUID,
                 es_index=self.sf.fact,
                 nested_path=["."]

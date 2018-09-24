@@ -46,7 +46,6 @@ _upgraded = False
 known_databases = {Null: None}
 
 
-<<<<<<< .mine
 def _upgrade():
     try:
         Log.note("sqlite not upgraded")
@@ -70,39 +69,6 @@ def _upgrade():
         Log.warning("could not upgrade python's sqlite", cause=e)
 
 
-||||||| .r1111
-def _upgrade():
-    global _upgraded
-    global sqlite3
-
-    try:
-        Log.note("sqlite not upgraded")
-        # return
-        #
-        # import sys
-        # import platform
-        # if "windows" in platform.system().lower():
-        #     original_dll = File.new_instance(sys.exec_prefix, "dlls/sqlite3.dll")
-        #     if platform.architecture()[0]=='32bit':
-        #         source_dll = File("vendor/pyLibrary/vendor/sqlite/sqlite3_32.dll")
-        #     else:
-        #         source_dll = File("vendor/pyLibrary/vendor/sqlite/sqlite3_64.dll")
-        #
-        #     if not all(a == b for a, b in zip_longest(source_dll.read_bytes(), original_dll.read_bytes())):
-        #         original_dll.backup()
-        #         File.copy(source_dll, original_dll)
-        # else:
-        #     pass
-    except Exception as e:
-        Log.warning("could not upgrade python's sqlite", cause=e)
-
-    import sqlite3
-    _ = sqlite3
-    _upgraded = True
-
-
-=======
->>>>>>> .r1372
 class Sqlite(DB):
     """
     Allows multi-threaded access

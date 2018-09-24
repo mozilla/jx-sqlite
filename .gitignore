@@ -9,3 +9,4 @@
 /vendor/pyLibrary/vendor/sqlite/*.dll
 /vendor/pyLibrary/vendor/sqlite/sqlite3_32.def
 /vendor/pyLibrary/vendor/sqlite/sqlite3_64.def
+/*.sqlite-journal

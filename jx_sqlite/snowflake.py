@@ -31,24 +31,29 @@ class Namespace(jx_base.Namespace):
     """
     def __init__(self, db):
         self.db = db
-        self.tables = OrderedDict()  # MAP FROM NESTED PATH TO Table OBJECT, PARENTS PROCEED CHILDREN
-        self._columns = self.read_db()
-
-    def read_db(self):
-        """
-        PULL SCHEMA FROM DATABASE, BUILD THE MODEL
-        :return: None
-        """
-
-        columns = ColumnList()
+        self._snowflakes = {}  # MAP FROM BASE TABLE TO LIST OF NESTED TABLES
+        self._columns = ColumnList()
 
         # FIND ALL TABLES
         result = self.db.query("SELECT * FROM sqlite_master WHERE type='table' ORDER BY name")
         tables = wrap([{k: d[i] for i, k in enumerate(result.header)} for d in result.data])
+        last_nested_path = []
         for table in tables:
             if table.name.startswith("__"):
                 continue
             base_table, nested_path = tail_field(table.name)
+
+            # FIND COMMON NESTED PATH SUFFIX
+            for i, p in enumerate(last_nested_path):
+                if startswith_field(nested_path, p):
+                    last_nested_path = last_nested_path[i:]
+                    break
+            else:
+                last_nested_path = []
+
+            full_nested_path = [nested_path]+last_nested_path
+            nested_tables = self._snowflakes.setdefault(base_table, [nested_path]+last_nested_path)
+            nested_tables.append(jx_base.TableDesc(name=table.name, nested_path=full_nested_path))
 
             # LOAD THE COLUMNS
             command = "PRAGMA table_info"+sql_iso(quote_column(table.name))
@@ -58,15 +63,15 @@ class Namespace(jx_base.Namespace):
                 if name.startswith("__"):
                     continue
                 cname, ctype = untyped_column(name)
-                columns.add(Column(
+                self._columns.add(Column(
                     names={'.': cname},  # I THINK COLUMNS HAVE THIER FULL PATH
                     jx_type=coalesce(ctype, {"TEXT": "string", "REAL": "number", "INTEGER": "integer"}.get(dtype)),
-                    nested_path=nested_path,
+                    nested_path=full_nested_path,
                     es_type=dtype,
                     es_column=name,
                     es_index=table.name
                 ))
-        return columns
+            last_nested_path = full_nested_path
 
     def create_snowflake(self, fact_name, uid=UID):
         """
@@ -141,9 +146,9 @@ class Snowflake(jx_base.Snowflake):
             # WE ARE ALSO NESTING
             self._nest_column(column, [cname]+column.nested_path)
 
-        table = concat_field(self.fact, column.nested_path[0])
+        table = concat_field(self.fact_name, column.nested_path[0])
 
-        self.db.execute(
+        self.namespace.db.execute(
             "ALTER TABLE " + quote_column(table) +
             " ADD COLUMN " + quote_column(column.es_column) + " " + sql_types[column.type]
         )
@@ -151,8 +156,8 @@ class Snowflake(jx_base.Snowflake):
         self.add_column_to_schema(column)
 
     def _nest_column(self, column, new_path):
-        destination_table = concat_field(self.fact, new_path[0])
-        existing_table = concat_field(self.fact, column.nested_path[0])
+        destination_table = concat_field(self.fact_name, new_path[0])
+        existing_table = concat_field(self.fact_name, column.nested_path[0])
 
         # FIND THE INNER COLUMNS WE WILL BE MOVING
         moving_columns = []
@@ -166,7 +171,7 @@ class Snowflake(jx_base.Snowflake):
         # DEFINE A NEW TABLE?
         # LOAD THE COLUMNS
         command = "PRAGMA table_info"+sql_iso(quote_column(destination_table))
-        details = self.db.query(command)
+        details = self.namespace.db.query(command)
         if not details.data:
             command = (
                 "CREATE TABLE " + quote_column(destination_table) + sql_iso(sql_list([
@@ -177,7 +182,7 @@ class Snowflake(jx_base.Snowflake):
                     "FOREIGN KEY " + sql_iso(quoted_PARENT) + " REFERENCES " + quote_column(existing_table) + sql_iso(quoted_UID)
                 ]))
             )
-            self.db.execute(command)
+            self.namespace.db.execute(command)
             self.add_table_to_schema(new_path)
 
         # TEST IF THERE IS ANY DATA IN THE NEW NESTED ARRAY
@@ -185,7 +190,7 @@ class Snowflake(jx_base.Snowflake):
             return
 
         column.es_index = destination_table
-        self.db.execute(
+        self.namespace.db.execute(
             "ALTER TABLE " + quote_column(destination_table) +
             " ADD COLUMN " + quote_column(column.es_column) + " " + sql_types[column.type]
         )
@@ -194,17 +199,17 @@ class Snowflake(jx_base.Snowflake):
         for col in moving_columns:
             column = col.es_column
             tmp_table = "tmp_" + existing_table
-            columns = list(map(text_type, self.db.query(SQL_SELECT + SQL_STAR + SQL_FROM + quote_column(existing_table) + SQL_LIMIT + SQL_ZERO).header))
-            self.db.execute(
+            columns = list(map(text_type, self.namespace.db.query(SQL_SELECT + SQL_STAR + SQL_FROM + quote_column(existing_table) + SQL_LIMIT + SQL_ZERO).header))
+            self.namespace.db.execute(
                 "ALTER TABLE " + quote_column(existing_table) +
                 " RENAME TO " + quote_column(tmp_table)
             )
-            self.db.execute(
+            self.namespace.db.execute(
                 "CREATE TABLE " + quote_column(existing_table) + " AS " +
                 SQL_SELECT + sql_list([quote_column(c) for c in columns if c != column]) +
                 SQL_FROM + quote_column(tmp_table)
             )
-            self.db.execute("DROP TABLE " + quote_column(tmp_table))
+            self.namespace.db.execute("DROP TABLE " + quote_column(tmp_table))
 
     def add_table_to_schema(self, nested_path):
         table = Table(nested_path)
@@ -247,6 +252,11 @@ class Table(jx_base.Table):
     @property
     def schema(self):
         return self._schema
+
+
+    def map(self, mapping):
+        return self
+
 
 
 class Schema(object):
