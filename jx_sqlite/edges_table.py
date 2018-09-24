@@ -384,7 +384,7 @@ class EdgesTable(SetOpTable):
                 if not isinstance(s.percentile, (int, float)):
                     Log.error("Expecting percentile to be a float between 0 and 1")
 
-                Log.error("not implemented")
+                raise NotImplementedError()
             elif s.aggregate == "cardinality":
                 for details in s.value.to_sql(schema):
                     for json_type, sql in details.sql.items():

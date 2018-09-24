@@ -10,16 +10,16 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
-from collections import OrderedDict
 from copy import copy
 
 import jx_base
-from jx_base import STRUCT, OBJECT, EXISTS, STRING, Facts
+from jx_base import Column, Facts
 from jx_base.queries import get_property_name
-from jx_python.meta import Column, ColumnList
-from jx_sqlite import typed_column, UID, quoted_UID, quoted_GUID, sql_types, quoted_PARENT, quoted_ORDER, GUID, untyped_column
-from mo_dots import relative_field, listwrap, wrap, startswith_field, concat_field, Null, coalesce, set_default, tail_field
+from jx_python.meta import ColumnList
+from jx_sqlite import GUID, untyped_column, UID, typed_column, quoted_GUID, quoted_UID, sql_types, quoted_PARENT, quoted_ORDER
+from mo_dots import startswith_field, Null, relative_field, concat_field, set_default, wrap, tail_field, coalesce, listwrap
 from mo_future import text_type
+from mo_json.typed_encoder import STRING, OBJECT, EXISTS, STRUCT
 from mo_logs import Log
 from pyLibrary.sql import SQL_FROM, sql_iso, sql_list, SQL_LIMIT, SQL_SELECT, SQL_ZERO, SQL_STAR
 from pyLibrary.sql.sqlite import quote_column

@@ -11,17 +11,17 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
-from jx_base import OBJECT, BOOLEAN, STRUCT, EXISTS, NESTED
 from jx_base.expressions import Variable, DateOp, TupleOp, LeavesOp, BinaryOp, OrOp, InequalityOp, extend, Literal, NullOp, TrueOp, FalseOp, DivOp, FloorOp, \
     NeOp, NotOp, LengthOp, NumberOp, StringOp, CountOp, MultiOp, RegExpOp, CoalesceOp, MissingOp, ExistsOp, \
     PrefixOp, UnixOp, FromUnixOp, NotLeftOp, RightOp, NotRightOp, FindOp, InOp, RangeOp, CaseOp, AndOp, \
-    ConcatOp, LeftOp, EqOp, WhenOp, BasicIndexOfOp, IntegerOp, MaxOp, BasicSubstringOp, BasicEqOp, FALSE, MinOp, BooleanOp, SuffixOp, BetweenOp, simplified, ZERO, SqlInstrOp, SqlSubstrOp, NULL, ONE, builtin_ops, TRUE, SqlEqOp, BasicMultiOp
+    ConcatOp, LeftOp, EqOp, WhenOp, BasicIndexOfOp, IntegerOp, MaxOp, BasicSubstringOp, FALSE, MinOp, BooleanOp, SuffixOp, BetweenOp, simplified, ZERO, SqlInstrOp, SqlSubstrOp, NULL, ONE, builtin_ops, TRUE, SqlEqOp, BasicMultiOp
 from jx_base.queries import get_property_name
 from jx_sqlite import quoted_GUID, GUID
 from mo_dots import coalesce, wrap, Null, split_field, listwrap, startswith_field
-from mo_dots import join_field, ROOT_PATH, relative_field, Data
+from mo_dots import join_field, ROOT_PATH, relative_field
 from mo_future import text_type
 from mo_json import json2value
+from mo_json.typed_encoder import OBJECT, BOOLEAN, EXISTS, NESTED
 from mo_logs import Log
 from mo_math import Math
 from pyLibrary import convert

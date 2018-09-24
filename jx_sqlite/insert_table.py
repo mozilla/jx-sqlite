@@ -16,13 +16,13 @@ from __future__ import unicode_literals
 from collections import Mapping
 from copy import copy
 
-from jx_base import STRUCT
 from jx_base.expressions import jx_expression
 from jx_python.meta import Column
 from jx_sqlite import typed_column, get_type, ORDER, UID, GUID, PARENT, get_if_type
 from jx_sqlite.base_table import BaseTable, generateGuid
 from mo_dots import listwrap, Data, wrap, Null, unwraplist, startswith_field, unwrap, concat_field, literal_field
 from mo_future import text_type
+from mo_json.typed_encoder import STRUCT
 from mo_logs import Log
 from pyLibrary.sql import SQL_AND, SQL_UNION_ALL, SQL_INNER_JOIN, SQL_WHERE, SQL_FROM, SQL_SELECT, SQL_NULL, sql_list, sql_iso, SQL_TRUE
 from pyLibrary.sql.sqlite import quote_value, quote_column, join_column
