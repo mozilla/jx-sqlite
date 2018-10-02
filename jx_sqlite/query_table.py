@@ -24,7 +24,7 @@ from jx_sqlite.groupby_table import GroupbyTable
 from mo_collections.matrix import Matrix, index_to_coordinate
 from mo_dots import listwrap, coalesce, Data, wrap, startswith_field, unwrap, unwraplist, concat_field, relative_field, Null
 from mo_future import text_type
-from mo_json.typed_encoder import STRUCT
+from mo_json import STRUCT
 from mo_logs import Log
 from pyLibrary.sql import SQL, SQL_WHERE, SQL_FROM, SQL_SELECT, sql_list, sql_iso, SQL_ORDERBY, sql_count
 from pyLibrary.sql.sqlite import quote_column
@@ -86,11 +86,8 @@ class QueryTable(GroupbyTable):
         :param query:  JSON Query Expression, SET `format="container"` TO MAKE NEW TABLE OF RESULT
         :return:
         """
-        if not startswith_field(query['from'], self.sf.fact):
+        if not startswith_field(query['from'], self.sf.fact_name):
             Log.error("Expecting table, or some nested table")
-        frum, query['from'] = query['from'], self
-        table = self.sf.tables[relative_field(frum, self.sf.fact)]
-        schema = table.schema
         query = QueryOp.wrap(query, self, self.namespace)
         new_table = "temp_" + unique_name()
 
@@ -100,18 +97,18 @@ class QueryTable(GroupbyTable):
             create_table = ""
 
         if query.groupby and query.format != "cube":
-            op, index_to_columns = self._groupby_op(query, frum)
+            op, index_to_columns = self._groupby_op(query, self.schema)
             command = create_table + op
         elif query.groupby:
             query.edges, query.groupby = query.groupby, query.edges
-            op, index_to_columns = self._edges_op(query, frum)
+            op, index_to_columns = self._edges_op(query, self.schema)
             command = create_table + op
             query.edges, query.groupby = query.groupby, query.edges
         elif query.edges or any(a != "none" for a in listwrap(query.select).aggregate):
-            op, index_to_columns = self._edges_op(query, frum)
+            op, index_to_columns = self._edges_op(query, self.schema)
             command = create_table + op
         else:
-            op = self._set_op(query, frum)
+            op = self._set_op(query, self.schema)
             return op
 
         result = self.db.query(command)
@@ -452,7 +449,6 @@ class QueryTable(GroupbyTable):
         else:
             Log.error("not done")
         return output
-
 
 from jx_base.container import type2container
 

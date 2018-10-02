@@ -53,7 +53,7 @@ def new_instance(settings):
     path = ".".join(path[:-1])
     constructor = None
     try:
-        temp = __import__(path, globals(), locals(), [class_name], -1)
+        temp = __import__(path, globals(), locals(), [class_name], 0)
         constructor = object.__getattribute__(temp, class_name)
     except Exception as e:
         Log.error("Can not find class {{class}}", {"class": path}, cause=e)

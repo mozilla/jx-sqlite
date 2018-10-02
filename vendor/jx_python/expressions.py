@@ -25,7 +25,7 @@ from jx_base.expressions import Variable, DateOp, TupleOp, LeavesOp, BinaryOp, O
     InequalityOp, extend, RowsOp, OffsetOp, GetOp, Literal, NullOp, TrueOp, FalseOp, DivOp, FloorOp, \
     EqOp, NeOp, NotOp, LengthOp, NumberOp, StringOp, CountOp, MultiOp, RegExpOp, CoalesceOp, MissingOp, ExistsOp, \
     PrefixOp, NotLeftOp, RightOp, NotRightOp, FindOp, BetweenOp, RangeOp, CaseOp, AndOp, \
-    ConcatOp, InOp, jx_expression, Expression, WhenOp, MaxOp, SplitOp, NULL, SelectOp, SuffixOp, LastOp
+    ConcatOp, InOp, jx_expression, Expression, WhenOp, MaxOp, SplitOp, NULL, SelectOp, SuffixOp, LastOp, IntegerOp, BasicEqOp
 from jx_python.expression_compiler import compile_expression
 from mo_times.dates import Date
 
@@ -83,7 +83,7 @@ def to_python(self, not_null=False, boolean=False, many=False):
 
 @extend(RowsOp)
 def to_python(self, not_null=False, boolean=False, many=False):
-    agg = "rows[rownum+" + self.offset.to_python() + "]"
+    agg = "rows[rownum+" + IntegerOp("", self.offset).to_python() + "]"
     path = split_field(json2value(self.var.json))
     if not path:
         return agg
@@ -92,6 +92,9 @@ def to_python(self, not_null=False, boolean=False, many=False):
         agg = agg + ".get(" + convert.value2quote(p) + ", EMPTY_DICT)"
     return agg + ".get(" + convert.value2quote(path[-1]) + ")"
 
+@extend(IntegerOp)
+def to_python(self, not_null=False, boolean=False, many=False):
+    return "int(" + self.term.to_python() + ")"
 
 @extend(GetOp)
 def to_python(self, not_null=False, boolean=False, many=False):
@@ -179,8 +182,10 @@ def to_python(self, not_null=False, boolean=False, many=False):
 
 @extend(DivOp)
 def to_python(self, not_null=False, boolean=False, many=False):
-    return "None if (" + self.missing().to_python() + ") else (" + self.lhs.to_python(
-        not_null=True) + ") / (" + self.rhs.to_python(not_null=True) + ")"
+    miss = self.missing().to_python()
+    lhs = self.lhs.to_python(not_null=True)
+    rhs = self.rhs.to_python(not_null=True)
+    return "None if (" + miss + ") else (" + lhs + ") / (" + rhs + ")"
 
 
 @extend(FloorOp)
@@ -191,6 +196,11 @@ def to_python(self, not_null=False, boolean=False, many=False):
 @extend(EqOp)
 def to_python(self, not_null=False, boolean=False, many=False):
     return "(" + self.rhs.to_python() + ") in listwrap(" + self.lhs.to_python() + ")"
+
+
+@extend(BasicEqOp)
+def to_python(self, not_null=False, boolean=False, many=False):
+    return "(" + self.rhs.to_python() + ") == (" + self.lhs.to_python() + ")"
 
 
 @extend(NeOp)
@@ -356,3 +366,4 @@ def to_python(self, not_null=False, boolean=False, many=False):
 @extend(WhenOp)
 def to_python(self, not_null=False, boolean=False, many=False):
     return "(" + self.then.to_python() + ") if (" + self.when.to_python(boolean=True) + ") else (" + self.els_.to_python() + ")"
+

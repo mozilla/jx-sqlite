@@ -178,8 +178,16 @@ class DefaultDomain(Domain):
         self.map[key] = canonical
         return canonical
 
-    # def getIndexByKey(self, key):
-    #     return self.map.get(key).dataIndex;
+    def getIndexByKey(self, key):
+        canonical = self.map.get(key)
+        if canonical:
+            return canonical.dataIndex
+
+        index = len(self.partitions)
+        canonical = Data(name=key, value=key, dataIndex=index)
+        self.partitions.append(canonical)
+        self.map[key] = canonical
+        return index
 
     def getKey(self, part):
         return part.value

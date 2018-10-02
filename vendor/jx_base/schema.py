@@ -14,7 +14,8 @@ from __future__ import unicode_literals
 from copy import copy
 
 from mo_dots import Null, startswith_field, set_default, wrap
-from mo_json.typed_encoder import unnest_path, untype_path, STRUCT, EXISTS, OBJECT, NESTED
+from mo_json import STRUCT, EXISTS, OBJECT, NESTED
+from mo_json.typed_encoder import unnest_path, untype_path
 from mo_logs import Log
 
 

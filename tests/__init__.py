@@ -79,11 +79,11 @@ class SQLiteUtils(object):
             # INSERT DATA
             self._index.insert(subtest.data)
         except Exception as  e:
-            Log.error("can not load {{data}} into container", {"data":subtest.data}, e)
+            Log.error("can not load {{data}} into container", {"data": subtest.data}, e)
 
         frum = subtest.query['from']
         if isinstance(frum, text_type):
-            subtest.query["from"] = frum.replace(test_jx.TEST_TABLE, self._index.sf.fact)
+            subtest.query["from"] = frum.replace(test_jx.TEST_TABLE, self._index.facts.snowflake.fact_name)
         else:
             Log.error("Do not know how to handle")
 
@@ -121,7 +121,7 @@ class SQLiteUtils(object):
 
     def execute_query(self, query):
         try:
-            if startswith_field(query["from"], self._index.sf.fact):
+            if startswith_field(query["from"], self._index.facts.snowflake.fact_name):
                 return self._index.query(deepcopy(query))
             elif query["from"] == "meta.columns":
                 return self._index.query_metadata(deepcopy(query))
@@ -159,7 +159,7 @@ def compare_to_expected(query, result, expect):
         if query["from"].startswith("meta."):
             pass
         else:
-            query = QueryOp.wrap(query, table=query.frum, schema=query.schema)
+            query = QueryOp.wrap(query, query.frum, query.schema)
 
         if not query.sort:
             try:

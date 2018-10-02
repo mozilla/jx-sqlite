@@ -11,6 +11,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
+import mo_json
 from jx_base.expressions import Variable, DateOp, TupleOp, LeavesOp, BinaryOp, OrOp, InequalityOp, extend, Literal, NullOp, TrueOp, FalseOp, DivOp, FloorOp, \
     NeOp, NotOp, LengthOp, NumberOp, StringOp, CountOp, MultiOp, RegExpOp, CoalesceOp, MissingOp, ExistsOp, \
     PrefixOp, UnixOp, FromUnixOp, NotLeftOp, RightOp, NotRightOp, FindOp, InOp, RangeOp, CaseOp, AndOp, \
@@ -59,7 +60,7 @@ def to_sql(self, schema, not_null=False, boolean=False):
     else:
         for col in cols:
             cname = relative_field(col.names['.'], var_name)
-            if col.type == OBJECT:
+            if col.jx_type == OBJECT:
                 prefix = self.var + "."
                 for cn, cs in schema.items():
                     if cn.startswith(prefix):
@@ -71,7 +72,7 @@ def to_sql(self, schema, not_null=False, boolean=False):
                 nested_path = col.nested_path[0]
                 tempa = acc.setdefault(nested_path, {})
                 tempb = tempa.setdefault(get_property_name(cname), {})
-                tempb[json_type_to_sql_type[col.type]] = quote_column(col.es_column)
+                tempb[json_type_to_sql_type[col.jx_type]] = quote_column(col.es_column)
 
     return wrap([
         {"name": cname, "sql": types, "nested_path": nested_path}
@@ -884,18 +885,19 @@ def partial_eval(self):
 
 
 json_type_to_sql_type = {
-    "null": "0",
-    "boolean": "b",
-    "number": "n",
-    "string": "s",
-    "object": "j",
-    "nested": "j"
+    mo_json.IS_NULL: "0",
+    mo_json.BOOLEAN: "b",
+    mo_json.NUMBER: "n",
+    mo_json.STRING: "s",
+    mo_json.OBJECT: "j",
+    mo_json.NESTED: "N"
 }
 
 sql_type_to_json_type = {
-    "0": "null",
-    "b": "boolean",
-    "n": "number",
-    "s": "string",
-    "j": "object"
+    None: None,
+    "0": mo_json.IS_NULL,
+    "b": mo_json.BOOLEAN,
+    "n": mo_json.NUMBER,
+    "s": mo_json.STRING,
+    "j": mo_json.OBJECT
 }

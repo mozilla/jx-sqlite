@@ -17,19 +17,17 @@ import re
 import sys
 from collections import Mapping, namedtuple
 
-from jx_base.expressions import jx_expression
+import mo_json
 from mo_dots import Data, coalesce, unwraplist, Null
 from mo_files import File
 from mo_future import allocate_lock as _allocate_lock, text_type
-from mo_kwargs import override
 from mo_kwargs import override
 from mo_logs import Log
 from mo_logs.exceptions import Except, extract_stack, ERROR, format_trace
 from mo_logs.strings import quote
 from mo_math.stats import percentile
 from mo_threads import Queue, Thread, Lock, Till
-from mo_times import Date, Duration
-from mo_times.timer import Timer
+from mo_times import Date, Duration, Timer
 from pyLibrary import convert
 from pyLibrary.sql import DB, SQL, SQL_TRUE, SQL_FALSE, SQL_NULL, SQL_SELECT, sql_iso, sql_list
 
@@ -529,6 +527,7 @@ def quote_value(value):
 def quote_list(list):
     return sql_iso(sql_list(map(quote_value, list)))
 
+
 def join_column(a, b):
     a = quote_column(a)
     b = quote_column(b)
@@ -568,3 +567,18 @@ def _upgrade():
     import sqlite3
     _ = sqlite3
     _upgraded = True
+
+
+json_type_to_sqlite_type = {
+    mo_json.BOOLEAN: 'INTEGER',
+    mo_json.INTEGER: 'INTEGER',
+    mo_json.NUMBER: 'NUMBER',
+    mo_json.STRING: 'TEXT',
+    mo_json.EXISTS: "INTEGER"
+}
+
+sqlite_type_to_json_type = {
+    'INTEGER': mo_json.INTEGER,
+    'NUMBER': mo_json.NUMBER,
+    'TEXT': mo_json.STRING
+}

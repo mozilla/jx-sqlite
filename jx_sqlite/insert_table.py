@@ -14,18 +14,18 @@ from __future__ import division
 from __future__ import unicode_literals
 
 from collections import Mapping
-from copy import copy
 
 from jx_base.expressions import jx_expression
 from jx_python.meta import Column
 from jx_sqlite import typed_column, get_type, ORDER, UID, GUID, PARENT, get_if_type
 from jx_sqlite.base_table import BaseTable, generateGuid
+from jx_sqlite.expressions import json_type_to_sql_type
 from mo_dots import listwrap, Data, wrap, Null, unwraplist, startswith_field, unwrap, concat_field, literal_field
 from mo_future import text_type
-from mo_json.typed_encoder import STRUCT
+from mo_json import STRUCT
 from mo_logs import Log
 from pyLibrary.sql import SQL_AND, SQL_UNION_ALL, SQL_INNER_JOIN, SQL_WHERE, SQL_FROM, SQL_SELECT, SQL_NULL, sql_list, sql_iso, SQL_TRUE
-from pyLibrary.sql.sqlite import quote_value, quote_column, join_column
+from pyLibrary.sql.sqlite import quote_value, quote_column, join_column, json_type_to_sqlite_type
 
 
 class InsertTable(BaseTable):
@@ -66,7 +66,8 @@ class InsertTable(BaseTable):
             column = Column(
                 names={".": new_column_name},
                 jx_type=ctype,
-                es_index=self.sf.fact,
+                es_index=self.facts.snowflake.fact_name,
+                es_type=json_type_to_sqlite_type(ctype),
                 es_column=typed_column(new_column_name, ctype)
             )
             self.add_column(column)
@@ -74,7 +75,7 @@ class InsertTable(BaseTable):
         # UPDATE THE NESTED VALUES
         for nested_column_name, nested_value in command.set.items():
             if get_type(nested_value) == "nested":
-                nested_table_name = concat_field(self.sf.fact, nested_column_name)
+                nested_table_name = concat_field(self.facts.snowflake.fact_name, nested_column_name)
                 nested_table = nested_tables[nested_column_name]
                 self_primary_key = sql_list(quote_column(c.es_column) for u in self.uid for c in self.columns[u])
                 extra_key_name = UID_PREFIX + "id" + text_type(len(self.uid))
@@ -87,7 +88,7 @@ class InsertTable(BaseTable):
                     SQL_FROM + quote_column(nested_table.name) + " n" +
                     SQL_INNER_JOIN + "(" +
                     SQL_SELECT + self_primary_key +
-                    SQL_FROM + quote_column(self.sf.fact) +
+                    SQL_FROM + quote_column(abs_schema.fact) +
                     SQL_WHERE + where_sql +
                     "\n) t ON " +
                     SQL_AND.join(
@@ -119,7 +120,7 @@ class InsertTable(BaseTable):
                 # BUILD THE PARENT TABLES
                 parent = (
                     SQL_SELECT + self_primary_key +
-                    SQL_FROM + quote_column(self.sf.fact) +
+                    SQL_FROM + quote_column(abs_schema.fact) +
                     SQL_WHERE + jx_expression(command.where).to_sql()
                 )
 
@@ -166,7 +167,7 @@ class InsertTable(BaseTable):
                             self.columns[column.name].add(column)
 
         command = (
-            "UPDATE " + quote_column(self.sf.fact) + " SET " +
+            "UPDATE " + quote_column(abs_schema.fact) + " SET " +
             sql_list(
                 [
                     quote_column(c) + "=" + quote_value(get_if_type(v, c.jx_type))
@@ -224,8 +225,7 @@ class InsertTable(BaseTable):
         doc_collection = {".": _insertion}
         # KEEP TRACK OF WHAT TABLE WILL BE MADE (SHORTLY)
         required_changes = []
-        nested_tables = copy(self.sf.tables)
-        abs_schema = copy(self.sf.tables["."].schema)
+        abs_schema = self.facts.snowflake
 
         def _flatten(data, uid, parent_id, order, full_path, nested_path, row=None, guid=None):
             """
@@ -238,7 +238,7 @@ class InsertTable(BaseTable):
             :param row: we will be filling this
             :return:
             """
-            table = concat_field(self.sf.fact, nested_path[0])
+            table = concat_field(abs_schema.fact_name, nested_path[0])
             insertion = doc_collection[nested_path[0]]
             if not row:
                 row = {GUID: guid, UID: uid, PARENT: parent_id, ORDER: order}
@@ -254,27 +254,30 @@ class InsertTable(BaseTable):
                     continue
 
                 if value_type in STRUCT:
-                    c = unwraplist([cc for cc in abs_schema[cname] if cc.jx_type in STRUCT])
+                    c = unwraplist([cc for cc in abs_schema.column[cname] if cc.jx_type in STRUCT])
                 else:
-                    c = unwraplist([cc for cc in abs_schema[cname] if cc.jx_type == value_type])
+                    c = unwraplist([cc for cc in abs_schema.column[cname] if cc.jx_type == value_type])
 
                 if not c:
                     # WHAT IS THE NESTING LEVEL FOR THIS PATH?
                     deeper_nested_path = "."
-                    for path, _ in nested_tables.items():
+                    for path in abs_schema.query_paths:
                         if startswith_field(cname, path) and len(deeper_nested_path) < len(path):
                             deeper_nested_path = path
 
                     c = Column(
                         names={".": cname},
                         jx_type=value_type,
-                        es_column=typed_column(cname, value_type),
+                        es_type=json_type_to_sqlite_type[value_type],
+                        es_column=typed_column(cname, json_type_to_sql_type.get(value_type)),
                         es_index=table,
                         nested_path=nested_path
                     )
-                    abs_schema.add(cname, c)
+                    abs_schema.namespace._columns.add(c)
                     if value_type == "nested":
-                        nested_tables[cname] = "fake table"
+                        # WHAT TO DO HERE?
+                        pass
+                        # nested_tables[cname] = "fake table"
 
                     required_changes.append({"add": c})
 
@@ -287,16 +290,16 @@ class InsertTable(BaseTable):
                     from_doc = doc_collection.get(c.nested_path[0], None)
                     column = c.es_column
                     from_doc.active_columns.remove(c)
-                    abs_schema.remove(cname, c)
+                    abs_schema._remove_column(c)
                     required_changes.append({"nest": (c, nested_path)})
                     deep_c = Column(
                         names={".": cname},
                         jx_type=value_type,
-                        es_column=typed_column(cname, value_type),
+                        es_column=typed_column(cname, json_type_to_sql_type(value_type)),
                         es_index=table,
                         nested_path=nested_path
                     )
-                    abs_schema.add(cname, deep_c)
+                    abs_schema._add_column(deep_c)
                     insertion.active_columns.add(deep_c)
 
                     for r in from_doc.rows:
@@ -332,7 +335,7 @@ class InsertTable(BaseTable):
         for doc in docs:
             _flatten(doc, self.next_uid(), 0, 0, full_path=path, nested_path=["."], guid=self.next_guid())
             if required_changes:
-                self.sf.change_schema(required_changes)
+                abs_schema.change_schema(required_changes)
             required_changes = []
 
         return doc_collection
@@ -347,9 +350,9 @@ class InsertTable(BaseTable):
         for nested_path, details in collection.items():
             active_columns = wrap(list(details.active_columns))
             rows = details.rows
-            table_name = concat_field(self.sf.fact, nested_path)
+            table_name = concat_field(self.facts.snowflake.fact_name, nested_path)
 
-            if table_name == self.sf.fact:
+            if table_name == self.facts.snowflake.fact_name:
                 # DO NOT REQUIRE PARENT OR ORDER COLUMNS
                 meta_columns = [GUID, UID]
             else:
@@ -368,4 +371,5 @@ class InsertTable(BaseTable):
                 for row in unwrap(rows)
             )
 
-            self.db.execute(prefix + records)
+            with self.db.transaction() as t:
+                t.execute(prefix + records)

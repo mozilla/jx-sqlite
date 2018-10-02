@@ -19,8 +19,7 @@ import mo_json
 from jx_base.queries import is_variable_name, get_property_name
 from mo_dots import coalesce, wrap, Null, split_field
 from mo_future import text_type, utf8_json_encoder, get_function_name, zip_longest
-from mo_json import scrub
-from mo_json.typed_encoder import IS_NULL, OBJECT, BOOLEAN, python_type_to_json_type, NUMBER, INTEGER, STRING
+from mo_json import scrub, IS_NULL, OBJECT, BOOLEAN, NUMBER, INTEGER, STRING, python_type_to_json_type
 from mo_logs import Log, Except
 from mo_math import Math, MAX, MIN, UNION
 from mo_times.dates import Date, unicode2Date
@@ -930,7 +929,7 @@ class DivOp(Expression):
         return DivOp("div", [self.lhs.map(map_), self.rhs.map(map_)], default=self.default.map(map_))
 
     def missing(self):
-        AndOp("and", [
+        return AndOp("and", [
             self.default.missing(),
             OrOp("or", [self.lhs.missing(), self.rhs.missing(), EqOp("eq", [self.rhs, ZERO])])
         ]).partial_eval()
@@ -2690,6 +2689,10 @@ class CaseOp(Expression):
 
     def __data__(self):
         return {"case": [w.__data__() for w in self.whens]}
+
+    def __eq__(self, other):
+        if isinstance(other, CaseOp):
+            return all(s==o for s, o in zip(self.whens, other.whens))
 
     def vars(self):
         output = set()

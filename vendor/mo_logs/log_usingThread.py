@@ -32,8 +32,10 @@ class StructuredLogger_usingThread(StructuredLogger):
         def worker(logger, please_stop):
             try:
                 while not please_stop:
-                    (Till(seconds=1) | please_stop).wait()
                     logs = self.queue.pop_all()
+                    if not logs:
+                        (Till(seconds=1) | please_stop).wait()
+                        continue
                     for log in logs:
                         if log is THREAD_STOP:
                             please_stop.go()
@@ -58,7 +60,6 @@ class StructuredLogger_usingThread(StructuredLogger):
             raise e  # OH NO!
 
     def stop(self):
-        Log.warning("Stopping threaded logger")
         try:
             self.queue.add(THREAD_STOP)  # BE PATIENT, LET REST OF MESSAGE BE SENT
             self.thread.join()

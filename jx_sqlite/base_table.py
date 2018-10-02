@@ -17,15 +17,16 @@ import jx_base
 from jx_base import generateGuid
 from jx_python import jx
 from jx_sqlite import UID
-from jx_sqlite.snowflake import Snowflake
+from jx_sqlite.snowflake import Namespace
 from mo_kwargs import override
-from pyLibrary.sql import SQL, SQL_UNION_ALL, SQL_SELECT
-from pyLibrary.sql.sqlite import Sqlite, quote_value
+from mo_logs import Log
+from pyLibrary.sql import SQL_UNION_ALL, SQL_SELECT
+from pyLibrary.sql.sqlite import Sqlite, quote_value, quote_column
 
 _config=None
 
 
-class BaseTable(jx_base.Facts):
+class BaseTable(jx_base.Table):
     @override
     def __init__(self, name, db=None, uid=UID, kwargs=None):
         """
@@ -49,24 +50,41 @@ class BaseTable(jx_base.Facts):
                     "settings": {"db": db}
                 }
 
-        self.sf = Snowflake(fact=name, uid=uid, db=db)
+        ns = Namespace(db=db)
+        self.facts = ns.create_or_replace_facts(fact_name=name)
 
         self._next_guid = generateGuid()
         self._next_uid = 1
         self._make_digits_table()
         self.uid_accessor = jx.get(uid)
 
-
     def _make_digits_table(self):
         existence = self.db.query("PRAGMA table_info(__digits__)")
         if not existence.data:
-            self.db.execute("CREATE TABLE __digits__(value INTEGER)")
-            self.db.execute("INSERT INTO __digits__ " + SQL_UNION_ALL.join(SQL_SELECT + SQL(quote_value(i)) for i in range(10)))
+            with self.db.transaction() as t:
+                t.execute("CREATE TABLE" + quote_column(DIGITS_TABLE) + "(value INTEGER)")
+                t.execute("INSERT INTO" + quote_column(DIGITS_TABLE) + SQL_UNION_ALL.join(SQL_SELECT + quote_value(i) for i in range(10)))
+
+    @property
+    def sf(self):
+        return self.facts.snowflake
 
     @property
     def namespace(self):
-        namespace
+        return self.facts.snowflake.namespace
 
     @property
     def schema(self):
-        return self.sf.tables['.'].schema
+        return self.facts.snowflake.column  # THIS IS A LOOKUP TOOL
+
+    @property
+    def name(self):
+        return self.facts.snowflake.fact_name
+
+    def get_table(self, table_name):
+        if self.name != table_name:
+            Log.error("expecting to match name")
+        return self
+
+
+DIGITS_TABLE = "__digits__"

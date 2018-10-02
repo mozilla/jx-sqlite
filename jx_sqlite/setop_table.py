@@ -22,7 +22,7 @@ from jx_sqlite.insert_table import InsertTable
 from mo_dots import listwrap, Data, unwraplist, startswith_field, unwrap, relative_field, concat_field, literal_field, Null, tail_field
 from mo_future import text_type
 from mo_future import unichr
-from mo_json.typed_encoder import STRUCT
+from mo_json import STRUCT
 from mo_math import UNION, MAX
 from pyLibrary.sql import SQL_UNION_ALL, SQL_LEFT_JOIN, SQL_FROM, SQL_WHERE, SQL_SELECT, SQL_ON, SQL_AND, SQL_LIMIT, SQL_ORDERBY, SQL_NULL, SQL_IS_NULL, SQL_IS_NOT_NULL, sql_iso, sql_list, sql_alias, SQL_TRUE
 from pyLibrary.sql.sqlite import quote_value, quote_column, join_column
@@ -46,7 +46,7 @@ class SetOpTable(InsertTable):
             if not any(startswith_field(cname, v) for cname in schema.keys()):
                 active_columns["."].add(Column(
                     names={".": v},
-                    jx_type="null",
+                    jx_type=jx_base.NULL,
                     es_column=".",
                     es_index=".",
                     nested_path=["."]

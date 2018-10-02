@@ -13,6 +13,8 @@ from __future__ import unicode_literals
 
 import itertools
 
+from jx_base.query import _normalize_domain
+
 from jx_python import windows
 from mo_dots import listwrap, wrap, coalesce
 from mo_logs import Log
@@ -105,7 +107,7 @@ def list_aggs(frum, query):
 
 def make_accessor(e):
     d = e.domain
-
+    # d = _normalize_domain(d)
     if e.value:
         accessor = jx_expression_to_function(e.value)
         if e.allowNulls:

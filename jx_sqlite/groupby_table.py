@@ -25,13 +25,15 @@ from pyLibrary.sql.sqlite import quote_column, join_column
 
 
 class GroupbyTable(EdgesTable):
-    def _groupby_op(self, query, frum):
-        base_table, path = tail_field(frum)
-        schema = self.sf.tables[path].schema
+    def _groupby_op(self, query, schema):
+        base_table = schema.snowflake.fact_name
+        path = schema.nested_path
+        # base_table, path = tail_field(frum)
+        # schema = self.sf.tables[path].schema
         index_to_column = {}
         nest_to_alias = {
             nested_path: "__" + unichr(ord('a') + i) + "__"
-            for i, (nested_path, sub_table) in enumerate(self.sf.tables.items())
+            for i, nested_path in enumerate(self.schema.snowflake.query_paths)
         }
         tables = []
         for n, a in nest_to_alias.items():

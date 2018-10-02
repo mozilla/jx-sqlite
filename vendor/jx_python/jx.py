@@ -82,6 +82,10 @@ def run(query, container=Null):
             return cube_aggs(container, query_op)
     elif isinstance(container, QueryOp):
         container = run(container)
+    elif isinstance(container, Mapping):
+        query = container
+        container = query['from']
+        container = run(QueryOp.wrap(query, container, container.namespace), container)
     else:
         Log.error("Do not know how to handle {{type}}", type=container.__class__.__name__)
 
@@ -996,7 +1000,10 @@ def window(data, param):
             data = sort(data, sortColumns, already_normalized=True)
         # SIMPLE CALCULATED VALUE
         for rownum, r in enumerate(data):
-            r[name] = calc_value(r, rownum, data)
+            try:
+                r[name] = calc_value(r, rownum, data)
+            except Exception as e:
+                raise e
         return
 
     try:

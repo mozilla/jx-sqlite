@@ -96,9 +96,9 @@ def tail_field(field):
         return ".", "."
     elif "." in field:
         if "\\." in field:
-            return tuple(k.replace("\a", ".") for k in field.replace("\\.", "\a").split(".", maxsplit=1))
+            return tuple(k.replace("\a", ".") for k in field.replace("\\.", "\a").split(".", 1))
         else:
-            return field.split(".", maxsplit=1)
+            return field.split(".", 1)
     else:
         return field, "."
 

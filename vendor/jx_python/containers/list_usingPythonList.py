@@ -154,7 +154,7 @@ class ListContainer(Container, jx_base.Namespace, jx_base.Table):
         return ListContainer("from "+self.name, filter(temp, self.data), self.schema)
 
     def sort(self, sort):
-        return ListContainer("from "+self.name, jx.sort(self.data, sort, already_normalized=True), self.schema)
+        return ListContainer("sorted "+self.name, jx.sort(self.data, sort, already_normalized=True), self.schema)
 
     def get(self, select):
         """
@@ -199,7 +199,7 @@ class ListContainer(Container, jx_base.Namespace, jx_base.Table):
         return ListContainer("from "+self.name, data=new_data, schema=new_schema)
 
     def window(self, window):
-        _ = window
+        # _ = window
         jx.window(self.data, window)
         return self
 

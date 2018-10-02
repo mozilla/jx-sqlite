@@ -231,8 +231,7 @@ class Queue(object):
                 return v
 
     def close(self):
-        with self.lock:
-            self.please_stop.go()
+        self.please_stop.go()
 
     def commit(self):
         pass
@@ -417,10 +416,7 @@ class ThreadedQueue(Queue):
         Queue.__init__(self, name=name, max=max_size, silent=silent)
 
         def worker_bee(please_stop):
-            def stopper():
-                self.add(THREAD_STOP)
-
-            please_stop.on_go(stopper)
+            please_stop.on_go(lambda: self.add(THREAD_STOP))
 
             _buffer = []
             _post_push_functions = []
@@ -511,15 +507,6 @@ class ThreadedQueue(Queue):
             self._wait_for_queue_space(timeout=timeout)
             if not self.please_stop:
                 self.queue.append(value)
-            # if Random.range(0, 50) == 0:
-            #     sizes = wrap([{"id":i["id"], "size":len(value2json(i))} for i in self.queue if isinstance(i, Mapping)])
-            #     size=sum(sizes.size)
-            #     if size>50000000:
-            #         from jx_python import jx
-            #
-            #         biggest = jx.sort(sizes, "size").last().id
-            #         Log.note("Big record {{id}}", id=biggest)
-            #     Log.note("{{name}} has {{num}} items with json size of {{size|comma}}", name=self.name, num=len(self.queue), size=size)
         return self
 
     def extend(self, values):
@@ -534,9 +521,9 @@ class ThreadedQueue(Queue):
     def __enter__(self):
         return self
 
-    def __exit__(self, a, b, c):
+    def __exit__(self, exc_type, exc_val, exc_tb):
         self.add(THREAD_STOP)
-        if isinstance(b, BaseException):
+        if isinstance(exc_val, BaseException):
             self.thread.please_stop.go()
         self.thread.join()
 

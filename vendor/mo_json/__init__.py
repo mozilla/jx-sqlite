@@ -28,6 +28,22 @@ FIND_LOOPS = False
 SNAP_TO_BASE_10 = True  # Identify floats near a round base10 value (has 000 or 999) and shorten
 CAN_NOT_DECODE_JSON = "Can not decode JSON"
 
+IS_NULL = '0'
+BOOLEAN = 'boolean'
+INTEGER = 'integer'
+NUMBER = 'number'
+STRING = 'string'
+OBJECT = 'object'
+NESTED = "nested"
+EXISTS = "exists"
+
+JSON_TYPES = [BOOLEAN, INTEGER, NUMBER, STRING, OBJECT]
+PRIMITIVE = [EXISTS, BOOLEAN, INTEGER, NUMBER, STRING]
+STRUCT = [EXISTS, OBJECT, NESTED]
+
+
+
+
 
 _get = object.__getattribute__
 
@@ -365,6 +381,29 @@ def datetime2unix(d):
         return float(diff.total_seconds())
     except Exception as e:
         Log.error("Can not convert {{value}}",  value= d, cause=e)
+
+
+python_type_to_json_type = {
+    int: NUMBER,
+    text_type: STRING,
+    float: NUMBER,
+    None: OBJECT,
+    bool: BOOLEAN,
+    NullType: OBJECT,
+    none_type: OBJECT,
+    Data: OBJECT,
+    dict: OBJECT,
+    object: OBJECT,
+    Mapping: OBJECT,
+    list: NESTED,
+    FlatList: NESTED,
+    Date: NUMBER
+}
+
+if PY2:
+    python_type_to_json_type[str] = STRING
+    python_type_to_json_type[long] = NUMBER
+
 
 
 from mo_json.decoder import json_decoder

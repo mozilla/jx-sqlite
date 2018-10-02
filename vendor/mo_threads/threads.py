@@ -19,7 +19,7 @@ import signal as _signal
 import sys
 from copy import copy
 from datetime import datetime, timedelta
-from time import sleep
+from time import sleep, time
 
 from mo_dots import Data, unwraplist
 from mo_future import get_ident, start_new_thread, get_function_name, text_type, allocate_lock
@@ -356,8 +356,13 @@ class Thread(BaseThread):
             output = ALL.get(ident)
 
         if output is None:
+            thread = BaseThread(ident)
+            thread.cprofiler = CProfiler()
+            thread.cprofiler.__enter__()
+            with ALL_LOCK:
+                ALL[ident] = thread
             Log.warning("this thread is not known. Register this thread at earliest known entry point.")
-            return BaseThread(get_ident())
+            return thread
         return output
 
 

@@ -46,14 +46,18 @@ def override(func):
         if err.startswith(func_name) and ("takes at least" in err or "required positional argument" in err):
             missing = [p for p in params if str(p) not in packed]
             given = [p for p in params if str(p) in packed]
-            get_logger().error(
-                "Problem calling {{func_name}}:  Expecting parameter {{missing}}, given {{given}}",
-                func_name=func_name,
-                missing=missing,
-                given=given,
-                stack_depth=2
-            )
-        get_logger().error("Error dispatching call", e)
+            if not missing:
+                raise e
+            else:
+                get_logger().error(
+                    "Problem calling {{func_name}}:  Expecting parameter {{missing}}, given {{given}}",
+                    func_name=func_name,
+                    missing=missing,
+                    given=given,
+                    stack_depth=2,
+                    cause=e
+                )
+        raise e
 
     if "kwargs" not in params:
         # WE ASSUME WE ARE ONLY ADDING A kwargs PARAMETER TO SOME REGULAR METHOD
@@ -70,15 +74,15 @@ def override(func):
     elif func_name in ("__init__", "__new__"):
         def w_constructor(*args, **kwargs):
             if "kwargs" in kwargs:
-                packed = params_pack(params, kwargs, dict_zip(params[1:], args[1:]), kwargs["kwargs"], defaults)
+                packed = params_pack(params, kwargs, dict_zip(params, args), kwargs["kwargs"], defaults)
             elif len(args) == 2 and len(kwargs) == 0 and isinstance(args[1], Mapping):
                 # ASSUME SECOND UNNAMED PARAM IS kwargs
-                packed = params_pack(params, args[1], defaults)
+                packed = params_pack(params, {"self":args[0]}, args[1], defaults)
             else:
                 # DO NOT INCLUDE self IN kwargs
-                packed = params_pack(params, kwargs, dict_zip(params[1:], args[1:]), defaults)
+                packed = params_pack(params, dict_zip(params, args), kwargs, defaults)
             try:
-                return func(args[0], **packed)
+                return func(**packed)
             except TypeError as e:
                 raise_error(e, packed)
         return w_constructor
@@ -126,8 +130,12 @@ def params_pack(params, *args):
             k = text_type(k)
             if k in settings:
                 continue
-            settings[k] = v
+            settings[k] = v if v != None else None
     settings["kwargs"] = settings
 
-    output = wrap({str(k): settings[k] for k in params if k in settings})
+    output = {
+        str(k): settings[k] if k != "kwargs" else wrap(settings)
+        for k in params
+        if k in settings
+    }
     return output

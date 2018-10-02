@@ -145,15 +145,6 @@ sql_aggs = {
     "sum": "SUM"
 }
 
-sql_types = {
-    "string": "TEXT",
-    "integer": "INTEGER",
-    "number": "REAL",
-    "boolean": "TINYINT",
-    "object": "TEXT",
-    "nested": "TEXT"
-}
-
 STATS = {
     "count": "COUNT({{value}})",
     "std": "SQRT((1-1.0/COUNT({{value}}))*VARIANCE({{value}}))",

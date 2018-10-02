@@ -98,6 +98,13 @@ class Date(object):
         """
         return int(int(self.unix)/60/60 % 24)
 
+    @property
+    def dow(self):
+        """
+        :return: DAY-OF-WEEK  MONDAY=0, SUNDAY=6
+        """
+        return int(self.unix / 60 / 60 / 24 / 7 + 5) % 7
+
     def addDay(self):
         return Date(unix2datetime(self.unix) + timedelta(days=1))
 
