@@ -1,0 +1,17 @@
+{
+    "name": "jx-sqlite",
+    "version": "1.9.17206",
+    "description": "JSON query expressions using SQLite",
+    "author": "Rohit Kumar, Kyle Lahnakoski",
+    "author_email": "rohitkumar.a255@gmail.com, kyle@lahnakoski.com",
+    "url": "https://github.com/mozilla/jx-sqlite",
+    "license": "MPL 2.0",
+    "include_package_data": true,
+    "zip_safe": false,
+    "classifiers": [
+        "Development Status :: 4 - Beta",
+        "Topic :: Software Development :: Libraries",
+        "Topic :: Software Development :: Libraries :: Python Modules",
+        "License :: OSI Approved :: Mozilla Public License 2.0 (MPL 2.0)"
+    ]
+}
