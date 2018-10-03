@@ -16,6 +16,8 @@ from datetime import date
 from datetime import datetime
 from decimal import Decimal
 
+from copy import deepcopy
+
 import jx_base
 from jx_base import Column, Table
 from jx_base.schema import Schema
@@ -43,6 +45,18 @@ class ColumnList(Table, jx_base.Container):
         self.locker = Lock()
         self._schema = None
         self.extend(METADATA_COLUMNS)
+
+    def __copy__(self):
+        output = object.__new__(ColumnList)
+        Table.__init__(output, "meta.columns")
+        output.data = {
+            t: {c: list(cs) for c, cs in dd.items()}
+            for t, dd in self.data.items()
+        }
+        output.locker = Lock()
+        output._schema = None
+        return output
+
 
     def find(self, es_index, abs_column_name=None):
         with self.locker:

@@ -14,6 +14,7 @@ from __future__ import division
 from __future__ import unicode_literals
 
 from collections import Mapping
+from copy import copy
 
 from jx_base.expressions import jx_expression
 from jx_python.meta import Column
@@ -225,7 +226,7 @@ class InsertTable(BaseTable):
         doc_collection = {".": _insertion}
         # KEEP TRACK OF WHAT TABLE WILL BE MADE (SHORTLY)
         required_changes = []
-        abs_schema = self.facts.snowflake
+        abs_schema = copy(self.facts.snowflake)
 
         def _flatten(data, uid, parent_id, order, full_path, nested_path, row=None, guid=None):
             """
@@ -268,16 +269,14 @@ class InsertTable(BaseTable):
                     c = Column(
                         names={".": cname},
                         jx_type=value_type,
-                        es_type=json_type_to_sqlite_type[value_type],
+                        es_type=json_type_to_sqlite_type.get(value_type, value_type),
                         es_column=typed_column(cname, json_type_to_sql_type.get(value_type)),
                         es_index=table,
                         nested_path=nested_path
                     )
-                    abs_schema.namespace._columns.add(c)
+                    abs_schema.namespace.columns.add(c)
                     if value_type == "nested":
-                        # WHAT TO DO HERE?
-                        pass
-                        # nested_tables[cname] = "fake table"
+                        abs_schema.namespace._snowflakes[abs_schema.fact_name] += [c.es_column]
 
                     required_changes.append({"add": c})
 

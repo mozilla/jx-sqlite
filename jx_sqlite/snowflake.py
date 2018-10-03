@@ -10,6 +10,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
+from copy import copy, deepcopy
+
 import jx_base
 import mo_json
 from jx_base import Column, Facts
@@ -17,11 +19,10 @@ from jx_base.queries import get_property_name
 from jx_python.meta import ColumnList
 from jx_sqlite import GUID, untyped_column, UID, typed_column, quoted_GUID, quoted_UID, quoted_PARENT, quoted_ORDER
 from jx_sqlite.expressions import sql_type_to_json_type, json_type_to_sql_type
-from mo_dots import startswith_field, Null, relative_field, concat_field, set_default, wrap, tail_field, coalesce, listwrap, Data
+from mo_dots import startswith_field, relative_field, concat_field, set_default, wrap, tail_field, coalesce, listwrap, Data
 from mo_future import text_type
 from mo_json import OBJECT, EXISTS, STRUCT
 from mo_logs import Log
-from mo_times import Date
 from pyLibrary.sql import SQL_FROM, sql_iso, sql_list, SQL_LIMIT, SQL_SELECT, SQL_ZERO, SQL_STAR
 from pyLibrary.sql.sqlite import quote_column, sqlite_type_to_json_type, json_type_to_sqlite_type
 
@@ -32,10 +33,18 @@ class Namespace(jx_base.Namespace):
     """
     def __init__(self, db):
         self.db = db
-        self._snowflakes = {}  # MAP FROM BASE TABLE TO LIST OF NESTED TABLES
-        self._columns = ColumnList()
-        self._snowflakes = Data()
+        self._snowflakes = Data()  # MAP FROM BASE TABLE TO LIST OF NESTED PATH TUPLES
+        self.columns = ColumnList()
+        self._load_from_database()
 
+    def __copy__(self):
+        output = object.__new__(Namespace)
+        output.db = None
+        output._snowflakes = deepcopy(self._snowflakes)
+        output.columns = copy(self.columns)
+        return output
+
+    def _load_from_database(self):
         # FIND ALL TABLES
         result = self.db.query("SELECT * FROM sqlite_master WHERE type='table' ORDER BY name")
         tables = wrap([{k: d[i] for i, k in enumerate(result.header)} for d in result.data])
@@ -53,11 +62,8 @@ class Namespace(jx_base.Namespace):
             else:
                 last_nested_path = []
 
-            full_nested_path = [nested_path]+last_nested_path
-            self._snowflakes[base_table] += [nested_path]
-
-            nested_tables = self._snowflakes.setdefault(base_table, [nested_path]+last_nested_path)
-            nested_tables.append(jx_base.TableDesc(name=table.name, timestamp=Date.now(), query_path=full_nested_path, url=None))
+            full_nested_path = [nested_path] + last_nested_path
+            self._snowflakes[base_table] += [full_nested_path]
 
             # LOAD THE COLUMNS
             command = "PRAGMA table_info" + sql_iso(quote_column(table.name))
@@ -67,7 +73,7 @@ class Namespace(jx_base.Namespace):
                 if name.startswith("__"):
                     continue
                 cname, ctype = untyped_column(name)
-                self._columns.add(Column(
+                self.columns.add(Column(
                     names={'.': cname},  # I THINK COLUMNS HAVE THIER FULL PATH
                     jx_type=coalesce(sql_type_to_json_type.get(ctype), sqlite_type_to_json_type.get(dtype)),
                     nested_path=full_nested_path,
@@ -82,9 +88,9 @@ class Namespace(jx_base.Namespace):
         if paths:
             with self.db.transaction() as t:
                 for p in paths:
-                    full_name = concat_field(fact_name, p)
+                    full_name = concat_field(fact_name, p[0])
                     t.execute("DROP TABLE "+quote_column(full_name))
-                    self._columns.remove_table(full_name)
+            self.columns.remove_table(fact_name)
         self._snowflakes[fact_name] = None
 
     def create_or_replace_facts(self, fact_name, uid=UID):
@@ -133,7 +139,7 @@ class Namespace(jx_base.Namespace):
         return Facts(self, snowflake)
 
     def add_column_to_schema(self, column):
-        self._columns.add(column)
+        self.columns.add(column)
 
 
 class Snowflake(jx_base.Snowflake):
@@ -146,6 +152,10 @@ class Snowflake(jx_base.Snowflake):
         self.fact_name = fact_name  # THE CENTRAL FACT TABLE
         self.namespace = namespace
         self.column = Schema(".", self)
+
+    def __copy__(self):
+        # COPY NAMESPACE SOURCE
+        return Snowflake(self.fact_name, copy(self.namespace))
 
     def change_schema(self, required_changes):
         """
@@ -177,7 +187,7 @@ class Snowflake(jx_base.Snowflake):
                 "ADD COLUMN" + quote_column(column.es_column) + " " + column.es_type
             )
 
-        self.namespace._columns.add(column)
+        self.namespace.columns.add(column)
 
     def _nest_column(self, column, new_path):
         destination_table = concat_field(self.fact_name, new_path[0])
@@ -185,8 +195,8 @@ class Snowflake(jx_base.Snowflake):
 
         # FIND THE INNER COLUMNS WE WILL BE MOVING
         moving_columns = []
-        for c in self.namespace._columns.find(self.fact_name):
-            if destination_table!=column.es_index and column.es_column==c.es_column:
+        for c in self.namespace.columns.find(self.fact_name):
+            if destination_table != column.es_index and column.es_column==c.es_column:
                 moving_columns.append(c)
                 c.nested_path = new_path
 
@@ -206,48 +216,47 @@ class Snowflake(jx_base.Snowflake):
                     "FOREIGN KEY " + sql_iso(quoted_PARENT) + " REFERENCES " + quote_column(existing_table) + sql_iso(quoted_UID)
                 ]))
             )
-            self.namespace.db.execute(command)
-            self.add_table_to_schema(new_path)
+            with self.namespace.db.transaction() as t:
+                t.execute(command)
+                self.add_table(new_path)
 
         # TEST IF THERE IS ANY DATA IN THE NEW NESTED ARRAY
         if not moving_columns:
             return
 
         column.es_index = destination_table
-        self.namespace.db.execute(
-            "ALTER TABLE " + quote_column(destination_table) +
-            " ADD COLUMN " + quote_column(column.es_column) + " " + column.es_type
-        )
-
-        # Deleting parent columns
-        for col in moving_columns:
-            column = col.es_column
-            tmp_table = "tmp_" + existing_table
-            columns = list(map(text_type, self.namespace.db.query(SQL_SELECT + SQL_STAR + SQL_FROM + quote_column(existing_table) + SQL_LIMIT + SQL_ZERO).header))
-            self.namespace.db.execute(
-                "ALTER TABLE " + quote_column(existing_table) +
-                " RENAME TO " + quote_column(tmp_table)
+        with self.namespace.db.transaction() as t:
+            t.execute(
+                "ALTER TABLE " + quote_column(destination_table) +
+                " ADD COLUMN " + quote_column(column.es_column) + " " + column.es_type
             )
-            self.namespace.db.execute(
-                "CREATE TABLE " + quote_column(existing_table) + " AS " +
-                SQL_SELECT + sql_list([quote_column(c) for c in columns if c != column]) +
-                SQL_FROM + quote_column(tmp_table)
-            )
-            self.namespace.db.execute("DROP TABLE " + quote_column(tmp_table))
 
-    def add_table_to_schema(self, nested_path):
-        table = Table(nested_path)
-        self.tables[table.name] = table
-        path = table.name
+            # Deleting parent columns
+            for col in moving_columns:
+                column = col.es_column
+                tmp_table = "tmp_" + existing_table
+                columns = list(map(text_type, t.query(SQL_SELECT + SQL_STAR + SQL_FROM + quote_column(existing_table) + SQL_LIMIT + SQL_ZERO).header))
+                t.execute(
+                    "ALTER TABLE " + quote_column(existing_table) +
+                    " RENAME TO " + quote_column(tmp_table)
+                )
+                t.execute(
+                    "CREATE TABLE " + quote_column(existing_table) + " AS " +
+                    SQL_SELECT + sql_list([quote_column(c) for c in columns if c != column]) +
+                    SQL_FROM + quote_column(tmp_table)
+                )
+                t.execute("DROP TABLE " + quote_column(tmp_table))
 
-        for c in self._columns:
-            rel_name = c.names[path] = relative_field(c.names["."], path)
-            table.schema.add(rel_name, c)
-        return table
+    def add_table(self, nested_path):
+        query_paths = self.namespace._snowflakes[self.fact_name]
+        if nested_path in query_paths:
+            Log.error("table exists")
+        query_paths.append(nested_path)
+        return Table(nested_path, self)
 
     @property
     def columns(self):
-        return self.namespace._columns.find(self.fact_name)
+        return self.namespace.columns.find(self.fact_name)
 
     @property
     def query_paths(self):
@@ -256,10 +265,12 @@ class Snowflake(jx_base.Snowflake):
 
 class Table(jx_base.Table):
 
-    def __init__(self, nested_path):
+    def __init__(self, nested_path, snowflake):
+        if not isinstance(nested_path, list):
+            Log.error("Expecting list of paths")
         self.nested_path = nested_path
-        self._schema = Schema(nested_path)
-        self.columns = []  # PLAIN DATABASE COLUMNS
+        self.schema = Schema(nested_path, snowflake)
+        # self.columns = []  # PLAIN DATABASE COLUMNS
 
     @property
     def name(self):
@@ -267,11 +278,6 @@ class Table(jx_base.Table):
         :return: THE TABLE NAME RELATIVE TO THE FACT TABLE
         """
         return self.nested_path[0]
-
-    @property
-    def schema(self):
-        return self._schema
-
 
     def map(self, mapping):
         return self
@@ -294,7 +300,7 @@ class Schema(object):
     #     if column_name != column.names[self.nested_path[0]]:
     #         Log.error("Logic error")
     #
-    #     self._columns.append(column)
+    #     self.columns.append(column)
     #
     #     for np in self.nested_path:
     #         rel_name = column.names[np]
@@ -320,7 +326,7 @@ class Schema(object):
     #     self.namespace[column_name] = [c for c in self.namespace[column_name] if c != column]
 
     def __getitem__(self, item):
-        output = self.snowflake.namespace._columns.find(self.path, item)
+        output = self.snowflake.namespace.columns.find(self.path, item)
         return output
 
     # def __copy__(self):
@@ -349,13 +355,13 @@ class Schema(object):
 
     @property
     def columns(self):
-        return [c for c in self._columns if c.es_column not in [GUID, '_source']]
+        return [c for c in self.columns if c.es_column not in [GUID, '_source']]
 
     def leaves(self, prefix):
         full_name = concat_field(self.nested_path, prefix)
         return set(
             c
-            for c in self.snowflake.namespace._columns.find(self.snowflake.fact_name)
+            for c in self.snowflake.namespace.columns.find(self.snowflake.fact_name)
             for k in [c.names['.']]
             if startswith_field(k, full_name) and k != GUID or k == full_name
             if c.jx_type not in [OBJECT, EXISTS]

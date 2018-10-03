@@ -29,11 +29,11 @@ EXISTS_COLUMN = quote_column("__exists__")
 
 
 class EdgesTable(SetOpTable):
-    def _edges_op(self, query, frum):
+    def _edges_op(self, query, schema):
         query = query.copy()  # WE WILL BE MARKING UP THE QUERY
         index_to_column = {}  # MAP FROM INDEX TO COLUMN (OR SELECT CLAUSE)
         outer_selects = []  # EVERY SELECT CLAUSE (NOT TO BE USED ON ALL TABLES, OF COURSE)
-        base_table, path = tail_field(frum)
+        base_table, path = schema.snowflake.fact_name, schema.nested_path
         nest_to_alias = {
             nested_path: quote_column("__" + unichr(ord('a') + i) + "__")
             for i, (nested_path, sub_table) in enumerate(self.sf.tables.items())
