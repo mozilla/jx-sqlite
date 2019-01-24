@@ -57,6 +57,8 @@ This project is licensed under Mozilla Public License, v. 2.0. If a copy of the 
 
 ## History
 
+*Sep 2018* - Upgrade libs, start refactoring to work with other libs
+
 *Dec 2017* - A number of tests were added, but they do not pass.
 
 *Sep 2017* - GSoC work completed, all but a few tests pass.

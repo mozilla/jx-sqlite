@@ -287,7 +287,7 @@ class Container(QueryTable):
 
     @override
     def __init__(self, name, db=None, uid=UID, kwargs=None):
-        BaseTable.__init__(self, name, db, uid, kwargs)
+        BaseTable.__init__(self, name, db, uid, kwargs=kwargs)
 
 
 
