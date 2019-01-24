@@ -8,28 +8,25 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import unicode_literals
+from __future__ import absolute_import, division, unicode_literals
 
-import subprocess
-from collections import Mapping
 from datetime import datetime
+import subprocess
 
-from pymysql import connect, InterfaceError, cursors
+from pymysql import InterfaceError, connect, cursors
 
-import mo_json
 from jx_python import jx
-from mo_dots import coalesce, wrap, listwrap, unwrap, split_field
+from mo_dots import coalesce, is_data, is_list, listwrap, split_field, unwrap, wrap
 from mo_files import File
-from mo_future import text_type, utf8_json_encoder, binary_type, transpose
+from mo_future import is_binary, is_text, text_type, transpose, utf8_json_encoder
+import mo_json
 from mo_kwargs import override
 from mo_logs import Log
 from mo_logs.exceptions import Except, suppress_exception
 from mo_logs.strings import expand_template, indent, outdent
-from mo_math import Math
+from mo_math import is_number
 from mo_times import Date
-from pyLibrary.sql import SQL, SQL_NULL, SQL_SELECT, SQL_LIMIT, SQL_WHERE, SQL_LEFT_JOIN, SQL_FROM, SQL_AND, sql_list, sql_iso, SQL_ASC, SQL_TRUE, SQL_ONE, SQL_DESC, SQL_IS_NULL, sql_alias
+from pyLibrary.sql import SQL, SQL_AND, SQL_ASC, SQL_DESC, SQL_FROM, SQL_IS_NULL, SQL_LEFT_JOIN, SQL_LIMIT, SQL_NULL, SQL_ONE, SQL_SELECT, SQL_TRUE, SQL_WHERE, sql_alias, sql_iso, sql_list
 from pyLibrary.sql.sqlite import join_column
 
 DEBUG = False
@@ -504,7 +501,7 @@ def execute_sql(
             stderr=subprocess.STDOUT,
             bufsize=-1
         )
-        if isinstance(sql, text_type):
+        if is_text(sql):
             sql = sql.encode("utf8")
         (output, _) = proc.communicate(sql)
     except Exception as e:
@@ -568,11 +565,11 @@ def quote_value(value):
             return SQL_NULL
         elif isinstance(value, SQL):
             return quote_sql(value.template, value.param)
-        elif isinstance(value, text_type):
+        elif is_text(value):
             return SQL("'" + "".join(ESCAPE_DCT.get(c, c) for c in value) + "'")
-        elif isinstance(value, Mapping):
+        elif is_data(value):
             return quote_value(json_encode(value))
-        elif Math.is_number(value):
+        elif is_number(value):
             return SQL(text_type(value))
         elif isinstance(value, datetime):
             return SQL("str_to_date('" + value.strftime("%Y%m%d%H%M%S.%f") + "', '%Y%m%d%H%i%s.%f')")
@@ -589,14 +586,14 @@ def quote_value(value):
 def quote_column(column_name, table=None):
     if column_name == None:
         Log.error("missing column_name")
-    elif isinstance(column_name, text_type):
+    elif is_text(column_name):
         if table:
             return join_column(table, column_name)
         else:
             return SQL("`" + '`.`'.join(split_field(column_name)) + "`")  # MYSQL QUOTE OF COLUMN NAMES
-    elif isinstance(column_name, binary_type):
+    elif is_binary(column_name):
         return quote_column(column_name.decode('utf8'), table)
-    elif isinstance(column_name, list):
+    elif is_list(column_name):
         if table:
             return sql_list(join_column(table, c) for c in column_name)
         return sql_list(quote_column(c) for c in column_name)
@@ -615,9 +612,9 @@ def quote_sql(value, param=None):
                 return value
             param = {k: quote_sql(v) for k, v in param.items()}
             return SQL(expand_template(value, param))
-        elif isinstance(value, text_type):
+        elif is_text(value):
             return SQL(value)
-        elif isinstance(value, Mapping):
+        elif is_data(value):
             return quote_value(json_encode(value))
         elif hasattr(value, '__iter__'):
             return quote_list(value)
@@ -638,7 +635,7 @@ def quote_list(values):
 
 def utf8_to_unicode(v):
     try:
-        if isinstance(v, binary_type):
+        if is_binary(v):
             return v.decode("utf8")
         else:
             return v

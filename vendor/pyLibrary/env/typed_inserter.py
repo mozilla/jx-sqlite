@@ -7,33 +7,31 @@
 #
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import unicode_literals
+from __future__ import absolute_import, division, unicode_literals
 
-from collections import Mapping
-
-from jx_python.expressions import jx_expression_to_function
-from mo_dots import Data, unwrap
-from pyLibrary.env.elasticsearch import parse_properties, random_id
-
-from mo_json import json2value
+from mo_future import is_text, is_binary
+from jx_python import jx
+from mo_dots import Data, ROOT_PATH, is_data, unwrap
+from mo_json import NESTED, OBJECT, json2value
 from mo_json.encoder import UnicodeBuilder
-from mo_json.typed_encoder import typed_encode, OBJECT, NESTED
+from mo_json.typed_encoder import typed_encode
+from pyLibrary.env.elasticsearch import parse_properties, random_id
 
 
 class TypedInserter(object):
-    def __init__(self, es=None, id_expression="_id"):
+    def __init__(self, es=None, id_info=None):
         self.es = es
-        self.id_column = id_expression
-        self.get_id = jx_expression_to_function(id_expression)
-        self.remove_id = True if id_expression == "_id" else False
+        self.id_info = id_info
+        self.get_id = jx.get(id_info.field)
+        self.get_version = jx.get(id_info.version)
 
         if es:
             _schema = Data()
-            for c in parse_properties(es.settings.alias, ".", es.get_properties()):
-                if c.es_type not in (OBJECT, NESTED):
-                    _schema[c.names["."]] = c
+            for c in parse_properties(es.settings.alias, ".", ROOT_PATH, es.get_properties()):
+                if c.es_type in (OBJECT, NESTED):
+                    _schema[c.name] = {}
+                else:
+                    _schema[c.name] = c
             self.schema = unwrap(_schema)
         else:
             self.schema = {}
@@ -44,10 +42,10 @@ class TypedInserter(object):
         :return:  dict with id and json properties
         """
         try:
-            value = r['value']
+            value = r.get('value')
             if "json" in r:
                 value = json2value(r["json"])
-            elif isinstance(value, Mapping) or value != None:
+            elif is_data(value) or value != None:
                 pass
             else:
                 from mo_logs import Log
@@ -56,12 +54,13 @@ class TypedInserter(object):
             _buffer = UnicodeBuilder(1024)
             net_new_properties = []
             path = []
-            if isinstance(value, Mapping):
+            if is_data(value):
                 given_id = self.get_id(value)
-                if self.remove_id:
-                    value['_id'] = None
+                value['_id'] = None
+                version = self.get_version(value)
             else:
                 given_id = None
+                version = None
 
             if given_id:
                 record_id = r.get('id')
@@ -70,7 +69,7 @@ class TypedInserter(object):
 
                     raise Log.error(
                         "expecting {{property}} of record ({{record_id|quote}}) to match one given ({{given|quote}})",
-                        property=self.id_column,
+                        property=self.id_info,
                         record_id=record_id,
                         given=given_id
                     )
@@ -84,11 +83,7 @@ class TypedInserter(object):
             typed_encode(value, self.schema, path, net_new_properties, _buffer)
             json = _buffer.build()
 
-            for props in net_new_properties:
-                path, type = props[:-1], props[-1][1:]
-                # self.es.add_column(join_field(path), type)
-
-            return {"id": given_id, "json": json}
+            return given_id, version, json
         except Exception as e:
             # THE PRETTY JSON WILL PROVIDE MORE DETAIL ABOUT THE SERIALIZATION CONCERNS
             from mo_logs import Log

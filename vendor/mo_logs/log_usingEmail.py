@@ -9,11 +9,10 @@
 #
 
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import unicode_literals
+from __future__ import absolute_import, division, unicode_literals
 
-from mo_dots import listwrap, literal_field, Data
+from mo_future import is_text, is_binary
+from mo_dots import Data, listwrap, literal_field
 from mo_kwargs import override
 from mo_logs import Log
 from mo_logs.exceptions import ALARM, NOTE

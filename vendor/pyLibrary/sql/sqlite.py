@@ -8,40 +8,39 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import unicode_literals
+from __future__ import absolute_import, division, unicode_literals
 
+from mo_future import is_text, is_binary
+from collections import Mapping, namedtuple
 import os
 import re
 import sys
-from collections import Mapping, namedtuple
 
-import mo_json
-from mo_dots import Data, coalesce, unwraplist, Null
+from mo_dots import Data, coalesce, unwraplist
 from mo_files import File
 from mo_future import allocate_lock as _allocate_lock, text_type
+from mo_json import BOOLEAN, INTEGER, NESTED, NUMBER, OBJECT, STRING
 from mo_kwargs import override
 from mo_logs import Log
-from mo_logs.exceptions import Except, extract_stack, ERROR, format_trace
+from mo_logs.exceptions import ERROR, Except, extract_stack, format_trace
 from mo_logs.strings import quote
 from mo_math.stats import percentile
-from mo_threads import Queue, Thread, Lock, Till
+from mo_threads import Lock, Queue, Thread, Till
 from mo_times import Date, Duration, Timer
 from pyLibrary import convert
-from pyLibrary.sql import DB, SQL, SQL_TRUE, SQL_FALSE, SQL_NULL, SQL_SELECT, sql_iso, sql_list
+from pyLibrary.sql import DB, SQL, SQL_FALSE, SQL_NULL, SQL_SELECT, SQL_TRUE, sql_iso, sql_list
 
 DEBUG = False
 TRACE = True
 
-FORMAT_COMMAND = "Running command\n{{command|limit(100)|indent}}"
+FORMAT_COMMAND = "Running command\n{{command|limit(1000)|indent}}"
 DOUBLE_TRANSACTION_ERROR = "You can not query outside a transaction you have open already"
 TOO_LONG_TO_HOLD_TRANSACTION = 10
 
-sqlite3 = None
+_sqlite3 = None
 _load_extension_warning_sent = False
 _upgraded = False
-known_databases = {Null: None}
+known_databases = {None: None}
 
 
 def _upgrade():
@@ -84,25 +83,25 @@ class Sqlite(DB):
         :param kwargs:
         """
         global _upgraded
-        global sqlite3
+        global _sqlite3
 
         self.settings = kwargs
         if not _upgraded:
             if upgrade:
                 _upgrade()
             _upgraded = True
-            import sqlite3
-            _ = sqlite3
+            import sqlite3 as _sqlite3
+            _ = _sqlite3
 
         self.filename = File(filename).abspath if filename else None
         if known_databases.get(self.filename):
             Log.error("Not allowed to create more than one Sqlite instance for {{file}}", file=self.filename)
 
         # SETUP DATABASE
-        DEBUG and Log.note("Sqlite version {{version}}", version=sqlite3.sqlite_version)
+        DEBUG and Log.note("Sqlite version {{version}}", version=_sqlite3.sqlite_version)
         try:
             if db == None:
-                self.db = sqlite3.connect(
+                self.db = _sqlite3.connect(
                     database=coalesce(self.filename, ":memory:"),
                     check_same_thread=False,
                     isolation_level=None
@@ -345,7 +344,7 @@ class Sqlite(DB):
                     self.transaction_stack.append(transaction)
                 elif transaction.exception and query is not ROLLBACK:
                     result.exception = Except(
-                        type=ERROR,
+                        context=ERROR,
                         template="Not allowed to continue using a transaction that failed",
                         cause=transaction.exception,
                         trace=trace
@@ -359,7 +358,7 @@ class Sqlite(DB):
                     # DEAL WITH ERRORS IN QUEUED COMMANDS
                     # WE WILL UNWRAP THE OUTER EXCEPTION TO GET THE CAUSE
                     err = Except(
-                        type=ERROR,
+                        context=ERROR,
                         template="Bad call to Sqlite3 while "+FORMAT_COMMAND,
                         params={"command": e.params.current.command},
                         cause=e.cause,
@@ -392,7 +391,7 @@ class Sqlite(DB):
             except Exception as e:
                 e = Except.wrap(e)
                 err = Except(
-                    type=ERROR,
+                    context=ERROR,
                     template="Bad call to Sqlite while " + FORMAT_COMMAND,
                     params={"command": query},
                     trace=trace,
@@ -439,6 +438,8 @@ class Transaction(object):
         return output
 
     def execute(self, command):
+        if self.end_of_life:
+            Log.error("Transaction is dead")
         trace = extract_stack(1) if self.db.get_trace else None
         with self.locker:
             self.todo.append(CommandItem(command, None, None, trace, self))
@@ -495,7 +496,7 @@ def quote_column(column_name, table=None):
     if isinstance(column_name, SQL):
         return column_name
 
-    if not isinstance(column_name, text_type):
+    if not is_text(column_name):
         Log.error("expecting a name")
     if table != None:
         return SQL(" d" + quote(table) + "." + quote(column_name) + " ")
@@ -512,7 +513,7 @@ def quote_value(value):
         return SQL(text_type(value.unix))
     elif isinstance(value, Duration):
         return SQL(text_type(value.seconds))
-    elif isinstance(value, text_type):
+    elif is_text(value):
         return SQL("'" + value.replace("'", "''") + "'")
     elif value == None:
         return SQL_NULL
@@ -527,7 +528,6 @@ def quote_value(value):
 def quote_list(list):
     return sql_iso(sql_list(map(quote_value, list)))
 
-
 def join_column(a, b):
     a = quote_column(a)
     b = quote_column(b)
@@ -541,7 +541,7 @@ ROLLBACK = "ROLLBACK"
 
 def _upgrade():
     global _upgraded
-    global sqlite3
+    global _sqlite3
 
     try:
         Log.note("sqlite not upgraded")
@@ -564,21 +564,17 @@ def _upgrade():
     except Exception as e:
         Log.warning("could not upgrade python's sqlite", cause=e)
 
-    import sqlite3
-    _ = sqlite3
+    import sqlite3 as _sqlite3
+    _ = _sqlite3
     _upgraded = True
 
 
 json_type_to_sqlite_type = {
-    mo_json.BOOLEAN: 'INTEGER',
-    mo_json.INTEGER: 'INTEGER',
-    mo_json.NUMBER: 'NUMBER',
-    mo_json.STRING: 'TEXT',
-    mo_json.EXISTS: "INTEGER"
+    BOOLEAN: "TINYINT",
+    INTEGER: "INTEGER",
+    NUMBER: "REAL",
+    STRING: "TEXT",
+    OBJECT: "TEXT",
+    NESTED: "TEXT"
 }
 
-sqlite_type_to_json_type = {
-    'INTEGER': mo_json.INTEGER,
-    'NUMBER': mo_json.NUMBER,
-    'TEXT': mo_json.STRING
-}

@@ -8,22 +8,20 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import unicode_literals
+from __future__ import absolute_import, division, unicode_literals
 
+from mo_future import is_text, is_binary
+from datetime import date, datetime, timedelta
+from decimal import Decimal
 import math
 import re
-from datetime import datetime, date, timedelta
-from decimal import Decimal
 from time import time as _time
 
-from mo_dots import Null
-from mo_future import unichr, text_type, long
+from mo_dots import Null, NullType
+from mo_future import long, none_type, text_type, unichr
 from mo_logs import Except
 from mo_logs.strings import deformat
-from mo_math import Math
-
+import mo_math
 from mo_times.durations import Duration, MILLI_VALUES
 from mo_times.vendor.dateutil.parser import parse as parse_date
 
@@ -151,7 +149,9 @@ class Date(object):
 
     @staticmethod
     def today():
-        return _unix2Date(math.floor(_time() / 86400) * 86400)
+        now = _utcnow()
+        now_unix = datetime2unix(now)
+        return _unix2Date(math.floor(now_unix / 86400) * 86400)
 
     @staticmethod
     def range(min, max, interval):
@@ -164,7 +164,7 @@ class Date(object):
         return str(unix2datetime(self.unix))
 
     def __repr__(self):
-        return unix2datetime(self.unix).__repr__()
+        unix2datetime(self.unix).__repr__()
 
     def __sub__(self, other):
         if other == None:
@@ -178,11 +178,12 @@ class Date(object):
 
     def __lt__(self, other):
         try:
-            if other == None:
+            type_ = other.__class__
+            if type_ in (none_type, NullType):
                 return False
-            elif isinstance(other, Date):
+            elif type_ is Date:
                 return self.unix < other.unix
-            elif isinstance(other, (float, int)):
+            elif type_ in (float, int):
                 return self.unix < other
             other = Date(other)
             return self.unix < other.unix
@@ -191,11 +192,12 @@ class Date(object):
 
     def __eq__(self, other):
         try:
-            if other == None:
+            type_ = other.__class__
+            if type_ in (none_type, NullType):
                 return False
-            elif isinstance(other, Date):
+            elif type_ is Date:
                 return self.unix == other.unix
-            elif isinstance(other, (float, int)):
+            elif type_ in (float, int):
                 return self.unix == other
             other = Date(other)
             return self.unix == other.unix
@@ -204,11 +206,12 @@ class Date(object):
 
     def __le__(self, other):
         try:
-            if other == None:
+            type_ = other.__class__
+            if type_ in (none_type, NullType):
                 return False
-            elif isinstance(other, Date):
+            elif type_ is Date:
                 return self.unix <= other.unix
-            elif isinstance(other, (float, int)):
+            elif type_ in (float, int):
                 return self.unix <= other
             other = Date(other)
             return self.unix <= other.unix
@@ -217,11 +220,12 @@ class Date(object):
 
     def __gt__(self, other):
         try:
-            if other == None:
+            type_ = other.__class__
+            if type_ in (none_type, NullType):
                 return False
-            elif isinstance(other, Date):
+            elif type_ is Date:
                 return self.unix > other.unix
-            elif isinstance(other, (float, int)):
+            elif type_ in (float, int):
                 return self.unix > other
             other = Date(other)
             return self.unix > other.unix
@@ -230,11 +234,12 @@ class Date(object):
 
     def __ge__(self, other):
         try:
-            if other == None:
+            type_ = other.__class__
+            if type_ in (none_type, NullType):
                 return False
-            elif isinstance(other, Date):
+            elif type_ is Date:
                 return self.unix >= other.unix
-            elif isinstance(other, (float, int)):
+            elif type_ in (float, int):
                 return self.unix >= other
             other = Date(other)
             return self.unix >= other.unix
@@ -272,18 +277,18 @@ def parse(*args):
                     output = _unix2Date(a0 / 1000)
                 else:
                     output = _unix2Date(a0)
-            elif isinstance(a0, text_type) and len(a0) in [9, 10, 12, 13] and Math.is_integer(a0):
+            elif is_text(a0) and len(a0) in [9, 10, 12, 13] and mo_math.is_integer(a0):
                 a0 = float(a0)
                 if a0 > 9999999999:    # WAY TOO BIG IF IT WAS A UNIX TIMESTAMP
                     output = _unix2Date(a0 / 1000)
                 else:
                     output = _unix2Date(a0)
-            elif isinstance(a0, text_type):
+            elif is_text(a0):
                 output = unicode2Date(a0)
             else:
                 output = _unix2Date(datetime2unix(datetime(*args)))
         else:
-            if isinstance(args[0], text_type):
+            if is_text(args[0]):
                 output = unicode2Date(*args)
             else:
                 output = _unix2Date(datetime2unix(datetime(*args)))

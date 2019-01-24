@@ -6,17 +6,15 @@
 #
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import unicode_literals
+from __future__ import absolute_import, division, unicode_literals
 
+from mo_future import is_text, is_binary
 import os
 
-from mo_dots import wrap, set_default
-from mo_json import value2json, json2value
-from mo_logs import Log, Except
-
-from mo_threads import Process, Lock, Thread, Signal, THREAD_STOP
+from mo_dots import set_default, wrap
+from mo_json import json2value, value2json
+from mo_logs import Except, Log
+from mo_threads import Lock, Process, Signal, THREAD_STOP, Thread
 
 PYTHON = "python"
 DEBUG = True

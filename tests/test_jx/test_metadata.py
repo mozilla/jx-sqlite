@@ -8,18 +8,37 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import unicode_literals
-
-from unittest import skipIf
+from __future__ import absolute_import, division, unicode_literals
 
 from mo_dots import wrap
+from mo_future import text_type
+from mo_logs import Log
+from mo_logs.exceptions import extract_stack
 from pyLibrary.meta import extenstion_method
-from tests.test_jx import BaseTestCase, TEST_TABLE, global_settings
+from tests.test_jx import BaseTestCase, TEST_TABLE
 
 
 class TestMetadata(BaseTestCase):
+
+    def test_meta_tables(self):
+        pre_test = {
+            "data": [{"a": "b"}],
+            "query": {"from": TEST_TABLE},  # DUMMY QUERY
+            "expecting_list": {
+                "meta": {"format": "list"}, "data": [{"a": "b"}]
+            }
+        }
+        self.utils.execute_tests(pre_test)
+
+        test = {
+            "query": {
+                "from": "meta.tables"
+            },
+            "expecting_list": {
+                "meta": {"format": "list"}
+            }
+        }
+        self.utils.send_queries(test)
 
     def test_meta(self):
         test = wrap({
@@ -31,7 +50,7 @@ class TestMetadata(BaseTestCase):
 
         settings = self.utils.fill_container(test, typed=False)
 
-        table_name = settings.index
+        table_name = settings.alias
 
         # WE REQUIRE A QUERY TO FORCE LOADING OF METADATA
         pre_test = {
@@ -83,7 +102,6 @@ class TestMetadata(BaseTestCase):
         }
         self.utils.send_queries(test)
 
-    @skipIf(True, "not implemented yet")
     def test_get_nested_columns(self):
         settings = self.utils.fill_container({
             "query": {"from": TEST_TABLE},  # DUMMY QUERY
@@ -99,7 +117,7 @@ class TestMetadata(BaseTestCase):
                 {"o": 4, "c": "x"}
             ]})
 
-        table_name = settings.index
+        table_name = settings.alias
 
         # WE REQUIRE A QUERY TO FORCE LOADING OF METADATA
         pre_test = {
@@ -162,3 +180,44 @@ class TestMetadata(BaseTestCase):
             return print_me, self.value
 
         self.assertEqual(a.my_func("testing"), ("testing", "test_value"), "Expecting method to be run")
+
+    def test_cardinality(self):
+        pre_test = wrap({
+            "data": [{"a": "b"}, {"a": "c"}],
+            "query": {"from": TEST_TABLE},  # DUMMY QUERY
+            "expecting_list": {
+                "meta": {"format": "list"}, "data": [{"a": "b"}, {"a": "c"}]
+            }
+        })
+        settings = self.utils.fill_container(pre_test)
+        self.utils.send_queries(pre_test)
+
+        test = {
+            "query": {
+                "from": "meta.columns",
+                "select": "cardinality",
+                "where": {
+                    "and": [
+                        {
+                            "eq": {
+                                "table": settings.alias
+                            }
+                        },
+                        {
+                            "eq": {
+                                "name": "a"
+                            }
+                        }
+                    ]
+                }
+            },
+            "expecting_list": {
+                "meta": {"format": "list"},
+                "data": [
+                    2
+                ]
+            }
+        }
+        Log.note("table = {{table}}", table=pre_test.query['from'])
+        subtest = wrap(test)
+        self.utils.send_queries(subtest)

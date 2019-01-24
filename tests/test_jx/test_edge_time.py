@@ -8,16 +8,11 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import unicode_literals
-
-from unittest import skipIf
+from __future__ import absolute_import, division, unicode_literals
 
 from mo_times.dates import Date
 from mo_times.durations import DAY
-
-from tests.test_jx import BaseTestCase, TEST_TABLE, global_settings
+from tests.test_jx import BaseTestCase, TEST_TABLE
 
 FROM_DATE = Date.today()-7*DAY
 TO_DATE = Date.today()

@@ -11,19 +11,18 @@
 # THIS SIGNAL IS IMPORTANT FOR PROPER SIGNALLING WHICH ALLOWS
 # FOR FAST AND PREDICTABLE SHUTDOWN AND CLEANUP OF THREADS
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import unicode_literals
+from __future__ import absolute_import, division, unicode_literals
 
-import signal as _signal
-import sys
+from mo_future import is_text, is_binary
 from copy import copy
 from datetime import datetime, timedelta
-from time import sleep, time
+import signal as _signal
+import sys
+from time import sleep
 
-from mo_dots import Data, unwraplist
-from mo_future import get_ident, start_new_thread, get_function_name, text_type, allocate_lock
-from mo_logs import Log, Except
+from mo_dots import Data, coalesce, unwraplist
+from mo_future import allocate_lock, get_function_name, get_ident, start_new_thread, text_type
+from mo_logs import Except, Log
 from mo_threads.lock import Lock
 from mo_threads.profiles import CProfiler, write_profiles
 from mo_threads.signal import AndSignals, Signal
@@ -208,7 +207,7 @@ class Thread(BaseThread):
 
     def __init__(self, name, target, *args, **kwargs):
         BaseThread.__init__(self, -1)
-        self.name = name
+        self.name = coalesce(name, "thread_" + text_type(object.__hash__(self)))
         self.target = target
         self.end_of_thread = Data()
         self.synch_lock = Lock("response synch lock")
@@ -333,7 +332,7 @@ class Thread(BaseThread):
             else:
                 Log.error("Thread {{name|quote}} did not end well", name=self.name, cause=self.end_of_thread.exception)
         else:
-            raise Except(type=THREAD_TIMEOUT)
+            raise Except(context=THREAD_TIMEOUT)
 
     @staticmethod
     def run(name, target, *args, **kwargs):
@@ -391,7 +390,7 @@ def stop_main_thread(*args):
     CLEAN OF ALL THREADS CREATED WITH THIS LIBRARY
     """
     try:
-        if len(args) and args[0]:
+        if len(args) and args[0] != _signal.SIGTERM:
             Log.warning("exit with {{value}}", value=_describe_exit_codes.get(args[0], args[0]))
     except Exception as _:
         pass
@@ -412,11 +411,16 @@ def _wait_for_exit(please_stop):
     """
     /dev/null PIPED TO sys.stdin SPEWS INFINITE LINES, DO NOT POLL AS OFTEN
     """
+    try:
+        import msvcrt
+        _wait_for_exit_on_windows(please_stop)
+    except:
+        pass
+
     cr_count = 0  # COUNT NUMBER OF BLANK LINES
 
     while not please_stop:
-        # if DEBUG:
-        #     Log.note("inside wait-for-shutdown loop")
+        # DEBUG and Log.note("inside wait-for-shutdown loop")
         if cr_count > 30:
             (Till(seconds=3) | please_stop).wait()
         try:
@@ -427,8 +431,7 @@ def _wait_for_exit(please_stop):
                 _wait_for_interrupt(please_stop)
                 break
 
-        # if DEBUG:
-        #     Log.note("read line {{line|quote}}, count={{count}}", line=line, count=cr_count)
+        # DEBUG and Log.note("read line {{line|quote}}, count={{count}}", line=line, count=cr_count)
         if line == "":
             cr_count += 1
         else:
@@ -437,6 +440,24 @@ def _wait_for_exit(please_stop):
         if line.strip() == "exit":
             Log.alert("'exit' Detected!  Stopping...")
             return
+
+
+def _wait_for_exit_on_windows(please_stop):
+    import msvcrt
+
+    line = ""
+    while not please_stop:
+        if msvcrt.kbhit():
+            chr = msvcrt.getche()
+            if ord(chr) == 13:
+                if line == "exit":
+                    Log.alert("'exit' Detected!  Stopping...")
+                    return
+            elif ord(chr) > 32:
+                line += chr
+        else:
+            sleep(1)
+
 
 
 def _wait_for_interrupt(please_stop):

@@ -7,13 +7,11 @@
 #
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import unicode_literals
+from __future__ import absolute_import, division, unicode_literals
 
-from collections import Mapping
-
+from mo_future import is_text, is_binary
 from jx_base.query import QueryOp
+from mo_dots import is_data
 
 
 class Namespace(object):
@@ -32,7 +30,7 @@ class Namespace(object):
         raise NotImplementedError()
 
     def _convert_query(self, query):
-        output = QueryOp("from", None)
+        output = QueryOp(None)
         output.select = self._convert_clause(query.select)
         output.where = self.convert(query.where)
         output["from"] = self._convert_from(query["from"])
@@ -60,7 +58,7 @@ class Namespace(object):
 def convert_list(operator, operand):
     if operand==None:
         return None
-    elif isinstance(operand, Mapping):
+    elif is_data(operand):
         return operator(operand)
     else:
         return map(operator, operand)

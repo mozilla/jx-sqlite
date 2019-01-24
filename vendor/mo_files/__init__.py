@@ -8,17 +8,18 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 import base64
+from datetime import datetime
 import io
+from mimetypes import MimeTypes
 import os
 import re
 import shutil
-from datetime import datetime
-from mimetypes import MimeTypes
-from tempfile import mkdtemp, NamedTemporaryFile
+from tempfile import NamedTemporaryFile, mkdtemp
 
-from mo_dots import get_module, coalesce, Null
-from mo_future import text_type, binary_type, PY3
-from mo_logs import Log, Except
+from mo_dots import Null, coalesce, get_module, is_list
+from mo_files.url import URL
+from mo_future import PY3, binary_type, text_type, is_text
+from mo_logs import Except, Log
 from mo_logs.exceptions import extract_stack
 from mo_threads import Thread, Till
 
@@ -42,12 +43,12 @@ class File(object):
         """
         YOU MAY SET filename TO {"path":p, "key":k} FOR CRYPTO FILES
         """
-        self._mime_type = mime_type
-        if filename == None:
-            Log.error(u"File must be given a filename")
-        elif isinstance(filename, File):
+        if isinstance(filename, File):
             return
-        elif isinstance(filename, (binary_type, text_type)):
+
+        self._mime_type = mime_type
+
+        if isinstance(filename, (binary_type, text_type)):
             try:
                 self.key = None
                 if filename==".":
@@ -272,10 +273,10 @@ class File(object):
         if not self.parent.exists:
             self.parent.create()
         with open(self._filename, "wb") as f:
-            if isinstance(data, list) and self.key:
+            if is_list(data) and self.key:
                 Log.error(u"list of data and keys are not supported, encrypt before sending to file")
 
-            if isinstance(data, list):
+            if is_list(data):
                 pass
             elif isinstance(data, (binary_type, text_type)):
                 data=[data]
@@ -283,7 +284,7 @@ class File(object):
                 pass
 
             for d in data:
-                if not isinstance(d, text_type):
+                if not is_text(d):
                     Log.error(u"Expecting unicode data only")
                 if self.key:
                     from mo_math.crypto import encrypt
@@ -317,7 +318,7 @@ class File(object):
         if not self.parent.exists:
             self.parent.create()
         with open(self._filename, "ab") as output_file:
-            if not isinstance(content, text_type):
+            if not is_text(content):
                 Log.error(u"expecting to write unicode only")
             output_file.write(content.encode(encoding))
             output_file.write(b"\n")
@@ -440,7 +441,7 @@ class TempDirectory(File):
     WILL BE DELETED WHEN EXITED
     """
     def __new__(cls):
-        return File.__new__(cls, None)
+        return object.__new__(cls)
 
     def __init__(self):
         File.__init__(self, mkdtemp())
@@ -460,7 +461,9 @@ class TempFile(File):
     def __new__(cls, *args, **kwargs):
         return object.__new__(cls)
 
-    def __init__(self):
+    def __init__(self, filename=None):
+        if isinstance(filename, File):
+            return
         self.temp = NamedTemporaryFile(delete=False)
         self.temp.close()
         File.__init__(self, self.temp.name)

@@ -8,26 +8,29 @@
 #
 from __future__ import unicode_literals
 
-from activedata_etl import etl2path
-from activedata_etl import key2etl
+from mo_future import is_text, is_binary
+from activedata_etl import etl2path, key2etl
+
 from jx_python import jx
 from jx_python.containers.list_usingPythonList import ListContainer
-from mo_dots import coalesce, wrap, Null
-from mo_json import json2value, value2json, CAN_NOT_DECODE_JSON
+from mo_dots import Null, coalesce, wrap
+from mo_future import items
+from mo_json import CAN_NOT_DECODE_JSON, json2value, value2json
 from mo_kwargs import override
 from mo_logs import Log
-from mo_logs.exceptions import suppress_exception, Except
+from mo_logs.exceptions import Except, suppress_exception
 from mo_math.randoms import Random
 from mo_threads import Lock
 from mo_times.dates import Date, unicode2Date, unix2Date
 from mo_times.durations import Duration
 from mo_times.timer import Timer
-from pyLibrary.aws.s3 import strip_extension, KEY_IS_WRONG_FORMAT
+from pyLibrary.aws.s3 import KEY_IS_WRONG_FORMAT, strip_extension
 from pyLibrary.env import elasticsearch
 
 MAX_RECORD_LENGTH = 400000
 DATA_TOO_OLD = "data is too old to be indexed"
-DEBUG=False
+DEBUG = False
+
 
 class RolloverIndex(object):
     """
@@ -40,21 +43,24 @@ class RolloverIndex(object):
         rollover_field,      # the FIELD with a timestamp to use for determining which index to push to
         rollover_interval,   # duration between roll-over to new index
         rollover_max,        # remove old indexes, do not add old records
+        schema,              # es schema
         queue_size=10000,    # number of documents to queue in memory
         batch_size=5000,     # number of documents to push at once
         typed=None,          # indicate if we are expected typed json
         kwargs=None          # plus additional ES settings
     ):
         if kwargs.tjson != None:
-            Log.error
+            Log.error("not expected")
         if typed == None:
             Log.error("not expected")
+
+        schema.settings.index.max_inner_result_window = 100000  # REQUIRED FOR ACTIVEDATA NESTED QUERIES
 
         self.settings = kwargs
         self.locker = Lock("lock for rollover_index")
         self.rollover_field = jx.get(rollover_field)
-        self.rollover_interval = self.settings.rollover_interval = Duration(kwargs.rollover_interval)
-        self.rollover_max = self.settings.rollover_max = Duration(kwargs.rollover_max)
+        self.rollover_interval = self.settings.rollover_interval = Duration(rollover_interval)
+        self.rollover_max = self.settings.rollover_max = Duration(rollover_max)
         self.known_queues = {}  # MAP DATE TO INDEX
         self.cluster = elasticsearch.Cluster(self.settings)
 
@@ -77,7 +83,7 @@ class RolloverIndex(object):
             queue = self.known_queues.get(rounded_timestamp.unix)
         if queue == None:
             candidates = jx.run({
-                "from": ListContainer('.', self.cluster.get_aliases()),
+                "from": ListContainer(".", self.cluster.get_aliases()),
                 "where": {"regex": {"index": self.settings.index + "\d\d\d\d\d\d\d\d_\d\d\d\d\d\d"}},
                 "sort": "index"
             })
@@ -199,14 +205,18 @@ class RolloverIndex(object):
                         if rownum > 0 and rownum % 1000 == 0:
                             Log.note("Ingested {{num}} records from {{key}} in bucket {{bucket}}", num=rownum, key=key, bucket=source.name)
 
-                        row, please_stop = fix(rownum, line, source, sample_only_filter, sample_size)
-                        if row == None:
+                        insert_me, please_stop = fix(key, rownum, line, source, sample_only_filter, sample_size)
+                        if insert_me == None:
                             continue
+                        value = insert_me['value']
+
+                        if '_id' not in value:
+                            Log.warning("expecting an _id in all S3 records. If missing, there can be duplicates")
 
                         if queue == None:
-                            queue = self._get_queue(row)
+                            queue = self._get_queue(insert_me)
                             if queue == None:
-                                pending.append(row)
+                                pending.append(insert_me)
                                 if len(pending) > 1000:
                                     if done_copy:
                                         done_copy()
@@ -219,7 +229,7 @@ class RolloverIndex(object):
                                 pending = []
 
                         num_keys += 1
-                        queue.add(row)
+                        queue.add(insert_me)
 
                         if please_stop:
                             break
@@ -242,14 +252,14 @@ class RolloverIndex(object):
             else:
                 queue.add(done_copy)
 
-        if pending:
+        if [p for p in pending if wrap(p).value.task.state not in ('failed', 'exception')]:
             Log.error("Did not find an index for {{alias}} to place the data for key={{key}}", key=tuple(keys)[0], alias=self.settings.index)
 
         Log.note("{{num}} keys from {{key|json}} added", num=num_keys, key=keys)
         return num_keys
 
 
-def fix(rownum, line, source, sample_only_filter, sample_size):
+def fix(source_key, rownum, line, source, sample_only_filter, sample_size):
     """
     :param rownum:
     :param line:
@@ -262,7 +272,7 @@ def fix(rownum, line, source, sample_only_filter, sample_size):
 
     if rownum == 0:
         if len(line) > MAX_RECORD_LENGTH:
-            _shorten(value, source)
+            _shorten(source_key, value, source)
         value = _fix(value)
         if sample_only_filter and Random.int(int(1.0/coalesce(sample_size, 0.01))) != 0 and jx.filter([value], sample_only_filter):
             # INDEX etl.id==0, BUT NO MORE
@@ -271,7 +281,7 @@ def fix(rownum, line, source, sample_only_filter, sample_size):
             row = {"value": value}
             return row, True
     elif len(line) > MAX_RECORD_LENGTH:
-        _shorten(value, source)
+        _shorten(source_key, value, source)
         value = _fix(value)
     elif '"resource_usage":' in line:
         value = _fix(value)
@@ -280,7 +290,7 @@ def fix(rownum, line, source, sample_only_filter, sample_size):
     return row, False
 
 
-def _shorten(value, source):
+def _shorten(source_key, value, source):
     if source.name.startswith("active-data-test-result"):
         value.result.subtests = [s for s in value.result.subtests if s.ok is False]
         value.result.missing_subtests = True
@@ -295,7 +305,7 @@ def _shorten(value, source):
             else:
                 pass  # NOT A PROBLEM
         else:
-            Log.warning("Monstrous {{name}} record {{id}} of length {{length}}", id=value._id, name=source.name, length=shorter_length)
+            Log.warning("Monstrous {{name}} record {{id}} of length {{length}}", id=source_key,  name=source.name, length=shorter_length)
 
 
 def _fix(value):

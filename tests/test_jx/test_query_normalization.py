@@ -8,15 +8,12 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import unicode_literals
+from __future__ import absolute_import, division, unicode_literals
 
+from jx_base.query import _normalize_edges, _normalize_select
 from mo_dots import Null
-from mo_json import value2json, json2value
-
+from mo_json import json2value, value2json
 from mo_testing.fuzzytestcase import FuzzyTestCase
-from jx_base.query import _normalize_select, _normalize_edges
 
 
 class TestQueryNormalization(FuzzyTestCase):

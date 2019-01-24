@@ -8,15 +8,11 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import unicode_literals
-
-from unittest import skipIf
+from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions import NULL
 from mo_dots import wrap
-from tests.test_jx import BaseTestCase, TEST_TABLE, global_settings
+from tests.test_jx import BaseTestCase, TEST_TABLE
 
 lots_of_data = wrap([{"a": i} for i in range(30)])
 
@@ -277,7 +273,6 @@ class TestSetOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.use=="sqlite", "Can't handle array of primitives for now")
     def test_select_when_on_multivalue(self):
         test = {
             "data": [
@@ -311,7 +306,6 @@ class TestSetOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.use == "sqlite", "Can't handle array of primitives for now")
     def test_select_in_w_multivalue(self):
         test = {
             "data": [
@@ -384,6 +378,7 @@ class TestSetOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
+    # @skip("boolean in when is not using false")
     def test_select_mult_w_when(self):
         test = {
             "data": [
@@ -417,14 +412,14 @@ class TestSetOps(BaseTestCase):
             },
             "expecting_list": {
                 "data": [
+                    {"ab": 0, "b": 0},
+                    {"ab": 0, "b": 0},
+                    {"ab": 0, "b": 0},
+                    {"ab": 0, "b": 0},
                     {"ab": 0, "b": 1},
                     {"ab": 1, "b": 1},
-                    {"ab": 0, "b": 0},
                     {"ab": 3, "b": 1},
-                    {"ab": 0, "b": 0},
                     {"ab": 5, "b": 1},
-                    {"ab": 0, "b": 0},
-                    {"ab": 0, "b": 0},
                     {"ab": 8, "b": 1},
                     {"ab": NULL, "b": 1},
                     {"ab": NULL, "b": 0}
@@ -636,6 +631,52 @@ class TestSetOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
+    def test_or_find(self):
+        test = {
+            "data": [
+                {"v": "test"},
+                {"v": "not test"},
+                {"v": NULL},
+                {},
+                {"v": "a"}
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "where": {"or": [{"find": {"v": "test"}}]}
+            },
+            "expecting_list": {
+                "meta": {"format": "list"},
+                "data": [
+                    {"v": "test"},
+                    {"v": "not test"}
+                ]
+            }
+        }
+        self.utils.execute_tests(test)
+
+    def test_and_find(self):
+        test = {
+            "data": [
+                {"v": "test"},
+                {"v": "not test"},
+                {"v": NULL},
+                {},
+                {"v": "a"}
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "where": {"and": [{"find": {"v": "test"}}]}
+            },
+            "expecting_list": {
+                "meta": {"format": "list"},
+                "data": [
+                    {"v": "test"},
+                    {"v": "not test"}
+                ]
+            }
+        }
+        self.utils.execute_tests(test)
+
     def test_left_in_edge(self):
         test = {
             "data": [
@@ -696,19 +737,19 @@ class TestSetOps(BaseTestCase):
             },
             "expecting_list": {
                 "data": [
-                    {"i": 0},
+                    {"i": 0, "a": NULL, "b": NULL, "c": NULL, "d": NULL},
                     {"i": 1, "a": NULL, "b": NULL, "c": NULL, "d": NULL},
                     {"i": 2, "a": NULL, "b": "a", "c": NULL, "d": "a"},
                     {"i": 3, "a": NULL, "b": "abcdefg", "c": NULL, "d": "abcdefg"},
-                    {"i": 4},
+                    {"i": 4, "a": NULL, "b": NULL, "c": NULL, "d": NULL},
                     {"i": 5, "a": NULL, "b": NULL, "c": NULL, "d": NULL},
                     {"i": 6, "a": NULL, "b": "a", "c": NULL, "d": "a"},
                     {"i": 7, "a": NULL, "b": "abcdefg", "c": NULL, "d": "abcdefg"},
-                    {"i": 8},
+                    {"i": 8, "a": NULL, "b": NULL, "c": NULL, "d": NULL},
                     {"i": 9, "a": NULL, "b": NULL, "c": NULL, "d": NULL},
                     {"i": 10, "a": "a", "b": NULL, "c": "a", "d": NULL},
                     {"i": 11, "a": "abc", "b": "defg", "c": "efg", "d": "abcd"},
-                    {"i": 12},
+                    {"i": 12, "a": NULL, "b": NULL, "c": NULL, "d": NULL},
                     {"i": 13, "a": NULL, "b": NULL, "c": NULL, "d": NULL},
                     {"i": 14, "a": "a", "b": NULL, "c": "a", "d": NULL},
                     {"i": 15, "a": "abcdefg", "b": NULL, "c": "abcdefg", "d": NULL}
@@ -807,8 +848,8 @@ class TestSetOps(BaseTestCase):
                     {"name": "a", "value": {"between": {"v": ["/this/", "/"]}}},
                     {"name": "c", "value": {"between": ["v", {"literal": "/this/"}, {"literal": "/"}]}},
                     {"name": "d", "value": {"between": {"v": [-1, 5]}}},
-                    {"name": "e", "value": {"between": {"v": [NULL, "/is"]}}},
-                    {"name": "f", "value": {"between": {"v": ["/is", NULL]}}}
+                    {"name": "e", "value": {"between": {"v": [None, "/is"]}}},
+                    {"name": "f", "value": {"between": {"v": ["/is", None]}}}
                 ],
                 "from": TEST_TABLE
             },
@@ -821,6 +862,60 @@ class TestSetOps(BaseTestCase):
             }
         }
         self.utils.execute_tests(test)
+
+    def test_between_missing(self):
+        test = {
+            "data": [
+                {"url": None},
+                {"url": "/"},
+                {"url": "https://hg.mozilla.org/"},
+                {"url": "https://hg.mozilla.org/a/"},
+                {"url": "https://hg.mozilla.org/b/"},
+                {"url": "https://hg.mozilla.org/b/1"},
+                {"url": "https://hg.mozilla.org/b/2"},
+                {"url": "https://hg.mozilla.org/b/3"},
+                {"url": "https://hg.mozilla.org/c/"},
+                {"url": "https://hg.mozilla.org/d"},
+                {"url": "https://hg.mozilla.org/e"}
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "select": [
+                    "url",
+                    {
+                        "name": "filename",
+                        "value": {
+                            "when": {"missing": {"between": {"url": ["https://hg.mozilla.org/", "/"]}}},
+                            "then": "url"
+                        }
+                    },
+                    {
+                        "name": "subdir",
+                        "value": {"between": {"url": ["https://hg.mozilla.org/", "/"]}}
+                    }
+                ],
+                "limit": 100
+            },
+            "expecting_list": {
+                "meta": {"format": "list"},
+                "data": [
+                    NULL,
+                    {"url": "/", "filename": "/", "subdir": NULL},
+                    {"url": "https://hg.mozilla.org/", "filename": "https://hg.mozilla.org/", "subdir": NULL},
+                    {"url": "https://hg.mozilla.org/a/", "filename": NULL, "subdir": "a"},
+                    {"url": "https://hg.mozilla.org/b/", "filename": NULL, "subdir": "b"},
+                    {"url": "https://hg.mozilla.org/b/1", "filename": NULL, "subdir": "b"},
+                    {"url": "https://hg.mozilla.org/b/2", "filename": NULL, "subdir": "b"},
+                    {"url": "https://hg.mozilla.org/b/3", "filename": NULL, "subdir": "b"},
+                    {"url": "https://hg.mozilla.org/c/", "filename": NULL, "subdir": "c"},
+                    {"url": "https://hg.mozilla.org/d", "filename": "https://hg.mozilla.org/d", "subdir": NULL},
+                    {"url": "https://hg.mozilla.org/e", "filename": "https://hg.mozilla.org/e", "subdir": NULL}
+                ]}
+
+        }
+        self.utils.execute_tests(test)
+
+
 
     def test_lack_of_eval(self):
         test = {
@@ -984,6 +1079,184 @@ class TestSetOps(BaseTestCase):
 
         self.utils.execute_tests(test)
 
+    def test_prefix_w_when(self):
+        test = {
+            "data": [
+                {"a": "test"},
+                {"a": "testkyle"},
+                {"a": None}
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "select": {
+                    "name": "test",
+                    "value": {"when": {"prefix": {"a": "test"}}, "then": 1}
+                }
+            },
+            "expecting_list": {
+                "meta": {"format": "list"},
+                "data": [1, 1, NULL]
+            }
+        }
+
+        self.utils.execute_tests(test)
+
+    def test_boolean_in_expression(self):
+        test = {
+            "data": [
+                {"result": {"ok": True}},
+                {"result": {"ok": True}},
+                {"result": {"ok": True}},
+                {"result": {"ok": True}},
+                {"result": {"ok": False}},
+                {"result": {"ok": False}},
+                {"result": {"ok": False}},
+                {"result": {"ok": False}}
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "select": {
+                    "name": "failures",
+                    "aggregate": "sum",
+                    "value": {
+                        "when": {
+                            "eq": {
+                                "result.ok": "F"
+                            }
+                        },
+                        "then": 1,
+                        "else": 0
+                    }
+                }
+            },
+            "expecting_list":{
+                "meta": {"format": "value"},
+                "data": 4
+            }
+        }
+
+        self.utils.execute_tests(test)
+
+    def test_boolean_in_where_clause1(self):
+        test = {
+            "data": [
+                {"result": {"ok": True}},
+                {"result": {"ok": True}},
+                {"result": {"ok": True}},
+                {"result": {"ok": True}},
+                {"result": {"ok": False}},
+                {"result": {"ok": False}},
+                {"result": {"ok": False}},
+                {"result": {"ok": False}}
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "where": {
+                    "in": {
+                        "result.ok": [
+                            "F"
+                        ]
+                    }
+                }
+            },
+            "expecting_list": {
+                "meta": {"format": "list"},
+                "data": [
+                    {"result": {"ok": False}},
+                    {"result": {"ok": False}},
+                    {"result": {"ok": False}},
+                    {"result": {"ok": False}}
+                ]
+            }
+        }
+
+        self.utils.execute_tests(test)
+
+    def test_boolean_in_where_clause2(self):
+        test = {
+            "data": [
+                {"result": {"ok": True}},
+                {"result": {"ok": True}},
+                {"result": {"ok": True}},
+                {"result": {}},
+                {"result": {}},
+                {"result": {"ok": False}},
+                {"result": {"ok": False}},
+                {"result": {"ok": False}}
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "where": {"not": "result.ok"}
+            },
+            "expecting_list": {
+                "meta": {"format": "list"},
+                "data": [
+                    {"result": {}},
+                    {"result": {}},
+                    {"result": {"ok": False}},
+                    {"result": {"ok": False}},
+                    {"result": {"ok": False}}
+                ]
+            }
+        }
+
+        self.utils.execute_tests(test)
+
+    def test_in_with_singlton(self):
+        test = {
+            "data": [
+                {"a": "b"},
+                {"a": "b"},
+                {"a": "b"},
+                {"a": "c"},
+                {"a": "c"},
+                {"a": "d"},
+                {"a": "d"},
+                {"a": "d"},
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "where": {"in": {"a": "b"}}
+            },
+            "expecting_list":{
+                "meta": {"format": "list"},
+                "data": [
+                    {"a": "b"},
+                    {"a": "b"},
+                    {"a": "b"}
+                ]
+            }
+        }
+
+        self.utils.execute_tests(test)
+
+    def test_floor_on_float(self):
+        test = {
+            "data": [
+                {"a": -0.1},
+                {"a": -0.0},
+                {"a": 0.1},
+                {"a": 10.9},
+                {"a": 11.0},
+                {"a": 11.1},
+                {"a": 11.9},
+                {"a": 0.1},
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "groupby": {"name": "a", "value": {"floor": {"a": 2}}}
+            },
+            "expecting_list":{
+                "meta": {"format": "list"},
+                "data": [
+                    {"a": -2, "count": 1},
+                    {"a": 0, "count": 3},
+                    {"a": 10, "count": 4}
+                ]
+            }
+        }
+
+        self.utils.execute_tests(test)
 
 
 # TODO: {"left": {variable: sentinel}}

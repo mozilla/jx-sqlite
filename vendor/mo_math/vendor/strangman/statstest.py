@@ -1,5 +1,6 @@
 
-import stats, os, pstat
+import stats
+
 reload(stats)
 
 try:

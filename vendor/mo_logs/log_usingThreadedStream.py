@@ -9,19 +9,18 @@
 #
 
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import unicode_literals
+from __future__ import absolute_import, division, unicode_literals
 
+from mo_future import is_text, is_binary
 import sys
 from time import time
 
 from mo_dots import Data
-from mo_future import text_type, PY3
+from mo_future import PY3, text_type
 from mo_logs import Log
 from mo_logs.log_usingNothing import StructuredLogger
-from mo_logs.strings import expand_template
-from mo_threads import Thread, THREAD_STOP, Till
+from mo_logs.strings import CR, expand_template
+from mo_threads import THREAD_STOP, Thread, Till
 
 DEBUG_LOGGING = False
 
@@ -32,7 +31,7 @@ class StructuredLogger_usingThreadedStream(StructuredLogger):
     def __init__(self, stream):
         assert stream
 
-        if isinstance(stream, text_type):
+        if is_text(stream):
             name = stream
             stream = self.stream = eval(stream)
             if name.startswith("sys.") and PY3:
@@ -45,7 +44,7 @@ class StructuredLogger_usingThreadedStream(StructuredLogger):
         from mo_threads import Queue
 
         def utf8_appender(value):
-            if isinstance(value, text_type):
+            if is_text(value):
                 value = value.encode('utf8')
             self.stream.write(value)
 
@@ -113,10 +112,10 @@ def time_delta_pusher(please_stop, appender, queue, interval):
                 Log.warning("Trouble formatting log from {{location}}", location=location, cause=e)
                 # SWALLOW ERROR, GOT TO KEEP RUNNING
         try:
-            appender(u"\n".join(lines) + u"\n")
+            appender(CR.join(lines) + CR)
         except Exception as e:
 
-            sys.stderr.write(str("Trouble with appender: ") + str(e.__class__.__name__) + str("\n"))
+            sys.stderr.write(str("Trouble with appender: ") + str(e.__class__.__name__) + str(CR))
             # SWALLOW ERROR, MUST KEEP RUNNING
 
 

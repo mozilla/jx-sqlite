@@ -8,17 +8,11 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import unicode_literals
+from __future__ import absolute_import, division, unicode_literals
 
-from itertools import groupby
-from operator import itemgetter
-
-from mo_future import text_type, PY3
+from mo_future import is_text, is_binary
+from mo_future import PY3, text_type
 from mo_logs import Log
-from mo_logs.strings import expand_template
-
 import pyLibrary.sql
 
 
@@ -26,20 +20,19 @@ class SQL(text_type):
     """
     ACTUAL SQL, DO NOT QUOTE THIS STRING
     """
-    def __init__(self, template='', param=None):
+    def __init__(self, value):
         text_type.__init__(self)
-        if isinstance(template, SQL):
+        if isinstance(value, SQL):
             Log.error("Expecting text, not SQL")
-        self.template = template
-        self.param = param
+        self.value = value
 
     @property
     def sql(self):
-        return expand_template(self.template, self.param)
+        return self.value  # expand_template(self.template, self.param)
 
     def __add__(self, other):
         if not isinstance(other, SQL):
-            if isinstance(other, text_type) and all(c not in other for c in ('"', '\'', '`')):
+            if is_text(other) and all(c not in other for c in ('"', '\'', '`')):
                return SQL(self.sql + other)
             Log.error("Can only concat other SQL")
         else:
@@ -47,7 +40,7 @@ class SQL(text_type):
 
     def __radd__(self, other):
         if not isinstance(other, SQL):
-            if isinstance(other, text_type) and all(c not in other for c in ('"', '\'', '`')):
+            if is_text(other) and all(c not in other for c in ('"', '\'', '`')):
                 return SQL(other + self.sql)
             Log.error("Can only concat other SQL")
         else:
@@ -60,12 +53,20 @@ class SQL(text_type):
         return SQL(self.sql.join(list_))
 
     if PY3:
+        def __str__(self):
+            return self.sql
+
         def __bytes__(self):
             Log.error("do not do this")
     else:
+        def __unicode__(self):
+            return self.sql
+
         def __str__(self):
             Log.error("do not do this")
 
+    def __data__(self):
+        return self.sql
 
 
 SQL_STAR = SQL(" * ")
@@ -117,7 +118,7 @@ def sql_list(list_):
     list_ = list(list_)
     if not all(isinstance(s, SQL) for s in list_):
         Log.error("Can only join other SQL")
-    return SQL(", ".join(l.template for l in list_))
+    return SQL(" " + ", ".join(l.value for l in list_) + " ")
 
 
 def sql_iso(sql):

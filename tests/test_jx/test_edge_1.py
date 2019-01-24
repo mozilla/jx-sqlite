@@ -8,11 +8,9 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import unicode_literals
+from __future__ import absolute_import, division, unicode_literals
 
-from unittest import skipIf
+from unittest import skip, skipIf
 
 from jx_base.expressions import NULL
 from tests.test_jx import BaseTestCase, TEST_TABLE, global_settings
@@ -1826,6 +1824,51 @@ class TestEdge1(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
+
+    def test_range2(self):
+        test = {
+            "data": [
+                {"s": 0},  # THIS RECORD HAS NO LIFESPAN, SO WE DO NOT COUNT IT
+                {"s": 1},
+                {"s": 2},
+                {"s": 3},
+                {"s": 4},
+                {"s": 5},
+                {"s": 6},
+                {"s": 7},
+                {"s": 8}
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "edges": [
+                    {
+                        "domain": {
+                            "type": "range",
+                            "key": "name",
+                            "partitions": [
+                                {
+                                    "max": 4,
+                                    "min": 0,
+                                    "dataIndex": 0,
+                                    "name": "first_four"
+                                }
+                            ]
+                        },
+                        "value": "s"
+                    }
+                ]
+            },
+            "expecting_list": {
+                "meta": {"format": "list"},
+                "data": [
+                    {"s": "first_four", "count": 4},
+                    {"s": NULL, "count": 5}
+                ]
+            }
+        }
+        self.utils.execute_tests(test)
+
+
     def test_edge_w_partition_filters(self):
         test = {
             "data": structured_test_data,
@@ -1934,6 +1977,143 @@ class TestEdge1(BaseTestCase):
             }
         }
         self.utils.execute_tests(test)
+
+    def test_negative_range(self):
+        test = {
+            "data": [{"v": -1.0}],
+            "query": {
+                "from": TEST_TABLE,
+                "edges": [
+                    {
+                        "name": "v",
+                        "value": "v",
+                        "domain": {
+                            "type": "range",
+                            "min": -2,
+                            "max": 2,
+                            "interval": 1
+                        }
+                    }
+                ]
+            },
+            "expecting_cube": {
+                "meta": {"format": "cube"},
+                "edges": [
+                    {
+                        "name": "v",
+                        "domain": {
+                            "key": "min",
+                            "partitions": [
+                                {"min": -2, "max": -1},
+                                {"min": -1, "max": 0},
+                                {"min": 0, "max": 1},
+                                {"min": 1, "max": 2}
+                            ]
+                        }
+                    }
+                ],
+                "data": {"count": [0, 1, 0, 0, 0]}
+            }
+        }
+        self.utils.execute_tests(test)
+
+    @skip("requires schema merging of a.b.~n~ and a.~N~.b.~n~")
+    def test_shallow_with_deep_edge(self):
+        test = {
+            "data": [
+                {"v": 1, "a": "b"},
+                {"v": 2, "a": {"b": 1}},
+                {"v": 3, "a": {}},
+                {"v": 4, "a": [{"b": 1}, {"b": 2}, {"b": 2}]},
+                {"v": 5, "a": {"b": 4}},
+                {"v": 6, "a": 3},
+                {"v": 7}
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "edges": [{"name": "b", "value": {"first": "a.b"}}],
+                "select": {"name": "count", "value": {"when": "v", "then": 1}, "aggregate": "count"},
+                "where": {"exists": "a.b"}
+            },
+            "expecting_list": {
+                "meta": {"format": "list"},
+                "data": [
+                    {"b": 1, "count": 2},
+                    {"b": 4, "count": 1},
+                    {"count": 3}
+                ]
+            },
+            # "expecting_table": {
+            #     "meta": {"format": "table"},
+            #     "header": ["a.b"],
+            #     "data": [[8]]
+            # },
+            # "expecting_cube": {
+            #     "meta": {"format": "cube"},
+            #     "data": {
+            #         "a.b": 8
+            #     }
+            # }
+        }
+        self.utils.execute_tests(test)
+
+    def test_boolean_on_edge(self):
+        test = {
+            "data": [
+                {"result": {"ok": True}},
+                {"result": {"ok": True}},
+                {"result": {"ok": True}},
+                {"result": {"ok": True}},
+                {"result": {"ok": False}},
+                {"result": {"ok": False}},
+                {"result": {"ok": False}},
+                {"result": {"ok": False}},
+                {"result": {"ok": False}}
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "edges": ["result.ok"]
+            },
+            "expecting_list": {
+                "meta": {"format": "list"},
+                "data": [
+                    {"result": {"ok": True}, "count": 4},
+                    {"result": {"ok": False}, "count": 5}
+                ]
+            }
+        }
+
+        self.utils.execute_tests(test)
+
+    def test_default_for_average(self):
+        test = {
+            "data": [
+                {"k": "a", "e": 4},
+                {"k": "a", "e": 5},
+                {"k": "a", "e": 6},
+                {"k": "a", "e": 7},
+                {"k": "b", "e": 8},
+                {"k": "b", "e": 9},
+                {"k": "c"},
+                {"k": "c"}
+            ],
+            "query": {
+                "select": [{"name": "avg", "value": "e", "aggregate": "average", "default": 0}],
+                "from": TEST_TABLE,
+                "edges": ["k"]
+            },
+            "expecting_list": {
+                "meta": {"format": "list"},
+                "data": [
+                    {"k": "a", "avg": 22 / 4},
+                    {"k": "b", "avg": 17 / 2},
+                    {"k": "c", "avg": 0}
+                ]
+            }
+        }
+        self.utils.execute_tests(test)
+
+
 
 
 # TODO: ALLOW USE OF EDGE VARIABLES IN QUERY

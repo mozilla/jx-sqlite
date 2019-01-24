@@ -7,10 +7,9 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from mo_future import is_text, is_binary
 import re
 
-from mo_future import text_type
+from mo_future import is_text
 from mo_logs import Log
 
 keyword_pattern = re.compile(r"(\w|[\\.,$-])+(?:\.(\w|[\\.,$-])+)*")
@@ -31,6 +30,7 @@ def is_variable_name(value):
         return False
     return match.group(0) == value
 
+
 def dequote(s):
     """
     If a string has single or double quotes around it, remove them.
@@ -41,6 +41,7 @@ def dequote(s):
         return s[1:-1]
     return s
 
+
 def is_column_name(col):
     if re.match(r"(\$|\w|\\\.)+(?:\.(\$|\w|\\\.)+)*\.\$\w{6}$", col):
         return True
@@ -49,7 +50,7 @@ def is_column_name(col):
 
 
 def get_property_name(s):
-    if s==".":
+    if s == ".":
         return s
     else:
         return s.lstrip(".")

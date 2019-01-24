@@ -7,29 +7,27 @@
 #
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import unicode_literals
+from __future__ import absolute_import, division, unicode_literals
 
-import requests
+from mo_future import is_text, is_binary
 import time
-from boto import sqs
-from boto import utils as boto_utils
-from boto.sqs.message import Message
-from mo_times import timer
 
-from mo_dots import wrap, unwrap, coalesce
+from boto import sqs, utils as boto_utils
+from boto.sqs.message import Message
+import requests
+
+from mo_dots import coalesce, unwrap, wrap
+import mo_json
 from mo_json import value2json
 from mo_kwargs import override
 from mo_logs import Log, machine_metadata
-from mo_math import Math
-from mo_threads import Thread
-
-import mo_json
 from mo_logs.exceptions import Except, suppress_exception
+import mo_math
+from mo_threads import Thread
 from mo_threads.signal import Signal
 from mo_threads.till import Till
-from mo_times.durations import SECOND, Duration
+from mo_times import timer
+from mo_times.durations import Duration, SECOND
 
 
 class Queue(object):
@@ -86,7 +84,7 @@ class Queue(object):
         if till is not None and not isinstance(till, Signal):
             Log.error("Expecting a signal")
 
-        m = self.queue.read(wait_time_seconds=Math.floor(wait.seconds))
+        m = self.queue.read(wait_time_seconds=mo_math.floor(wait.seconds))
         if not m:
             return None
 
@@ -101,7 +99,7 @@ class Queue(object):
         if till is not None and not isinstance(till, Signal):
             Log.error("Expecting a signal")
 
-        message = self.queue.read(wait_time_seconds=Math.floor(wait.seconds))
+        message = self.queue.read(wait_time_seconds=mo_math.floor(wait.seconds))
         if not message:
             return None
         message.delete = lambda: self.queue.delete_message(message)

@@ -8,21 +8,19 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import unicode_literals
+from __future__ import absolute_import, division, unicode_literals
 
+from mo_future import is_text, is_binary
 import os
-from collections import Mapping
 
 import mo_dots
-from mo_dots import set_default, wrap, unwrap
+from mo_dots import is_data, is_list, set_default, unwrap, wrap
 from mo_files import File
 from mo_files.url import URL
 from mo_future import text_type
 from mo_json import json2value
 from mo_json_config.convert import ini2value
-from mo_logs import Log, Except
+from mo_logs import Except, Log
 
 DEBUG = False
 
@@ -86,7 +84,7 @@ def _replace_ref(node, url):
     if url.path.endswith("/"):
         url.path = url.path[:-1]
 
-    if isinstance(node, Mapping):
+    if is_data(node):
         ref = None
         output = {}
         for k, v in node.items():
@@ -123,7 +121,7 @@ def _replace_ref(node, url):
 
         if not output:
             output = new_value
-        elif isinstance(output, text_type):
+        elif is_text(output):
             Log.error("Can not handle set_default({{output}},{{new_value}})", output=output, new_value=new_value)
         else:
             output = unwrap(set_default(output, new_value))
@@ -131,7 +129,7 @@ def _replace_ref(node, url):
         DEBUG and Log.note("Return {{output}}", output=output)
 
         return output
-    elif isinstance(node, list):
+    elif is_list(node):
         output = [_replace_ref(n, url) for n in node]
         # if all(p[0] is p[1] for p in zip(output, node)):
         #     return node
@@ -141,7 +139,7 @@ def _replace_ref(node, url):
 
 
 def _replace_locals(node, doc_path):
-    if isinstance(node, Mapping):
+    if is_data(node):
         # RECURS, DEEP COPY
         ref = None
         output = {}
@@ -179,7 +177,7 @@ def _replace_locals(node, doc_path):
         else:
             return unwrap(set_default(output, new_value))
 
-    elif isinstance(node, list):
+    elif is_list(node):
         candidate = [_replace_locals(n, [n] + doc_path) for n in node]
         # if all(p[0] is p[1] for p in zip(candidate, node)):
         #     return node

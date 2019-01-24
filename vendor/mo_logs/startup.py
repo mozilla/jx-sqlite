@@ -8,19 +8,18 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import unicode_literals
+from __future__ import absolute_import, division, unicode_literals
 
+from mo_future import is_text, is_binary
 import argparse as _argparse
 import os
 import sys
 import tempfile
 
-import mo_json_config
+from mo_dots import coalesce, listwrap, unwrap, wrap
 from mo_files import File
+import mo_json_config
 from mo_logs import Log
-from mo_dots import listwrap, wrap, unwrap, coalesce
 
 
 # PARAMETERS MATCH argparse.ArgumentParser.add_argument()

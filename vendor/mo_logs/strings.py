@@ -8,27 +8,23 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import unicode_literals
+from __future__ import absolute_import, division, unicode_literals
 
 import cgi
+from collections import Mapping
+from datetime import date, datetime as builtin_datetime, timedelta
 import json as _json
+from json.encoder import encode_basestring
 import math
 import re
 import string
-from collections import Mapping
-from datetime import datetime as builtin_datetime
-from datetime import timedelta, date
-from json.encoder import encode_basestring
 
-from mo_dots import coalesce, wrap, get_module, Data
-from mo_future import text_type, xrange, binary_type, round as _round, get_function_name, zip_longest, transpose, PY3
-from mo_logs.convert import datetime2unix, datetime2string, value2json, milli2datetime, unix2datetime
-
-# from mo_files.url import value2url_param
+from mo_dots import Data, coalesce, get_module, is_data, is_list, wrap, is_sequence
+from mo_future import PY3, get_function_name, is_binary, is_text, round as _round, text_type, transpose, xrange, zip_longest
+from mo_logs.convert import datetime2string, datetime2unix, milli2datetime, unix2datetime, value2json
 
 FORMATTERS = {}
+CR = text_type("\n")
 
 _json_encoder = None
 _Log = None
@@ -78,7 +74,7 @@ def datetime(value):
     else:
         value = milli2datetime(value)
 
-    return datetime2string(value, "%Y-%m-%d %H:%M:%S")
+    return datetime2string(value, "%Y-%m-%d %H:%M:%S.%f").rstrip(".000000").rstrip("000")
 
 
 @formatter
@@ -157,7 +153,7 @@ def newline(value):
     """
     ADD NEWLINE, IF SOMETHING
     """
-    return "\n" + toString(value).lstrip("\n")
+    return CR + toString(value).lstrip(CR)
 
 
 @formatter
@@ -191,11 +187,11 @@ def tab(value):
     :param value:
     :return:
     """
-    if isinstance(value, Mapping):
+    if is_data(value):
         h, d = transpose(*wrap(value).leaves())
         return (
             "\t".join(map(value2json, h)) +
-            "\n" +
+            CR +
             "\t".join(map(value2json, d))
         )
     else:
@@ -219,7 +215,7 @@ def indent(value, prefix=u"\t", indent=None):
         content = value.rstrip()
         suffix = value[len(content):]
         lines = content.splitlines()
-        return prefix + (u"\n" + prefix).join(lines) + suffix
+        return prefix + (CR + prefix).join(lines) + suffix
     except Exception as e:
         raise Exception(u"Problem with indent of value (" + e.message + u")\n" + text_type(toString(value)))
 
@@ -238,7 +234,7 @@ def outdent(value):
             trim = len(l.lstrip())
             if trim > 0:
                 num = min(num, len(l) - len(l.lstrip()))
-        return u"\n".join([l[num:] for l in lines])
+        return CR.join([l[num:] for l in lines])
     except Exception as e:
         if not _Log:
             _late_import()
@@ -304,7 +300,7 @@ def find(value, find, start=0):
     :return: If NOT found, return the length of `value` string
     """
     l = len(value)
-    if isinstance(find, list):
+    if is_list(find):
         m = l
         for f in find:
             i = value.find(f, start)
@@ -467,7 +463,7 @@ def quote(value):
     """
     if value == None:
         output = ""
-    elif isinstance(value, text_type):
+    elif is_text(value):
         output = encode_basestring(value)
     else:
         output = _json.dumps(value)
@@ -489,6 +485,8 @@ _SNIP = "...<snip>..."
 
 @formatter
 def limit(value, length):
+    if value == None:
+        return None
     try:
         # LIMIT THE STRING value TO GIVEN LENGTH, CHOPPING OUT THE MIDDLE IF REQUIRED
         if len(value) <= length:
@@ -505,7 +503,7 @@ def limit(value, length):
         _Log.error("Not expected", cause=e)
 
 @formatter
-def split(value, sep="\n"):
+def split(value, sep=CR):
     # GENERATOR VERSION OF split()
     # SOMETHING TERRIBLE HAPPENS, SOMETIMES, IN PYPY
     s = 0
@@ -530,7 +528,7 @@ def expand_template(template, value):
     :return: UNICODE STRING WITH VARIABLES EXPANDED
     """
     value = wrap(value)
-    if isinstance(template, text_type):
+    if is_text(template):
         return _simple_expand(template, (value,))
 
     return _expand(template, (value,))
@@ -589,9 +587,11 @@ def _expand(template, seq):
     """
     seq IS TUPLE OF OBJECTS IN PATH ORDER INTO THE DATA TREE
     """
-    if isinstance(template, text_type):
+    if is_text(template):
         return _simple_expand(template, seq)
-    elif isinstance(template, Mapping):
+    elif is_data(template):
+        # EXPAND LISTS OF ITEMS USING THIS FORM
+        # {"from":from, "template":template, "separator":separator}
         template = wrap(template)
         assert template["from"], "Expecting template to have 'from' attribute"
         assert template.template, "Expecting template to have 'template' attribute"
@@ -602,7 +602,7 @@ def _expand(template, seq):
             s = seq + (d,)
             output.append(_expand(template.template, s))
         return coalesce(template.separator, "").join(output)
-    elif isinstance(template, list):
+    elif is_list(template):
         return "".join(_expand(t, seq) for t in template)
     else:
         if not _Log:
@@ -626,7 +626,7 @@ def _simple_expand(template, seq):
         try:
             val = seq[-depth]
             if var:
-                if isinstance(val, (list, tuple)) and float(var) == _round(float(var), 0):
+                if is_sequence(val) and float(var) == _round(float(var), 0):
                     val = val[int(var)]
                 else:
                     val = val[var]
@@ -676,7 +676,7 @@ def toString(val):
     elif isinstance(val, timedelta):
         duration = val.total_seconds()
         return text_type(round(duration, 3)) + " seconds"
-    elif isinstance(val, text_type):
+    elif is_text(val):
         return val
     elif isinstance(val, str):
         try:
@@ -865,7 +865,7 @@ def utf82unicode(value):
         if not _Log:
             _late_import()
 
-        if not isinstance(value, binary_type):
+        if not is_binary(value):
             _Log.error("Can not convert {{type}} to unicode because it's not bytes",  type= type(value).__name__)
 
         e = _Except.wrap(e)

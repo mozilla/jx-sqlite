@@ -8,17 +8,16 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import unicode_literals
+from __future__ import absolute_import, division, unicode_literals
 
+from mo_future import is_text, is_binary
 import base64
 
 from mo_dots import Data, get_module
-from mo_future import text_type, binary_type, PY2
+from mo_future import PY2, binary_type, text_type
 from mo_logs import Log
 from mo_math.randoms import Random
-from mo_math.vendor.aespython import key_expander, aes_cipher, cbc_mode
+from mo_math.vendor.aespython import aes_cipher, cbc_mode, key_expander
 
 DEBUG = False
 
@@ -28,10 +27,10 @@ def encrypt(text, _key, salt=None):
     RETURN {"salt":s, "length":l, "data":d} -> JSON -> UTF8
     """
 
-    if isinstance(text, text_type):
+    if is_text(text):
         encoding = 'utf8'
         data = bytearray(text.encode("utf8"))
-    elif isinstance(text, binary_type):
+    elif is_binary(text):
         encoding = None
         if PY2:
             data = bytearray(text)
@@ -40,7 +39,7 @@ def encrypt(text, _key, salt=None):
 
     if _key is None:
         Log.error("Expecting a key")
-    if isinstance(_key, binary_type):
+    if is_binary(_key):
         _key = bytearray(_key)
     if salt is None:
         salt = Random.bytes(16)

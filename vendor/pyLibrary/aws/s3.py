@@ -7,29 +7,27 @@
 #
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import unicode_literals
+from __future__ import absolute_import, division, unicode_literals
 
 import gzip
-import zipfile
 from tempfile import TemporaryFile
+import zipfile
 
 import boto
 from boto.s3.connection import Location
 from bs4 import BeautifulSoup
 
-from mo_dots import wrap, Null, coalesce, unwrap, Data
+from mo_dots import Data, Null, coalesce, unwrap, wrap
 from mo_files.url import value2url_param
-from mo_future import text_type, StringIO
+from mo_future import StringIO, is_binary, text_type
 from mo_kwargs import override
-from mo_logs import Log, Except
-from mo_logs.strings import utf82unicode, unicode2utf8
+from mo_logs import Except, Log
+from mo_logs.strings import unicode2utf8, utf82unicode
 from mo_times.dates import Date
 from mo_times.timer import Timer
 from pyLibrary import convert
 from pyLibrary.env import http
-from pyLibrary.env.big_data import safe_size, MAX_STRING_SIZE, LazyLines, ibytes2ilines, scompressed2ibytes
+from pyLibrary.env.big_data import LazyLines, MAX_STRING_SIZE, ibytes2ilines, safe_size, scompressed2ibytes
 
 TOO_MANY_KEYS = 1000 * 1000 * 1000
 READ_ERROR = "S3 read error"
@@ -310,7 +308,7 @@ class Bucket(object):
             if len(value) > 20 * 1000 and not disable_zip:
                 self.bucket.delete_key(key + ".json")
                 self.bucket.delete_key(key + ".json.gz")
-                if isinstance(value, str):
+                if is_binary(value):
                     value = convert.bytes2zip(value)
                     key += ".json.gz"
                 else:
@@ -319,7 +317,7 @@ class Bucket(object):
 
             else:
                 self.bucket.delete_key(key + ".json.gz")
-                if isinstance(value, str):
+                if is_binary(value):
                     key += ".json"
                 else:
                     key += ".json"

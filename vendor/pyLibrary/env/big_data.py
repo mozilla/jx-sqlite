@@ -6,24 +6,20 @@
 #
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import unicode_literals
-from __future__ import division
-from __future__ import absolute_import
+from __future__ import absolute_import, division, unicode_literals
 
 import gzip
-import struct
 from io import BytesIO
+import struct
 from tempfile import TemporaryFile
+import time
 import zipfile
 import zlib
 
-import time
-
-from mo_future import text_type, PY3, long
-
-from mo_logs.exceptions import suppress_exception
+from mo_future import PY3, long, text_type
 from mo_logs import Log
-from mo_math import Math
+from mo_logs.exceptions import suppress_exception
+import mo_math
 
 # LIBRARY TO DEAL WITH BIG DATA ARRAYS AS ITERATORS OVER (IR)REGULAR SIZED
 # BLOCKS, OR AS ITERATORS OVER LINES
@@ -61,7 +57,7 @@ class FileString(text_type):
         return file_length
 
     def __getslice__(self, i, j):
-        j = Math.min(j, len(self))
+        j = mo_math.min(j, len(self))
         if j - 1 > 2 ** 28:
             Log.error("Slice of {{num}} bytes is too big", num=j - i)
         try:
@@ -276,10 +272,8 @@ def compressed_bytes2ibytes(compressed, size):
     USEFUL IN THE CASE WHEN WE WANT TO LIMIT HOW MUCH WE FEED ANOTHER
     GENERATOR (LIKE A DECOMPRESSOR)
     """
-
     decompressor = zlib.decompressobj(16 + zlib.MAX_WBITS)
-
-    for i in range(0, Math.ceiling(len(compressed), size), size):
+    for i in range(0, mo_math.ceiling(len(compressed), size), size):
         try:
             block = compressed[i: i + size]
             yield decompressor.decompress(block)
@@ -387,7 +381,7 @@ def icompressed2ibytes(source):
         except Exception as e:
             Log.error("problem", cause=e)
         bytes_count += len(data)
-        if Math.floor(last_bytes_count, 1000000) != Math.floor(bytes_count, 1000000):
+        if mo_math.floor(last_bytes_count, 1000000) != mo_math.floor(bytes_count, 1000000):
             last_bytes_count = bytes_count
             DEBUG and Log.note("bytes={{bytes}}", bytes=bytes_count)
         yield data

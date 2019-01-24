@@ -16,31 +16,30 @@
 # }}
 
 
-from __future__ import absolute_import
-from __future__ import division
+from __future__ import absolute_import, division
 
+from mo_future import is_text, is_binary
 from contextlib import closing
 from copy import copy
 from mmap import mmap
 from numbers import Number
 from tempfile import TemporaryFile
 
-from requests import sessions, Response
+from requests import Response, sessions
 
 from jx_python import jx
-from mo_dots import Data, coalesce, wrap, set_default, unwrap, Null
+from mo_dots import Data, Null, coalesce, is_list, set_default, unwrap, wrap
 from mo_files.url import URL
-from mo_future import text_type, PY2
-from mo_json import value2json, json2value
+from mo_future import PY2, text_type
+from mo_json import json2value, value2json
 from mo_logs import Log
 from mo_logs.exceptions import Except
-from mo_logs.strings import utf82unicode, unicode2utf8
-from mo_math import Math
-from mo_threads import Lock
-from mo_threads import Till
+from mo_logs.strings import unicode2utf8, utf82unicode
+import mo_math
+from mo_threads import Lock, Till
 from mo_times.durations import Duration
 from pyLibrary import convert
-from pyLibrary.env.big_data import safe_size, ibytes2ilines, icompressed2ibytes
+from pyLibrary.env.big_data import ibytes2ilines, icompressed2ibytes, safe_size
 
 DEBUG = False
 FILE_SIZE_LIMIT = 100 * 1024 * 1024
@@ -90,13 +89,13 @@ def request(method, url, headers=None, zip=None, retry=None, **kwargs):
         ))
     _warning_sent = True
 
-    if isinstance(url, list):
+    if is_list(url):
         # TRY MANY URLS
         failures = []
         for remaining, u in jx.countdown(url):
             try:
                 response = request(method, u, retry=retry, **kwargs)
-                if Math.round(response.status_code, decimal=-2) not in [400, 500]:
+                if mo_math.round(response.status_code, decimal=-2) not in [400, 500]:
                     return response
                 if not remaining:
                     return response
@@ -113,7 +112,7 @@ def request(method, url, headers=None, zip=None, retry=None, **kwargs):
         sess = session = sessions.Session()
 
     with closing(sess):
-        if PY2 and isinstance(url, text_type):
+        if PY2 and is_text(url):
             # httplib.py WILL **FREAK OUT** IF IT SEES ANY UNICODE
             url = url.encode('ascii')
 
@@ -177,13 +176,13 @@ if PY2:
         if headers is None:
             return
         for k, v in copy(headers).items():
-            if isinstance(k, text_type):
+            if is_text(k):
                 del headers[k]
-                if isinstance(v, text_type):
+                if is_text(v):
                     headers[k.encode('ascii')] = v.encode('ascii')
                 else:
                     headers[k.encode('ascii')] = v
-            elif isinstance(v, text_type):
+            elif is_text(v):
                 headers[k] = v.encode('ascii')
 else:
     def _to_ascii_dict(headers):
@@ -203,7 +202,7 @@ def get_json(url, **kwargs):
         c = response.all_content
         return json2value(utf82unicode(c))
     except Exception as e:
-        if Math.round(response.status_code, decimal=-2) in [400, 500]:
+        if mo_math.round(response.status_code, decimal=-2) in [400, 500]:
             Log.error(u"Bad GET response: {{code}}", code=response.status_code)
         else:
             Log.error(u"Good GET requests, but bad JSON", cause=e)

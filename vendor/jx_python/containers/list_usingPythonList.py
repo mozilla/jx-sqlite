@@ -7,28 +7,24 @@
 #
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import unicode_literals
+from __future__ import absolute_import, division, unicode_literals
 
+from copy import copy
 import itertools
-from collections import Mapping
 
 import jx_base
 from jx_base import Container
-from jx_base.expressions import jx_expression, Expression, Variable, TRUE
-from jx_python.expression_compiler import compile_expression
+from jx_base.expressions import TRUE, Variable
+from jx_base.language import is_expression, is_op
 from jx_python.expressions import jx_expression_to_function
 from jx_python.lists.aggs import is_aggs, list_aggs
 from jx_python.meta import get_schema_from_list
 from mo_collections import UniqueIndex
-from mo_dots import Data, wrap, listwrap, unwraplist, unwrap, Null
-from mo_future import sort_using_key
+from mo_dots import Data, Null, is_data, is_list, listwrap, unwrap, unwraplist, wrap
+from mo_future import first, sort_using_key
 from mo_logs import Log
 from mo_threads import Lock
 from pyLibrary import convert
-
-_get = object.__getattribute__
 
 
 class ListContainer(Container, jx_base.Namespace, jx_base.Table):
@@ -96,14 +92,14 @@ class ListContainer(Container, jx_base.Namespace, jx_base.Table):
             if q.format == "list":
                 return Data(data=output.data, meta={"format": "list"})
             elif q.format == "table":
-                head = [c.names['.'] for c in output.schema.columns]
+                head = [c.name for c in output.schema.columns]
                 data = [
-                    [r if h == '.' else r[h] for h in head]
+                    [r if h == "." else r[h] for h in head]
                     for r in output.data
                 ]
                 return Data(header=head, data=data, meta={"format": "table"})
             elif q.format == "cube":
-                head = [c.names['.'] for c in output.schema.columns]
+                head = [c.name for c in output.schema.columns]
                 rows = [
                     [r[h] for h in head]
                     for r in output.data
@@ -144,10 +140,10 @@ class ListContainer(Container, jx_base.Namespace, jx_base.Table):
         return self.where(where)
 
     def where(self, where):
-        if isinstance(where, Mapping):
-            temp = compile_expression(jx_expression(where).to_python())
-        elif isinstance(where, Expression):
-            temp = compile_expression(where.to_python())
+        if is_data(where):
+            temp = jx_expression_to_function(where)
+        elif is_expression(where):
+            temp = jx_expression_to_function(where)
         else:
             temp = where
 
@@ -161,7 +157,7 @@ class ListContainer(Container, jx_base.Namespace, jx_base.Table):
         :param select: the variable to extract from list
         :return:  a simple list of the extraction
         """
-        if isinstance(select, list):
+        if is_list(select):
             return [(d[s] for s in select) for d in self.data]
         else:
             return [d[select] for d in self.data]
@@ -169,20 +165,20 @@ class ListContainer(Container, jx_base.Namespace, jx_base.Table):
     def select(self, select):
         selects = listwrap(select)
 
-        if len(selects) == 1 and isinstance(selects[0].value, Variable) and selects[0].value.var == ".":
+        if len(selects) == 1 and is_op(selects[0].value, Variable) and selects[0].value.var == ".":
             new_schema = self.schema
             if selects[0].name == ".":
                 return self
         else:
             new_schema = None
 
-        if isinstance(select, list):
+        if is_list(select):
             if all(
-                isinstance(s.value, Variable) and s.name == s.value.var
+                is_op(s.value, Variable) and s.name == s.value.var
                 for s in select
             ):
                 names = set(s.value.var for s in select)
-                new_schema = Schema(".", [c for c in self.schema.columns if c.names['.'] in names])
+                new_schema = Schema(".", [c for c in self.schema.columns if c.name in names])
 
             push_and_pull = [(s.name, jx_expression_to_function(s.value)) for s in selects]
             def selector(d):
@@ -195,6 +191,10 @@ class ListContainer(Container, jx_base.Namespace, jx_base.Table):
         else:
             select_value = jx_expression_to_function(select.value)
             new_data = map(select_value, self.data)
+            if is_op(select.value, Variable):
+                column = copy(first(c for c in self.schema.columns if c.name == select.value.var))
+                column.name = '.'
+                new_schema = Schema("from " + self.name, [column])
 
         return ListContainer("from "+self.name, data=new_data, schema=new_schema)
 
@@ -242,10 +242,16 @@ class ListContainer(Container, jx_base.Namespace, jx_base.Table):
         self.data.extend(documents)
 
     def __data__(self):
-        return wrap({
-            "meta": {"format": "list"},
-            "data": [{k: unwraplist(v) for k, v in row.items()} for row in self.data]
-        })
+        if first(self.schema.columns).name=='.':
+            return wrap({
+                "meta": {"format": "list"},
+                "data": self.data
+            })
+        else:
+            return wrap({
+                "meta": {"format": "list"},
+                "data": [{k: unwraplist(v) for k, v in row.items()} for row in self.data]
+            })
 
     def get_columns(self, table_name=None):
         return self.schema.values()
@@ -263,8 +269,6 @@ class ListContainer(Container, jx_base.Namespace, jx_base.Table):
 
     def __len__(self):
         return len(self.data)
-
-    # class Namespace(jx_base.Namespace):
 
     def get_snowflake(self, name):
         if self.name != name:
@@ -291,8 +295,6 @@ def _exec(code):
         Log.error("Could not execute {{code|quote}}", code=code, cause=e)
 
 
-
-
 from jx_base.schema import Schema
 from jx_python import jx
 
@@ -300,6 +302,5 @@ from jx_python import jx
 DUAL = ListContainer(
     name="dual",
     data=[{}],
-    schema=Schema(table_name="dual", columns=UniqueIndex(keys=("names.\\.",)))
+    schema=Schema(table_name="dual", columns=UniqueIndex(keys=("name",)))
 )
-

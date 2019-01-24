@@ -224,11 +224,12 @@ SUPPORT FUNCTIONS:  writecc
 ##              changed name of skewness and askewness to skew and askew
 ##              fixed (a)histogram (which sometimes counted points <lowerlimit)
 
-import math
 import copy
-# from types import *
+import math
 
 from mo_math.vendor.strangman import pstat
+
+# from types import *
 
 
 __version__ = 0.6

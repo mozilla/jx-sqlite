@@ -8,14 +8,12 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import unicode_literals
+from __future__ import absolute_import, division, unicode_literals
 
-from unittest import skipIf
+from unittest import skip, skipIf
 
 from jx_base.expressions import NULL
-from mo_dots import wrap, set_default
+from mo_dots import set_default, wrap
 from mo_future import text_type
 from tests.test_jx import BaseTestCase, TEST_TABLE, global_settings
 
@@ -283,6 +281,52 @@ class TestgroupBy1(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
+    def test_default(self):
+        test = {
+            "name": "sum column",
+            "metadata": {},
+            "data": [
+                {"a": "c"},
+                {"a": "b", "v": 2},
+                {"v": 3},
+                {"a": "b"},
+                {"a": "c"},
+                {"a": "c"}
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "select": {"value": "v", "aggregate": "sum", "default": 0},
+                "groupby": ["a"]
+            },
+            "expecting_list": {
+                "meta": {"format": "list"},
+                "data": [
+                    {"a": "b", "v": 2},
+                    {"a": "c", "v": 0},
+                    {"a": NULL, "v": 3}
+                ]},
+            "expecting_table": {
+                "meta": {"format": "table"},
+                "header": ["a", "v"],
+                "data": [
+                    ["b", 2],
+                    ["c", 0],
+                    [None, 3]
+                ]
+            },
+            "expecting_cube": {
+                "meta": {"format": "cube"},
+                "edges": [{"name": "a", "domain": {"partitions": [
+                    {"value": "b"},
+                    {"value": "c"}
+                ]}}],
+                "data": {
+                    "v": [2, 0, 3]
+                }
+            }
+        }
+        self.utils.execute_tests(test)
+
     def test_many_aggs_on_one_column(self):
         # ES WILL NOT ACCEPT TWO (NAIVE) AGGREGATES ON SAME FIELD, COMBINE THEM USING stats AGGREGATION
         test = {
@@ -380,7 +424,33 @@ class TestgroupBy1(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(True, "not implemented yet")
+    @skipIf(int(global_settings.elasticsearch.version.split(".")[0]) <= 4, "version 4 and below do not implement")
+    def test_count_values(self):
+        # THIS IS NOT PART OF THE JX SPEC, IT IS AN INTERMEDIATE FORM FOR DEBUGGING
+        test = {
+            "data": [
+                {"a": 1, "b": [1, 2, 3]},
+                {"a": 2, "b": [4, 5, 6]},
+                {"a": 3, "b": [2, 3, 4]},
+                {"a": 4},
+                {"a": 5, "b": [3, 4, 5]},
+                {"a": 6, "b": 6}
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "select": [{"value": "b", "aggregate": "count_values"}]
+            },
+            "expecting_list": {
+                "meta": {"format": "value"},
+                "data":
+                    {"b": {"1.0": 1, "2.0": 2, "3.0": 3, "4.0": 3, "5.0": 2, "6.0": 2}}
+
+            }
+        }
+        self.utils.execute_tests(test)
+
+    # @skipIf(int(global_settings.elasticsearch.version.split(".")[0]) <= 5, "version 5 and below do not implement")
+    @skip("for coverage")
     def test_groupby_multivalue_nested(self):
         test = {
             "data": [

@@ -7,25 +7,23 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import unicode_literals
-from __future__ import division
-from __future__ import absolute_import
+from __future__ import absolute_import, division, unicode_literals
 
+from mo_future import is_text, is_binary
 import datetime
 from socket import timeout as socket_timeout
 
-from kombu import Connection, Producer, Exchange
-from pytz import timezone
-from mozillapulse.utils import time_to_string
-
-from mo_logs import constants
-from pyLibrary import jsons
-from mo_logs.exceptions import Except, suppress_exception
-from mo_logs import Log
-from mo_dots import wrap, coalesce, Data, set_default
-from mo_kwargs import override
-from mo_threads import Thread, Lock
+from kombu import Connection, Exchange, Producer
 from mozillapulse.consumers import GenericConsumer
+from mozillapulse.utils import time_to_string
+from pytz import timezone
+
+from mo_dots import Data, coalesce, set_default, wrap
+from mo_kwargs import override
+from mo_logs import Log
+from mo_logs.exceptions import Except, suppress_exception
+from mo_threads import Lock, Thread
+from pyLibrary import jsons
 
 count_locker=Lock()
 count=0

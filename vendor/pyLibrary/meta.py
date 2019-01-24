@@ -7,16 +7,15 @@
 #
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import unicode_literals
+from __future__ import absolute_import, division, unicode_literals
 
+from mo_future import is_text, is_binary
 from collections import namedtuple
 from types import FunctionType
 
+from mo_dots import Null, _get_attr, set_default
+from mo_future import get_function_arguments, get_function_name, text_type
 import mo_json
-from mo_dots import set_default, _get_attr, Null
-from mo_future import text_type, get_function_arguments
 from mo_logs import Log
 from mo_logs.exceptions import Except
 from mo_math.randoms import Random
@@ -200,7 +199,7 @@ class _FakeLock():
 
 def value2quote(value):
     # RETURN PRETTY PYTHON CODE FOR THE SAME
-    if isinstance(value, text_type):
+    if is_text(value):
         return mo_json.quote(value)
     else:
         return text_type(repr(value))
@@ -218,6 +217,18 @@ class extenstion_method(object):
         else:
             setattr(self.value, func.__name__, func)
             return func
+
+
+def extend(cls):
+    """
+    DECORATOR TO ADD METHODS TO CLASSES
+    :param cls: THE CLASS TO ADD THE METHOD TO
+    :return:
+    """
+    def extender(func):
+        setattr(cls, get_function_name(func), func)
+        return func
+    return extender
 
 
 class MemorySample(object):

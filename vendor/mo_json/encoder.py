@@ -7,24 +7,22 @@
 #
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import unicode_literals
+from __future__ import absolute_import, division, unicode_literals
 
-import json
-import math
-import time
-from collections import Mapping
-from datetime import datetime, date, timedelta
+from mo_future import is_text, is_binary
+from datetime import date, datetime, timedelta
 from decimal import Decimal
+import json
 from json.encoder import encode_basestring
+import math
 from math import floor
+import time
 
-from mo_dots import Data, FlatList, NullType, Null, SLOT
-from mo_future import text_type, binary_type, long, utf8_json_encoder, sort_using_key, xrange, PYPY
-from mo_json import ESCAPE_DCT, scrub, float2json
+from mo_dots import Data, FlatList, Null, NullType, SLOT, is_data, is_list
+from mo_future import PYPY, binary_type, is_binary, is_text, long, sort_using_key, text_type, utf8_json_encoder, xrange
+from mo_json import ESCAPE_DCT, float2json, scrub
 from mo_logs import Except
-from mo_logs.strings import utf82unicode, quote
+from mo_logs.strings import quote, utf82unicode
 from mo_times import Timer
 from mo_times.dates import Date
 from mo_times.durations import Duration
@@ -111,8 +109,11 @@ class cPythonJSONEncoder(object):
         try:
             with Timer("scrub", too_long=0.1):
                 scrubbed = scrub(value)
-            with Timer("encode", too_long=0.1):
-                return text_type(self.encoder(scrubbed))
+            param = {"size": 0}
+            with Timer("encode {{size}} characters", param=param, too_long=0.1):
+                output = text_type(self.encoder(scrubbed))
+                param["size"] = len(output)
+                return output
         except Exception as e:
             from mo_logs.exceptions import Except
             from mo_logs import Log
@@ -198,7 +199,7 @@ def _value2json(value, _buffer):
             append(_buffer, float2json(value.seconds))
         elif type is NullType:
             append(_buffer, u"null")
-        elif isinstance(value, Mapping):
+        elif is_data(value):
             if not value:
                 append(_buffer, u"{}")
             else:
@@ -250,7 +251,7 @@ def _dict2json(value, _buffer):
         for k, v in value.items():
             append(_buffer, prefix)
             prefix = COMMA_QUOTE
-            if isinstance(k, binary_type):
+            if is_binary(k):
                 k = utf82unicode(k)
             for c in k:
                 append(_buffer, ESCAPE_DCT.get(c, c))
@@ -275,21 +276,21 @@ def pretty_json(value):
             return "false"
         elif value is True:
             return "true"
-        elif isinstance(value, Mapping):
+        elif is_data(value):
             try:
                 items = sort_using_key(value.items(), lambda r: r[0])
-                values = [encode_basestring(k) + PRETTY_COLON + indent(pretty_json(v)).strip() for k, v in items if v != None]
+                values = [encode_basestring(k) + PRETTY_COLON + pretty_json(v) for k, v in items if v != None]
                 if not values:
                     return "{}"
                 elif len(values) == 1:
                     return "{" + values[0] + "}"
                 else:
-                    return "{\n" + INDENT + (",\n" + INDENT).join(values) + "\n}"
+                    return "{\n" + ",\n".join(indent(v) for v in values) + "\n}"
             except Exception as e:
                 from mo_logs import Log
                 from mo_math import OR
 
-                if OR(not isinstance(k, text_type) for k in value.keys()):
+                if OR(not is_text(k) for k in value.keys()):
                     Log.error(
                         "JSON must have string keys: {{keys}}:",
                         keys=[k for k in value.keys()],
@@ -303,8 +304,8 @@ def pretty_json(value):
                 )
         elif value in (None, Null):
             return "null"
-        elif isinstance(value, (text_type, binary_type)):
-            if isinstance(value, binary_type):
+        elif value.__class__ in (binary_type, text_type):
+            if is_binary(value):
                 value = utf82unicode(value)
             try:
                 return quote(value)
@@ -330,9 +331,9 @@ def pretty_json(value):
                     Log.note("return value of length {{length}}", length=len(output))
                     return output
                 except BaseException as f:
-                    Log.warning("can not even explicit convert {{type}}", type=f.__class__.__name__, cause=f)
+                    Log.warning("can not convert {{type}} to json", type=f.__class__.__name__, cause=f)
                     return "null"
-        elif isinstance(value, list):
+        elif is_list(value):
             if not value:
                 return "[]"
 

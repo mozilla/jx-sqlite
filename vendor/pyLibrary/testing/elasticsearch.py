@@ -7,14 +7,13 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import unicode_literals
+from __future__ import absolute_import, division, unicode_literals
 
-import mo_json
+from mo_future import is_text, is_binary
 from jx_python import jx
-from mo_dots import Data, Null, unwrap, wrap
+from mo_dots import Data, Null, is_list, unwrap, wrap
 from mo_files import File
+import mo_json
 from mo_kwargs import override
 from mo_logs import Log
 from pyLibrary.env.elasticsearch import Cluster
@@ -90,7 +89,7 @@ class FakeES():
         Log.note("{{num}} documents added", num=len(records))
 
     def add(self, record):
-        if isinstance(record, list):
+        if is_list(record):
             Log.error("no longer accepting lists, use extend()")
         return self.extend([record])
 

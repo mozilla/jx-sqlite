@@ -8,14 +8,12 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import unicode_literals
+from __future__ import absolute_import, division, unicode_literals
 
-from unittest import skipIf
+from unittest import skip
 
 from jx_base.expressions import NULL
-from tests.test_jx import BaseTestCase, TEST_TABLE, global_settings
+from tests.test_jx import BaseTestCase, TEST_TABLE
 
 
 class TestSchemaMerging(BaseTestCase):
@@ -23,7 +21,6 @@ class TestSchemaMerging(BaseTestCase):
     TESTS THAT DEMONSTRATE DIFFERENT SCHEMAS
     """
 
-    @skipIf(True, "not implemented yet")
     def test_select(self):
         test = {
             "data": [
@@ -195,7 +192,6 @@ class TestSchemaMerging(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(True, "not implemented yet")
     def test_dots_in_property_names3(self):
         test = {
             "data": [
@@ -237,7 +233,7 @@ class TestSchemaMerging(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(True, "not implemented yet")
+    @skip("schema merging not working")
     def test_count(self):
         test = {
             "data": [
@@ -271,7 +267,7 @@ class TestSchemaMerging(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(True, "not implemented yet")
+    @skip("schema merging not working")
     def test_sum(self):
         test = {
             "data": [
@@ -289,19 +285,59 @@ class TestSchemaMerging(BaseTestCase):
             },
             "expecting_list": {
                 "meta": {"format": "value"},
-                "data": 6
+                "data": 8
             },
             "expecting_table": {
                 "meta": {"format": "table"},
                 "header": ["a.b"],
-                "data": [[6]]
+                "data": [[8]]
             },
             "expecting_cube": {
                 "meta": {"format": "cube"},
                 "data": {
-                    "a.b": 6
+                    "a.b": 8
                 }
             }
+        }
+        self.utils.execute_tests(test)
+
+    @skip("For Orange query")
+    def test_edge(self):
+        test = {
+            "data": [
+                {"v": 1, "a": "b"},
+                {"v": 2, "a": {"b": 1}},
+                {"v": 3, "a": {}},
+                {"v": 4, "a": [{"b": 1}, {"b": 2}, {"b": 2}]},  # TEST THAT INNER CAN BE MAPPED TO NESTED
+                {"v": 5, "a": {"b": 4}},  # TEST THAT INNER IS MAPPED TO NESTED, AFTER SEEING NESTED
+                {"v": 6, "a": 3},
+                {"v": 7}
+            ],
+            "query": {
+                "from": TEST_TABLE + ".a",
+                "edges": [{"value": "b"}],
+                "select": {"value": "v", "aggregate": "sum"}
+            },
+            "expecting_list": {
+                "meta": {"format": "list"},
+                "data": [
+                    {"b": 1, "v": 6},
+                    {"b": 2, "v": 8},
+                    {"b": 4, "v": 5},
+                    {"v": 14}
+                ]
+            },
+            # "expecting_table": {
+            #     "meta": {"format": "table"},
+            #     "header": ["a.b"],
+            #     "data": [[8]]
+            # },
+            # "expecting_cube": {
+            #     "meta": {"format": "cube"},
+            #     "data": {
+            #         "a.b": 8
+            #     }
+            # }
         }
         self.utils.execute_tests(test)
 

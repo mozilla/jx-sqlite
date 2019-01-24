@@ -11,15 +11,14 @@
 # THIS SIGNAL IS IMPORTANT FOR PROPER SIGNALLING WHICH ALLOWS
 # FOR FAST AND PREDICTABLE SHUTDOWN AND CLEANUP OF THREADS
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import unicode_literals
+from __future__ import absolute_import, division, unicode_literals
 
+from mo_future import is_text, is_binary
 from mo_threads.lock import Lock
 from mo_threads.multiprocess import Process
 from mo_threads.queues import Queue, ThreadedQueue
 from mo_threads.signal import Signal
-from mo_threads.threads import Thread, THREAD_STOP, THREAD_TIMEOUT, MainThread, stop_main_thread, MAIN_THREAD
+from mo_threads.threads import MAIN_THREAD, MainThread, THREAD_STOP, THREAD_TIMEOUT, Thread, stop_main_thread
 from mo_threads.till import Till
 
 MAIN_THREAD.timers = Thread.run("timers daemon", till.daemon)
