@@ -113,9 +113,9 @@ def jx_expression_to_function(expr):
 
 
 class PythonScript(PythonScript_):
-    __slots__ = ("miss", "data_type", "expr", "many")
+    __slots__ = ("miss", "data_type", "expr", "frum", "many")
 
-    def __init__(self, type, expr, frum, miss=None, many=False):
+    def __init__(self, data_type, expr, frum, miss=None, many=False):
         object.__init__(self)
         if miss not in [None, NULL, FALSE, TRUE, ONE, ZERO]:
             if frum.lang != miss.lang:

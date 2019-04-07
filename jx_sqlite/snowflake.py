@@ -16,7 +16,6 @@ import jx_base
 import mo_json
 from jx_base import Column, Facts
 from jx_base.queries import get_property_name
-from jx_python.meta import ColumnList
 from jx_sqlite import GUID, untyped_column, UID, typed_column, quoted_GUID, quoted_UID, quoted_PARENT, quoted_ORDER
 from jx_sqlite.expressions import sql_type_to_json_type, json_type_to_sql_type
 from mo_dots import startswith_field, relative_field, concat_field, set_default, wrap, tail_field, coalesce, listwrap, Data
@@ -24,7 +23,7 @@ from mo_future import text_type
 from mo_json import OBJECT, EXISTS, STRUCT
 from mo_logs import Log
 from pyLibrary.sql import SQL_FROM, sql_iso, sql_list, SQL_LIMIT, SQL_SELECT, SQL_ZERO, SQL_STAR
-from pyLibrary.sql.sqlite import quote_column, sqlite_type_to_json_type, json_type_to_sqlite_type
+from pyLibrary.sql.sqlite import quote_column,  json_type_to_sqlite_type
 
 
 class Namespace(jx_base.Namespace):

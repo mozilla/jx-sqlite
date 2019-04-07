@@ -535,6 +535,11 @@ class PythonScript(Expression):
     pass
 
 
+class SQLScript(Expression):
+    """
+    REPRESENT A SQL SCRIPT
+    """
+    pass
 
 
 _json_encoder = utf8_json_encoder
