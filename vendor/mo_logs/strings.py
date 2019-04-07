@@ -20,7 +20,7 @@ import re
 import string
 
 from mo_dots import Data, coalesce, get_module, is_data, is_list, wrap, is_sequence
-from mo_future import PY3, get_function_name, is_binary, is_text, round as _round, text_type, transpose, xrange, zip_longest
+from mo_future import PY3, get_function_name, is_binary, is_text, round as _round, text_type, transpose, xrange, zip_longest, binary_type
 from mo_logs.convert import datetime2string, datetime2unix, milli2datetime, unix2datetime, value2json
 
 FORMATTERS = {}
@@ -678,7 +678,7 @@ def toString(val):
         return text_type(round(duration, 3)) + " seconds"
     elif is_text(val):
         return val
-    elif isinstance(val, str):
+    elif isinstance(val, binary_type):
         try:
             return val.decode('utf8')
         except Exception as _:

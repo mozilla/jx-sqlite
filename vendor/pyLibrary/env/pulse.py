@@ -105,7 +105,7 @@ class Consumer(Thread):
             self.pulse.disconnect()
             Log.note("pulse listener was given a disconnect()")
 
-        please_stop.on_go(disconnect)
+        please_stop.then(disconnect)
 
         while not please_stop:
             try:

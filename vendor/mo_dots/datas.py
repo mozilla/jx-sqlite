@@ -147,7 +147,8 @@ class Data(MutableMapping):
                 d[seq[-1]] = value
             return self
         except Exception as e:
-            raise e
+            from mo_logs import Log
+            Log.error("can not set key={{key}}", key=key, cause=e)
 
     def __getattr__(self, key):
         d = _get(self, SLOT)
@@ -254,7 +255,7 @@ class Data(MutableMapping):
     def copy(self):
         d = self._internal_dict
         if _get(d, CLASS) is dict:
-            return Data(**self)
+            return Data(**d)
         else:
             return copy(d)
 

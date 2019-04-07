@@ -10,7 +10,6 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
-from mo_future import is_text, is_binary
 import functools
 
 from mo_dots import Data, FlatList, coalesce, is_data, is_list, split_field, wrap

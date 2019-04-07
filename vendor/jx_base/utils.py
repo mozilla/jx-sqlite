@@ -12,7 +12,7 @@ import re
 from mo_future import is_text
 from mo_logs import Log
 
-keyword_pattern = re.compile(r"(\w|[\\.,$-])+(?:\.(\w|[\\.,$-])+)*")
+keyword_pattern = re.compile(r"(\w|[\\.])(\w|[\\.$-])*(?:\.(\w|[\\.$-])+)*")
 
 
 def is_variable_name(value):

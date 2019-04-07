@@ -8,6 +8,7 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
+from mo_future import is_text, is_binary
 import gzip
 from io import BytesIO
 import struct
@@ -272,7 +273,9 @@ def compressed_bytes2ibytes(compressed, size):
     USEFUL IN THE CASE WHEN WE WANT TO LIMIT HOW MUCH WE FEED ANOTHER
     GENERATOR (LIKE A DECOMPRESSOR)
     """
+
     decompressor = zlib.decompressobj(16 + zlib.MAX_WBITS)
+
     for i in range(0, mo_math.ceiling(len(compressed), size), size):
         try:
             block = compressed[i: i + size]

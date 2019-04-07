@@ -9,7 +9,6 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from mo_future import is_text, is_binary
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 from json.encoder import encode_basestring
@@ -17,12 +16,13 @@ import time
 
 from mo_dots import CLASS, Data, DataObject, FlatList, NullType, SLOT, _get, is_data, join_field, split_field
 from mo_dots.objects import OBJ
-from mo_future import binary_type, generator_types, is_binary, is_text, long, sort_using_key, text_type
-from mo_json import BOOLEAN, ESCAPE_DCT, EXISTS, INTEGER, NESTED, NUMBER, STRING, float2json, python_type_to_json_type
-from mo_json.encoder import COLON, COMMA, UnicodeBuilder, json_encoder, problem_serializing
+from mo_future import binary_type, generator_types, integer_types, is_binary, is_text, sort_using_key, text_type
 from mo_logs import Log
 from mo_logs.strings import quote, utf82unicode
 from mo_times import Date, Duration
+
+from mo_json import BOOLEAN, ESCAPE_DCT, EXISTS, INTEGER, NESTED, NUMBER, STRING, float2json, python_type_to_json_type
+from mo_json.encoder import COLON, COMMA, UnicodeBuilder, json_encoder, problem_serializing
 
 
 def encode_property(name):
@@ -238,7 +238,7 @@ def typed_encode(value, sub_schema, path, net_new_properties, buffer):
             for c in value:
                 append(buffer, ESCAPE_DCT.get(c, c))
             append(buffer, '"}')
-        elif _type in (int, long):
+        elif _type in integer_types:
             if NUMBER_TYPE not in sub_schema:
                 sub_schema[NUMBER_TYPE] = True
                 net_new_properties.append(path + [NUMBER_TYPE])
@@ -431,8 +431,6 @@ def _dict2json(value, sub_schema, path, net_new_properties, buffer):
         append(buffer, '{')
         append(buffer, QUOTED_EXISTS_TYPE)
         append(buffer, '1}')
-
-
 
 
 TYPE_PREFIX = "~"  # u'\u0442\u0443\u0440\u0435-'  # "туре"

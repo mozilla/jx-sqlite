@@ -9,11 +9,10 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from mo_future import is_text, is_binary
 from copy import copy
 
-from mo_dots import Data, is_data, join_field, set_default, split_field, wrap, is_many
-from mo_future import generator_types, text_type
+from mo_dots import Data, is_data, is_many, join_field, set_default, split_field, wrap
+from mo_future import is_text
 from mo_logs import Log
 
 type2container = Data()
@@ -46,7 +45,7 @@ class Container(object):
     """
     CONTAINERS HOLD MULTIPLE FACTS AND CAN HANDLE
     GENERAL JSON QUERY EXPRESSIONS ON ITS CONTENTS
-    METADATA FOR A Container IS CALL A Namespace
+    METADATA FOR A Container IS CALLED A Namespace
     """
 
 

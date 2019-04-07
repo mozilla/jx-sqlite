@@ -30,7 +30,7 @@ from pyLibrary.sql import SQL, SQL_AND, SQL_ASC, SQL_DESC, SQL_FROM, SQL_IS_NULL
 from pyLibrary.sql.sqlite import join_column
 
 DEBUG = False
-MAX_BATCH_SIZE = 100
+MAX_BATCH_SIZE = 1
 EXECUTE_TIMEOUT = 5 * 600 * 1000  # in milliseconds  SET TO ZERO (OR None) FOR HOST DEFAULT TIMEOUT
 
 all_db = []
@@ -349,7 +349,7 @@ class MySQL(object):
             Log.error("Expecting transaction to be started before issuing queries")
 
         if param:
-            sql = expand_template(sql, quote_param(param))
+            sql = expand_template(text_type(sql), quote_param(param))
         sql = outdent(sql)
         self.backlog.append(sql)
         if self.debug or len(self.backlog) >= MAX_BATCH_SIZE:
@@ -564,7 +564,7 @@ def quote_value(value):
         if value == None:
             return SQL_NULL
         elif isinstance(value, SQL):
-            return quote_sql(value.template, value.param)
+            return value
         elif is_text(value):
             return SQL("'" + "".join(ESCAPE_DCT.get(c, c) for c in value) + "'")
         elif is_data(value):

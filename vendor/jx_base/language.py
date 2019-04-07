@@ -14,7 +14,7 @@ from math import isnan
 
 from mo_dots import Data, data_types, listwrap
 from mo_dots.lists import list_types
-from mo_future import boolean_type, long, none_type, text_type
+from mo_future import boolean_type, long, none_type, text_type, transpose
 from mo_logs import Log
 from mo_times import Date
 
@@ -23,7 +23,7 @@ builtin_tuple = tuple
 Expression = None
 expression_module = None
 JX = None
-
+ID = "_op_id"
 
 _next_id = 0
 
@@ -50,7 +50,7 @@ class LanguageElement(type):
         x.lang = None
         if x.__module__ == expression_module:
             # ALL OPS IN expression_module ARE GIVEN AN ID, NO OTHERS
-            x.id = next_id()
+            setattr(x, ID, next_id())
         return x
 
     def __init__(cls, *args):
@@ -72,7 +72,9 @@ class Language(object):
         self.ops = None
 
     def __getitem__(self, item):
-        class_ = self.ops[item.id]
+        if item == None:
+            Log.error("expecting operator")
+        class_ = self.ops[item.get_id()]
         if class_.__name__ != item.__class__.__name__:
             Log.error("programming error")
         item.__class__ = class_
@@ -92,31 +94,32 @@ def define_language(lang_name, module_vars):
         language.ops = copy(JX.ops)
     else:
         num_ops = 1 + max(
-            obj.id
-            for obj in module_vars.values() if isinstance(obj, type) and hasattr(obj, 'id')
+            obj.get_id()
+            for obj in module_vars.values()
+            if isinstance(obj, type) and hasattr(obj, ID)
         )
         language = JX = Language("JX")
         language.ops = [None] * num_ops
 
     for _, new_op in module_vars.items():
-        if isinstance(new_op, type) and hasattr(new_op, 'id'):
+        if isinstance(new_op, type) and hasattr(new_op, ID):
             # EXPECT OPERATORS TO HAVE id
             # EXPECT NEW DEFINED OPS IN THIS MODULE TO HAVE lang NOT SET
             curr = getattr(new_op, "lang")
             if not curr:
-                old_op = language.ops[new_op.id]
+                old_op = language.ops[new_op.get_id()]
                 if old_op is not None and old_op.__name__ != new_op.__name__:
                     Log.error("Logic error")
-                language.ops[new_op.id] = new_op
+                language.ops[new_op.get_id()] = new_op
                 setattr(new_op, "lang", language)
 
     if lang_name:
         # ENSURE THE ALL OPS ARE DEFINED ON THE NEW LANGUAGE
-        for base_op, new_op in list(zip(JX.ops, language.ops)):
+        for base_op, new_op in transpose(JX.ops, language.ops):
             if new_op is base_op:
                 # MISSED DEFINITION, ADD ONE
                 new_op = type(base_op.__name__, (base_op,), {})
-                language.ops[new_op.id] = new_op
+                language.ops[new_op.get_id()] = new_op
                 setattr(new_op, "lang", language)
 
     return language
@@ -129,14 +132,14 @@ def is_op(call, op):
     :return: isinstance(call, op), but faster
     """
     try:
-        return call.id == op.id
+        return call.get_id() == op.get_id()
     except Exception as e:
         return False
 
 
 def is_expression(call):
     try:
-        output = getattr(call, 'id', None) != None
+        output = getattr(call, ID, None) != None
     except Exception:
         output = False
     if output != isinstance(call, Expression):

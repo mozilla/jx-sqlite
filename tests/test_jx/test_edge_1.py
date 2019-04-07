@@ -1506,7 +1506,7 @@ class TestEdge1(BaseTestCase):
     def test_edge_using_between(self):
         test = {
             "data": [
-                {"url": NULL},
+                {"url": None},
                 {"url": "/"},
                 {"url": "https://hg.mozilla.org/"},
                 {"url": "https://hg.mozilla.org/a/"},
@@ -1868,7 +1868,6 @@ class TestEdge1(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-
     def test_edge_w_partition_filters(self):
         test = {
             "data": structured_test_data,
@@ -2193,7 +2192,7 @@ structured_test_data = [
     {"b": {"r": "d", "d": 1}, "v": 10},
     {"b": {"r": "d", "d": 2}, "v": 11},
     {"b": {"r": "d", "d": 3}, "v": 12},
-    {"b": {"r": NULL, "d": 3}, "v": 13}
+    {"b": {"r": None, "d": 3}, "v": 13}
 ]
 
 

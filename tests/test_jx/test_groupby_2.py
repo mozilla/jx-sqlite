@@ -154,12 +154,12 @@ class TestGroupBy2(BaseTestCase):
 two_dim_test_data = [
     {"a": "x", "b": "m", "v": 2},
     {"a": "x", "b": "n", "v": 3},
-    {"a": "x", "b": NULL, "v": 5},
+    {"a": "x", "b": None, "v": 5},
     {"a": "y", "b": "m", "v": 7},
     {"a": "y", "b": "n", "v": 11},
-    {"a": "y", "b": NULL, "v": 13},
-    {"a": NULL, "b": "m", "v": 17},
-    {"a": NULL, "b": "n", "v": 19},
+    {"a": "y", "b": None, "v": 13},
+    {"a": None, "b": "m", "v": 17},
+    {"a": None, "b": "n", "v": 19},
     {"a": "x", "b": "m", "v": 27},
     {"a": "y", "b": "n", "v": 39}
 ]

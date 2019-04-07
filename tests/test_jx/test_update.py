@@ -30,13 +30,13 @@ class TestUpdate(BaseTestCase):
         )
         container = jx_elasticsearch.new_instance(read_only=False, kwargs=self.utils._es_test_settings)
         container.update({
-            "update": settings.index,
+            "update": settings.alias,
             "set": {"c": {"add": ["a", "b"]}}
         })
 
         self.utils.send_queries({
             "query": {
-                "from": settings.index,
+                "from": settings.alias,
                 "select": ["c", "a"]
             },
             "expecting_table": {

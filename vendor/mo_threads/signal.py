@@ -32,7 +32,7 @@ class Signal(object):
 
     go() - ACTIVATE SIGNAL (DOES NOTHING IF SIGNAL IS ALREADY ACTIVATED)
     wait() - PUT THREAD IN WAIT STATE UNTIL SIGNAL IS ACTIVATED
-    on_go() - METHOD FOR OTHER THREAD TO RUN WHEN ACTIVATING SIGNAL
+    then() - METHOD FOR OTHER THREAD TO RUN WHEN ACTIVATING SIGNAL
     """
 
     __slots__ = ["_name", "lock", "_go", "job_queue", "waiting_threads", "__weakref__"]
@@ -106,7 +106,7 @@ class Signal(object):
                 except Exception as e:
                     Log.warning("Trigger on Signal.go() failed!", cause=e)
 
-    def on_go(self, target):
+    def then(self, target):
         """
         RUN target WHEN SIGNALED
         """
@@ -175,8 +175,8 @@ class Signal(object):
             output = Signal(self.name + " and " + other.name)
 
         gen = AndSignals(output, 2)
-        self.on_go(gen.done)
-        other.on_go(gen.done)
+        self.then(gen.done)
+        other.then(gen.done)
         return output
 
 
@@ -213,8 +213,8 @@ class OrSignal(object):
         self.dependencies = dependencies
         self.signal = ref(signal, self.cleanup)
         for d in dependencies:
-            d.on_go(self)
-        signal.on_go(self.cleanup)
+            d.then(self)
+        signal.then(self.cleanup)
 
     def cleanup(self, r=None):
         for d in self.dependencies:

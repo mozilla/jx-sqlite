@@ -10,12 +10,14 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
+from unittest import skipIf
+
 from jx_base.expressions import NULL
 from mo_dots import wrap
 from mo_logs import Log
 from mo_logs.exceptions import extract_stack
 from mo_times import Date
-from tests.test_jx import BaseTestCase, TEST_TABLE
+from tests.test_jx import BaseTestCase, TEST_TABLE, global_settings
 
 lots_of_data = wrap([{"a": i} for i in range(30)])
 
@@ -450,3 +452,141 @@ class TestSorting(BaseTestCase):
             }
         }
         self.utils.execute_tests(test)
+
+    @skipIf(global_settings.elasticsearch.version, "ES can not sort nested amoung docs")
+    def test_nested_array(self):
+
+        test = {
+            "data": [
+                [
+                    {"a": 4},
+                    {"a": 1},
+                    {"a": 3},
+                    {"a": 7},
+                    {"a": 2}
+                ],
+                [
+                    {"a": -4},
+                    {"a": -1},
+                    {"a": -3},
+                    {"a": -7},
+                    {"a": -2}
+                ],
+                [
+                    {"a": 4},
+                    {"a": 1},
+                    {"a": -3},
+                    {"a": -7},
+                    {"a": 2}
+                ],
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "sort": [{"a": "asc"}]
+            },
+            "expecting_list": {
+                "meta": {"format": "list"},
+                "data": [
+                    {"a": -7},
+                    {"a": -7},
+                    {"a": -4},
+                    {"a": -3},
+                    {"a": -3},
+                    {"a": -2},
+                    {"a": -1},
+                    {"a": 1},
+                    {"a": 1},
+                    {"a": 2},
+                    {"a": 2},
+                    {"a": 3},
+                    {"a": 4},
+                    {"a": 4},
+                    {"a": 7},
+                ]
+            },
+        }
+        self.utils.execute_tests(test)
+
+    @skipIf(global_settings.elasticsearch.version, "ES can not sort nested amoung docs")
+    def test_nested(self):
+        test = {
+            "data": [
+                {"b": [
+                    {"a": 4},
+                    {"a": 1},
+                    {"a": 3},
+                    {"a": 7},
+                    {"a": 2}
+                ]},
+                {"b": [
+                    {"a": -4},
+                    {"a": -1},
+                    {"a": -3},
+                    {"a": -7},
+                    {"a": -2}
+                ]},
+                {"b": [
+                    {"a": 4},
+                    {"a": 1},
+                    {"a": -3},
+                    {"a": -7},
+                    {"a": 2}
+                ]},
+            ],
+            "query": {
+                "from": TEST_TABLE+".b",
+                "sort": [{"a": "asc"}]
+            },
+            "expecting_list": {
+                "meta": {"format": "list"},
+                "data": [
+                    {"a": -7},
+                    {"a": -7},
+                    {"a": -4},
+                    {"a": -3},
+                    {"a": -3},
+                    {"a": -2},
+                    {"a": -1},
+                    {"a": 1},
+                    {"a": 1},
+                    {"a": 2},
+                    {"a": 2},
+                    {"a": 3},
+                    {"a": 4},
+                    {"a": 4},
+                    {"a": 7},
+                ]
+            },
+        }
+        self.utils.execute_tests(test)
+
+    def test_single_nested(self):
+        test = {
+            "data": [
+                {"b": [
+                    {"a": 4},
+                    {"a": 4},
+                ]},
+                {"b": [
+                    {"a": -4},
+                ]},
+                {"b": [
+                    {"a": 1},
+                ]},
+            ],
+            "query": {
+                "from": TEST_TABLE+".b",
+                "sort": [{"a": "asc"}]
+            },
+            "expecting_list": {
+                "meta": {"format": "list"},
+                "data": [
+                    {"a": -4},
+                    {"a": 1},
+                    {"a": 4},
+                    {"a": 4},
+                ]
+            },
+        }
+        self.utils.execute_tests(test)
+

@@ -7,13 +7,11 @@ datetime module.
 """
 from __future__ import absolute_import, division, unicode_literals
 
-from mo_future import is_text, is_binary
-import collections
 import datetime
 import string
 import time
 
-from mo_future import StringIO, binary_type, integer_types, text_type
+from mo_future import StringIO, collections, integer_types, is_binary, is_text
 from . import relativedelta, tz
 
 __license__ = "Simplified BSD"

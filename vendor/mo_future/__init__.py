@@ -41,7 +41,7 @@ if PY3:
     text_type = str
     string_types = str
     binary_type = bytes
-    integer_types = int
+    integer_types = (int, )
     number_types = (int, float)
     long = int
     unichr = chr
@@ -54,7 +54,8 @@ if PY3:
         type(_gen()),
         type(filter(lambda x: True, [])),
         type({}.items()),
-        type({}.values())
+        type({}.values()),
+        type(map(lambda: 0, []))
     )
     unichr = chr
 
@@ -93,7 +94,10 @@ if PY3:
         return sorted(data, key=key)
 
     def first(values):
-        return iter(values).__next__()
+        try:
+            return iter(values).__next__()
+        except StopIteration:
+            return None
 
     def is_text(t):
         return t.__class__ is str
@@ -172,7 +176,10 @@ else:
         # )
 
     def first(values):
-        return iter(values).next()
+        try:
+            return iter(values).next()
+        except StopIteration:
+            return None
 
     def is_text(t):
         return t.__class__ is unicode

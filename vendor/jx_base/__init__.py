@@ -198,17 +198,19 @@ class {{class_name}}(Mapping):
     return output
 
 
-class TableDesc(
-    DataClass(
-        "Table",
-        ["name", "url", "query_path", "timestamp"],
-        constraint={"and": [{"eq": [{"last": "query_path"}, {"literal": "."}]}]},
-    )
-):
-    @property
-    def columns(self):
-        raise NotImplementedError()
-        # return singlton.get_columns(table_name=self.name)
+TableDesc = DataClass(
+    "Table",
+    [
+        "name",
+        "url",
+        "query_path",
+        {"name": "last_updated", "nulls": False},
+        "columns"
+    ],
+    constraint={"and": [
+        {"eq": [{"last": "query_path"}, {"literal": "."}]}
+    ]}
+)
 
 
 Column = DataClass(
@@ -229,7 +231,9 @@ Column = DataClass(
     ],
     constraint={
         "and": [
+            {"not": {"find": {"es_column": "null"}}},
             {"not": {"eq": {"es_column": "string"}}},
+            {"not": {"eq": {"es_type": "object", "jx_type": "exists"}}},
             {"eq": [{"last": "nested_path"}, {"literal": "."}]},
         ]
     },

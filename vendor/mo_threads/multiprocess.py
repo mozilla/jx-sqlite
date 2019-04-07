@@ -47,7 +47,7 @@ class Process(object):
             )
 
             self.please_stop = Signal()
-            self.please_stop.on_go(self._kill)
+            self.please_stop.then(self._kill)
             self.thread_locker = Lock()
             self.children = [
                 Thread.run(self.name + " stdin", self._writer, service.stdin, self.stdin, please_stop=self.service_stopped, parent_thread=self),

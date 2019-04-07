@@ -83,6 +83,11 @@ class FakeES():
             v["id"]: v["value"] if "value" in v else mo_json.json2value(v['json'])
             for v in records
         }
+        for r in records.values():
+            try:
+                del r['etl']
+            except Exception:
+                pass
 
         unwrap(self.data).update(records)
         self.refresh()

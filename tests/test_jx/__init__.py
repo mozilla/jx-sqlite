@@ -26,8 +26,8 @@ class BaseTestCase(FuzzyTestCase):
         if not utils:
             try:
                 import tests
-            except Exception:
-                Log.error("Expecting ./tests/__init__.py to set `global_settings` and `utils` so tests can be run")
+            except Exception as e:
+                Log.error("Expecting ./tests/__init__.py with instructions to setup testing", cause=e)
         if not utils:
             Log.error("Expecting ./tests/__init__.py to set `global_settings` and `utils` so tests can be run")
         self.utils = utils

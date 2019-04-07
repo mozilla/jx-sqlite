@@ -54,6 +54,7 @@ class RolloverIndex(object):
         if typed == None:
             Log.error("not expected")
 
+        schema.settings.index.max_result_window = 100000  # REQUIRED FOR ACTIVEDATA NESTED QUERIES
         schema.settings.index.max_inner_result_window = 100000  # REQUIRED FOR ACTIVEDATA NESTED QUERIES
 
         self.settings = kwargs

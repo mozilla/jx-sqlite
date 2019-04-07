@@ -9,11 +9,11 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from mo_future import is_text, is_binary
 from mo_dots import get_logger, is_data, wrap, zip as dict_zip
 from mo_future import get_function_arguments, get_function_defaults, get_function_name, text_type
 from mo_logs import Except
 
+KWARGS = str("kwargs")
 
 def override(func):
     """
@@ -56,12 +56,12 @@ def override(func):
                 )
         raise e
 
-    if "kwargs" not in params:
+    if KWARGS not in params:
         # WE ASSUME WE ARE ONLY ADDING A kwargs PARAMETER TO SOME REGULAR METHOD
         def wo_kwargs(*args, **kwargs):
-            settings = kwargs.get("kwargs")
+            settings = kwargs.get(KWARGS)
             ordered_params = dict(zip(params, args))
-            packed = params_pack(params, ordered_params, kwargs, settings, defaults)
+            packed = params_pack(params, defaults, settings, kwargs, ordered_params)
             try:
                 return func(**packed)
             except TypeError as e:
@@ -70,14 +70,14 @@ def override(func):
 
     elif func_name in ("__init__", "__new__"):
         def w_constructor(*args, **kwargs):
-            if "kwargs" in kwargs:
-                packed = params_pack(params, dict_zip(params[1:], args[1:]), kwargs, kwargs["kwargs"], defaults)
+            if KWARGS in kwargs:
+                packed = params_pack(params, defaults, kwargs[KWARGS], kwargs, dict_zip(params[1:], args[1:]))
             elif len(args) == 2 and len(kwargs) == 0 and is_data(args[1]):
                 # ASSUME SECOND UNNAMED PARAM IS kwargs
-                packed = params_pack(params, args[1], defaults)
+                packed = params_pack(params, defaults, args[1])
             else:
                 # DO NOT INCLUDE self IN kwargs
-                packed = params_pack(params, dict_zip(params[1:], args[1:]), kwargs, defaults)
+                packed = params_pack(params, defaults, kwargs, dict_zip(params[1:], args[1:]))
             try:
                 return func(args[0], **packed)
             except TypeError as e:
@@ -89,12 +89,12 @@ def override(func):
         def w_bound_method(*args, **kwargs):
             if len(args) == 2 and len(kwargs) == 0 and is_data(args[1]):
                 # ASSUME SECOND UNNAMED PARAM IS kwargs
-                packed = params_pack(params, args[1], defaults)
-            elif "kwargs" in kwargs and is_data(kwargs["kwargs"]):
+                packed = params_pack(params, defaults, args[1])
+            elif KWARGS in kwargs and is_data(kwargs[KWARGS]):
                 # PUT args INTO kwargs
-                packed = params_pack(params, kwargs, dict_zip(params[1:], args[1:]), kwargs["kwargs"], defaults)
+                packed = params_pack(params, defaults, kwargs[KWARGS], dict_zip(params[1:], args[1:]), kwargs)
             else:
-                packed = params_pack(params, kwargs, dict_zip(params[1:], args[1:]), defaults)
+                packed = params_pack(params, defaults, dict_zip(params[1:], args[1:]), kwargs)
             try:
                 return func(args[0], **packed)
             except TypeError as e:
@@ -105,13 +105,13 @@ def override(func):
         def w_kwargs(*args, **kwargs):
             if len(args) == 1 and len(kwargs) == 0 and is_data(args[0]):
                 # ASSUME SINGLE PARAMETER IS kwargs
-                packed = params_pack(params, args[0], defaults)
-            elif "kwargs" in kwargs and is_data(kwargs["kwargs"]):
+                packed = params_pack(params, defaults, args[0])
+            elif KWARGS in kwargs and is_data(kwargs[KWARGS]):
                 # PUT args INTO kwargs
-                packed = params_pack(params, kwargs, dict_zip(params, args), kwargs["kwargs"], defaults)
+                packed = params_pack(params, defaults, kwargs[KWARGS], dict_zip(params, args), kwargs)
             else:
                 # PULL kwargs OUT INTO PARAMS
-                packed = params_pack(params, kwargs, dict_zip(params, args), defaults)
+                packed = params_pack(params, defaults, dict_zip(params, args), kwargs)
             try:
                 return func(**packed)
             except TypeError as e:
@@ -122,19 +122,12 @@ def override(func):
 def params_pack(params, *args):
     settings = {}
     for a in args:
-        if a == None:
-            continue
         for k, v in a.items():
-            if v == None:
-                continue
-            k = text_type(k)
-            if k in settings:
-                continue
-            settings[k] = v if v != None else None
-    settings["kwargs"] = settings
+            settings[str(k)] = v
+    settings[KWARGS] = wrap(settings)
 
     output = {
-        str(k): settings[k] if k != "kwargs" else wrap(settings)
+        k: settings[k]
         for k in params
         if k in settings
     }

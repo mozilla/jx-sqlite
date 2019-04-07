@@ -9,14 +9,22 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
+from mo_dots import coalesce, is_data, is_list, split_field, unwrap, Null
+from mo_future import PY2, is_text, text_type
+from mo_json import BOOLEAN, INTEGER, NUMBER, json2value
+from mo_logs import Log, strings
+from mo_logs.strings import quote
+from mo_times.dates import Date
+
+
 from jx_base.expressions import (
+    AddOp as AddOp_,
     AndOp as AndOp_,
-    BaseBinaryOp as BaseBinaryOp_,
     BaseInequalityOp as BaseInequalityOp_,
-    BaseMultiOp as BaseMultiOp_,
     BasicEqOp as BasicEqOp_,
     BasicIndexOfOp as BasicIndexOfOp_,
     BetweenOp as BetweenOp_,
+    BooleanOp as BooleanOp_,
     CaseOp as CaseOp_,
     CoalesceOp as CoalesceOp_,
     ConcatOp as ConcatOp_,
@@ -45,6 +53,7 @@ from jx_base.expressions import (
     MaxOp as MaxOp_,
     MissingOp as MissingOp_,
     ModOp as ModOp_,
+    MulOp as MulOp_,
     NULL,
     NeOp as NeOp_,
     NotLeftOp as NotLeftOp_,
@@ -79,19 +88,15 @@ from jx_base.expressions import (
 )
 from jx_base.language import is_expression, is_op
 from jx_python.expression_compiler import compile_expression
-from mo_dots import coalesce, is_data, is_list, split_field, unwrap
-from mo_future import PY2, is_text, text_type
-from mo_json import BOOLEAN, INTEGER, NUMBER, json2value
-from mo_logs import Log
-from mo_logs.strings import quote
-from mo_times.dates import Date
-from pyLibrary import convert
 
 
 def jx_expression_to_function(expr):
     """
     RETURN FUNCTION THAT REQUIRES PARAMETERS (row, rownum=None, rows=None):
     """
+    if expr == None:
+        return Null
+
     if is_expression(expr):
         if is_op(expr, ScriptOp) and not is_text(expr.script):
             return expr.script
@@ -129,11 +134,6 @@ class PythonScript(PythonScript_):
         return self.data_type
 
     def __str__(self):
-        """
-        RETURN A SCRIPT SUITABLE FOR CODE OUTSIDE THIS MODULE (NO KNOWLEDGE OF Painless)
-        :param schema:
-        :return:
-        """
         missing = self.miss.partial_eval()
         if missing is FALSE:
             return self.partial_eval().to_python().expr
@@ -192,10 +192,10 @@ class Variable(Variable_):
 
         for p in path[:-1]:
             if not_null:
-                agg = agg + ".get(" + convert.value2quote(p) + ")"
+                agg = agg + ".get(" + strings.quote(p) + ")"
             else:
-                agg = agg + ".get(" + convert.value2quote(p) + ", EMPTY_DICT)"
-        output = agg + ".get(" + convert.value2quote(path[-1]) + ")"
+                agg = agg + ".get(" + strings.quote(p) + ", EMPTY_DICT)"
+        output = agg + ".get(" + strings.quote(path[-1]) + ")"
         if many:
             output = "listwrap(" + output + ")"
         return output
@@ -220,8 +220,17 @@ class RowsOp(RowsOp_):
             return agg
 
         for p in path[:-1]:
-            agg = agg + ".get(" + convert.value2quote(p) + ", EMPTY_DICT)"
-        return agg + ".get(" + convert.value2quote(path[-1]) + ")"
+            agg = agg + ".get(" + strings.quote(p) + ", EMPTY_DICT)"
+        return agg + ".get(" + strings.quote(path[-1]) + ")"
+
+
+class BooleanOp(BooleanOp_):
+    def to_python(self, not_null=False, boolean=False, many=False):
+        return assign_and_eval(
+            "f",
+            Python[self.term].to_python(),
+            "False if f is False or f is None else True"
+        )
 
 
 class IntegerOp(IntegerOp_):
@@ -335,17 +344,33 @@ class LteOp(LteOp_):
     to_python = _inequality_to_python
 
 
-class BaseBinaryOp(BaseBinaryOp_):
-    def to_python(self, not_null=False, boolean=False, many=False):
-        return (
-            "("
-            + Python[self.lhs].to_python()
-            + ") "
-            + _python_operators[self.op][0]
-            + " ("
-            + Python[self.rhs].to_python()
-            + ")"
-        )
+def _binaryop_to_python(self, not_null=False, boolean=False, many=True):
+    op, identity = _python_operators[self.op]
+
+    lhs = NumberOp(self.lhs).partial_eval().to_python(not_null=True)
+    rhs = NumberOp(self.rhs).partial_eval().to_python(not_null=True)
+    script = "(" + lhs + ") " + op + " (" + rhs + ")"
+    missing = OrOp([self.lhs.missing(), self.rhs.missing()]).partial_eval()
+    if missing is FALSE:
+        return script
+    else:
+        return "(None) if (" + missing.to_python() + ") else (" + script + ")"
+
+
+class SubOp(SubOp_):
+    to_python = _binaryop_to_python
+
+
+class ExpOp(ExpOp_):
+    to_python = _binaryop_to_python
+
+
+class ModOp(ModOp_):
+    to_python = _binaryop_to_python
+
+
+class DivOp(DivOp_):
+    to_python = _binaryop_to_python
 
 
 class BaseInequalityOp(BaseInequalityOp_):
@@ -368,14 +393,6 @@ class InOp(InOp_):
             + " in "
             + Python[self.superset].to_python(many=True)
         )
-
-
-class DivOp(DivOp_):
-    def to_python(self, not_null=False, boolean=False, many=False):
-        miss = Python[self.missing()].to_python()
-        lhs = Python[self.lhs].to_python(not_null=True)
-        rhs = Python[self.rhs].to_python(not_null=True)
-        return "None if (" + miss + ") else (" + lhs + ") / (" + rhs + ")"
 
 
 class FloorOp(FloorOp_):
@@ -430,7 +447,7 @@ class NeOp(NeOp_):
 
 class NotOp(NotOp_):
     def to_python(self, not_null=False, boolean=False, many=False):
-        return "not (" + Python[self.term].to_python(boolean=True) + ")"
+        return "not (" + BooleanOp(Python[self.term]).to_python(boolean=True) + ")"
 
 
 class AndOp(AndOp_):
@@ -438,12 +455,12 @@ class AndOp(AndOp_):
         if not self.terms:
             return "True"
         else:
-            return " and ".join("(" + Python[t].to_python() + ")" for t in self.terms)
+            return " and ".join("(" + BooleanOp(Python[t]).to_python() + ")" for t in self.terms)
 
 
 class OrOp(OrOp_):
     def to_python(self, not_null=False, boolean=False, many=False):
-        return " or ".join("(" + Python[t].to_python() + ")" for t in self.terms)
+        return " or ".join("(" + BooleanOp(Python[t]).to_python() + ")" for t in self.terms)
 
 
 class LengthOp(LengthOp_):
@@ -502,24 +519,30 @@ class MaxOp(MaxOp_):
         return "max([" + (",".join(Python[t].to_python() for t in self.terms)) + "])"
 
 
-class BaseMultiOp(BaseMultiOp_):
-    def to_python(self, not_null=False, boolean=False, many=False):
-        sign, zero = _python_operators[self.op]
-        if len(self.terms) == 0:
-            return Python[self.default].to_python()
-        elif self.default is NULL:
-            return sign.join(
-                "coalesce(" + Python[t].to_python() + ", " + zero + ")"
-                for t in self.terms
-            )
-        else:
-            return (
-                "coalesce("
-                + sign.join("(" + Python[t].to_python() + ")" for t in self.terms)
-                + ", "
-                + Python[self.default].to_python()
-                + ")"
-            )
+def multiop_to_python(self, not_null=False, boolean=False, many=False):
+    sign, zero = _python_operators[self.op]
+    if len(self.terms) == 0:
+        return Python[self.default].to_python()
+    elif self.default is NULL:
+        return sign.join(
+            "coalesce(" + Python[t].to_python() + ", " + zero + ")" for t in self.terms
+        )
+    else:
+        return (
+            "coalesce("
+            + sign.join("(" + Python[t].to_python() + ")" for t in self.terms)
+            + ", "
+            + Python[self.default].to_python()
+            + ")"
+        )
+
+
+class AddOp(AddOp_):
+    to_python = multiop_to_python
+
+
+class MulOp(MulOp_):
+    to_python = multiop_to_python
 
 
 class RegExpOp(RegExpOp_):
@@ -646,16 +669,11 @@ class NotRightOp(NotRightOp_):
 
 class BasicIndexOfOp(BasicIndexOfOp_):
     def to_python(self, not_null=False, boolean=False, many=False):
-        find = (
-            "("
-            + Python[self.value].to_python()
-            + ").find("
-            + Python[self.find].to_python()
-            + ", "
-            + Python[self.start].to_python()
-            + ")"
+        return assign_and_eval(
+            "f",
+            "(" + Python[self.value].to_python() + ").find" + "(" + Python[self.find].to_python() + ")",
+            "None if f==-1 else f"
         )
-        return "[None if i==-1 else i for i in [" + find + "]][0]"
 
 
 class SplitOp(SplitOp_):
@@ -671,14 +689,11 @@ class SplitOp(SplitOp_):
 
 class FindOp(FindOp_):
     def to_python(self, not_null=False, boolean=False, many=False):
-        return (
-            "(("
-            + quote(self.substring)
-            + " in "
-            + Python[self.var].to_python()
-            + ") if "
-            + Python[self.var].to_python()
-            + "!=None else False)"
+        # [Null if f==-1 else f for f in [(self.value.find(self.find))]][0]
+        return assign_and_eval(
+            "f",
+            "(" + Python[self.value].to_python() + ").find" + "(" + Python[self.find].to_python() + ")",
+            "None if f==-1 else f"
         )
 
 
@@ -702,31 +717,6 @@ class RangeOp(RangeOp_):
             + Python[self.els_].to_python(not_null=not_null)
             + ")"
         )
-
-
-def _binary_to_python(self, not_null=False, boolean=False, many=True):
-    op, identity = _python_operators[self.op]
-
-    lhs = NumberOp(self.lhs).partial_eval().to_python(not_null=True)
-    rhs = NumberOp(self.rhs).partial_eval().to_python(not_null=True)
-    script = "(" + lhs + ") " + op + " (" + rhs + ")"
-    missing = OrOp([self.lhs.missing(), self.rhs.missing()]).partial_eval()
-    if missing is FALSE:
-        return script
-    else:
-        return "(None) if (" + missing.to_python() + ") else (" + script + ")"
-
-
-class SubOp(SubOp_):
-    to_python = _binary_to_python
-
-
-class ExpOp(ExpOp_):
-    to_python = _binary_to_python
-
-
-class ModOp(ModOp_):
-    to_python = _binary_to_python
 
 
 class CaseOp(CaseOp_):
@@ -756,6 +746,16 @@ class WhenOp(WhenOp_):
             + Python[self.els_].to_python()
             + ")"
         )
+
+
+def assign_and_eval(var, expression, eval):
+    """
+    :param var: NAME GIVEN TO expression
+    :param expression: THE EXPRESSION TO COMPUTE FIRST
+    :param eval: THE EXPRESSION TO COMPUTE SECOND, WITH var ASSIGNED
+    :return: PYTHON EXPRESSION
+    """
+    return "[(" + eval + ") for " + var + " in [" + expression + "]][0]"
 
 
 Python = define_language("Python", vars())

@@ -9,7 +9,6 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from mo_future import is_text, is_binary
 from jx_base.container import Container
 from jx_base.query import _normalize_edge
 from jx_python.cubes.aggs import cube_aggs
@@ -17,6 +16,7 @@ from jx_python.lists.aggs import is_aggs
 from mo_collections.matrix import Matrix
 from mo_dots import Data, FlatList, Null, is_data, is_list, listwrap, wrap, wrap_leaves
 import mo_dots as dot
+from mo_future import is_text, transpose
 from mo_logs import Log
 from mo_math import MAX, OR
 
@@ -316,6 +316,10 @@ class Cube(Container):
         keys = edges.name
         getKey = [e.domain.getKey for e in self.edges]
         lookup = [[getKey[i](p) for p in e.domain.partitions+([None] if e.allowNulls else [])] for i, e in enumerate(self.edges)]
+
+        def coord2term(coord):
+            output = wrap_leaves({keys[i]: lookup[i][c] for i, c in enumerate(coord)})
+            return output
 
         if is_list(self.select):
             selects = listwrap(self.select)

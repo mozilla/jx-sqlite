@@ -10,10 +10,9 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
+from jx_base.meta_columns import META_COLUMNS_NAME
 from mo_dots import wrap
-from mo_future import text_type
 from mo_logs import Log
-from mo_logs.exceptions import extract_stack
 from pyLibrary.meta import extenstion_method
 from tests.test_jx import BaseTestCase, TEST_TABLE
 
@@ -32,7 +31,7 @@ class TestMetadata(BaseTestCase):
 
         test = {
             "query": {
-                "from": "meta.tables"
+                "from": META_COLUMNS_NAME
             },
             "expecting_list": {
                 "meta": {"format": "list"}
@@ -66,7 +65,7 @@ class TestMetadata(BaseTestCase):
         test = {
             "query": {
                 "select": ["name", "table", "type", "nested_path"],
-                "from": "meta.columns",
+                "from": META_COLUMNS_NAME,
                 "where": {"eq": {"table": table_name}}
             },
             "expecting_list": {
@@ -141,7 +140,7 @@ class TestMetadata(BaseTestCase):
         test = {
             "query": {
                 "select": ["name", "table", "type", "nested_path"],
-                "from": "meta.columns",
+                "from": META_COLUMNS_NAME,
                 "where": {"eq": {"table": table_name}}
             },
             "expecting_list": {
@@ -194,28 +193,18 @@ class TestMetadata(BaseTestCase):
 
         test = {
             "query": {
-                "from": "meta.columns",
+                "from": META_COLUMNS_NAME,
                 "select": "cardinality",
                 "where": {
                     "and": [
-                        {
-                            "eq": {
-                                "table": settings.alias
-                            }
-                        },
-                        {
-                            "eq": {
-                                "name": "a"
-                            }
-                        }
+                        {"eq": {"table": settings.alias}},
+                        {"eq": {"name": "a"}}
                     ]
                 }
             },
             "expecting_list": {
                 "meta": {"format": "list"},
-                "data": [
-                    2
-                ]
+                "data": [2]
             }
         }
         Log.note("table = {{table}}", table=pre_test.query['from'])

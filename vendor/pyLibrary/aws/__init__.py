@@ -52,7 +52,7 @@ class Queue(object):
             aws_access_key_id=unwrap(kwargs.aws_access_key_id),
             aws_secret_access_key=unwrap(kwargs.aws_secret_access_key),
         )
-        self.queue = conn.get_queue(kwargs.name)
+        self.queue = conn.get_queue(name)
         if self.queue == None:
             Log.error("Can not find queue with name {{queue}} in region {{region}}", queue=kwargs.name, region=kwargs.region)
 

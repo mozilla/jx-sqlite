@@ -640,7 +640,7 @@ def drill_filter(esfilter, data):
     """
     PARTIAL EVALUATE THE FILTER BASED ON DATA GIVEN
 
-    TODO:  FIX THIS MONUMENALLY BAD IDEA
+    TODO:  FIX THIS MONUMENTALLY BAD IDEA
     """
     esfilter = unwrap(esfilter)
     primary_nested = []  # track if nested, changes if not

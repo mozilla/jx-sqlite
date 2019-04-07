@@ -75,7 +75,7 @@ def log(v, base=None):
         return math_log(v, base)
     except Exception as e:
         from mo_logs import Log
-        Log.error("error in log")
+        Log.error("error in log", cause=e)
 
 
 def log10(v):

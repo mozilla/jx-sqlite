@@ -13,11 +13,10 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
-from mo_future import is_text, is_binary
-from copy import copy
-from datetime import datetime, timedelta
 import signal as _signal
 import sys
+from copy import copy
+from datetime import datetime, timedelta
 from time import sleep
 
 from mo_dots import Data, coalesce, unwraplist
@@ -30,6 +29,8 @@ from mo_threads.till import Till
 
 DEBUG = False
 
+PLEASE_STOP = str("please_stop")  # REQUIRED thread PARAMETER TO SIGNAL STOP
+PARENT_THREAD = str("parent_thread")  # OPTIONAL PARAMETER TO ASSIGN THREAD TO SOMETHING OTHER THAN CURRENT THREAD
 MAX_DATETIME = datetime(2286, 11, 20, 17, 46, 39)
 DEFAULT_WAIT_TIME = timedelta(minutes=10)
 THREAD_STOP = "stop"
@@ -170,8 +171,8 @@ class MainThread(BaseThread):
 
         if isinstance(please_stop, Signal):
             # MUTUAL SIGNALING MAKES THESE TWO EFFECTIVELY THE SAME SIGNAL
-            self.please_stop.on_go(please_stop.go)
-            please_stop.on_go(self.please_stop.go)
+            self.please_stop.then(please_stop.go)
+            please_stop.then(self.please_stop.go)
         else:
             please_stop = self.please_stop
 
@@ -180,9 +181,9 @@ class MainThread(BaseThread):
             with self_thread.child_lock:
                 pending = copy(self_thread.children)
             children_done = AndSignals(please_stop, len(pending))
-            children_done.signal.on_go(self.please_stop.go)
+            children_done.signal.then(self.please_stop.go)
             for p in pending:
-                p.stopped.on_go(children_done.done)
+                p.stopped.then(children_done.done)
 
         try:
             if allow_exit:
@@ -215,15 +216,15 @@ class Thread(BaseThread):
 
         # ENSURE THERE IS A SHARED please_stop SIGNAL
         self.kwargs = copy(kwargs)
-        self.kwargs["please_stop"] = self.kwargs.get("please_stop", Signal("please_stop for " + self.name))
-        self.please_stop = self.kwargs["please_stop"]
+        self.kwargs[PLEASE_STOP] = self.kwargs.get(PLEASE_STOP, Signal("please_stop for " + self.name))
+        self.please_stop = self.kwargs[PLEASE_STOP]
 
         self.thread = None
         self.stopped = Signal("stopped signal for " + self.name)
 
-        if "parent_thread" in kwargs:
-            del self.kwargs["parent_thread"]
-            self.parent = kwargs["parent_thread"]
+        if PARENT_THREAD in kwargs:
+            del self.kwargs[PARENT_THREAD]
+            self.parent = kwargs[PARENT_THREAD]
         else:
             self.parent = Thread.current()
             self.parent.add_child(self)
@@ -277,7 +278,7 @@ class Thread(BaseThread):
                 if emit_problem:
                     # THREAD FAILURES ARE A PROBLEM ONLY IF NO ONE WILL BE JOINING WITH IT
                     try:
-                        Log.fatal("Problem in thread {{name|quote}}", name=self.name, cause=e)
+                        Log.error("Problem in thread {{name|quote}}", name=self.name, cause=e)
                     except Exception:
                         sys.stderr.write(str("ERROR in thread: " + self.name + " " + text_type(e) + "\n"))
             finally:
@@ -339,7 +340,7 @@ class Thread(BaseThread):
         # ENSURE target HAS please_stop ARGUMENT
         if get_function_name(target) == 'wrapper':
             pass  # GIVE THE override DECORATOR A PASS
-        elif "please_stop" not in target.__code__.co_varnames:
+        elif PLEASE_STOP not in target.__code__.co_varnames:
             Log.error("function must have please_stop argument for signalling emergency shutdown")
 
         Thread.num_threads += 1

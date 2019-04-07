@@ -422,7 +422,7 @@ class ThreadedQueue(Queue):
         Queue.__init__(self, name=name, max=max_size, silent=silent)
 
         def worker_bee(please_stop):
-            please_stop.on_go(lambda: self.add(THREAD_STOP))
+            please_stop.then(lambda: self.add(THREAD_STOP))
 
             _buffer = []
             _post_push_functions = []

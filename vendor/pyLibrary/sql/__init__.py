@@ -28,7 +28,7 @@ class SQL(text_type):
 
     @property
     def sql(self):
-        return self.value  # expand_template(self.template, self.param)
+        return self.value
 
     def __add__(self, other):
         if not isinstance(other, SQL):
@@ -138,7 +138,7 @@ def quote_set(list_):
 
 
 def sql_alias(value, alias):
-    return SQL(value.template + " AS " + alias.template)
+    return SQL(value.value + " AS " + alias.value)
 
 
 def sql_coalesce(list_):

@@ -7,10 +7,9 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from mo_future import is_text, is_binary
 import re
 
-from mo_future import text_type
+from mo_future import is_text
 from mo_logs import Log
 
 keyword_pattern = re.compile(r"(\w|[\\.,$-])+(?:\.(\w|[\\.,$-])+)*")

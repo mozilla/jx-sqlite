@@ -16,9 +16,10 @@ import jx_base
 from jx_base import Container
 from jx_base.expressions import TRUE, Variable
 from jx_base.language import is_expression, is_op
+from jx_base.meta_columns import get_schema_from_list
+from jx_base.schema import Schema
 from jx_python.expressions import jx_expression_to_function
 from jx_python.lists.aggs import is_aggs, list_aggs
-from jx_python.meta import get_schema_from_list
 from mo_collections import UniqueIndex
 from mo_dots import Data, Null, is_data, is_list, listwrap, unwrap, unwraplist, wrap
 from mo_future import first, sort_using_key
@@ -295,9 +296,7 @@ def _exec(code):
         Log.error("Could not execute {{code|quote}}", code=code, cause=e)
 
 
-from jx_base.schema import Schema
 from jx_python import jx
-
 
 DUAL = ListContainer(
     name="dual",

@@ -176,6 +176,36 @@ class TestFilters(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
+    def test_in_w_set(self):
+        # ENSURE THE SET IS RECOGNIZED LIKE A LIST
+        test = {
+            "data": [{"a": 1}, {"a": 2}, {"a": 4}],
+            "query": {
+                "select": "a",
+                "from": TEST_TABLE,
+                "where": {"in": {"a": {1, 3}}}
+            },
+            "expecting_list": {
+                "meta": {"format": "list"}, "data": [1]
+            }
+        }
+        self.utils.execute_tests(test)
+
+    def test_in_w_missing_column(self):
+        # ENSURE THE SET IS RECOGNIZED LIKE A LIST
+        test = {
+            "data": [{"a": 1}, {"a": 2}, {"a": 4}],
+            "query": {
+                "select": "a",
+                "from": TEST_TABLE,
+                "where": {"in": {"b": [1, 3]}}
+            },
+            "expecting_list": {
+                "meta": {"format": "list"}, "data": []
+            }
+        }
+        self.utils.execute_tests(test)
+
     def test_empty_match_all(self):
         test = {
             "data": [{"a": 1}],

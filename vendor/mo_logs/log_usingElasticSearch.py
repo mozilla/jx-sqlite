@@ -59,6 +59,7 @@ class StructuredLogger_usingElasticSearch(StructuredLogger):
             schema=schema,
             limit_replicas=True,
             typed=True,
+            read_only=False,
             kwargs=kwargs,
         )
         self.batch_size = batch_size
@@ -175,7 +176,7 @@ def _deep_json_to_string(value, depth):
 
 
 SCHEMA = {
-    "settings": {"index.number_of_shards": 2, "index.number_of_replicas": 2},
+    "settings": {"index.number_of_shards": 6, "index.number_of_replicas": 2},
     "mappings": {
         "_default_": {
             "dynamic_templates": [

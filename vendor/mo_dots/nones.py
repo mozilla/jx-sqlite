@@ -9,11 +9,13 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
-from mo_future import is_binary, text_type
+from mo_future import is_binary, text_type, none_type
 
-from mo_dots import _setdefault, wrap
 from mo_dots.utils import CLASS, OBJ
 
+
+wrap = None
+is_sequence = None
 _get = object.__getattribute__
 _set = object.__setattr__
 _zero_list = []
@@ -46,7 +48,7 @@ class NullType(object):
         return False
 
     def __add__(self, other):
-        if is_list(other):
+        if is_sequence(other):
             return other
         return Null
 
@@ -109,7 +111,13 @@ class NullType(object):
         return Null
 
     def __eq__(self, other):
-        return other is None or _get(other, CLASS) is NullType or other == None
+        class_ = _get(other, CLASS)
+        if class_ in (none_type, NullType):
+            return True
+        elif class_ is list and not other:
+            return True
+        else:
+            return other == None
 
     def __ne__(self, other):
         return other is not None and _get(other, CLASS) is not NullType and other != None
@@ -277,3 +285,16 @@ def _split_field(field):
         return []
     else:
         return [k.replace("\a", ".") for k in field.replace("\\.", "\a").split(".")]
+
+
+def _setdefault(obj, key, value):
+    """
+    DO NOT USE __dict__.setdefault(obj, key, value), IT DOES NOT CHECK FOR obj[key] == None
+    """
+    v = obj.get(key)
+    if v == None:
+        obj[key] = value
+        return value
+    return v
+
+
