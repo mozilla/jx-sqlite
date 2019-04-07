@@ -17,7 +17,7 @@ from collections import Mapping
 from copy import copy
 
 from jx_base.expressions import jx_expression
-from jx_python.meta import Column
+from jx_base import Column
 from jx_sqlite import typed_column, get_type, ORDER, UID, GUID, PARENT, get_if_type
 from jx_sqlite.base_table import BaseTable, generateGuid
 from jx_sqlite.expressions import json_type_to_sql_type

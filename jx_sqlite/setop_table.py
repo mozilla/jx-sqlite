@@ -13,9 +13,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
-from jx_base.expressions import BooleanOp
+from jx_base.expressions import BooleanOp, NULL
 from jx_base.queries import get_property_name
-from jx_python.meta import Column
+from jx_base import Column
 from jx_sqlite import quoted_UID, get_column, _make_column_name, ORDER, COLUMN, set_column, quoted_PARENT, ColumnMapping, quoted_ORDER
 from jx_sqlite.expressions import sql_type_to_json_type, LeavesOp
 from jx_sqlite.insert_table import InsertTable
@@ -46,7 +46,7 @@ class SetOpTable(InsertTable):
             if not any(startswith_field(cname, v) for cname in schema.keys()):
                 active_columns["."].add(Column(
                     names={".": v},
-                    jx_type=jx_base.NULL,
+                    jx_type=NULL,
                     es_column=".",
                     es_index=".",
                     nested_path=["."]

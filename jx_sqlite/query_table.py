@@ -13,12 +13,12 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
+from jx_base import Column
 import mo_json
 from jx_base.domains import SimpleSetDomain
 from jx_base.expressions import jx_expression, Variable, TupleOp
 from jx_base.query import QueryOp
 from jx_python import jx
-from jx_python.meta import Column
 from jx_sqlite import sql_aggs, unique_name, untyped_column, GUID
 from jx_sqlite.groupby_table import GroupbyTable
 from mo_collections.matrix import Matrix, index_to_coordinate
@@ -362,7 +362,7 @@ class QueryTable(GroupbyTable):
         if columns[-1].es_column != GUID:
             columns.append(Column(
                 names={i: relative_field(GUID, i) for i in t},
-               jx_type="string",
+                jx_type="string",
                 es_column=GUID,
                 es_index=self.sf.fact,
                 nested_path=["."]

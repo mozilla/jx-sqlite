@@ -13,10 +13,11 @@ from __future__ import unicode_literals
 from copy import copy, deepcopy
 
 import jx_base
+from jx_sqlite.meta_columns import ColumnList
 import mo_json
 from jx_base import Column, Facts
 from jx_base.queries import get_property_name
-from jx_sqlite import GUID, untyped_column, UID, typed_column, quoted_GUID, quoted_UID, quoted_PARENT, quoted_ORDER
+from jx_sqlite import GUID, untyped_column, UID, typed_column, quoted_GUID, quoted_UID, quoted_PARENT, quoted_ORDER, sqlite_type_to_json_type
 from jx_sqlite.expressions import sql_type_to_json_type, json_type_to_sql_type
 from mo_dots import startswith_field, relative_field, concat_field, set_default, wrap, tail_field, coalesce, listwrap, Data
 from mo_future import text_type

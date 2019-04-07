@@ -14,9 +14,12 @@ import mo_json
 from jx_base.expressions import (
     AddOp as AddOp_,
     AndOp as AndOp_,
+    BooleanOp as BooleanOp_,
+
     BaseBinaryOp as BaseBinaryOp_,
     BaseInequalityOp as BaseInequalityOp_,
     BaseMultiOp as BaseMultiOp_,
+    BasicMultiOp as BasicMultiOp_,
     BasicEqOp as BasicEqOp_,
     BasicIndexOfOp as BasicIndexOfOp_,
     BasicSubstringOp as BasicSubstringOp_,
@@ -40,7 +43,6 @@ from jx_base.expressions import (
     GteOp as GteOp_,
     InOp as InOp_,
     IntegerOp as IntegerOp_,
-    InequalityOp as InequalityOp_,
     LastOp as LastOp_,
     LeavesOp as LeavesOp_,
     LengthOp as LengthOp_,
@@ -79,6 +81,12 @@ from jx_base.expressions import (
     TrueOp as TrueOp_,
     TupleOp as TupleOp_,
     Variable as Variable_,
+UnixOp as UnixOp_,
+FromUnixOp as FromUnixOp_,
+LeftOp as LeftOp_,
+SqlEqOp as SqlEqOp_,
+SqlInstrOp as SqlInstrOp_,
+SqlSubstrOp as SqlSubstrOp_,
     WhenOp as WhenOp_,
     ZERO,
     define_language,
@@ -255,6 +263,16 @@ class RowsOp(RowsOp_):
     pass
 
 
+class BooleanOp(BooleanOp_):
+    def to_sql(self, schema, not_null=False, boolean=False):
+        term = self.term.partial_eval()
+        if term.type == "boolean":
+            sql = term.to_sql(schema)
+            return sql
+        else:
+            sql = term.exists().partial_eval().to_sql(schema)
+            return sql
+
 class IntegerOp(IntegerOp_):
     pass
 
@@ -380,30 +398,33 @@ class LteOp(LteOp_):
     to_sql = _inequality_to_sql
 
 
-class BaseBinaryOp(BaseBinaryOp_):
-    def to_sql(self, not_null=False, boolean=False, many=False):
-        return (
-            "("
-            + SQL[self.lhs].to_sql()
-            + ") "
-            + _sql_operators[self.op][0]
-            + " ("
-            + SQL[self.rhs].to_sql()
-            + ")"
-        )
+def _binaryop_to_sql(self, not_null=False, boolean=False, many=True):
+    op, identity = _sql_operators[self.op]
+
+    lhs = NumberOp(self.lhs).partial_eval().to_sql(not_null=True)
+    rhs = NumberOp(self.rhs).partial_eval().to_sql(not_null=True)
+    script = "(" + lhs + ") " + op + " (" + rhs + ")"
+    missing = OrOp([self.lhs.missing(), self.rhs.missing()]).partial_eval()
+    if missing is FALSE:
+        return script
+    else:
+        return "(None) if (" + missing.to_sql() + ") else (" + script + ")"
 
 
-class BaseInequalityOp(BaseInequalityOp_):
-    def to_sql(self, not_null=False, boolean=False, many=False):
-        return (
-            "("
-            + SQL[self.lhs].to_sql()
-            + ") "
-            + _sql_operators[self.op][0]
-            + " ("
-            + SQL[self.rhs].to_sql()
-            + ")"
-        )
+class SubOp(SubOp_):
+    to_sql = _binaryop_to_sql
+
+
+class ExpOp(ExpOp_):
+    to_sql = _binaryop_to_sql
+
+
+class ModOp(ModOp_):
+    to_sql = _binaryop_to_sql
+
+
+class DivOp(DivOp_):
+    to_sql = _binaryop_to_sql
 
 
 class InOp(InOp_):
@@ -416,15 +437,6 @@ class InOp(InOp_):
             return SQL_OR.join(sql_iso(var + "==" + quote_value(v)) for v in j_value)
         else:
             return wrap([{"name": ".", "sql": {"b": SQL_FALSE}}])
-
-
-class DivOp(DivOp_):
-    def to_sql(self, not_null=False, boolean=False, many=False):
-        miss = SQL[self.missing()].to_sql()
-        lhs = SQL[self.lhs].to_sql(not_null=True)
-        rhs = SQL[self.rhs].to_sql(not_null=True)
-        return "None if (" + miss + ") else (" + lhs + ") / (" + rhs + ")"
-
 
 class FloorOp(FloorOp_):
     def to_sql(self, not_null=False, boolean=False, many=False):
@@ -480,6 +492,16 @@ class EqOp(EqOp_):
                 ],
             ).partial_eval()
 
+
+class BasicEqOp(BasicEqOp_):
+    def to_sql(self, not_null=False, boolean=False, many=False):
+        return (
+            "("
+            + SQL[self.rhs].to_sql()
+            + ") == ("
+            + SQL[self.lhs].to_sql()
+            + ")"
+        )
 
 class NeOp(NeOp_):
     def to_sql(self, schema, not_null=False, boolean=False):
@@ -554,27 +576,6 @@ class BasicSubstringOp(BasicSubstringOp_):
         )
 
 
-class BinaryOp(BaseBinaryOp_):
-    def to_sql(self, schema, not_null=False, boolean=False):
-        lhs = self.lhs.to_sql(schema)[0].sql.n
-        rhs = self.rhs.to_sql(schema)[0].sql.n
-
-        return wrap(
-            [
-                {
-                    "name": ".",
-                    "sql": {
-                        "n": sql_iso(lhs)
-                        + " "
-                        + BinaryOp.operators[self.op]
-                        + " "
-                        + sql_iso(rhs)
-                    },
-                }
-            ]
-        )
-
-
 class MinOp(MinOp_):
     def to_sql(self, schema, not_null=False, boolean=False):
         terms = [t.partial_eval().to_sql(schema)[0].sql.n for t in self.terms]
@@ -585,61 +586,6 @@ class MaxOp(MaxOp_):
     def to_sql(self, schema, not_null=False, boolean=False):
         terms = [t.partial_eval().to_sql(schema)[0].sql.n for t in self.terms]
         return wrap([{"name": ".", "sql": {"n": "max" + sql_iso((sql_list(terms)))}}])
-
-
-class InequalityOp(InequalityOp_):
-    def to_sql(self, schema, not_null=False, boolean=False):
-        lhs = self.lhs.to_sql(schema, not_null=True)[0].sql
-        rhs = self.rhs.to_sql(schema, not_null=True)[0].sql
-        lhs_exists = self.lhs.exists().to_sql(schema)[0].sql
-        rhs_exists = self.rhs.exists().to_sql(schema)[0].sql
-
-        if len(lhs) == 1 and len(rhs) == 1:
-            return wrap(
-                [
-                    {
-                        "name": ".",
-                        "sql": {
-                            "b": sql_iso(lhs.values()[0])
-                            + " "
-                            + InequalityOp.operators[self.op]
-                            + " "
-                            + sql_iso(rhs.values()[0])
-                        },
-                    }
-                ]
-            )
-
-        ors = []
-        for l in "bns":
-            ll = lhs[l]
-            if not ll:
-                continue
-            for r in "bns":
-                rr = rhs[r]
-                if not rr:
-                    continue
-                elif r == l:
-                    ors.append(
-                        sql_iso(lhs_exists[l])
-                        + SQL_AND
-                        + sql_iso(rhs_exists[r])
-                        + SQL_AND
-                        + sql_iso(lhs[l])
-                        + " "
-                        + InequalityOp.operators[self.op]
-                        + " "
-                        + sql_iso(rhs[r])
-                    )
-                elif (l > r and self.op in ["gte", "gt"]) or (
-                    l < r and self.op in ["lte", "lt"]
-                ):
-                    ors.append(
-                        sql_iso(lhs_exists[l]) + SQL_AND + sql_iso(rhs_exists[r])
-                    )
-        sql = sql_iso(SQL_OR.join(sql_iso(o) for o in ors))
-
-        return wrap([{"name": ".", "sql": {"b": sql}}])
 
 
 class DivOp(DivOp_):
@@ -728,17 +674,6 @@ class NotOp(NotOp_):
             )
         else:
             return not_expr.to_sql(schema)
-
-
-class BooleanOp(BooleanOp_):
-    def to_sql(self, schema, not_null=False, boolean=False):
-        term = self.term.partial_eval()
-        if term.type == "boolean":
-            sql = term.to_sql(schema)
-            return sql
-        else:
-            sql = term.exists().partial_eval().to_sql(schema)
-            return sql
 
 
 class AndOp(AndOp_):

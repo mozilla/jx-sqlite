@@ -115,7 +115,7 @@ def jx_expression_to_function(expr):
 class PythonScript(PythonScript_):
     __slots__ = ("miss", "data_type", "expr", "frum", "many")
 
-    def __init__(self, data_type, expr, frum, miss=None, many=False):
+    def __init__(self, type, expr, frum, miss=None, many=False):
         object.__init__(self)
         if miss not in [None, NULL, FALSE, TRUE, ONE, ZERO]:
             if frum.lang != miss.lang:
@@ -371,19 +371,6 @@ class ModOp(ModOp_):
 
 class DivOp(DivOp_):
     to_python = _binaryop_to_python
-
-
-class BaseInequalityOp(BaseInequalityOp_):
-    def to_python(self, not_null=False, boolean=False, many=False):
-        return (
-            "("
-            + Python[self.lhs].to_python()
-            + ") "
-            + _python_operators[self.op][0]
-            + " ("
-            + Python[self.rhs].to_python()
-            + ")"
-        )
 
 
 class InOp(InOp_):

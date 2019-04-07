@@ -10,7 +10,6 @@
 from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions import NULL
-import jx_elasticsearch
 from mo_dots import wrap
 from tests.test_jx import BaseTestCase
 
@@ -28,6 +27,7 @@ class TestUpdate(BaseTestCase):
             ]}),
             typed=False
         )
+        import jx_elasticsearch
         container = jx_elasticsearch.new_instance(read_only=False, kwargs=self.utils._es_test_settings)
         container.update({
             "update": settings.alias,

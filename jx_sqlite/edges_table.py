@@ -21,7 +21,8 @@ from jx_sqlite.setop_table import SetOpTable
 from mo_dots import listwrap, coalesce, split_field, join_field, startswith_field, relative_field, concat_field, tail_field
 from mo_future import text_type, unichr
 from mo_logs import Log
-from mo_math import Math
+import mo_math
+
 from pyLibrary.sql import SQL, SQL_AND, SQL_COMMA, SQL_OR, SQL_UNION_ALL, SQL_LEFT_JOIN, SQL_INNER_JOIN, SQL_GROUPBY, SQL_WHERE, SQL_FROM, SQL_SELECT, SQL_LIMIT, SQL_ORDERBY, SQL_ON, SQL_NULL, SQL_IS_NULL, SQL_IS_NOT_NULL, sql_list, sql_iso, SQL_END, SQL_ELSE, SQL_THEN, SQL_WHEN, SQL_CASE, SQL_ONE, sql_count, SQL_DESC, SQL_STAR, SQL_TRUE, sql_alias, sql_coalesce
 from pyLibrary.sql.sqlite import quote_value, quote_column, join_column
 
@@ -180,7 +181,7 @@ class EdgesTable(SetOpTable):
                     Log.error("Invalid range: {{range|json}}", range=d)
                 if len(edge_names) == 1:
                     domain = self._make_range_domain(domain=d, column_name=domain_name)
-                    limit = Math.min(query.limit, query_edge.domain.limit)
+                    limit = mo_math.min(query.limit, query_edge.domain.limit)
                     domain += (
                         SQL_ORDERBY + sql_list(vals) +
                         SQL_LIMIT + text_type(limit)
@@ -198,7 +199,7 @@ class EdgesTable(SetOpTable):
                 elif query_edge.range:
                     query_edge.allowNulls = False
                     domain = self._make_range_domain(domain=d, column_name=domain_name)
-                    limit = Math.min(query.limit, query_edge.domain.limit)
+                    limit = mo_math.min(query.limit, query_edge.domain.limit)
                     domain += (
                         SQL_ORDERBY + sql_list(vals) +
                         SQL_LIMIT + text_type(limit)
@@ -222,7 +223,7 @@ class EdgesTable(SetOpTable):
                 else:
                     domain_nested_path = domain_columns[0].nested_path
                 domain_table = quote_column(concat_field(self.sf.fact, domain_nested_path[0]))
-                limit = Math.min(query.limit, query_edge.domain.limit)
+                limit = mo_math.min(query.limit, query_edge.domain.limit)
                 domain = (
                     SQL_SELECT + sql_list(sql_alias(g, n) for n, g in zip(domain_names, vals)) +
                     SQL_FROM + domain_table + nest_to_alias["."] +
@@ -252,7 +253,7 @@ class EdgesTable(SetOpTable):
                 else:
                     domain_nested_path = domain_columns[0].nested_path
                 domain_table = quote_column(concat_field(self.sf.fact, domain_nested_path[0]))
-                limit = Math.min(query.limit, query_edge.domain.limit)
+                limit = mo_math.min(query.limit, query_edge.domain.limit)
                 domain = (
                     SQL_SELECT + sql_list(sql_alias(g, n) for n, g in zip(domain_names, vals)) +
                     SQL_FROM + domain_table + " " + nest_to_alias["."] +
@@ -503,7 +504,7 @@ class EdgesTable(SetOpTable):
 
     def _make_range_domain(self, domain, column_name):
         width = (domain.max - domain.min) / domain.interval
-        digits = Math.floor(Math.log10(width - 1))
+        digits = mo_math.floor(mo_math.log10(width - 1))
         if digits == 0:
             value = "a.value"
         else:
