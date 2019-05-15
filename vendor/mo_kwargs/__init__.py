@@ -59,7 +59,7 @@ def override(func):
     if KWARGS not in params:
         # WE ASSUME WE ARE ONLY ADDING A kwargs PARAMETER TO SOME REGULAR METHOD
         def wo_kwargs(*args, **kwargs):
-            settings = kwargs.get(KWARGS)
+            settings = kwargs.get(KWARGS, {})
             ordered_params = dict(zip(params, args))
             packed = params_pack(params, defaults, settings, kwargs, ordered_params)
             try:
