@@ -23,6 +23,7 @@ from mo_dots import startswith_field, relative_field, concat_field, set_default,
 from mo_future import text_type
 from mo_json import OBJECT, EXISTS, STRUCT
 from mo_logs import Log
+from mo_times import Date
 from pyLibrary.sql import SQL_FROM, sql_iso, sql_list, SQL_LIMIT, SQL_SELECT, SQL_ZERO, SQL_STAR
 from pyLibrary.sql.sqlite import quote_column,  json_type_to_sqlite_type
 
@@ -34,8 +35,7 @@ class Namespace(jx_base.Namespace):
     def __init__(self, db):
         self.db = db
         self._snowflakes = Data()  # MAP FROM BASE TABLE TO LIST OF NESTED PATH TUPLES
-        self.columns = ColumnList()
-        self._load_from_database()
+        self.columns = ColumnList(db)
 
     def __copy__(self):
         output = object.__new__(Namespace)
@@ -43,45 +43,6 @@ class Namespace(jx_base.Namespace):
         output._snowflakes = deepcopy(self._snowflakes)
         output.columns = copy(self.columns)
         return output
-
-    def _load_from_database(self):
-        # FIND ALL TABLES
-        result = self.db.query("SELECT * FROM sqlite_master WHERE type='table' ORDER BY name")
-        tables = wrap([{k: d[i] for i, k in enumerate(result.header)} for d in result.data])
-        last_nested_path = []
-        for table in tables:
-            if table.name.startswith("__"):
-                continue
-            base_table, nested_path = tail_field(table.name)
-
-            # FIND COMMON NESTED PATH SUFFIX
-            for i, p in enumerate(last_nested_path):
-                if startswith_field(nested_path, p):
-                    last_nested_path = last_nested_path[i:]
-                    break
-            else:
-                last_nested_path = []
-
-            full_nested_path = [nested_path] + last_nested_path
-            self._snowflakes[base_table] += [full_nested_path]
-
-            # LOAD THE COLUMNS
-            command = "PRAGMA table_info" + sql_iso(quote_column(table.name))
-            details = self.db.query(command)
-
-            for cid, name, dtype, notnull, dfft_value, pk in details.data:
-                if name.startswith("__"):
-                    continue
-                cname, ctype = untyped_column(name)
-                self.columns.add(Column(
-                    names={'.': cname},  # I THINK COLUMNS HAVE THIER FULL PATH
-                    jx_type=coalesce(sql_type_to_json_type.get(ctype), sqlite_type_to_json_type.get(dtype)),
-                    nested_path=full_nested_path,
-                    es_type=dtype,
-                    es_column=name,
-                    es_index=table.name
-                ))
-            last_nested_path = full_nested_path
 
     def remove_snowflake(self, fact_name):
         paths = self._snowflakes[fact_name]
@@ -110,11 +71,12 @@ class Namespace(jx_base.Namespace):
                 pass
             else:
                 c = Column(
-                    names={".": u},
+                    name=u,
                     jx_type=mo_json.STRING,
                     es_column=typed_column(u, json_type_to_sql_type[mo_json.STRING]),
                     es_type=json_type_to_sqlite_type[mo_json.STRING],
-                    es_index=fact_name
+                    es_index=fact_name,
+                    last_updated=Date.now()
                 )
                 self.add_column_to_schema(c)
                 new_columns.append(c)

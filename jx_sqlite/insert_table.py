@@ -25,6 +25,7 @@ from mo_dots import listwrap, Data, wrap, Null, unwraplist, startswith_field, un
 from mo_future import text_type
 from mo_json import STRUCT
 from mo_logs import Log
+from mo_times import Date
 from pyLibrary.sql import SQL_AND, SQL_UNION_ALL, SQL_INNER_JOIN, SQL_WHERE, SQL_FROM, SQL_SELECT, SQL_NULL, sql_list, sql_iso, SQL_TRUE
 from pyLibrary.sql.sqlite import quote_value, quote_column, join_column, json_type_to_sqlite_type
 
@@ -65,11 +66,12 @@ class InsertTable(BaseTable):
             nested_value = command.set[new_column_name]
             ctype = get_type(nested_value)
             column = Column(
-                names={".": new_column_name},
+                name=new_column_name,
                 jx_type=ctype,
                 es_index=self.facts.snowflake.fact_name,
                 es_type=json_type_to_sqlite_type(ctype),
-                es_column=typed_column(new_column_name, ctype)
+                es_column=typed_column(new_column_name, ctype),
+                last_updated=Date.now()
             )
             self.add_column(column)
 
@@ -155,12 +157,13 @@ class InsertTable(BaseTable):
                 for n, cs in nested_table.columns.items():
                     for c in cs:
                         column = Column(
-                            names={".": c.name},
+                            name=c.name,
                             jx_type=c.jx_type,
                             es_type=c.es_type,
                             es_index=c.es_index,
                             es_column=c.es_column,
-                            nested_path=[nested_column_name] + c.nested_path
+                            nested_path=[nested_column_name] + c.nested_path,
+                            last_updated=Date.now()
                         )
                         if c.name not in self.columns:
                             self.columns[column.name] = {column}
@@ -267,12 +270,13 @@ class InsertTable(BaseTable):
                             deeper_nested_path = path
 
                     c = Column(
-                        names={".": cname},
+                        name=cname,
                         jx_type=value_type,
                         es_type=json_type_to_sqlite_type.get(value_type, value_type),
                         es_column=typed_column(cname, json_type_to_sql_type.get(value_type)),
                         es_index=table,
-                        nested_path=nested_path
+                        nested_path=nested_path,
+                        last_updated=Date.now()
                     )
                     abs_schema.namespace.columns.add(c)
                     if value_type == "nested":
@@ -292,11 +296,12 @@ class InsertTable(BaseTable):
                     abs_schema._remove_column(c)
                     required_changes.append({"nest": (c, nested_path)})
                     deep_c = Column(
-                        names={".": cname},
+                        name=cname,
                         jx_type=value_type,
                         es_column=typed_column(cname, json_type_to_sql_type(value_type)),
                         es_index=table,
-                        nested_path=nested_path
+                        nested_path=nested_path,
+                        last_updated=Date.now()
                     )
                     abs_schema._add_column(deep_c)
                     insertion.active_columns.add(deep_c)

@@ -26,6 +26,7 @@ from mo_dots import listwrap, coalesce, Data, wrap, startswith_field, unwrap, un
 from mo_future import text_type
 from mo_json import STRUCT
 from mo_logs import Log
+from mo_times import Date
 from pyLibrary.sql import SQL, SQL_WHERE, SQL_FROM, SQL_SELECT, sql_list, sql_iso, SQL_ORDERBY, sql_count
 from pyLibrary.sql.sqlite import quote_column
 
@@ -365,7 +366,8 @@ class QueryTable(GroupbyTable):
                 jx_type="string",
                 es_column=GUID,
                 es_index=self.sf.fact,
-                nested_path=["."]
+                nested_path=["."],
+                last_updated=Date.now()
             ))
 
         for tname, table in zip(t, tables):

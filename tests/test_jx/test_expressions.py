@@ -10,16 +10,11 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions import jx_expression, value2json, ConcatOp
+from jx_base.expressions import FALSE, TRUE, jx_expression
 from jx_base.queries import is_variable_name
-from jx_elasticsearch.es52 import expressions
-from jx_elasticsearch.es52.expressions import ES52
 from jx_python.expressions import Python
-from mo_dots import Null
 from mo_testing.fuzzytestcase import FuzzyTestCase
 from mo_times import Date, MONTH
-
-_ = expressions  # IMPORT TRIGGERS ATTACHMENT OF EXTENSION METHODS
 
 
 class TestExpressions(FuzzyTestCase):
@@ -61,14 +56,14 @@ class TestExpressions(FuzzyTestCase):
         self.assertEqual(result, expected)
 
     def test_null_startswith(self):
-        filter = ES52[jx_expression({"prefix": [{"null": {}}, {"literal": "something"}]})].to_esfilter(Null)
-        expected = {"bool": {"must_not": {"match_all": {}}}}
+        filter = jx_expression({"prefix": [{"null": {}}, {"literal": "something"}]}).partial_eval()
+        expected = FALSE
         self.assertEqual(filter, expected)
         self.assertEqual(expected, filter)
 
     def test_null_startswith_null(self):
-        filter = ES52[jx_expression({"prefix": [{"null": {}}, {"literal": ""}]})].to_esfilter(Null)
-        expected = {"match_all": {}}
+        filter = jx_expression({"prefix": [{"null": {}}, {"literal": ""}]}).partial_eval()
+        expected = TRUE
         self.assertEqual(filter, expected)
         self.assertEqual(expected, filter)
 

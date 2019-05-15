@@ -464,7 +464,6 @@ class Transaction(object):
         except Exception as e:
             Log.error("problem running commands", current=c, cause=e)
 
-
     def query(self, query):
         if self.db.closed:
             Log.error("database is closed")

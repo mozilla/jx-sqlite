@@ -14,12 +14,16 @@ from jx_base import Column, Table
 from jx_base.meta_columns import META_COLUMNS_DESC, META_COLUMNS_NAME, META_COLUMNS_TYPE_NAME, SIMPLE_METADATA_COLUMNS
 from jx_base.schema import Schema
 from jx_python import jx
-from mo_dots import Data, Null, is_data, is_list, unwraplist, wrap
+from jx_sqlite import untyped_column, sqlite_type_to_json_type
+from jx_sqlite.expressions import sql_type_to_json_type
+from mo_dots import Data, Null, is_data, is_list, unwraplist, wrap, tail_field, startswith_field, coalesce, literal_field
 from mo_json import STRUCT
 from mo_json.typed_encoder import unnest_path, untype_path, untyped
 from mo_logs import Log
 from mo_threads import Lock, MAIN_THREAD, Queue, Thread
 from mo_times.dates import Date
+from pyLibrary.sql import sql_iso
+from pyLibrary.sql.sqlite import quote_column
 
 DEBUG = False
 singlton = None
@@ -33,22 +37,20 @@ class ColumnList(Table, jx_base.Container):
     OPTIMIZED FOR THE PARTICULAR ACCESS PATTERNS USED
     """
 
-    def __init__(self, es_cluster):
+    def __init__(self, db):
         Table.__init__(self, META_COLUMNS_NAME)
         self.data = {}  # MAP FROM ES_INDEX TO (abs_column_name to COLUMNS)
         self.locker = Lock()
         self._schema = None
         self.dirty = False
-        self.es_cluster = es_cluster
+        self.db = db
         self.es_index = None
         self.last_load = Null
         self.todo = Queue(
             "update columns to es"
         )  # HOLD (action, column) PAIR, WHERE action in ['insert', 'update']
-        self._db_load()
-        Thread.run(
-            "update " + META_COLUMNS_NAME, self._update_from_es, parent_thread=MAIN_THREAD
-        )
+        self._snowflakes = Data()
+        self._load_from_database()
 
     def _query(self, query):
         result = Data()
@@ -58,20 +60,45 @@ class ColumnList(Table, jx_base.Container):
         result.data = curr.fetchall()
         return result
 
-    def _db_create(self):
-        schema = {
-            "settings": {"index.number_of_shards": 1, "index.number_of_replicas": 6},
-            "mappings": {META_COLUMNS_TYPE_NAME: {}},
-        }
+    def _load_from_database(self):
+        # FIND ALL TABLES
+        result = self.db.query("SELECT * FROM sqlite_master WHERE type='table' ORDER BY name")
+        tables = wrap([{k: d for k, d in zip(result.header, row)} for row in result.data])
+        last_nested_path = []
+        for table in tables:
+            if table.name.startswith("__"):
+                continue
+            base_table, nested_path = tail_field(table.name)
 
-        self.es_index = self.es_cluster.create_index(
-            id=ID, index=META_COLUMNS_NAME, schema=schema
-        )
-        self.es_index.add_alias(META_COLUMNS_NAME)
+            # FIND COMMON NESTED PATH SUFFIX
+            for i, p in enumerate(last_nested_path):
+                if startswith_field(nested_path, p):
+                    last_nested_path = last_nested_path[i:]
+                    break
+            else:
+                last_nested_path = []
 
-        for c in META_COLUMNS_DESC.columns:
-            self._add(c)
-            self.es_index.add({"value": c.__dict__()})
+            full_nested_path = [nested_path] + last_nested_path
+            self._snowflakes[literal_field(base_table)] += [full_nested_path]
+
+            # LOAD THE COLUMNS
+            command = "PRAGMA table_info" + sql_iso(quote_column(table.name))
+            details = self.db.query(command)
+
+            for cid, name, dtype, notnull, dfft_value, pk in details.data:
+                if name.startswith("__"):
+                    continue
+                cname, ctype = untyped_column(name)
+                self.add(Column(
+                    name=cname,
+                    jx_type=coalesce(sql_type_to_json_type.get(ctype), sqlite_type_to_json_type.get(dtype)),
+                    nested_path=full_nested_path,
+                    es_type=dtype,
+                    es_column=name,
+                    es_index=table.name,
+                    last_updated=Date.now()
+                ))
+            last_nested_path = full_nested_path
 
     def _db_load(self):
         self.last_load = Date.now()
