@@ -9,28 +9,26 @@
 #
 
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import unicode_literals
+from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.domains import DefaultDomain, TimeDomain, DurationDomain
+from mo_future import is_text, is_binary
+from jx_base.domains import DefaultDomain, DurationDomain, TimeDomain
 from jx_python import jx
-from jx_sqlite import get_column, _make_column_name, sql_text_array_to_set, STATS, sql_aggs, ColumnMapping, untyped_column, quoted_PARENT, quoted_UID
-from jx_sqlite.expressions import Variable, sql_type_to_json_type, TupleOp
+from jx_sqlite import ColumnMapping, STATS, _make_column_name, get_column, quoted_PARENT, quoted_UID, sql_aggs, sql_text_array_to_set, untyped_column
+from jx_sqlite.expressions import TupleOp, Variable, sql_type_to_json_type
 from jx_sqlite.setop_table import SetOpTable
-from mo_dots import listwrap, coalesce, split_field, join_field, startswith_field, relative_field, concat_field, tail_field
+from mo_dots import coalesce, concat_field, join_field, listwrap, relative_field, split_field, startswith_field, tail_field
 from mo_future import text_type, unichr
 from mo_logs import Log
 import mo_math
-
-from pyLibrary.sql import SQL, SQL_AND, SQL_COMMA, SQL_OR, SQL_UNION_ALL, SQL_LEFT_JOIN, SQL_INNER_JOIN, SQL_GROUPBY, SQL_WHERE, SQL_FROM, SQL_SELECT, SQL_LIMIT, SQL_ORDERBY, SQL_ON, SQL_NULL, SQL_IS_NULL, SQL_IS_NOT_NULL, sql_list, sql_iso, SQL_END, SQL_ELSE, SQL_THEN, SQL_WHEN, SQL_CASE, SQL_ONE, sql_count, SQL_DESC, SQL_STAR, SQL_TRUE, sql_alias, sql_coalesce
-from pyLibrary.sql.sqlite import quote_value, quote_column, join_column
+from pyLibrary.sql import SQL, SQL_AND, SQL_CASE, SQL_COMMA, SQL_DESC, SQL_ELSE, SQL_END, SQL_FROM, SQL_GROUPBY, SQL_INNER_JOIN, SQL_IS_NOT_NULL, SQL_IS_NULL, SQL_LEFT_JOIN, SQL_LIMIT, SQL_NULL, SQL_ON, SQL_ONE, SQL_OR, SQL_ORDERBY, SQL_SELECT, SQL_STAR, SQL_THEN, SQL_TRUE, SQL_UNION_ALL, SQL_WHEN, SQL_WHERE, sql_alias, sql_coalesce, sql_count, sql_iso, sql_list
+from pyLibrary.sql.sqlite import join_column, quote_column, quote_value
 
 EXISTS_COLUMN = quote_column("__exists__")
 
 
 class EdgesTable(SetOpTable):
-    def _edges_op(self, query, schema):
+    def _edges_op(self, query, frum):
         query = query.copy()  # WE WILL BE MARKING UP THE QUERY
         index_to_column = {}  # MAP FROM INDEX TO COLUMN (OR SELECT CLAUSE)
         outer_selects = []  # EVERY SELECT CLAUSE (NOT TO BE USED ON ALL TABLES, OF COURSE)
@@ -67,7 +65,7 @@ class EdgesTable(SetOpTable):
         orderby = []
         domains = []
 
-        select_clause = [SQL_ONE + EXISTS_COLUMN] + [quote_column(c.es_column) for c in self.sf.tables['.'].columns]
+        select_clause = [SQL_ONE + EXISTS_COLUMN] + [quote_column(c.es_column) for c in self.sf.tables["."].columns]
 
         for edge_index, query_edge in enumerate(query.edges):
             edge_alias = quote_column("e" + text_type(edge_index))
@@ -108,7 +106,7 @@ class EdgesTable(SetOpTable):
                 else:
                     pull = get_column(num_sql_columns)
 
-                if isinstance(query_edge.value, TupleOp):
+                if is_op(query_edge.value, TupleOp):
                     query_edge.allowNulls = False
                     push_child = column_index
                     num_push_columns = len(query_edge.value.terms)
@@ -349,7 +347,7 @@ class EdgesTable(SetOpTable):
         offset = len(query.edges)
         for ssi, s in enumerate(listwrap(query.select)):
             si = ssi + offset
-            if isinstance(s.value, Variable) and s.value.var == "." and s.aggregate == "count":
+            if is_op(s.value, Variable) and s.value.var == "." and s.aggregate == "count":
                 # COUNT RECORDS, NOT ANY ONE VALUE
                 sql = sql_alias(sql_count(EXISTS_COLUMN), quote_column(s.name))
 

@@ -9,31 +9,29 @@
 #
 
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import unicode_literals
+from __future__ import absolute_import, division, unicode_literals
 
-from jx_base import Column
-import mo_json
+from mo_future import is_text, is_binary
 from jx_base.domains import SimpleSetDomain
-from jx_base.expressions import jx_expression, Variable, TupleOp
+from jx_base.expressions import TupleOp, Variable, jx_expression
 from jx_base.query import QueryOp
 from jx_python import jx
-from jx_sqlite import sql_aggs, unique_name, untyped_column, GUID
+from jx_python.meta import Column
+from jx_sqlite import GUID, sql_aggs, unique_name, untyped_column
 from jx_sqlite.groupby_table import GroupbyTable
 from mo_collections.matrix import Matrix, index_to_coordinate
-from mo_dots import listwrap, coalesce, Data, wrap, startswith_field, unwrap, unwraplist, concat_field, relative_field, Null
+from mo_dots import Data, Null, coalesce, concat_field, is_list, listwrap, relative_field, startswith_field, unwrap, unwraplist, wrap
 from mo_future import text_type
-from mo_json import STRUCT
+import mo_json
+from mo_json import STRING, STRUCT
 from mo_logs import Log
-from mo_times import Date
-from pyLibrary.sql import SQL, SQL_WHERE, SQL_FROM, SQL_SELECT, sql_list, sql_iso, SQL_ORDERBY, sql_count
+from pyLibrary.sql import SQL, SQL_FROM, SQL_ORDERBY, SQL_SELECT, SQL_WHERE, sql_count, sql_iso, sql_list
 from pyLibrary.sql.sqlite import quote_column
 
 
 class QueryTable(GroupbyTable):
     def get_column_name(self, column):
-        return column.names[self.sf.fact]
+        return relative_field(column.name, self.sf.fact)
 
     def __len__(self):
         counter = self.db.query(SQL_SELECT + sql_count("*") + SQL_FROM + quote_column(self.sf.fact))[0][0]
@@ -125,7 +123,7 @@ class QueryTable(GroupbyTable):
                 data = {n: Data() for n in column_names}
                 for s in index_to_columns.values():
                     data[s.push_name][s.push_child] = unwrap(s.pull(result.data[0]))
-                if isinstance(query.select, list):
+                if is_list(query.select):
                     select = [{"name": s.name} for s in query.select]
                 else:
                     select = {"name": query.select.name}
@@ -146,7 +144,7 @@ class QueryTable(GroupbyTable):
                         domain = SimpleSetDomain(partitions=e.domain.partitions.name)
                     elif e.domain.type == "range":
                         domain = e.domain
-                    elif isinstance(e.value, TupleOp):
+                    elif is_op(e.value, TupleOp):
                         pulls = jx.sort([c for c in index_to_columns.values() if c.push_name == e.name],
                                         "push_child").pull
                         parts = [tuple(p(d) for p in pulls) for d in result.data]
@@ -168,7 +166,7 @@ class QueryTable(GroupbyTable):
                     else:
                         data[s.name] = Matrix(dims=dims)
 
-                if isinstance(query.select, list):
+                if is_list(query.select):
                     select = [{"name": s.name} for s in query.select]
                 else:
                     select = {"name": query.select.name}
@@ -198,7 +196,7 @@ class QueryTable(GroupbyTable):
                     domain = wrap(mo_json.scrub(e.domain))
                 elif e.domain.type == "duration":
                     domain = wrap(mo_json.scrub(e.domain))
-                elif isinstance(e.value, TupleOp):
+                elif is_op(e.value, TupleOp):
                     pulls = jx.sort([c for c in index_to_columns.values() if c.push_name == e.name], "push_child").pull
                     parts = [tuple(p(d) for p in pulls) for d in result.data]
                     domain = SimpleSetDomain(partitions=jx.sort(set(parts)))
@@ -243,7 +241,7 @@ class QueryTable(GroupbyTable):
 
             if query.select == None:
                 select = Null
-            elif isinstance(query.select, list):
+            elif is_list(query.select):
                 select = [{"name": s.name} for s in query.select]
             else:
                 select = {"name": query.select.name}
@@ -283,13 +281,13 @@ class QueryTable(GroupbyTable):
             )
         elif query.format == "list" or (not query.edges and not query.groupby):
             if not query.edges and not query.groupby and any(listwrap(query.select).aggregate):
-                if isinstance(query.select, list):
+                if is_list(query.select):
                     data = Data()
                     for c in index_to_columns.values():
                         if c.push_child == ".":
                             if data[c.push_name] == None:
                                 data[c.push_name] = c.pull(result.data[0])
-                            elif isinstance(data[c.push_name], list):
+                            elif is_list(data[c.push_name]):
                                 data[c.push_name].append(c.pull(result.data[0]))
                             else:
                                 data[c.push_name] = [data[c.push_name], c.pull(result.data[0])]
@@ -356,18 +354,16 @@ class QueryTable(GroupbyTable):
         else:
             Log.error("Only simple filters are expected like: \"eq\" on table and column name")
 
-        t = [i for i in columns[0].names.keys()]
-        tables = [concat_field(self.sf.fact, i) for i in t]
+        tables = [concat_field(self.sf.fact, i) for i in self.tables.keys()]
 
         metadata = []
         if columns[-1].es_column != GUID:
             columns.append(Column(
-                names={i: relative_field(GUID, i) for i in t},
-                jx_type="string",
+                name=GUID,
+                jx_type=STRING,
                 es_column=GUID,
                 es_index=self.sf.fact,
-                nested_path=["."],
-                last_updated=Date.now()
+                nested_path=["."]
             ))
 
         for tname, table in zip(t, tables):
@@ -379,7 +375,7 @@ class QueryTable(GroupbyTable):
                 if column_name != None and column_name != cname:
                     continue
 
-                metadata.append((table, col.names[tname], col.type, unwraplist(col.nested_path)))
+                metadata.append((table, relative_field(col.name, tname), col.type, unwraplist(col.nested_path)))
 
         if query.format == "cube":
             num_rows = len(metadata)
@@ -451,6 +447,7 @@ class QueryTable(GroupbyTable):
         else:
             Log.error("not done")
         return output
+
 
 from jx_base.container import type2container
 

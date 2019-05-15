@@ -9,17 +9,14 @@
 #
 
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import unicode_literals
+from __future__ import absolute_import, division, unicode_literals
 
-from collections import Mapping
 from copy import copy
 
 from jx_base import DataClass
-from mo_dots import Data, split_field, join_field, concat_field
-from mo_future import text_type
-from mo_json import json2value
+from mo_dots import Data, concat_field, is_data, is_list, join_field, split_field
+from mo_future import is_text, text_type
+from mo_json import BOOLEAN, NESTED, NUMBER, OBJECT, STRING, json2value
 from mo_kwargs import override
 from mo_math.randoms import Random
 from mo_times import Date
@@ -45,11 +42,11 @@ def column_key(k, v):
         return None
     elif isinstance(v, bool):
         return k, "boolean"
-    elif isinstance(v, text_type):
+    elif is_text(v):
         return k, "string"
-    elif isinstance(v, list):
+    elif is_list(v):
         return k, None
-    elif isinstance(v, Mapping):
+    elif is_data(v):
         return k, "object"
     elif isinstance(v, Date):
         return k, "number"
@@ -61,15 +58,15 @@ def get_type(v):
     if v == None:
         return None
     elif isinstance(v, bool):
-        return "boolean"
-    elif isinstance(v, text_type):
-        return "string"
-    elif isinstance(v, Mapping):
-        return "object"
+        return BOOLEAN
+    elif is_text(v):
+        return STRING
+    elif is_data(v):
+        return OBJECT
     elif isinstance(v, (int, float, Date)):
-        return "number"
-    elif isinstance(v, list):
-        return "nested"
+        return NUMBER
+    elif is_list(v):
+        return NESTED
     return None
 
 
@@ -98,11 +95,11 @@ def get_if_type(value, type):
 def is_type(value, type):
     if value == None:
         return False
-    elif isinstance(value, text_type) and type == "string":
+    elif is_text(value) and type == "string":
         return value
-    elif isinstance(value, list):
+    elif is_list(value):
         return False
-    elif isinstance(value, Mapping) and type == "object":
+    elif is_data(value) and type == "object":
         return True
     elif isinstance(value, (int, float, Date)) and type == "number":
         return True
@@ -270,7 +267,7 @@ ColumnMapping = DataClass(
     ]}
 )
 
-sqlite_type_to_json_type = {
+json_types = {
     "TEXT": "string",
     "REAL": "number",
     "INTEGER": "integer",
@@ -287,7 +284,7 @@ class Container(QueryTable):
 
     @override
     def __init__(self, name, db=None, uid=UID, kwargs=None):
-        BaseTable.__init__(self, name, db, uid, kwargs=kwargs)
+        BaseTable.__init__(self, name, db, uid, kwargs)
 
 
 
