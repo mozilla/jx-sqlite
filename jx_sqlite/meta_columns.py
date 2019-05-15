@@ -14,13 +14,13 @@ from jx_base import Column, Table
 from jx_base.meta_columns import META_COLUMNS_DESC, META_COLUMNS_NAME, META_COLUMNS_TYPE_NAME, SIMPLE_METADATA_COLUMNS
 from jx_base.schema import Schema
 from jx_python import jx
-from jx_sqlite import untyped_column, sqlite_type_to_json_type
+from jx_sqlite import untyped_column
 from jx_sqlite.expressions import sql_type_to_json_type
-from mo_dots import Data, Null, is_data, is_list, unwraplist, wrap, tail_field, startswith_field, coalesce, literal_field
+from mo_dots import Data, Null, coalesce, is_data, is_list, literal_field, startswith_field, tail_field, unwraplist, wrap
 from mo_json import STRUCT
 from mo_json.typed_encoder import unnest_path, untype_path, untyped
 from mo_logs import Log
-from mo_threads import Lock, MAIN_THREAD, Queue, Thread
+from mo_threads import Lock, Queue
 from mo_times.dates import Date
 from pyLibrary.sql import sql_iso
 from pyLibrary.sql.sqlite import quote_column
@@ -91,7 +91,7 @@ class ColumnList(Table, jx_base.Container):
                 cname, ctype = untyped_column(name)
                 self.add(Column(
                     name=cname,
-                    jx_type=coalesce(sql_type_to_json_type.get(ctype), sqlite_type_to_json_type.get(dtype)),
+                    jx_type=coalesce(sql_type_to_json_type.get(ctype), sql_type_to_json_type[ctype]),
                     nested_path=full_nested_path,
                     es_type=dtype,
                     es_column=name,

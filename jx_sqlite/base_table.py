@@ -11,17 +11,17 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
-from mo_future import is_text, is_binary
 import jx_base
 from jx_base import generateGuid
 from jx_python import jx
 from jx_sqlite import UID
-from jx_sqlite.snowflake import Snowflake
+from jx_sqlite.snowflake import Namespace
 from mo_kwargs import override
-from pyLibrary.sql import SQL, SQL_SELECT, SQL_UNION_ALL
-from pyLibrary.sql.sqlite import Sqlite, quote_value
+from mo_logs import Log
+from pyLibrary.sql import SQL_SELECT, SQL_UNION_ALL
+from pyLibrary.sql.sqlite import Sqlite, quote_column, quote_value
 
-_config=None
+_config = None
 
 
 class BaseTable(jx_base.Table):
@@ -42,11 +42,9 @@ class BaseTable(jx_base.Table):
         if not _config:
             # REGISTER sqlite AS THE DEFAULT CONTAINER TYPE
             from jx_base.container import config as _config
+
             if not _config.default:
-                _config.default = {
-                    "type": "sqlite",
-                    "settings": {"db": db}
-                }
+                _config.default = {"type": "sqlite", "settings": {"db": db}}
 
         ns = Namespace(db=db)
         self.facts = ns.create_or_replace_facts(fact_name=name)
@@ -60,8 +58,14 @@ class BaseTable(jx_base.Table):
         existence = self.db.query("PRAGMA table_info(__digits__)")
         if not existence.data:
             with self.db.transaction() as t:
-                t.execute("CREATE TABLE" + quote_column(DIGITS_TABLE) + "(value INTEGER)")
-                t.execute("INSERT INTO" + quote_column(DIGITS_TABLE) + SQL_UNION_ALL.join(SQL_SELECT + quote_value(i) for i in range(10)))
+                t.execute(
+                    "CREATE TABLE" + quote_column(DIGITS_TABLE) + "(value INTEGER)"
+                )
+                t.execute(
+                    "INSERT INTO"
+                    + quote_column(DIGITS_TABLE)
+                    + SQL_UNION_ALL.join(SQL_SELECT + quote_value(i) for i in range(10))
+                )
 
     @property
     def sf(self):

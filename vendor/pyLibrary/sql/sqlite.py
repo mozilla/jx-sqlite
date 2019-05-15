@@ -577,3 +577,10 @@ json_type_to_sqlite_type = {
     NESTED: "TEXT"
 }
 
+sqlite_type_to_json_type = {
+    "TINTINT": INTEGER,
+    "INTEGER": INTEGER,
+    "REAL": NUMBER,
+    "TEXT": STRING
+}
+

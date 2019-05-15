@@ -11,12 +11,13 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
+from jx_base import Column
+from jx_base.language import is_op
 from mo_future import is_text, is_binary
 from jx_base.domains import SimpleSetDomain
 from jx_base.expressions import TupleOp, Variable, jx_expression
 from jx_base.query import QueryOp
 from jx_python import jx
-from jx_python.meta import Column
 from jx_sqlite import GUID, sql_aggs, unique_name, untyped_column
 from jx_sqlite.groupby_table import GroupbyTable
 from mo_collections.matrix import Matrix, index_to_coordinate
