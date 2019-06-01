@@ -196,21 +196,17 @@ class SQLScript(SQLScript_):
 
 class Variable(Variable_):
     def to_sql(self, schema, not_null=False, boolean=False):
-        if self.var == GUID:
+        var_name = self.var
+        if var_name == GUID:
             return wrap(
                 [{"name": ".", "sql": {"s": quoted_GUID}, "nested_path": ROOT_PATH}]
             )
-        vars = schema.leaves(self.var)
-        if not vars:
+        cols = schema.leaves(var_name)
+        if not cols:
             # DOES NOT EXIST
             return wrap(
                 [{"name": ".", "sql": {"0": SQL_NULL}, "nested_path": ROOT_PATH}]
             )
-        var_name = list(set(listwrap(vars).name))
-        if len(var_name) > 1:
-            Log.error("do not know how to handle")
-        var_name = var_name[0]
-        cols = schema.leaves(self.var)
         acc = {}
         if boolean:
             for col in cols:
