@@ -200,13 +200,13 @@ class Variable(Variable_):
             return wrap(
                 [{"name": ".", "sql": {"s": quoted_GUID}, "nested_path": ROOT_PATH}]
             )
-        vars = schema[self.var]
+        vars = schema.leaves(self.var)
         if not vars:
             # DOES NOT EXIST
             return wrap(
                 [{"name": ".", "sql": {"0": SQL_NULL}, "nested_path": ROOT_PATH}]
             )
-        var_name = list(set(listwrap(vars).names.get("\\.")))
+        var_name = list(set(listwrap(vars).name))
         if len(var_name) > 1:
             Log.error("do not know how to handle")
         var_name = var_name[0]
@@ -214,7 +214,7 @@ class Variable(Variable_):
         acc = {}
         if boolean:
             for col in cols:
-                cname = relative_field(col.names["."], var_name)
+                cname = relative_field(col.name, var_name)
                 nested_path = col.nested_path[0]
                 if col.type == OBJECT:
                     value = SQL_TRUE
@@ -227,7 +227,7 @@ class Variable(Variable_):
                 tempb["b"] = value
         else:
             for col in cols:
-                cname = relative_field(col.names["."], var_name)
+                cname = relative_field(col.name, var_name)
                 if col.jx_type == OBJECT:
                     prefix = self.var + "."
                     for cn, cs in schema.items():
@@ -349,7 +349,7 @@ class LeavesOp(LeavesOp_):
                     "sql": Variable(schema.get_column_name(c)).to_sql(schema)[0].sql,
                 }
                 for c in schema.columns
-                if startswith_field(c.names["."], term)
+                if startswith_field(c.name, term)
                 and (
                     (
                         c.jx_type not in (EXISTS, OBJECT, NESTED)
@@ -1315,7 +1315,7 @@ class SqlSubstrOp(SqlSubstrOp_):
         return SqlSubstrOp([value, start, length])
 
 
-SQL = define_language("SQL", vars())
+SQLang = define_language("SQLang", vars())
 
 
 _sql_operators = {

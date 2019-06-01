@@ -35,10 +35,10 @@ class EdgesTable(SetOpTable):
         base_table, path = schema.snowflake.fact_name, schema.nested_path
         nest_to_alias = {
             nested_path: quote_column("__" + unichr(ord('a') + i) + "__")
-            for i, (nested_path, sub_table) in enumerate(self.sf.tables.items())
+            for i, (nested_path, sub_table) in enumerate(self.sf.tables)
         }
 
-        schema = self.sf.tables[relative_field(frum, self.sf.fact)].schema
+        schema = self.sf.tables[relative_field(frum, self.sf.fact_name)].schema
 
         tables = []
         for n, a in nest_to_alias.items():
@@ -220,7 +220,7 @@ class EdgesTable(SetOpTable):
                     Log.note("expecting a known column")
                 else:
                     domain_nested_path = domain_columns[0].nested_path
-                domain_table = quote_column(concat_field(self.sf.fact, domain_nested_path[0]))
+                domain_table = quote_column(concat_field(self.sf.fact_name, domain_nested_path[0]))
                 limit = mo_math.min(query.limit, query_edge.domain.limit)
                 domain = (
                     SQL_SELECT + sql_list(sql_alias(g, n) for n, g in zip(domain_names, vals)) +
@@ -250,7 +250,7 @@ class EdgesTable(SetOpTable):
                     Log.note("expecting a known column")
                 else:
                     domain_nested_path = domain_columns[0].nested_path
-                domain_table = quote_column(concat_field(self.sf.fact, domain_nested_path[0]))
+                domain_table = quote_column(concat_field(self.sf.fact_name, domain_nested_path[0]))
                 limit = mo_math.min(query.limit, query_edge.domain.limit)
                 domain = (
                     SQL_SELECT + sql_list(sql_alias(g, n) for n, g in zip(domain_names, vals)) +

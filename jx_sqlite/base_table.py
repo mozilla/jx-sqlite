@@ -15,7 +15,7 @@ import jx_base
 from jx_base import generateGuid
 from jx_python import jx
 from jx_sqlite import UID
-from jx_sqlite.snowflake import Namespace
+from jx_sqlite.namespace import Namespace
 from mo_kwargs import override
 from mo_logs import Log
 from pyLibrary.sql import SQL_SELECT, SQL_UNION_ALL

@@ -181,13 +181,13 @@ It may help to use the file system as a metaphor: The tables are directories in 
 
 Given our documents appear different based on the perspective, the columns in the snowflake can go by many aliases. In *Example 1* column `a.b.x` (column `x` in table `a.b`) can be referred to as simply `x` from the `a.b` perspective.  To capture these aliases the `Column.names` dict maps the nested path to the various aliases
 
-	Column(
-		names={
-			".": "a.b.x", 
-			"a.b": "x"
-		},
+    Column(
+        names={
+            ".": "a.b.x", 
+            "a.b": "x"
+        },
         nested_path=["a.b", "."]
-	)
+    )
 
 There may be some problems with the `names` attribute:
 

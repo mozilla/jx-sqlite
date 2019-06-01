@@ -8,98 +8,15 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
-from copy import copy, deepcopy
-
 import jx_base
-from jx_base import Column, Facts
-from jx_base.queries import get_property_name
-from jx_sqlite import GUID, UID, quoted_GUID, quoted_ORDER, quoted_PARENT, quoted_UID, typed_column
-from jx_sqlite.expressions import json_type_to_sql_type
-from jx_sqlite.meta_columns import ColumnList
-from mo_dots import Data, concat_field, listwrap, relative_field, set_default, startswith_field, wrap
+from jx_sqlite import quoted_ORDER, quoted_PARENT, quoted_UID
+from jx_sqlite.schema import Schema
+from jx_sqlite.table import Table
+from mo_dots import concat_field, wrap
 from mo_future import text_type
-import mo_json
-from mo_json import EXISTS, OBJECT, STRUCT
 from mo_logs import Log
-from mo_times import Date
 from pyLibrary.sql import SQL_FROM, SQL_LIMIT, SQL_SELECT, SQL_STAR, SQL_ZERO, sql_iso, sql_list
-from pyLibrary.sql.sqlite import json_type_to_sqlite_type, quote_column
-
-
-class Namespace(jx_base.Namespace):
-    """
-    MANAGE SQLITE DATABASE
-    """
-    def __init__(self, db):
-        self.db = db
-        self._snowflakes = Data()  # MAP FROM BASE TABLE TO LIST OF NESTED PATH TUPLES
-        self.columns = ColumnList(db)
-
-    def __copy__(self):
-        output = object.__new__(Namespace)
-        output.db = None
-        output._snowflakes = deepcopy(self._snowflakes)
-        output.columns = copy(self.columns)
-        return output
-
-    def remove_snowflake(self, fact_name):
-        paths = self._snowflakes[fact_name]
-        if paths:
-            with self.db.transaction() as t:
-                for p in paths:
-                    full_name = concat_field(fact_name, p[0])
-                    t.execute("DROP TABLE "+quote_column(full_name))
-            self.columns.remove_table(fact_name)
-        self._snowflakes[fact_name] = None
-
-    def create_or_replace_facts(self, fact_name, uid=UID):
-        """
-        MAKE NEW TABLE WITH GIVEN guid
-        :param fact_name:  NAME FOR THE CENTRAL FACTS
-        :param uid: name, or list of names, for the GUID
-        :return: Facts
-        """
-        self.remove_snowflake(fact_name)
-        self._snowflakes[fact_name] = ["."]
-
-        uid = listwrap(uid)
-        new_columns = []
-        for u in uid:
-            if u == UID:
-                pass
-            else:
-                c = Column(
-                    name=u,
-                    jx_type=mo_json.STRING,
-                    es_column=typed_column(u, json_type_to_sql_type[mo_json.STRING]),
-                    es_type=json_type_to_sqlite_type[mo_json.STRING],
-                    es_index=fact_name,
-                    last_updated=Date.now()
-                )
-                self.add_column_to_schema(c)
-                new_columns.append(c)
-
-        command = (
-            "CREATE TABLE " + quote_column(fact_name) + sql_iso(sql_list(
-                [quoted_GUID + " TEXT "] +
-                [quoted_UID + " INTEGER"] +
-                [quote_column(c.es_column) + " " + c.es_type for c in new_columns] +
-                ["PRIMARY KEY " + sql_iso(sql_list(
-                    [quoted_GUID] +
-                    [quoted_UID] +
-                    [quote_column(c.es_column) for c in new_columns]
-                ))]
-            ))
-        )
-
-        with self.db.transaction() as t:
-            t.execute(command)
-
-        snowflake = Snowflake(fact_name, self)
-        return Facts(self, snowflake)
-
-    def add_column_to_schema(self, column):
-        self.columns.add(column)
+from pyLibrary.sql.sqlite import quote_column
 
 
 class Snowflake(jx_base.Snowflake):
@@ -114,8 +31,7 @@ class Snowflake(jx_base.Snowflake):
         self.column = Schema(".", self)
 
     def __copy__(self):
-        # COPY NAMESPACE SOURCE
-        return Snowflake(self.fact_name, copy(self.namespace))
+        Log.error("con not copy")
 
     def change_schema(self, required_changes):
         """
@@ -134,7 +50,7 @@ class Snowflake(jx_base.Snowflake):
                 # TODO: DELETE PARENT COLUMNS? : Done
 
     def _add_column(self, column):
-        cname = column.names["."]
+        cname = column.name
         if column.jx_type == "nested":
             # WE ARE ALSO NESTING
             self._nest_column(column, [cname]+column.nested_path)
@@ -215,142 +131,20 @@ class Snowflake(jx_base.Snowflake):
         return Table(nested_path, self)
 
     @property
+    def tables(self):
+        """
+        :return:  LIST OF (nested_path, full_name) PAIRS
+        """
+        return [(path, concat_field(self.fact_name, path)) for path in self.query_paths]
+
+    def get_schema(self, nested_path):
+        return Schema(nested_path, self)
+
+    @property
     def columns(self):
         return self.namespace.columns.find(self.fact_name)
 
     @property
     def query_paths(self):
         return self.namespace._snowflakes[self.fact_name]
-
-
-class Table(jx_base.Table):
-
-    def __init__(self, nested_path, snowflake):
-        if not isinstance(nested_path, list):
-            Log.error("Expecting list of paths")
-        self.nested_path = nested_path
-        self.schema = Schema(nested_path, snowflake)
-        # self.columns = []  # PLAIN DATABASE COLUMNS
-
-    @property
-    def name(self):
-        """
-        :return: THE TABLE NAME RELATIVE TO THE FACT TABLE
-        """
-        return self.nested_path[0]
-
-    def map(self, mapping):
-        return self
-
-
-
-class Schema(object):
-    """
-    A Schema MAPS ALL COLUMNS IN SNOWFLAKE FROM THE PERSPECTIVE OF A SINGLE TABLE (a nested_path)
-    """
-
-    def __init__(self, nested_path, snowflake):
-        if nested_path[-1] != '.':
-            Log.error("Expecting full nested path")
-        self.path = concat_field(snowflake.fact_name, nested_path[0])
-        self.nested_path = nested_path
-        self.snowflake = snowflake
-
-    # def add(self, column_name, column):
-    #     if column_name != column.names[self.nested_path[0]]:
-    #         Log.error("Logic error")
-    #
-    #     self.columns.append(column)
-    #
-    #     for np in self.nested_path:
-    #         rel_name = column.names[np]
-    #         container = self.namespace.setdefault(rel_name, set())
-    #         hidden = [
-    #             c
-    #             for c in container
-    #             if len(c.nested_path[0]) < len(np)
-    #         ]
-    #         for h in hidden:
-    #             container.remove(h)
-    #
-    #         container.add(column)
-    #
-    #     container = self.namespace.setdefault(column.es_column, set())
-    #     container.add(column)
-
-
-    # def remove(self, column_name, column):
-    #     if column_name != column.names[self.nested_path[0]]:
-    #         Log.error("Logic error")
-    #
-    #     self.namespace[column_name] = [c for c in self.namespace[column_name] if c != column]
-
-    def __getitem__(self, item):
-        output = self.snowflake.namespace.columns.find(self.path, item)
-        return output
-
-    # def __copy__(self):
-    #     output = Schema(self.nested_path)
-    #     for k, v in self.namespace.items():
-    #         output.namespace[k] = copy(v)
-    #     return output
-
-    def get_column_name(self, column):
-        """
-        RETURN THE COLUMN NAME, FROM THE PERSPECTIVE OF THIS SCHEMA
-        :param column:
-        :return: NAME OF column
-        """
-        return get_property_name(column.names[self.nested_path[0]])
-
-    @property
-    def namespace(self):
-        return self.snowflake.namespace
-
-    def keys(self):
-        return set(self.namespace.keys())
-
-    def items(self):
-        return list(self.namespace.items())
-
-    @property
-    def columns(self):
-        return [c for c in self.columns if c.es_column not in [GUID, '_source']]
-
-    def leaves(self, prefix):
-        full_name = concat_field(self.nested_path, prefix)
-        return set(
-            c
-            for c in self.snowflake.namespace.columns.find(self.snowflake.fact_name)
-            for k in [c.names['.']]
-            if startswith_field(k, full_name) and k != GUID or k == full_name
-            if c.jx_type not in [OBJECT, EXISTS]
-        )
-
-    def map_to_sql(self, var=""):
-        """
-        RETURN A MAP FROM THE RELATIVE AND ABSOLUTE NAME SPACE TO COLUMNS
-        """
-        origin = self.nested_path[0]
-        if startswith_field(var, origin) and origin != var:
-            var = relative_field(var, origin)
-        fact_dict = {}
-        origin_dict = {}
-        for k, cs in self.namespace.items():
-            for c in cs:
-                if c.jx_type in STRUCT:
-                    continue
-
-                if startswith_field(get_property_name(k), var):
-                    origin_dict.setdefault(c.names[origin], []).append(c)
-
-                    if origin != c.nested_path[0]:
-                        fact_dict.setdefault(c.names["."], []).append(c)
-                elif origin == var:
-                    origin_dict.setdefault(concat_field(var, c.names[origin]), []).append(c)
-
-                    if origin != c.nested_path[0]:
-                        fact_dict.setdefault(concat_field(var, c.names["."]), []).append(c)
-
-        return set_default(origin_dict, fact_dict)
 

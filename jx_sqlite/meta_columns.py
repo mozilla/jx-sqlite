@@ -34,12 +34,12 @@ ID = {"field": ["es_index", "es_column"], "version": "last_updated"}
 
 class ColumnList(Table, jx_base.Container):
     """
-    OPTIMIZED FOR THE PARTICULAR ACCESS PATTERNS USED
+    OPTIMIZED FOR fact column LOOKUP
     """
 
     def __init__(self, db):
         Table.__init__(self, META_COLUMNS_NAME)
-        self.data = {}  # MAP FROM ES_INDEX TO (abs_column_name to COLUMNS)
+        self.data = {}  # MAP FROM fact_name TO (abs_column_name to COLUMNS)
         self.locker = Lock()
         self._schema = None
         self.dirty = False
@@ -99,48 +99,6 @@ class ColumnList(Table, jx_base.Container):
                     last_updated=Date.now()
                 ))
             last_nested_path = full_nested_path
-
-    def _db_load(self):
-        self.last_load = Date.now()
-
-        try:
-            self.es_index = self.es_cluster.get_index(
-                id=ID, index=META_COLUMNS_NAME, type=META_COLUMNS_TYPE_NAME, read_only=False
-            )
-
-            result = self.es_index.search(
-                {
-                    "query": {
-                        "bool": {
-                            "should": [
-                                {
-                                    "bool": {
-                                        "must_not": {
-                                            "exists": {"field": "cardinality.~n~"}
-                                        }
-                                    }
-                                },
-                                {  # ASSUME UNUSED COLUMNS DO NOT EXIST
-                                    "range": {"cardinality.~n~": {"gt": 0}}
-                                },
-                            ]
-                        }
-                    },
-                    "sort": ["es_index.~s~", "name.~s~", "es_column.~s~"],
-                    "size": 10000,
-                }
-            )
-
-            Log.note("{{num}} columns loaded", num=result.hits.total)
-            with self.locker:
-                for r in result.hits.hits._source:
-                    self._add(doc_to_column(r))
-
-        except Exception as e:
-            Log.warning(
-                "no {{index}} exists, making one", index=META_COLUMNS_NAME, cause=e
-            )
-            self._db_create()
 
     def find(self, es_index, abs_column_name=None):
         with self.locker:

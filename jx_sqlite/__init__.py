@@ -264,7 +264,7 @@ ColumnMapping = DataClass(
         "column_alias"
     ],
     constraint={"and": [
-        {"in": {"type": ["null", "boolean", "number", "string", "object"]}},
+        {"in": {"type": ["0", "boolean", "number", "string", "object"]}},
         {"gte": [{"length": "nested_path"}, 1]}
     ]}
 )

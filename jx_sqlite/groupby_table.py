@@ -11,12 +11,11 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
-from mo_future import is_text, is_binary
 from jx_python import jx
 from jx_sqlite import ColumnMapping, _make_column_name, get_column, quoted_PARENT, quoted_UID, sql_aggs
 from jx_sqlite.edges_table import EdgesTable
 from jx_sqlite.expressions import sql_type_to_json_type
-from mo_dots import concat_field, join_field, listwrap, split_field, startswith_field, tail_field
+from mo_dots import concat_field, join_field, listwrap, split_field, startswith_field
 from mo_future import unichr
 from mo_logs import Log
 from pyLibrary.sql import SQL_FROM, SQL_GROUPBY, SQL_IS_NULL, SQL_LEFT_JOIN, SQL_NULL, SQL_ON, SQL_ONE, SQL_ORDERBY, SQL_SELECT, SQL_WHERE, sql_alias, sql_count, sql_iso, sql_list

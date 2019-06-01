@@ -9,25 +9,23 @@
 #
 
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import unicode_literals
+from __future__ import absolute_import, division, unicode_literals
 
 from collections import Mapping
-from copy import copy
 
-from jx_base.expressions import jx_expression
 from jx_base import Column
-from jx_sqlite import typed_column, get_type, ORDER, UID, GUID, PARENT, get_if_type
+from jx_base.expressions import jx_expression
+from jx_sqlite.utils import BasicSnowflake
+from jx_sqlite import GUID, ORDER, PARENT, UID, get_if_type, get_type, typed_column
 from jx_sqlite.base_table import BaseTable, generateGuid
 from jx_sqlite.expressions import json_type_to_sql_type
-from mo_dots import listwrap, Data, wrap, Null, unwraplist, startswith_field, unwrap, concat_field, literal_field
+from mo_dots import Data, Null, concat_field, listwrap, literal_field, startswith_field, unwrap, unwraplist, wrap
 from mo_future import text_type
 from mo_json import STRUCT
 from mo_logs import Log
 from mo_times import Date
-from pyLibrary.sql import SQL_AND, SQL_UNION_ALL, SQL_INNER_JOIN, SQL_WHERE, SQL_FROM, SQL_SELECT, SQL_NULL, sql_list, sql_iso, SQL_TRUE
-from pyLibrary.sql.sqlite import quote_value, quote_column, join_column, json_type_to_sqlite_type
+from pyLibrary.sql import SQL_AND, SQL_FROM, SQL_INNER_JOIN, SQL_NULL, SQL_SELECT, SQL_TRUE, SQL_UNION_ALL, SQL_WHERE, sql_iso, sql_list
+from pyLibrary.sql.sqlite import join_column, json_type_to_sqlite_type, quote_column, quote_value
 
 
 class InsertTable(BaseTable):
@@ -229,7 +227,8 @@ class InsertTable(BaseTable):
         doc_collection = {".": _insertion}
         # KEEP TRACK OF WHAT TABLE WILL BE MADE (SHORTLY)
         required_changes = []
-        abs_schema = copy(self.facts.snowflake)
+        snowflake = self.facts.snowflake
+        abs_schema = BasicSnowflake(snowflake.query_paths, snowflake.columns)
 
         def _flatten(data, uid, parent_id, order, full_path, nested_path, row=None, guid=None):
             """
@@ -242,7 +241,7 @@ class InsertTable(BaseTable):
             :param row: we will be filling this
             :return:
             """
-            table = concat_field(abs_schema.fact_name, nested_path[0])
+            table = concat_field(self.name, nested_path[0])
             insertion = doc_collection[nested_path[0]]
             if not row:
                 row = {GUID: guid, UID: uid, PARENT: parent_id, ORDER: order}
@@ -278,9 +277,9 @@ class InsertTable(BaseTable):
                         nested_path=nested_path,
                         last_updated=Date.now()
                     )
-                    abs_schema.namespace.columns.add(c)
+                    abs_schema.columns.append(c)
                     if value_type == "nested":
-                        abs_schema.namespace._snowflakes[abs_schema.fact_name] += [c.es_column]
+                        abs_schema.namespace._snowflakes[self.name] += [c.es_column]
 
                     required_changes.append({"add": c})
 
@@ -339,7 +338,7 @@ class InsertTable(BaseTable):
         for doc in docs:
             _flatten(doc, self.next_uid(), 0, 0, full_path=path, nested_path=["."], guid=self.next_guid())
             if required_changes:
-                abs_schema.change_schema(required_changes)
+                snowflake.change_schema(required_changes)
             required_changes = []
 
         return doc_collection
