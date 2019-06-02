@@ -24,7 +24,7 @@ from mo_json import IS_NULL, STRUCT
 from mo_math import MAX, UNION
 from mo_times import Date
 from pyLibrary.sql import SQL_AND, SQL_FROM, SQL_IS_NOT_NULL, SQL_IS_NULL, SQL_LEFT_JOIN, SQL_LIMIT, SQL_NULL, SQL_ON, SQL_ORDERBY, SQL_SELECT, SQL_TRUE, SQL_UNION_ALL, SQL_WHERE, sql_alias, sql_iso, sql_list
-from pyLibrary.sql.sqlite import join_column, quote_column, quote_value
+from pyLibrary.sql.sqlite import join_column, quote_column, quote_value, json_type_to_sqlite_type
 
 
 class SetOpTable(InsertTable):
@@ -48,6 +48,7 @@ class SetOpTable(InsertTable):
                     jx_type=IS_NULL,
                     es_column=".",
                     es_index=".",
+                    es_type=json_type_to_sqlite_type[IS_NULL],
                     nested_path=["."],
                     last_updated=Date.now()
                 ))
