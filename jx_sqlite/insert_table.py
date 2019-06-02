@@ -58,7 +58,7 @@ class InsertTable(BaseTable):
             for c in self.columns.get(v, Null)
             if c.jx_type not in STRUCT
         }
-        where_sql = where.map(_map).to_sql()
+        where_sql = where.map(_map).to_sql(schema)
         new_columns = set(command.set.keys()) - set(self.columns.keys())
         for new_column_name in new_columns:
             nested_value = command.set[new_column_name]
@@ -122,7 +122,7 @@ class InsertTable(BaseTable):
                 parent = (
                     SQL_SELECT + self_primary_key +
                     SQL_FROM + quote_column(abs_schema.fact) +
-                    SQL_WHERE + jx_expression(command.where).to_sql()
+                    SQL_WHERE + jx_expression(command.where).to_sql(schema)
                 )
 
                 # BUILD THE RECORDS

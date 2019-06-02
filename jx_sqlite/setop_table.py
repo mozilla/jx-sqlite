@@ -64,7 +64,7 @@ class SetOpTable(InsertTable):
         sorts = []
         if query.sort:
             for select in query.sort:
-                col = select.value.to_sql(schema)[0]
+                col = SQLang[select.value].to_sql(schema)[0]
                 for t, sql in col.sql.items():
                     json_type = sql_type_to_json_type[t]
                     if json_type in STRUCT:
@@ -143,8 +143,6 @@ class SetOpTable(InsertTable):
                     db_columns = SQLang[select.value].partial_eval().to_sql(schema)
 
                     for column in db_columns:
-                        if is_list(column.nested_path):
-                            column.nested_path = column.nested_path[0]  # IN THE EVENT THIS "column" IS MULTIVALUED
                         for t, unsorted_sql in column.sql.items():
                             json_type = sql_type_to_json_type[t]
                             if json_type in STRUCT:

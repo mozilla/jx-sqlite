@@ -10,10 +10,8 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
-from mo_future import is_text, is_binary
-from mo_future import PY3, text_type
+from mo_future import PY3, is_text, text_type
 from mo_logs import Log
-import pyLibrary.sql
 
 
 class SQL(text_type):
@@ -122,6 +120,11 @@ def sql_list(list_):
 
 
 def sql_iso(sql):
+    """
+    ISOLATE EXPRESSION IN ()
+    :param sql:
+    :return:
+    """
     return "("+sql+")"
 
 

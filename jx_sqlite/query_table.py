@@ -42,7 +42,7 @@ class QueryTable(GroupbyTable):
         return bool(counter)
 
     def delete(self, where):
-        filter = where.to_sql()
+        filter = where.to_sql(schema)
         self.db.execute("DELETE" + SQL_FROM + quote_column(self.sf.fact_name) + SQL_WHERE + filter)
 
     def vars(self):
@@ -76,7 +76,7 @@ class QueryTable(GroupbyTable):
         result = self.db.query(
             SQL_SELECT + SQL("\n,").join(select) +
             SQL_FROM + quote_column(self.sf.fact_name) +
-            SQL_WHERE + jx_expression(filter).to_sql()
+            SQL_WHERE + jx_expression(filter).to_sql(schema)
         )
         return wrap([{c: v for c, v in zip(column_names, r)} for r in result.data])
 
@@ -422,7 +422,7 @@ class QueryTable(GroupbyTable):
         range_max = text_type(coalesce(window.range.max, "UNBOUNDED"))
 
         return (
-            sql_aggs[window.aggregate] + sql_iso(window.value.to_sql()) + " OVER (" +
+            sql_aggs[window.aggregate] + sql_iso(window.value.to_sql(schema)) + " OVER (" +
             " PARTITION BY " + sql_iso(sql_list(window.edges.values)) +
             SQL_ORDERBY + sql_iso(sql_list(window.edges.sort)) +
             " ROWS BETWEEN " + range_min + " PRECEDING AND " + range_max + " FOLLOWING " +

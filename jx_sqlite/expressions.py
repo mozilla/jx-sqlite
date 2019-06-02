@@ -9,21 +9,16 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_python.expressions import Python
-import mo_json
 from jx_base.expressions import (
     AddOp as AddOp_,
     AndOp as AndOp_,
-    BooleanOp as BooleanOp_,
-
-    BaseBinaryOp as BaseBinaryOp_,
-    BaseInequalityOp as BaseInequalityOp_,
-    BaseMultiOp as BaseMultiOp_,
-    BasicMultiOp as BasicMultiOp_,
+    BasicAddOp as BasicAddOp_,
     BasicEqOp as BasicEqOp_,
     BasicIndexOfOp as BasicIndexOfOp_,
+    BasicMulOp as BasicMulOp_,
     BasicSubstringOp as BasicSubstringOp_,
     BetweenOp as BetweenOp_,
+    BooleanOp as BooleanOp_,
     CaseOp as CaseOp_,
     CoalesceOp as CoalesceOp_,
     ConcatOp as ConcatOp_,
@@ -36,8 +31,8 @@ from jx_base.expressions import (
     FALSE,
     FalseOp as FalseOp_,
     FindOp as FindOp_,
-    FirstOp as FirstOp_,
     FloorOp as FloorOp_,
+    FromUnixOp as FromUnixOp_,
     GetOp as GetOp_,
     GtOp as GtOp_,
     GteOp as GteOp_,
@@ -45,6 +40,7 @@ from jx_base.expressions import (
     IntegerOp as IntegerOp_,
     LastOp as LastOp_,
     LeavesOp as LeavesOp_,
+    LeftOp as LeftOp_,
     LengthOp as LengthOp_,
     Literal as Literal_,
     LtOp as LtOp_,
@@ -55,7 +51,6 @@ from jx_base.expressions import (
     ModOp as ModOp_,
     MulOp as MulOp_,
     NULL,
-    NullOp as NullOP_,
     NeOp as NeOp_,
     NotLeftOp as NotLeftOp_,
     NotOp as NotOp_,
@@ -66,73 +61,70 @@ from jx_base.expressions import (
     OffsetOp as OffsetOp_,
     OrOp as OrOp_,
     PrefixOp as PrefixOp_,
-    SQLScript as SQLScript_,
     RangeOp as RangeOp_,
     RegExpOp as RegExpOp_,
     RightOp as RightOp_,
     RowsOp as RowsOp_,
+    SQLScript as SQLScript_,
     ScriptOp as ScriptOp_,
     SelectOp as SelectOp_,
-    SplitOp as SplitOp_,
+    SqlEqOp as SqlEqOp_,
+    SqlInstrOp as SqlInstrOp_,
+    SqlSubstrOp as SqlSubstrOp_,
     StringOp as StringOp_,
     SubOp as SubOp_,
     SuffixOp as SuffixOp_,
     TRUE,
     TrueOp as TrueOp_,
     TupleOp as TupleOp_,
+    UnixOp as UnixOp_,
     Variable as Variable_,
-UnixOp as UnixOp_,
-FromUnixOp as FromUnixOp_,
-LeftOp as LeftOp_,
-SqlEqOp as SqlEqOp_,
-SqlInstrOp as SqlInstrOp_,
-SqlSubstrOp as SqlSubstrOp_,
     WhenOp as WhenOp_,
     ZERO,
+    builtin_ops,
     define_language,
     extend,
-    jx_expression,
     simplified,
-    builtin_ops,
 )
-from jx_base.language import is_expression, is_op
-from jx_python.expression_compiler import compile_expression
-from mo_dots import coalesce, is_data, is_list, split_field, unwrap
-from mo_future import PY2, is_text, text_type
-from mo_json import BOOLEAN, INTEGER, NUMBER, json2value
-from mo_logs import Log
-from mo_logs.strings import quote
-from mo_math import is_number
-from mo_times.dates import Date
-from pyLibrary import convert
 from jx_base.queries import get_property_name
-from jx_sqlite import quoted_GUID, GUID
-from mo_dots import coalesce, wrap, Null, split_field, listwrap, startswith_field
-from mo_dots import join_field, ROOT_PATH, relative_field
-from mo_future import text_type
-from mo_json import json2value, OBJECT, EXISTS, NESTED
+from jx_sqlite import GUID, quoted_GUID
+from mo_dots import (
+    Null,
+    ROOT_PATH,
+    coalesce,
+    join_field,
+    relative_field,
+    split_field,
+    startswith_field,
+    wrap,
+)
+from mo_future import PY2, text_type
+import mo_json
+from mo_json import BOOLEAN, EXISTS, NESTED, OBJECT, json2value
+from mo_logs import Log
+from mo_math import is_number
 from pyLibrary import convert
 from pyLibrary.sql import (
     SQL,
     SQL_AND,
-    SQL_EMPTY_STRING,
-    SQL_OR,
-    SQL_TRUE,
-    SQL_ZERO,
-    SQL_FALSE,
-    SQL_NULL,
-    SQL_ONE,
-    SQL_IS_NOT_NULL,
-    sql_list,
-    sql_iso,
-    SQL_IS_NULL,
-    SQL_END,
-    SQL_ELSE,
-    SQL_THEN,
-    SQL_WHEN,
     SQL_CASE,
-    sql_concat,
+    SQL_ELSE,
+    SQL_EMPTY_STRING,
+    SQL_END,
+    SQL_FALSE,
+    SQL_IS_NOT_NULL,
+    SQL_IS_NULL,
+    SQL_NULL,
+    SQL_OR,
+    SQL_THEN,
+    SQL_TRUE,
+    SQL_WHEN,
     sql_coalesce,
+    sql_concat,
+    sql_iso,
+    sql_list,
+    SQL_ZERO,
+    SQL_ONE,
 )
 from pyLibrary.sql.sqlite import quote_column, quote_value
 
@@ -165,7 +157,7 @@ class SQLScript(SQLScript_):
         elif missing is TRUE:
             return "None"
 
-        return "None if (" + missing.to_sql().expr + ") else (" + self.expr + ")"
+        return "None if (" + missing.to_sql(schema).expr + ") else (" + self.expr + ")"
 
     def __add__(self, other):
         return text_type(self) + text_type(other)
@@ -176,7 +168,7 @@ class SQLScript(SQLScript_):
     if PY2:
         __unicode__ = __str__
 
-    def to_sql(self, not_null=False, boolean=False, many=True):
+    def to_sql(schema, not_null=False, boolean=False, many=True):
         return self
 
     def missing(self):
@@ -268,6 +260,7 @@ class BooleanOp(BooleanOp_):
         else:
             sql = term.exists().partial_eval().to_sql(schema)
             return sql
+
 
 class IntegerOp(IntegerOp_):
     pass
@@ -361,10 +354,10 @@ class LeavesOp(LeavesOp_):
         return output
 
 
-def _inequality_to_sql(self, not_null=False, boolean=False, many=True):
+def _inequality_to_sql(self, schema, not_null=False, boolean=False, many=True):
     op, identity = _sql_operators[self.op]
-    lhs = NumberOp(self.lhs).partial_eval().to_sql(not_null=True)
-    rhs = NumberOp(self.rhs).partial_eval().to_sql(not_null=True)
+    lhs = NumberOp(self.lhs).partial_eval().to_sql(schema, not_null=True)
+    rhs = NumberOp(self.rhs).partial_eval().to_sql(schema, not_null=True)
     script = "(" + lhs + ") " + op + " (" + rhs + ")"
 
     output = (
@@ -373,7 +366,7 @@ def _inequality_to_sql(self, not_null=False, boolean=False, many=True):
             **{"then": FALSE, "else": SQLScript(type=BOOLEAN, expr=script, frum=self)}
         )
         .partial_eval()
-        .to_sql()
+        .to_sql(schema)
     )
     return output
 
@@ -394,17 +387,20 @@ class LteOp(LteOp_):
     to_sql = _inequality_to_sql
 
 
-def _binaryop_to_sql(self, not_null=False, boolean=False, many=True):
+def _binaryop_to_sql(self, schema, not_null=False, boolean=False, many=True):
     op, identity = _sql_operators[self.op]
 
-    lhs = NumberOp(self.lhs).partial_eval().to_sql(not_null=True)
-    rhs = NumberOp(self.rhs).partial_eval().to_sql(not_null=True)
+    lhs = NumberOp(self.lhs).partial_eval().to_sql(schema, not_null=True)[0].sql.n
+    rhs = NumberOp(self.rhs).partial_eval().to_sql(schema, not_null=True)[0].sql.n
     script = "(" + lhs + ") " + op + " (" + rhs + ")"
     missing = OrOp([self.lhs.missing(), self.rhs.missing()]).partial_eval()
     if missing is FALSE:
-        return script
+        sql = script
     else:
-        return "(None) if (" + missing.to_sql() + ") else (" + script + ")"
+        sql = "CASE WHEN " + missing.to_sql(schema, boolean=True)[0].sql.b + " THEN NULL ELSE " + script + " END"
+    return wrap([
+        {"name": ".", "sql": {"n": sql}}
+    ])
 
 
 class SubOp(SubOp_):
@@ -434,13 +430,14 @@ class InOp(InOp_):
         else:
             return wrap([{"name": ".", "sql": {"b": SQL_FALSE}}])
 
+
 class FloorOp(FloorOp_):
-    def to_sql(self, not_null=False, boolean=False, many=False):
+    def to_sql(self, schema, not_null=False, boolean=False, many=False):
         return (
             "mo_math.floor("
-            + SQL[self.lhs].to_sql()
+            + SQL[self.lhs].to_sql(schema)
             + ", "
-            + SQL[self.rhs].to_sql()
+            + SQL[self.rhs].to_sql(schema)
             + ")"
         )
 
@@ -490,14 +487,15 @@ class EqOp(EqOp_):
 
 
 class BasicEqOp(BasicEqOp_):
-    def to_sql(self, not_null=False, boolean=False, many=False):
+    def to_sql(self, schema, not_null=False, boolean=False, many=False):
         return (
             "("
-            + SQL[self.rhs].to_sql()
+            + SQL[self.rhs].to_sql(schema)
             + ") == ("
-            + SQL[self.lhs].to_sql()
+            + SQL[self.lhs].to_sql(schema)
             + ")"
         )
+
 
 class NeOp(NeOp_):
     def to_sql(self, schema, not_null=False, boolean=False):
@@ -556,9 +554,7 @@ class BasicSubstringOp(BasicSubstringOp_):
         start = (
             AddOp([self.start, Literal(None, 1)]).partial_eval().to_sql(schema)[0].sql.n
         )
-        length = (
-            SubtractOp([self.end, self.start]).partial_eval().to_sql(schema)[0].sql.n
-        )
+        length = SubOp([self.end, self.start]).partial_eval().to_sql(schema)[0].sql.n
 
         return wrap(
             [
@@ -844,11 +840,45 @@ class CountOp(CountOp_):
             return wrap([{"nanme": ".", "sql": {"n": SQL("+").join(acc)}}])
 
 
-class BasicMultiOp(BasicMultiOp_):
-    def to_sql(self, schema, not_null=False, boolean=False):
-        op, identity = _sql_operators[self.op]
-        sql = op.join(sql_iso(t.to_sql(schema)[0].sql.n) for t in self.terms)
-        return wrap([{"name": ".", "sql": {"n": sql}}])
+def multiop_to_sql(self, schema, not_null=False, boolean=False, many=False):
+    sign, zero = _sql_operators[self.op]
+    if len(self.terms) == 0:
+        return SQLang[self.default].to_sql(schema)
+    elif self.default is NULL:
+        return sign.join(
+            "COALESCE(" + SQLang[t].to_sql(schema) + ", " + zero + ")"
+            for t in self.terms
+        )
+    else:
+        return (
+            "COALESCE("
+            + sign.join("(" + SQLang[t].to_sql(schema) + ")" for t in self.terms)
+            + ", "
+            + SQLang[self.default].to_sql(schema)
+            + ")"
+        )
+
+
+class AddOp(AddOp_):
+    to_sql = multiop_to_sql
+
+
+class MulOp(MulOp_):
+    to_sql = multiop_to_sql
+
+
+def basic_multiop_to_sql(self, schema, not_null=False, boolean=False, many=False):
+    op, identity = _sql_operators[self.op.split("basic.")[1]]
+    sql = op.join(sql_iso(t.to_sql(schema)[0].sql.n) for t in self.terms)
+    return wrap([{"name": ".", "sql": {"n": sql}}])
+
+
+class BasicAddOp(BasicAddOp_):
+    to_sql = basic_multiop_to_sql
+
+
+class BasicMulOp(BasicMulOp_):
+    to_sql = basic_multiop_to_sql
 
 
 class RegExpOp(RegExpOp_):
@@ -1315,17 +1345,18 @@ SQLang = define_language("SQLang", vars())
 
 
 _sql_operators = {
-    "add": (" + ", "0"),  # (operator, zero-array default value) PAIR
-    "sum": (" + ", "0"),
-    "mul": (" * ", "1"),
-    "sub": (" - ", None),
-    "div": (" / ", None),
-    "exp": (" ** ", None),
-    "mod": (" % ", None),
-    "gt": (" > ", None),
-    "gte": (" >= ", None),
-    "lte": (" <= ", None),
-    "lt": (" < ", None),
+    # (operator, zero-array default value) PAIR
+    "add": (SQL(" + "), SQL_ZERO),
+    "sum": (SQL(" + "), SQL_ZERO),
+    "mul": (SQL(" * "), SQL_ONE),
+    "sub": (SQL(" - "), None),
+    "div": (SQL(" / "), None),
+    "exp": (SQL(" ** "), None),
+    "mod": (SQL(" % "), None),
+    "gt": (SQL(" > "), None),
+    "gte": (SQL(" >= "), None),
+    "lte": (SQL(" <= "), None),
+    "lt": (SQL(" < "), None),
 }
 
 
