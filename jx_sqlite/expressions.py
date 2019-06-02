@@ -97,7 +97,7 @@ from mo_dots import (
     split_field,
     startswith_field,
     wrap,
-)
+    FlatList, is_data)
 from mo_future import PY2, text_type
 import mo_json
 from mo_json import BOOLEAN, EXISTS, NESTED, OBJECT, json2value
@@ -127,6 +127,27 @@ from pyLibrary.sql import (
     SQL_ONE,
 )
 from pyLibrary.sql.sqlite import quote_column, quote_value
+
+
+def check(func):
+    def to_sql(self, schema, not_null=False, boolean=False, **kwargs):
+        if kwargs.get('many')!=None:
+            Log.error("not expecting many")
+        try:
+            output = func(self, schema, not_null, boolean)
+        except Exception as e:
+            Log.error("not expected", cause=e)
+        if not isinstance(output, FlatList):
+            Log.error("expecting FlatList")
+        if not is_data(output[0].sql):
+            Log.error("expecting Data")
+        for k, v in output[0].sql.items():
+            if k not in {'b', 'n', 's', 'j'}:
+                Log.error("expecting datatypes")
+            if not isinstance(v, text_type):
+                Log.error("expecting text")
+        return output
+    return to_sql
 
 
 class SQLScript(SQLScript_):
@@ -168,7 +189,8 @@ class SQLScript(SQLScript_):
     if PY2:
         __unicode__ = __str__
 
-    def to_sql(schema, not_null=False, boolean=False, many=True):
+    @check
+    def to_sql(self, schema, not_null=False, boolean=False, many=True):
         return self
 
     def missing(self):
@@ -187,7 +209,8 @@ class SQLScript(SQLScript_):
 
 
 class Variable(Variable_):
-    def to_sql(self, schema, not_null=False, boolean=False):
+    @check
+    def to_sql(self, schema, not_null=False, boolean=False, many=True):
         var_name = self.var
         if var_name == GUID:
             return wrap(
@@ -252,6 +275,7 @@ class RowsOp(RowsOp_):
 
 
 class BooleanOp(BooleanOp_):
+    @check
     def to_sql(self, schema, not_null=False, boolean=False):
         term = self.term.partial_eval()
         if term.type == "boolean":
@@ -283,6 +307,7 @@ class ScriptOp(ScriptOp_):
 
 
 class Literal(Literal_):
+    @check
     def to_sql(self, schema, not_null=False, boolean=False):
         value = self.value
         v = quote_value(value)
@@ -299,31 +324,37 @@ class Literal(Literal_):
 
 
 @extend(NullOp)
+@check
 def to_sql(self, schema, not_null=False, boolean=False):
     return wrap([{"name": ".", "sql": {"j": SQL_NULL}}])
 
 
 class TrueOp(TrueOp_):
+    @check
     def to_sql(self, schema, not_null=False, boolean=False):
         return wrap([{"name": ".", "sql": {"b": SQL_TRUE}}])
 
 
 class FalseOp(FalseOp_):
+    @check
     def to_sql(self, schema, not_null=False, boolean=False):
         return wrap([{"name": ".", "sql": {"b": SQL_FALSE}}])
 
 
 class DateOp(DateOp_):
+    @check
     def to_sql(self, schema, not_null=False, boolean=False):
         return wrap([{"name": ".", "sql": {"n": quote_value(self.value)}}])
 
 
 class TupleOp(TupleOp_):
+    @check
     def to_sql(self, schema, not_null=False, boolean=False):
         return wrap([{"name": ".", "sql": t.to_sql(schema)[0].sql} for t in self.terms])
 
 
 class LeavesOp(LeavesOp_):
+    @check
     def to_sql(self, schema, not_null=False, boolean=False):
         if not isinstance(self.term, Variable):
             Log.error("Can only handle Variable")
@@ -386,13 +417,13 @@ class LtOp(LtOp_):
 class LteOp(LteOp_):
     to_sql = _inequality_to_sql
 
-
+@check
 def _binaryop_to_sql(self, schema, not_null=False, boolean=False, many=True):
     op, identity = _sql_operators[self.op]
 
     lhs = NumberOp(self.lhs).partial_eval().to_sql(schema, not_null=True)[0].sql.n
     rhs = NumberOp(self.rhs).partial_eval().to_sql(schema, not_null=True)[0].sql.n
-    script = "(" + lhs + ") " + op + " (" + rhs + ")"
+    script = sql_iso(lhs) + op + sql_iso(rhs)
     missing = OrOp([self.lhs.missing(), self.rhs.missing()]).partial_eval()
     if missing is FALSE:
         sql = script
@@ -420,6 +451,7 @@ class DivOp(DivOp_):
 
 
 class InOp(InOp_):
+    @check
     def to_sql(self, schema, not_null=False, boolean=False):
         if not isinstance(self.superset, Literal):
             Log.error("Not supported")
@@ -432,6 +464,7 @@ class InOp(InOp_):
 
 
 class FloorOp(FloorOp_):
+    @check
     def to_sql(self, schema, not_null=False, boolean=False, many=False):
         return (
             "mo_math.floor("
@@ -443,6 +476,7 @@ class FloorOp(FloorOp_):
 
 
 class EqOp(EqOp_):
+    @check
     def to_sql(self, schema, not_null=False, boolean=False):
         lhs = self.lhs.to_sql(schema)
         rhs = self.rhs.to_sql(schema)
@@ -487,6 +521,7 @@ class EqOp(EqOp_):
 
 
 class BasicEqOp(BasicEqOp_):
+    @check
     def to_sql(self, schema, not_null=False, boolean=False, many=False):
         return (
             "("
@@ -498,6 +533,7 @@ class BasicEqOp(BasicEqOp_):
 
 
 class NeOp(NeOp_):
+    @check
     def to_sql(self, schema, not_null=False, boolean=False):
         return (
             NotOp("not", EqOp("eq", [self.lhs, self.rhs]).partial_eval())
@@ -507,6 +543,7 @@ class NeOp(NeOp_):
 
 
 class BasicIndexOfOp(BasicIndexOfOp_):
+    @check
     def to_sql(self, schema, not_null=False, boolean=False):
         value = self.value.to_sql(schema)[0].sql.s
         find = self.find.to_sql(schema)[0].sql.s
@@ -549,6 +586,7 @@ class BasicIndexOfOp(BasicIndexOfOp_):
 
 
 class BasicSubstringOp(BasicSubstringOp_):
+    @check
     def to_sql(self, schema, not_null=False, boolean=False):
         value = self.value.to_sql(schema)[0].sql.s
         start = (
@@ -569,18 +607,21 @@ class BasicSubstringOp(BasicSubstringOp_):
 
 
 class MinOp(MinOp_):
+    @check
     def to_sql(self, schema, not_null=False, boolean=False):
         terms = [t.partial_eval().to_sql(schema)[0].sql.n for t in self.terms]
         return wrap([{"name": ".", "sql": {"n": "min" + sql_iso((sql_list(terms)))}}])
 
 
 class MaxOp(MaxOp_):
+    @check
     def to_sql(self, schema, not_null=False, boolean=False):
         terms = [t.partial_eval().to_sql(schema)[0].sql.n for t in self.terms]
         return wrap([{"name": ".", "sql": {"n": "max" + sql_iso((sql_list(terms)))}}])
 
 
 class DivOp(DivOp_):
+    @check
     def to_sql(self, schema, not_null=False, boolean=False):
         lhs = self.lhs.to_sql(schema)[0].sql.n
         rhs = self.rhs.to_sql(schema)[0].sql.n
@@ -609,6 +650,7 @@ class DivOp(DivOp_):
 
 
 class FloorOp(FloorOp_):
+    @check
     def to_sql(self, schema, not_null=False, boolean=False):
         lhs = self.lhs.to_sql(schema)
         rhs = self.rhs.to_sql(schema)
@@ -651,6 +693,7 @@ class FloorOp(FloorOp_):
 
 
 class NotOp(NotOp_):
+    @check
     def to_sql(self, schema, not_null=False, boolean=False):
         not_expr = NotOp(BooleanOp(self.term)).partial_eval()
         if isinstance(not_expr, NotOp):
@@ -669,6 +712,7 @@ class NotOp(NotOp_):
 
 
 class AndOp(AndOp_):
+    @check
     def to_sql(self, schema, not_null=False, boolean=False):
         if not self.terms:
             return wrap([{"name": ".", "sql": {"b": SQL_TRUE}}])
@@ -693,6 +737,7 @@ class AndOp(AndOp_):
 
 
 class OrOp(OrOp_):
+    @check
     def to_sql(self, schema, not_null=False, boolean=False):
         return wrap(
             [
@@ -710,6 +755,7 @@ class OrOp(OrOp_):
 
 
 class LengthOp(LengthOp_):
+    @check
     def to_sql(self, schema, not_null=False, boolean=False):
         term = self.term.partial_eval()
         if isinstance(term, Literal):
@@ -734,6 +780,7 @@ class LengthOp(LengthOp_):
 
 
 class IntegerOp(IntegerOp_):
+    @check
     def to_sql(self, schema, not_null=False, boolean=False):
         value = self.term.to_sql(schema, not_null=True)
         acc = []
@@ -753,6 +800,7 @@ class IntegerOp(IntegerOp_):
 
 
 class NumberOp(NumberOp_):
+    @check
     def to_sql(self, schema, not_null=False, boolean=False):
         value = self.term.to_sql(schema, not_null=True)
         acc = []
@@ -766,12 +814,13 @@ class NumberOp(NumberOp_):
         if not acc:
             return wrap([])
         elif len(acc) == 1:
-            return wrap([{"name": ".", "sql": {"n": acc}}])
+            return wrap([{"name": ".", "sql": {"n": acc[0]}}])
         else:
             return wrap([{"name": ".", "sql": {"n": sql_coalesce(acc)}}])
 
 
 class StringOp(StringOp_):
+    @check
     def to_sql(self, schema, not_null=False, boolean=False):
         test = self.term.missing().to_sql(schema, boolean=True)[0].sql.b
         value = self.term.to_sql(schema, not_null=True)[0].sql
@@ -811,6 +860,7 @@ class StringOp(StringOp_):
 
 
 class CountOp(CountOp_):
+    @check
     def to_sql(self, schema, not_null=False, boolean=False):
         acc = []
         for term in self.terms:
@@ -882,6 +932,7 @@ class BasicMulOp(BasicMulOp_):
 
 
 class RegExpOp(RegExpOp_):
+    @check
     def to_sql(self, schema, not_null=False, boolean=False):
         pattern = quote_value(json2value(self.pattern.json))
         value = self.var.to_sql(schema)[0].sql.s
@@ -889,6 +940,7 @@ class RegExpOp(RegExpOp_):
 
 
 class CoalesceOp(CoalesceOp_):
+    @check
     def to_sql(self, schema, not_null=False, boolean=False):
         acc = {"b": [], "s": [], "n": []}
 
@@ -908,6 +960,7 @@ class CoalesceOp(CoalesceOp_):
 
 
 class MissingOp(MissingOp_):
+    @check
     def to_sql(self, schema, not_null=False, boolean=False):
         value = self.expr.partial_eval()
         missing_value = value.missing().partial_eval()
@@ -941,7 +994,8 @@ class MissingOp(MissingOp_):
 
 
 class WhenOp(WhenOp_):
-    def to_sql(self, schema, not_null=False, boolean=False):
+    @check
+    def to_sql(self, schema, not_null=False, boolean=False, many=True):
         when = self.when.partial_eval().to_sql(schema, boolean=True)[0].sql
         then = self.then.partial_eval().to_sql(schema, not_null=not_null)[0].sql
         els_ = self.els_.partial_eval().to_sql(schema, not_null=not_null)[0].sql
@@ -984,6 +1038,7 @@ class WhenOp(WhenOp_):
 
 
 class ExistsOp(ExistsOp_):
+    @check
     def to_sql(self, schema, not_null=False, boolean=False):
         field = self.field.to_sql(schema)[0].sql
         acc = []
@@ -998,6 +1053,7 @@ class ExistsOp(ExistsOp_):
 
 
 class PrefixOp(PrefixOp_):
+    @check
     def to_sql(self, schema, not_null=False, boolean=False):
         if not self.expr:
             return wrap([{"name": ".", "sql": {"b": SQL_TRUE}}])
@@ -1021,6 +1077,7 @@ class PrefixOp(PrefixOp_):
 
 
 class SuffixOp(SuffixOp_):
+    @check
     def to_sql(self, schema, not_null=False, boolean=False):
         if not self.expr:
             return wrap([{"name": ".", "sql": {"b": SQL_FALSE}}])
@@ -1035,6 +1092,7 @@ class SuffixOp(SuffixOp_):
 
 
 class ConcatOp(ConcatOp_):
+    @check
     def to_sql(self, schema, not_null=False, boolean=False):
         defult = self.default.to_sql(schema)
         if len(self.terms) == 0:
@@ -1117,18 +1175,21 @@ class ConcatOp(ConcatOp_):
 
 
 class UnixOp(UnixOp_):
+    @check
     def to_sql(self, schema, not_null=False, boolean=False):
         v = self.value.to_sql(schema)[0].sql
         return wrap([{"name": ".", "sql": {"n": "UNIX_TIMESTAMP" + sql_iso(v.n)}}])
 
 
 class FromUnixOp(FromUnixOp_):
+    @check
     def to_sql(self, schema, not_null=False, boolean=False):
         v = self.value.to_sql(schema)[0].sql
         return wrap([{"name": ".", "sql": {"n": "FROM_UNIXTIME" + sql_iso(v.n)}}])
 
 
 class LeftOp(LeftOp_):
+    @check
     def to_sql(self, schema, not_null=False, boolean=False):
         return (
             SqlSubstrOp("substr", [self.value, ONE, self.length])
@@ -1138,6 +1199,7 @@ class LeftOp(LeftOp_):
 
 
 class NotLeftOp(NotLeftOp_):
+    @check
     def to_sql(self, schema, not_null=False, boolean=False):
         # test_v = self.value.missing().to_sql(boolean=True)[0].sql.b
         # test_l = self.length.missing().to_sql(boolean=True)[0].sql.b
@@ -1149,6 +1211,7 @@ class NotLeftOp(NotLeftOp_):
 
 
 class RightOp(RightOp_):
+    @check
     def to_sql(self, schema, not_null=False, boolean=False):
         v = self.value.to_sql(schema, not_null=True)[0].sql.s
         r = self.length.to_sql(schema, not_null=True)[0].sql.n
@@ -1174,6 +1237,7 @@ class RightOp(RightOp_):
 
 
 class NotRightOp(NotRightOp_):
+    @check
     def to_sql(self, schema, not_null=False, boolean=False):
         v = self.value.to_sql(schema, not_null=True)[0].sql.s
         r = self.length.to_sql(schema, not_null=True)[0].sql.n
@@ -1183,6 +1247,7 @@ class NotRightOp(NotRightOp_):
 
 
 class FindOp(FindOp_):
+    @check
     def to_sql(self, schema, not_null=False, boolean=False):
         test = SqlInstrOp(
             [SqlSubstrOp([self.value, AddOp([self.start, ONE]), NULL]), self.find]
@@ -1214,11 +1279,13 @@ class FindOp(FindOp_):
 
 
 class BetweenOp(BetweenOp_):
+    @check
     def to_sql(self, schema, not_null=False, boolean=False):
         return self.partial_eval().to_sql(schema)
 
 
 class RangeOp(RangeOp_):
+    @check
     def to_sql(self, schema, not_null=False, boolean=False):
         when = self.when.to_sql(schema, boolean=True)[0].sql
         then = self.then.to_sql(schema, not_null=not_null)[0].sql
@@ -1262,6 +1329,7 @@ class RangeOp(RangeOp_):
 
 
 class CaseOp(CaseOp_):
+    @check
     def to_sql(self, schema, not_null=False, boolean=False):
         if len(self.whens) == 1:
             return self.whens[-1].to_sql(schema)
@@ -1283,6 +1351,7 @@ class CaseOp(CaseOp_):
 
 
 class SqlEqOp(SqlEqOp_):
+    @check
     def to_sql(self, schema, not_null=False, boolean=False):
         lhs = self.lhs.partial_eval().to_sql(schema)[0].sql.values()[0]
         rhs = self.rhs.partial_eval().to_sql(schema)[0].sql.values()[0]
@@ -1291,6 +1360,7 @@ class SqlEqOp(SqlEqOp_):
 
 
 class SqlInstrOp(SqlInstrOp_):
+    @check
     def to_sql(self, schema, not_null=False, boolean=False):
         value = self.value.to_sql(schema)[0].sql.s
         find = self.find.to_sql(schema)[0].sql.s
@@ -1306,6 +1376,7 @@ class SqlInstrOp(SqlInstrOp_):
 
 
 class SqlSubstrOp(SqlSubstrOp_):
+    @check
     def to_sql(self, schema, not_null=False, boolean=False):
         value = self.value.to_sql(schema)[0].sql.s
         start = self.start.to_sql(schema)[0].sql.n
