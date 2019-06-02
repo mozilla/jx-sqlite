@@ -71,7 +71,8 @@ class Schema(object):
         :param column:
         :return: NAME OF column
         """
-        return get_property_name(column.names[self.nested_path[0]])
+        relative_name = relative_field(column.name, self.nested_path[0])
+        return get_property_name(relative_name)
 
     @property
     def namespace(self):

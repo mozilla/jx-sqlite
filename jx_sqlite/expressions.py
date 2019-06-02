@@ -86,6 +86,7 @@ from jx_base.expressions import (
     extend,
     simplified,
 )
+from jx_base.language import is_op
 from jx_base.queries import get_property_name
 from jx_sqlite import GUID, quoted_GUID
 from mo_dots import (
@@ -356,7 +357,7 @@ class TupleOp(TupleOp_):
 class LeavesOp(LeavesOp_):
     @check
     def to_sql(self, schema, not_null=False, boolean=False):
-        if not isinstance(self.term, Variable):
+        if not is_op(self.term, Variable):
             Log.error("Can only handle Variable")
         term = self.term.var
         prefix_length = len(split_field(term))
