@@ -8,10 +8,9 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from mo_future import is_text, is_binary
 import sys
 
-from mo_dots import join_field, set_attr as mo_dots_set_attr, split_field, wrap
+from mo_dots import _set_attr as mo_dots_set_attr, split_field, wrap
 
 DEBUG = True
 
@@ -26,10 +25,15 @@ def set(constants):
         return
     constants = wrap(constants)
 
-    for k, new_value in constants.leaves():
+    for full_path, new_value in constants.leaves():
         errors = []
+        k_path = split_field(full_path)
+        if len(k_path) < 2:
+            from mo_logs import Log
+            Log.error("expecting <module>.<constant> format, not {{path|quote}}", path=k_path)
+        name = k_path[-1]
         try:
-            old_value = mo_dots_set_attr(sys.modules, k, new_value)
+            old_value = mo_dots_set_attr(sys.modules, k_path, new_value)
             continue
         except Exception as e:
             errors.append(e)
@@ -40,31 +44,29 @@ def set(constants):
             caller_file = caller_globals["__file__"]
             if not caller_file.endswith(".py"):
                 raise Exception("do not know how to handle non-python caller")
-            caller_module = caller_file[:-3].replace("/", ".")
+            caller_module = caller_file[:-3].replace("\\", "/")
+            module_path = caller_module.split("/")
 
-            path = split_field(k)
-            for i, p in enumerate(path):
-                if i == 0:
-                    continue
-                prefix = join_field(path[:1])
-                name = join_field(path[i:])
-                if caller_module.endswith(prefix):
-                    old_value = mo_dots_set_attr(caller_globals, name, new_value)
-                    if DEBUG:
-                        from mo_logs import Log
+            # ENSURE THERE IS SOME EVIDENCE THE MODULE MATCHES THE PATH
+            if k_path[-2] != module_path[-1]:
+                continue
 
-                        Log.note(
-                            "Changed {{module}}[{{attribute}}] from {{old_value}} to {{new_value}}",
-                            module=prefix,
-                            attribute=name,
-                            old_value=old_value,
-                            new_value=new_value
-                        )
-                    break
+            old_value = mo_dots_set_attr(caller_globals, [name], new_value)
+            if DEBUG:
+                from mo_logs import Log
+
+                Log.note(
+                    "Changed {{module}}[{{attribute}}] from {{old_value}} to {{new_value}}",
+                    module=caller_module,
+                    attribute=name,
+                    old_value=old_value,
+                    new_value=new_value
+                )
+            break
         except Exception as e:
             errors.append(e)
 
         if errors:
             from mo_logs import Log
 
-            Log.error("Can not set constant {{path}}", path=k, cause=errors)
+            Log.error("Can not set constant {{path}}", path=full_path, cause=errors)

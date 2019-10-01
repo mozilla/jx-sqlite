@@ -448,7 +448,8 @@ class PublicBucket(object):
 
             state.get_more = data.find("istruncated").contents[0] == "true"
             contents = data.findAll("contents")
-            state.marker = contents[-1].find("key").contents[0]
+            if len(contents):
+               state.marker = contents[-1].find("key").contents[0]
             return [{k: t(d.find(k).contents[0]) for k, t in content_keys.items()} for d in contents]
 
         while state.get_more:

@@ -15,7 +15,7 @@ from __future__ import absolute_import, division, unicode_literals
 
 from mo_future import allocate_lock as _allocate_lock
 from mo_math.randoms import Random
-from mo_threads.signal import Signal
+from mo_threads.signals import Signal
 
 _Log = None
 _Except = None
@@ -76,7 +76,7 @@ class Lock(object):
             waiter = self.waiting.pop()
             waiter.go()
         self.lock.release()
-        self.debug and _Log.note("released lock {{name|quote}}", name=self.name)
+        self.debug and _Log.note(" released lock {{name|quote}}", name=self.name)
 
     def wait(self, till=None):
         """

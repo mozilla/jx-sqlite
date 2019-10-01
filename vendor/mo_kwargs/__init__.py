@@ -9,6 +9,8 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
+from functools import update_wrapper
+
 from mo_dots import get_logger, is_data, wrap, zip as dict_zip
 from mo_future import get_function_arguments, get_function_defaults, get_function_name, text_type
 from mo_logs import Except
@@ -66,7 +68,7 @@ def override(func):
                 return func(**packed)
             except TypeError as e:
                 raise_error(e, packed)
-        return wo_kwargs
+        return update_wrapper(wo_kwargs, func)
 
     elif func_name in ("__init__", "__new__"):
         def w_constructor(*args, **kwargs):
@@ -83,7 +85,7 @@ def override(func):
             except TypeError as e:
                 packed['self'] = args[0]  # DO NOT SAY IS MISSING
                 raise_error(e, packed)
-        return w_constructor
+        return update_wrapper(w_constructor, func)
 
     elif params[0] == "self":
         def w_bound_method(*args, **kwargs):
@@ -99,7 +101,7 @@ def override(func):
                 return func(args[0], **packed)
             except TypeError as e:
                 raise_error(e, packed)
-        return w_bound_method
+        return update_wrapper(w_bound_method, func)
 
     else:
         def w_kwargs(*args, **kwargs):
@@ -116,7 +118,7 @@ def override(func):
                 return func(**packed)
             except TypeError as e:
                 raise_error(e, packed)
-        return w_kwargs
+        return update_wrapper(w_kwargs, func)
 
 
 def params_pack(params, *args):

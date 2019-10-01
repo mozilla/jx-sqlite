@@ -44,10 +44,8 @@ class Snowflake(jx_base.Snowflake):
             if required_change.add:
                 self._add_column(required_change.add)
             elif required_change.nest:
-                column, cname = required_change.nest
-                self._nest_column(column, cname)
-                # REMOVE KNOWLEDGE OF PARENT COLUMNS (DONE AUTOMATICALLY)
-                # TODO: DELETE PARENT COLUMNS? : Done
+                column, nested_path = required_change.nest
+                self._nest_column(column, nested_path)
 
     def _add_column(self, column):
         cname = column.name
@@ -71,8 +69,8 @@ class Snowflake(jx_base.Snowflake):
 
         # FIND THE INNER COLUMNS WE WILL BE MOVING
         moving_columns = []
-        for c in self.namespace.columns.find(self.fact_name):
-            if destination_table != column.es_index and column.es_column==c.es_column:
+        for c in self.columns:
+            if destination_table != column.es_index and column.es_column == c.es_column:
                 moving_columns.append(c)
                 c.nested_path = new_path
 

@@ -13,17 +13,18 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
-from mo_future import is_text, is_binary
 from collections import namedtuple
 from time import sleep, time
 from weakref import ref
 
 from mo_future import allocate_lock as _allocate_lock, text_type
 from mo_logs import Log
-from mo_threads.signal import DONE, Signal
+
+from mo_threads.signals import DONE, Signal
 
 DEBUG = False
 INTERVAL = 0.1
+enabled = Signal()
 
 
 class Till(Signal):
@@ -34,11 +35,11 @@ class Till(Signal):
 
     locker = _allocate_lock()
     next_ping = time()
-    enabled = False
     new_timers = []
 
     def __new__(cls, till=None, seconds=None):
-        if not Till.enabled:
+        if not enabled:
+            Log.note("Till daemon not enabled")
             return DONE
         elif till != None:
             return object.__new__(cls)
@@ -76,7 +77,8 @@ class Till(Signal):
 
 
 def daemon(please_stop):
-    Till.enabled = True
+    global enabled
+    enabled.go()
     sorted_timers = []
 
     try:
@@ -137,7 +139,7 @@ def daemon(please_stop):
         Log.warning("unexpected timer shutdown", cause=e)
     finally:
         DEBUG and Log.alert("TIMER SHUTDOWN")
-        Till.enabled = False
+        enabled = Signal()
         # TRIGGER ALL REMAINING TIMERS RIGHT NOW
         with Till.locker:
             new_work, Till.new_timers = Till.new_timers, []

@@ -8,6 +8,8 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
+from functools import update_wrapper
+
 from mo_future import is_text, is_binary
 import flask
 from flask import Response
@@ -61,8 +63,7 @@ def cors_wrapper(func):
         return response
 
     output.provide_automatic_options = False
-    output.__name__ = func.__name__
-    return output
+    return update_wrapper(output, func)
 
 
 def dockerflow(flask_app, backend_check):

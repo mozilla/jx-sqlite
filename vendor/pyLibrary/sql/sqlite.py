@@ -19,7 +19,7 @@ import sys
 from mo_dots import Data, coalesce, unwraplist
 from mo_files import File
 from mo_future import allocate_lock as _allocate_lock, text_type
-from mo_json import BOOLEAN, INTEGER, NESTED, NUMBER, OBJECT, STRING, IS_NULL
+from mo_json import BOOLEAN, INTEGER, NESTED, NUMBER, OBJECT, STRING
 from mo_kwargs import override
 from mo_logs import Log
 from mo_logs.exceptions import ERROR, Except, extract_stack, format_trace
@@ -569,20 +569,11 @@ def _upgrade():
 
 
 json_type_to_sqlite_type = {
-    IS_NULL: "0",
     BOOLEAN: "TINYINT",
     INTEGER: "INTEGER",
     NUMBER: "REAL",
     STRING: "TEXT",
     OBJECT: "TEXT",
     NESTED: "TEXT"
-}
-
-sqlite_type_to_json_type = {
-    "0": IS_NULL,
-    "TINTINT": INTEGER,
-    "INTEGER": INTEGER,
-    "REAL": NUMBER,
-    "TEXT": STRING
 }
 

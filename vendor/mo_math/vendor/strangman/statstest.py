@@ -104,6 +104,7 @@ print('paired:')
 # stats.paired(l,m)
 # stats.paired(a,b)
 
+print(print)
 print('pearsonr:')
 print(stats.pearsonr(l,m))
 print(stats.pearsonr(a,b))

@@ -359,7 +359,7 @@ class MySQL(object):
         if not self.backlog: return
 
         backlog, self.backlog = self.backlog, []
-        for i, g in jx.groupby(backlog, size=MAX_BATCH_SIZE):
+        for i, g in jx.chunk(backlog, size=MAX_BATCH_SIZE):
             sql = self.preamble + ";\n".join(g)
             try:
                 self.debug and Log.note("Execute block of SQL:\n{{sql|indent}}", sql=sql)

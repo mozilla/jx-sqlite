@@ -11,7 +11,7 @@ import datetime
 import string
 import time
 
-from mo_future import StringIO, collections, integer_types, is_binary, is_text
+from mo_future import StringIO, integer_types, is_binary, is_text, Callable
 from . import relativedelta, tz
 
 __license__ = "Simplified BSD"
@@ -306,8 +306,8 @@ class parser(object):
         if res.weekday is not None and not res.day:
             ret = ret+relativedelta.relativedelta(weekday=res.weekday)
         if not ignoretz:
-            if isinstance(tzinfos, collections.Callable) or tzinfos and res.tzname in tzinfos:
-                if isinstance(tzinfos, collections.Callable):
+            if isinstance(tzinfos, Callable) or tzinfos and res.tzname in tzinfos:
+                if isinstance(tzinfos, Callable):
                     tzdata = tzinfos(res.tzname, res.tzoffset)
                 else:
                     tzdata = tzinfos.get(res.tzname)

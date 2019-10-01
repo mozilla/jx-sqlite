@@ -29,10 +29,10 @@ boolean_type = type(True)
 if PY3:
     import itertools
     import collections
-    from functools import cmp_to_key
+    from collections import Callable
+    from functools import cmp_to_key, reduce, update_wrapper
     from configparser import ConfigParser
     from itertools import zip_longest
-    from functools import reduce
     import builtins as __builtin__
 
     izip = zip
@@ -120,6 +120,8 @@ if PY3:
 
 else:
     import collections
+    from collections import Callable
+
     import __builtin__
     from types import GeneratorType
     from ConfigParser import ConfigParser
@@ -261,5 +263,20 @@ else:
             for key in iterable:
                 d[key] = value
             return d
+
+
+class decorate(object):
+
+    def __init__(self, func):
+        self.func = func
+
+    def __call__(self, caller):
+        """
+        IT IS EXPECTED THE caller WILL CALL func
+        :param caller:
+        :return:
+        """
+        return update_wrapper(caller, self.func)
+
 
 _keep_imports = (ConfigParser, zip_longest, reduce, transpose, izip, HTMLParser, urlparse, StringIO, BytesIO, allocate_lock, get_ident, start_new_thread, interrupt_main)

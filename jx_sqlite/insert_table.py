@@ -279,9 +279,10 @@ class InsertTable(BaseTable):
                     )
                     abs_schema.columns.append(c)
                     if value_type == "nested":
-                        abs_schema.namespace._snowflakes[self.name] += [c.es_column]
-
-                    required_changes.append({"add": c})
+                        abs_schema.query_paths.append(c.es_column)
+                        required_changes.append({'nest': (c, nested_path)})
+                    else:
+                        required_changes.append({"add": c})
 
                     # INSIDE IF BLOCK BECAUSE WE DO NOT WANT IT TO ADD WHAT WE columns.get() ALREADY
                     insertion.active_columns.add(c)

@@ -57,7 +57,7 @@ def argparse(defs):
     return wrap(output)
 
 
-def read_settings(filename=None, defs=None):
+def read_settings(defs=None, filename=None, default_filename=None):
     """
     :param filename: Force load a file
     :param defs: arguments you want to accept
@@ -76,12 +76,18 @@ def read_settings(filename=None, defs=None):
     })
     args = argparse(defs)
 
-    args.filename = coalesce(filename, args.filename, "./config.json")
+    args.filename = coalesce(
+        filename,
+        args.filename if args.filename.endswith(".json") else None,
+        default_filename,
+        "./config.json"
+    )
     settings_file = File(args.filename)
-    if not settings_file.exists:
-        Log.error("Can not read configuration file {{filename}}", {
-            "filename": settings_file.abspath
-        })
+    if settings_file.exists:
+        Log.note("Using {{filename}} for configuration", filename=settings_file.abspath)
+    else:
+        Log.error("Can not read configuration file {{filename}}", filename=settings_file.abspath)
+
     settings = mo_json_config.get_file(settings_file)
     settings.args = args
     return settings

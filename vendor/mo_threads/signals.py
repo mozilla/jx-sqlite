@@ -13,7 +13,6 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
-from mo_future import is_text, is_binary
 import random
 from weakref import ref
 
@@ -23,7 +22,6 @@ from mo_logs import Log
 DEBUG = False
 DEBUG_SIGNAL = False
 SEED = random.Random()
-
 
 
 class Signal(object):
@@ -155,6 +153,8 @@ class Signal(object):
             return self
         if not isinstance(other, Signal):
             Log.error("Expecting OR with other signal")
+        if self or other:
+            return DONE
 
         output = Signal(self.name + " | " + other.name)
         OrSignal(output, (self, other))
@@ -164,7 +164,7 @@ class Signal(object):
         return self.__or__(other)
 
     def __and__(self, other):
-        if other == None:
+        if other == None or other:
             return self
         if not isinstance(other, Signal):
             Log.error("Expecting OR with other signal")
@@ -193,6 +193,8 @@ class AndSignals(object):
         self.signal = signal
         self.locker = _allocate_lock()
         self.remaining = count
+        if not count:
+            self.signal.go()
 
     def done(self):
         with self.locker:
@@ -219,6 +221,7 @@ class OrSignal(object):
     def cleanup(self, r=None):
         for d in self.dependencies:
             d.remove_go(self)
+        self.dependencies = []
 
     def __call__(self, *args, **kwargs):
         s = self.signal()

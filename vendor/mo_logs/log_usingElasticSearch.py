@@ -13,8 +13,8 @@ from datetime import date, datetime
 import sys
 
 from jx_python import jx
-from mo_dots import coalesce, is_data, is_sequence, listwrap, wrap
-from mo_future import is_binary, is_text, number_types, text_type
+from mo_dots import coalesce, listwrap, set_default, wrap
+from mo_future import number_types, text_type
 from mo_json import datetime2unix, json2value, value2json
 from mo_kwargs import override
 from mo_logs import Log, strings
@@ -25,7 +25,7 @@ from mo_threads import Queue, THREAD_STOP, Thread, Till
 from mo_times import Duration, MINUTE
 from mo_times.dates import datetime2unix
 from pyLibrary.convert import bytes2base64
-from pyLibrary.env.elasticsearch import Cluster
+from pyLibrary.env.rollover_index import RolloverIndex
 
 MAX_BAD_COUNT = 5
 LOG_STRING_LENGTH = 2000
@@ -53,17 +53,20 @@ class StructuredLogger_usingElasticSearch(StructuredLogger):
         kwargs.retry.sleep = Duration(coalesce(kwargs.retry.sleep, MINUTE)).seconds
         kwargs.host = Random.sample(listwrap(host), 1)[0]
 
-        schema = json2value(value2json(SCHEMA), leaves=True)
-        schema.mappings[type].properties["~N~"].type = "nested"
-        self.es = Cluster(kwargs).get_or_create_index(
-            schema=schema,
+        rollover_interval = coalesce(kwargs.rollover.interval, kwargs.rollover.max, "year")
+        rollover_max = coalesce(kwargs.rollover.max, kwargs.rollover.interval, "year")
+
+        self.es = RolloverIndex(
+            rollover_field={"get": [{"first": "."}, {"literal": "timestamp"}]},
+            rollover_interval=rollover_interval,
+            rollover_max=rollover_max,
+            schema=set_default(kwargs.schema, json2value(value2json(SCHEMA), leaves=True)),
             limit_replicas=True,
             typed=True,
             read_only=False,
             kwargs=kwargs,
         )
         self.batch_size = batch_size
-        self.es.add_alias(coalesce(kwargs.alias, kwargs.index))
         self.queue = Queue("debug logs to es", max=queue_size, silent=True)
 
         self.worker = Thread.run("add debug logs to es", self._insert_loop)
@@ -86,7 +89,7 @@ class StructuredLogger_usingElasticSearch(StructuredLogger):
                     Till(seconds=PAUSE_AFTER_GOOD_INSERT).wait()
                     continue
 
-                for g, mm in jx.groupby(messages, size=self.batch_size):
+                for g, mm in jx.chunk(messages, size=self.batch_size):
                     scrubbed = []
                     for i, message in enumerate(mm):
                         if message is THREAD_STOP:
@@ -116,8 +119,6 @@ class StructuredLogger_usingElasticSearch(StructuredLogger):
                         index=self.es.settings.index,
                     )
                 Till(seconds=PAUSE_AFTER_BAD_INSERT).wait()
-
-        self.es.flush()
 
         # CONTINUE TO DRAIN THIS QUEUE
         while not please_stop:

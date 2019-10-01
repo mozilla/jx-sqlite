@@ -17,7 +17,7 @@ from jx_python import jx
 from jx_sqlite import untyped_column
 from jx_sqlite.expressions import sql_type_to_json_type
 from mo_dots import Data, Null, coalesce, is_data, is_list, literal_field, startswith_field, tail_field, unwraplist, wrap
-from mo_json import STRUCT
+from mo_json import STRUCT, IS_NULL
 from mo_json.typed_encoder import unnest_path, untype_path, untyped
 from mo_logs import Log
 from mo_threads import Lock, Queue
@@ -91,7 +91,7 @@ class ColumnList(Table, jx_base.Container):
                 cname, ctype = untyped_column(name)
                 self.add(Column(
                     name=cname,
-                    jx_type=coalesce(sql_type_to_json_type.get(ctype), sql_type_to_json_type[ctype]),
+                    jx_type=coalesce(sql_type_to_json_type.get(ctype), IS_NULL),
                     nested_path=full_nested_path,
                     es_type=dtype,
                     es_column=name,

@@ -8,21 +8,23 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from mo_future import is_text, is_binary
 import os
+import platform
 import subprocess
 
-from mo_dots import NullType, set_default
+from mo_dots import NullType, set_default, wrap, Null
 from mo_future import none_type
 from mo_logs import Log, strings
 from mo_logs.exceptions import Except
+from mo_times import Timer
+
 from mo_threads.lock import Lock
 from mo_threads.queues import Queue
-from mo_threads.signal import Signal
+from mo_threads.signals import Signal
 from mo_threads.threads import THREAD_STOP, Thread
 from mo_threads.till import Till
 
-DEBUG = False
+DEBUG = True
 
 
 class Process(object):
@@ -48,7 +50,7 @@ class Process(object):
 
             self.please_stop = Signal()
             self.please_stop.then(self._kill)
-            self.thread_locker = Lock()
+            self.child_lock = Lock("children of "+self.name)
             self.children = [
                 Thread.run(self.name + " stdin", self._writer, service.stdin, self.stdin, please_stop=self.service_stopped, parent_thread=self),
                 Thread.run(self.name + " stdout", self._reader, "stdout", service.stdout, self.stdout, please_stop=self.service_stopped, parent_thread=self),
@@ -72,7 +74,7 @@ class Process(object):
 
     def join(self, raise_on_error=False):
         self.service_stopped.wait()
-        with self.thread_locker:
+        with self.child_lock:
             child_threads, self.children = self.children, []
         for c in child_threads:
             c.join()
@@ -86,7 +88,7 @@ class Process(object):
         return self
 
     def remove_child(self, child):
-        with self.thread_locker:
+        with self.child_lock:
             try:
                 self.children.remove(child)
             except Exception:
@@ -101,15 +103,16 @@ class Process(object):
         return self.service.returncode
 
     def _monitor(self, please_stop):
-        self.service.wait()
-        self.debug and Log.note("{{process}} STOP: returncode={{returncode}}", process=self.name, returncode=self.service.returncode)
-        self.service_stopped.go()
-        please_stop.go()
+        with Timer(self.name):
+            self.service.wait()
+            self.debug and Log.note("{{process}} STOP: returncode={{returncode}}", process=self.name, returncode=self.service.returncode)
+            self.service_stopped.go()
+            please_stop.go()
 
     def _reader(self, name, pipe, receive, please_stop):
         try:
             while not please_stop and self.service.returncode is None:
-                line = pipe.readline().rstrip()
+                line = to_text(pipe.readline().rstrip())
                 if line:
                     receive.add(line)
                     self.debug and Log.note("{{process}} ({{name}}): {{line}}", name=name, process=self.name, line=line)
@@ -118,7 +121,7 @@ class Process(object):
                 # GRAB A FEW MORE LINES
                 for _ in range(100):
                     try:
-                        line = pipe.readline().rstrip()
+                        line = to_text(pipe.readline().rstrip())
                         if line:
                             receive.add(line)
                             self.debug and Log.note("{{process}} ({{name}}): {{line}}", name=name, process=self.name, line=line)
@@ -132,7 +135,7 @@ class Process(object):
             max = 100
             while max:
                 try:
-                    line = pipe.readline().rstrip()
+                    line = to_text(pipe.readline().rstrip())
                     if line:
                         max = 100
                         receive.add(line)
@@ -143,6 +146,7 @@ class Process(object):
                     break
         finally:
             pipe.close()
+            receive.add(THREAD_STOP)
         self.debug and Log.note("{{process}} ({{name}} is closed)", name=name, process=self.name)
 
         receive.add(THREAD_STOP)
@@ -150,14 +154,15 @@ class Process(object):
     def _writer(self, pipe, send, please_stop):
         while not please_stop:
             line = send.pop(till=please_stop)
-            if line == THREAD_STOP:
+            if line is THREAD_STOP:
                 please_stop.go()
                 break
+            elif line is None:
+                continue
 
-            if line:
-                self.debug and Log.note("{{process}} (stdin): {{line}}", process=self.name, line=line.rstrip())
-                pipe.write(line.encode('utf8') + b"\n")
-                pipe.flush()
+            self.debug and Log.note("{{process}} (stdin): {{line}}", process=self.name, line=line.rstrip())
+            pipe.write(line.encode('utf8') + b"\n")
+            pipe.flush()
 
     def _kill(self):
         try:
@@ -173,3 +178,147 @@ class Process(object):
             Log.warning("Failure to kill process {{process|quote}}", process=self.name, cause=ee)
 
 
+WINDOWS_ESCAPE_DCT = {
+    u"%": u"%%",
+    u"&": u"^&",
+    u"\\": u"^\\",
+    u"<": u"^<",
+    u">": u"^>",
+    u"^": u"^^",
+    u"|": u"^|",
+    u"\t": u"^\t",
+    u"\n": u"^\n",
+    u"\r": u"^\r",
+    u" ": u"^ ",
+}
+
+PROMPT = "READY_FOR_MORE"
+
+if "windows" in platform.system().lower():
+    # def cmd_escape(v):
+    #     return "".join(WINDOWS_ESCAPE_DCT.get(c, c) for c in v)
+    cmd_escape = strings.quote
+
+    def set_prompt():
+        return "prompt "+PROMPT+"$g"
+
+    def cmd():
+        return "%windir%\system32\cmd.exe"
+
+    def to_text(value):
+        return value.decode("latin1")
+
+else:
+    cmd_escape = strings.quote
+
+    def set_prompt():
+        return "set prompt="+cmd_escape(PROMPT+">")
+
+    def cmd():
+        return "bash"
+
+    def to_text(value):
+        return value.decode("latin1")
+
+
+class Command(object):
+
+    available_locker = Lock("cmd lock")
+    available_process = {}
+
+    def __init__(self, name, params, cwd=None, env=None, debug=False, shell=False, bufsize=-1):
+        shell = True
+        self.name=name
+        self.key = (cwd, wrap(env), debug, shell)
+        self.stdout = Queue("stdout for "+name)
+        self.stderr = Queue("stderr for "+name)
+
+        with Command.available_locker:
+            avail = Command.available_process.setdefault(self.key, [])
+            if not avail:
+                self.process = Process("command shell", [cmd()], cwd, env, debug, shell, bufsize)
+                self.process.stdin.add(set_prompt())
+                self.process.stdin.add("echo %errorlevel%")
+                _wait_for_start(self.process.stdout, Null)
+            else:
+                self.process = avail.pop()
+
+        self.process.stdin.add(" ".join(cmd_escape(p) for p in params))
+        self.process.stdin.add("echo %errorlevel%")
+        self.stdout_thread = Thread.run("", self._stream_relay, self.process.stdout, self.stdout)
+        self.stderr_thread = Thread.run("", self._stream_relay, self.process.stderr, self.stderr)
+        self.returncode = None
+
+    def join(self, raise_on_error=False, till=None):
+        try:
+            try:
+                # WAIT FOR COMMAND LINE RESPONSE ON stdout
+                self.stdout_thread.join()
+            except Exception as e:
+                Log.error("unexpected problem processing stdout", cause=e)
+
+            try:
+                self.stderr_thread.please_stop.go()
+                self.stderr_thread.join()
+            except Exception as e:
+                Log.error("unexpected problem processing stderr", cause=e)
+
+            if raise_on_error and self.returncode != 0:
+                Log.error(
+                    "{{process}} FAIL: returncode={{code}}\n{{stderr}}",
+                    process=self.name,
+                    code=self.returncode,
+                    stderr=list(self.stderr)
+                )
+            return self
+        finally:
+            with Command.available_locker:
+                Command.available_process[self.key].append(self.process)
+
+
+    def _stream_relay(self, source, destination, please_stop=None):
+        """
+        :param source:
+        :param destination:
+        :param error: Throw error if line shows up
+        :param please_stop:
+        :return:
+        """
+        prompt_count = 0
+        prompt = PROMPT + ">"
+        line_count = 0
+
+        while not please_stop:
+            value = source.pop(till=please_stop)
+            if value is None:
+                destination.add(THREAD_STOP)
+                return
+            elif value is THREAD_STOP:
+                destination.add(THREAD_STOP)
+                return
+            elif line_count==0 and "is not recognized as an internal or external command" in value:
+                Log.error("Problem with command: {{desc}}", desc=value)
+            elif value.startswith(prompt):
+                if prompt_count:
+                    # GET THE ERROR LEVEL
+                    self.returncode = int(source.pop(till=please_stop))
+                    destination.add(THREAD_STOP)
+                    return
+                else:
+                    prompt_count += 1
+            else:
+                line_count += 1
+                destination.add(value)
+
+
+def _wait_for_start(source, destination):
+    prompt = PROMPT + ">"
+
+    while True:
+        value = source.pop()
+        if value.startswith(prompt):
+            # GET THE ERROR LEVEL
+            returncode = int(source.pop())
+            destination.add(THREAD_STOP)
+            return
+        destination.add(value)

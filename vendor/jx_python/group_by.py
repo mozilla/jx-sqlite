@@ -11,106 +11,83 @@
 from __future__ import absolute_import, division, unicode_literals
 
 import math
-import sys
 
 from jx_base.container import Container
 from jx_base.expressions import jx_expression
 from jx_base.language import is_expression
-from jx_python.expressions import jx_expression_to_function
-from mo_collections.multiset import Multiset
 from mo_dots import Data, FlatList, Null, listwrap
+from mo_dots.lists import sequence_types
 from mo_future import binary_type, text_type
 from mo_logs import Log
 from mo_logs.exceptions import Except
 
+from jx_python.expressions import jx_expression_to_function
 
-def groupby(data, keys=None, size=None, min_size=None, max_size=None, contiguous=False):
+
+def groupby(data, keys=None, contiguous=False):
     """
-    :param data:
-    :param keys:
-    :param size:
-    :param min_size:
-    :param max_size:
+    :param data: list of data to group
+    :param keys: (list of) property path name
     :param contiguous: MAINTAIN THE ORDER OF THE DATA, STARTING THE NEW GROUP WHEN THE SELECTOR CHANGES
     :return: return list of (keys, values) PAIRS, WHERE
                  keys IS IN LEAF FORM (FOR USE WITH {"eq": terms} OPERATOR
                  values IS GENERATOR OF ALL VALUE THAT MATCH keys
-        contiguous -
     """
     if isinstance(data, Container):
         return data.groupby(keys)
 
-    if size != None or min_size != None or max_size != None:
-        if size != None:
-            max_size = size
-        return groupby_min_max_size(data, min_size=min_size, max_size=max_size)
-
     try:
+        if not data:
+            return Null
+
         keys = listwrap(keys)
         if not contiguous:
             from jx_python import jx
             data = jx.sort(data, keys)
 
-        if not data:
-            return Null
+        if len(keys) == 0 or len(keys) == 1 and keys[0] == '.':
+            return _groupby_value(data)
 
         if any(is_expression(k) for k in keys):
-            Log.error("can not handle expressions")
-        else:
-            accessor = jx_expression_to_function(jx_expression({"tuple": keys}))  # CAN RETURN Null, WHICH DOES NOT PLAY WELL WITH __cmp__
+            raise Log.error("can not handle expressions")
 
-        def _output():
-            start = 0
-            prev = accessor(data[0])
-            for i, d in enumerate(data):
-                curr = accessor(d)
-                if curr != prev:
-                    group = {}
-                    for k, gg in zip(keys, prev):
-                        group[k] = gg
-                    yield Data(group), data[start:i:]
-                    start = i
-                    prev = curr
-            group = {}
-            for k, gg in zip(keys, prev):
-                group[k] = gg
-            yield Data(group), data[start::]
-
-        return _output()
+        accessor = jx_expression_to_function(jx_expression({"tuple": keys}))  # CAN RETURN Null, WHICH DOES NOT PLAY WELL WITH __cmp__
+        return _groupby_keys(data, keys, accessor)
     except Exception as e:
         Log.error("Problem grouping", cause=e)
 
 
-def groupby_size(data, size):
-    if hasattr(data, "next"):
-        iterator = data
-    elif hasattr(data, "__iter__"):
-        iterator = data.__iter__()
-    else:
-        Log.error("do not know how to handle this type")
-
-    done = FlatList()
-    def more():
-        output = FlatList()
-        for i in range(size):
-            try:
-                output.append(iterator.next())
-            except StopIteration:
-                done.append(True)
-                break
-        return output
-
-    # THIS IS LAZY
-    i = 0
-    while True:
-        output = more()
-        yield (i, output)
-        if len(done) > 0:
-            break
-        i += 1
+def _groupby_value(data):
+    start = 0
+    prev = data[0]
+    for i, d in enumerate(data):
+        curr = d
+        if curr != prev:
+            yield prev, data[start:i:]
+            start = i
+            prev = curr
+    yield prev, data[start::]
 
 
-def groupby_Multiset(data, min_size, max_size):
+def _groupby_keys(data, key_paths, accessors):
+    start = 0
+    prev = accessors(data[0])
+    for i, d in enumerate(data):
+        curr = accessors(d)
+        if curr != prev:
+            group = {}
+            for k, gg in zip(key_paths, prev):
+                group[k] = gg
+            yield Data(group), data[start:i:]
+            start = i
+            prev = curr
+    group = {}
+    for k, gg in zip(key_paths, prev):
+        group[k] = gg
+    yield Data(group), data[start::]
+
+
+def groupby_multiset(data, min_size, max_size):
     # GROUP multiset BASED ON POPULATION OF EACH KEY, TRYING TO STAY IN min/max LIMITS
     if min_size == None:
         min_size = 0
@@ -139,15 +116,16 @@ def groupby_Multiset(data, min_size, max_size):
         yield (i, g)
 
 
-def groupby_min_max_size(data, min_size=0, max_size=None, ):
-    if max_size == None:
-        max_size = sys.maxint
+def chunk(data, size=0):
+    if not size:
+        return [data]
 
-    if data.__class__ in (bytearray, text_type, binary_type, list, FlatList):
+    if data.__class__ in sequence_types + (bytearray, text_type, binary_type):
+        # USE SLICING
         def _iter():
-            num = int(math.ceil(len(data)/max_size))
+            num = int(math.ceil(len(data)/size))
             for i in range(num):
-                output = (i, data[i * max_size:i * max_size + max_size:])
+                output = (i, data[i * size:i * size + size:])
                 yield output
 
         return _iter()
@@ -155,26 +133,24 @@ def groupby_min_max_size(data, min_size=0, max_size=None, ):
     elif hasattr(data, "__iter__"):
         def _iter():
             g = 0
-            out = FlatList()
+            out = []
             try:
                 for i, d in enumerate(data):
                     out.append(d)
-                    if (i + 1) % max_size == 0:
-                        yield g, out
+                    if (i + 1) % size == 0:
+                        yield g, FlatList(vals=out)
                         g += 1
-                        out = FlatList()
+                        out = []
                 if out:
-                    yield g, out
+                    yield g, FlatList(vals=out)
             except Exception as e:
                 e = Except.wrap(e)
                 if out:
                     # AT LEAST TRY TO RETURN WHAT HAS BEEN PROCESSED SO FAR
                     yield g, out
-                Log.error("Problem inside jx.groupby", e)
+                Log.error("Problem inside jx.chunk", e)
 
         return _iter()
-    elif not isinstance(data, Multiset):
-        return groupby_size(data, max_size)
     else:
-        return groupby_Multiset(data, min_size, max_size)
+        Log.error("not supported")
 

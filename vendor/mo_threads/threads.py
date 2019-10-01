@@ -20,11 +20,12 @@ from datetime import datetime, timedelta
 from time import sleep
 
 from mo_dots import Data, coalesce, unwraplist
-from mo_future import allocate_lock, get_function_name, get_ident, start_new_thread, text_type
+from mo_future import allocate_lock, get_function_name, get_ident, start_new_thread, text_type, decorate, PY3
 from mo_logs import Except, Log
+
 from mo_threads.lock import Lock
 from mo_threads.profiles import CProfiler, write_profiles
-from mo_threads.signal import AndSignals, Signal
+from mo_threads.signals import AndSignals, Signal
 from mo_threads.till import Till
 
 DEBUG = False
@@ -37,6 +38,13 @@ THREAD_STOP = "stop"
 THREAD_TIMEOUT = "TIMEOUT"
 
 datetime.strptime('2012-01-01', '%Y-%m-%d')  # http://bugs.python.org/issue7980
+
+if PY3:
+    STDOUT = sys.stdout.buffer
+    STDIN = sys.stdin.buffer
+else:
+    STDOUT = sys.stdout
+    STDIN = sys.stdin
 
 
 class AllThread(object):
@@ -102,13 +110,13 @@ class MainThread(BaseThread):
         BaseThread.__init__(self, get_ident())
         self.name = "Main Thread"
         self.please_stop = Signal()
+        self.stopped = Signal()
         self.stop_logging = Log.stop
         self.timers = None
 
     def stop(self):
         """
-        BLOCKS UNTIL ALL THREADS HAVE STOPPED
-        THEN RUNS sys.exit(0)
+        BLOCKS UNTIL ALL KNOWN THREADS, EXCEPT MainThread, HAVE STOPPED
         """
         global DEBUG
 
@@ -147,7 +155,7 @@ class MainThread(BaseThread):
 
         write_profiles(self.cprofiler)
         DEBUG and Log.note("Thread {{name|quote}} now stopped", name=self.name)
-        sys.exit()
+        self.stopped.go()
 
     def wait_for_shutdown_signal(
         self,
@@ -177,7 +185,7 @@ class MainThread(BaseThread):
             please_stop = self.please_stop
 
         if not wait_forever:
-            # TRIGGER SIGNAL WHEN ALL CHILDREN THEADS ARE DONE
+            # TRIGGER SIGNAL WHEN ALL CHILDREN THREADS ARE DONE
             with self_thread.child_lock:
                 pending = copy(self_thread.children)
             children_done = AndSignals(please_stop, len(pending))
@@ -216,8 +224,10 @@ class Thread(BaseThread):
 
         # ENSURE THERE IS A SHARED please_stop SIGNAL
         self.kwargs = copy(kwargs)
-        self.kwargs[PLEASE_STOP] = self.kwargs.get(PLEASE_STOP, Signal("please_stop for " + self.name))
-        self.please_stop = self.kwargs[PLEASE_STOP]
+        please_stop = self.kwargs.get(PLEASE_STOP)
+        if please_stop is None:
+            please_stop = self.kwargs[PLEASE_STOP] = Signal("please_stop for " + self.name)
+        self.please_stop = please_stop
 
         self.thread = None
         self.stopped = Signal("stopped signal for " + self.name)
@@ -287,19 +297,19 @@ class Thread(BaseThread):
                         children = copy(self.children)
                     for c in children:
                         try:
-                            DEBUG and sys.stdout.write(str("Stopping thread " + c.name + "\n"))
+                            DEBUG and Log.note("Stopping thread " + c.name + "\n")
                             c.stop()
                         except Exception as e:
                             Log.warning("Problem stopping thread {{thread}}", thread=c.name, cause=e)
 
                     for c in children:
                         try:
-                            DEBUG and sys.stdout.write(str("Joining on thread " + c.name + "\n"))
+                            DEBUG and Log.note("Joining on thread " + c.name + "\n")
                             c.join()
                         except Exception as e:
                             Log.warning("Problem joining thread {{thread}}", thread=c.name, cause=e)
                         finally:
-                            DEBUG and sys.stdout.write(str("Joined on thread " + c.name + "\n"))
+                            DEBUG and Log.note("Joined on thread " + c.name + "\n")
 
                     del self.target, self.args, self.kwargs
                     DEBUG and Log.note("thread {{name|quote}} stopping", name=self.name)
@@ -367,6 +377,11 @@ class Thread(BaseThread):
 
 
 class RegisterThread(object):
+    """
+    A context manager to handle threads spawned by other libs
+    This will ensure the thread has unregistered, or
+    has completed before MAIN_THREAD is shutdown
+    """
 
     def __init__(self, thread=None):
         if thread is None:
@@ -384,6 +399,18 @@ class RegisterThread(object):
         self.thread.cprofiler.__exit__(exc_type, exc_val, exc_tb)
         with ALL_LOCK:
             del ALL[self.thread.id]
+
+
+def register_thread(func):
+    """
+    Call `with RegisterThread():`
+    """
+
+    @decorate(func)
+    def output(*args, **kwargs):
+        with RegisterThread():
+            return func(*args, **kwargs)
+    return output
 
 
 def stop_main_thread(*args):
@@ -407,7 +434,6 @@ _describe_exit_codes = {
 _signal.signal(_signal.SIGTERM, stop_main_thread)
 _signal.signal(_signal.SIGINT, stop_main_thread)
 
-
 def _wait_for_exit(please_stop):
     """
     /dev/null PIPED TO sys.stdin SPEWS INFINITE LINES, DO NOT POLL AS OFTEN
@@ -415,32 +441,48 @@ def _wait_for_exit(please_stop):
     try:
         import msvcrt
         _wait_for_exit_on_windows(please_stop)
+        return
     except:
         pass
 
     cr_count = 0  # COUNT NUMBER OF BLANK LINES
 
-    while not please_stop:
-        # DEBUG and Log.note("inside wait-for-shutdown loop")
-        if cr_count > 30:
-            (Till(seconds=3) | please_stop).wait()
-        try:
-            line = sys.stdin.readline()
-        except Exception as e:
-            Except.wrap(e)
-            if "Bad file descriptor" in e:
-                _wait_for_interrupt(please_stop)
-                break
+    try:
+        # NO LONGER NEEDED, THE HAPPY PATH WILL EXIT
+        _signal.signal(_signal.SIGTERM, _signal.default_int_handler)
+        _signal.signal(_signal.SIGINT, _signal.default_int_handler)
 
-        # DEBUG and Log.note("read line {{line|quote}}, count={{count}}", line=line, count=cr_count)
-        if line == "":
-            cr_count += 1
-        else:
-            cr_count = -1000000  # NOT /dev/null
+        while not please_stop:
 
-        if line.strip() == "exit":
-            Log.alert("'exit' Detected!  Stopping...")
-            return
+
+            # DEBUG and Log.note("inside wait-for-shutdown loop")
+            if cr_count > 30:
+                (Till(seconds=3) | please_stop).wait()
+            try:
+                # line = ""
+                line = STDIN.readline()
+            except Exception as e:
+                Except.wrap(e)
+                if "Bad file descriptor" in e:
+                    Log.note("can not read from stdin")
+                    _wait_for_interrupt(please_stop)
+                    break
+
+            # DEBUG and Log.note("read line {{line|quote}}, count={{count}}", line=line, count=cr_count)
+            if not line:
+                cr_count += 1
+            else:
+                cr_count = -1000000  # NOT /dev/null
+
+            if line.strip() == b"exit":
+                Log.alert("'exit' Detected!  Stopping...")
+                return
+    except Exception as e:
+        Log.warning("programming error", cause=e)
+    finally:
+        if please_stop:
+            Log.note("please_stop has been requested")
+        Log.note("done waiting for exit")
 
 
 def _wait_for_exit_on_windows(please_stop):

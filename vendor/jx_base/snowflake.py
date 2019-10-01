@@ -12,10 +12,6 @@ from __future__ import absolute_import, division, unicode_literals
 
 class Snowflake(object):
     """
-    HOLD METADATA FOR FACTS; WHICH IS THE SET OF SCHEMAS
-    FOR ALL TABLES FOUND IN THE HIERARCHY OF FACTS
-
-    IF POINTING TO A DATABASE, THEN A SNOWFLAKE
     REPRESENT ONE ALIAS, AND ITS NESTED ARRAYS
     """
 

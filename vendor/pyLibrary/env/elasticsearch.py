@@ -843,6 +843,10 @@ class Cluster(object):
             response = http.delete(url)
             if response.status_code != 200:
                 Log.error("Expecting a 200, got {{code}}", code=response.status_code)
+            else:
+                # making the metadata stale after deletion of the index
+                self.metatdata_last_updated = self.metatdata_last_updated - STALE_METADATA
+
             details = json2value(utf82unicode(response.content))
             self.debug and Log.note("delete response {{response}}", response=details)
             return response

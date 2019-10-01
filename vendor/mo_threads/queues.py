@@ -14,17 +14,17 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
-from mo_future import is_text, is_binary
+import types
 from collections import deque
 from datetime import datetime
 from time import time
-import types
 
 from mo_dots import Null, coalesce
 from mo_future import long
 from mo_logs import Except, Log
+
 from mo_threads.lock import Lock
-from mo_threads.signal import Signal
+from mo_threads.signals import Signal
 from mo_threads.threads import THREAD_STOP, THREAD_TIMEOUT, Thread
 from mo_threads.till import Till
 
@@ -56,7 +56,6 @@ class Queue(object):
         self.closed = Signal("stop adding signal for " + name)  # INDICATE THE PRODUCER IS DONE GENERATING ITEMS TO QUEUE
         self.lock = Lock("lock for queue " + name)
         self.queue = deque()
-        self.next_warning = time()  # FOR DEBUGGING
 
     def __iter__(self):
         try:
@@ -87,12 +86,11 @@ class Queue(object):
                 self._wait_for_queue_space(timeout=timeout)
             if self.closed and not self.allow_add_after_close:
                 Log.error("Do not add to closed queue")
-            else:
-                if self.unique:
-                    if value not in self.queue:
-                        self.queue.append(value)
-                else:
+            if self.unique:
+                if value not in self.queue:
                     self.queue.append(value)
+            else:
+                self.queue.append(value)
         return self
 
     def push(self, value):
@@ -141,41 +139,35 @@ class Queue(object):
                         self.queue.append(v)
         return self
 
-    def _wait_for_queue_space(self, timeout=DEFAULT_WAIT_TIME):
+    def _wait_for_queue_space(self, timeout=None):
         """
         EXPECT THE self.lock TO BE HAD, WAITS FOR self.queue TO HAVE A LITTLE SPACE
+
+        :param timeout:  IN SECONDS
         """
+        start = time()
+        timeout = coalesce(timeout, DEFAULT_WAIT_TIME)
         wait_time = 5
 
         (DEBUG and len(self.queue) > 1 * 1000 * 1000) and Log.warning("Queue {{name}} has over a million items")
 
-        now = time()
-        if timeout != None:
-            time_to_stop_waiting = now + timeout
-        else:
-            time_to_stop_waiting = now + DEFAULT_WAIT_TIME
-
-        if self.next_warning < now:
-            self.next_warning = now + wait_time
-
         while not self.closed and len(self.queue) >= self.max:
-            if now > time_to_stop_waiting:
+            stop_waiting = Till(till=start + timeout)
+            if stop_waiting:
                 Log.error(THREAD_TIMEOUT)
 
             if self.silent:
-                self.lock.wait(Till(till=time_to_stop_waiting))
+                self.lock.wait(stop_waiting)
             else:
                 self.lock.wait(Till(seconds=wait_time))
-                if len(self.queue) >= self.max:
+                if not stop_waiting and len(self.queue) >= self.max:
                     now = time()
-                    if self.next_warning < now:
-                        self.next_warning = now + wait_time
-                        Log.alert(
-                            "Queue by name of {{name|quote}} is full with ({{num}} items), thread(s) have been waiting {{wait_time}} sec",
-                            name=self.name,
-                            num=len(self.queue),
-                            wait_time=wait_time
-                        )
+                    Log.alert(
+                        "Queue by name of {{name|quote}} is full with ({{num}} items), thread(s) have been waiting {{wait_time}} sec",
+                        name=self.name,
+                        num=len(self.queue),
+                        wait_time=now-start
+                    )
 
     def __len__(self):
         with self.lock:
@@ -200,10 +192,7 @@ class Queue(object):
         with self.lock:
             while True:
                 if self.queue:
-                    value = self.queue.popleft()
-                    return value
-                if self.closed:
-                    break
+                    return self.queue.popleft()
                 if not self.lock.wait(till=self.closed | till):
                     if self.closed:
                         break
@@ -216,7 +205,7 @@ class Queue(object):
         NON-BLOCKING POP ALL IN QUEUE, IF ANY
         """
         with self.lock:
-            output = list(self.queue)
+            output = [l for l in list(self.queue) if l is not THREAD_STOP]
             self.queue.clear()
 
         return output
@@ -403,9 +392,9 @@ class ThreadedQueue(Queue):
     def __init__(
         self,
         name,
-        queue,  # THE SLOWER QUEUE
+        slow_queue,  # THE SLOWER QUEUE
         batch_size=None,  # THE MAX SIZE OF BATCHES SENT TO THE SLOW QUEUE
-        max_size=None,  # SET THE MAXIMUM SIZE OF THE QUEUE, WRITERS WILL BLOCK IF QUEUE IS OVER THIS LIMIT
+        max_size=None,   # SET THE MAXIMUM SIZE OF THE QUEUE, WRITERS WILL BLOCK IF QUEUE IS OVER THIS LIMIT
         period=None,  # MAX TIME (IN SECONDS) BETWEEN FLUSHES TO SLOWER QUEUE
         silent=False,  # WRITES WILL COMPLAIN IF THEY ARE WAITING TOO LONG
         error_target=None  # CALL THIS WITH ERROR **AND THE LIST OF OBJECTS ATTEMPTED**
@@ -421,92 +410,92 @@ class ThreadedQueue(Queue):
 
         Queue.__init__(self, name=name, max=max_size, silent=silent)
 
-        def worker_bee(please_stop):
-            please_stop.then(lambda: self.add(THREAD_STOP))
+        self.name = name
+        self.slow_queue = slow_queue
+        self.thread = Thread.run("threaded queue for " + name, self.worker_bee, batch_size, period, error_target) # parent_thread=self)
 
-            _buffer = []
-            _post_push_functions = []
-            now = time()
-            next_push = Till(till=now + period)  # THE TIME WE SHOULD DO A PUSH
-            last_push = now - period
+    def worker_bee(self, batch_size, period, error_target, please_stop):
+        please_stop.then(lambda: self.add(THREAD_STOP))
 
-            def push_to_queue():
-                queue.extend(_buffer)
-                del _buffer[:]
-                for ppf in _post_push_functions:
-                    ppf()
-                del _post_push_functions[:]
+        _buffer = []
+        _post_push_functions = []
+        now = time()
+        next_push = Till(till=now + period)  # THE TIME WE SHOULD DO A PUSH
+        last_push = now - period
 
-            while not please_stop:
-                try:
-                    if not _buffer:
-                        item = self.pop()
-                        now = time()
-                        if now > last_push + period:
-                            # Log.note("delay next push")
-                            next_push = Till(till=now + period)
-                    else:
-                        item = self.pop(till=next_push)
-                        now = time()
+        def push_to_queue():
+            self.slow_queue.extend(_buffer)
+            del _buffer[:]
+            for ppf in _post_push_functions:
+                ppf()
+            del _post_push_functions[:]
 
-                    if item is THREAD_STOP:
-                        push_to_queue()
-                        please_stop.go()
-                        break
-                    elif isinstance(item, types.FunctionType):
-                        _post_push_functions.append(item)
-                    elif item is not None:
-                        _buffer.append(item)
-
-                except Exception as e:
-                    e = Except.wrap(e)
-                    if error_target:
-                        try:
-                            error_target(e, _buffer)
-                        except Exception as f:
-                            Log.warning(
-                                "`error_target` should not throw, just deal",
-                                name=name,
-                                cause=f
-                            )
-                    else:
-                        Log.warning(
-                            "Unexpected problem",
-                            name=name,
-                            cause=e
-                        )
-
-                try:
-                    if len(_buffer) >= batch_size or next_push:
-                        if _buffer:
-                            push_to_queue()
-                            last_push = now = time()
+        while not please_stop:
+            try:
+                if not _buffer:
+                    item = self.pop()
+                    now = time()
+                    if now > last_push + period:
                         next_push = Till(till=now + period)
+                else:
+                    item = self.pop(till=next_push)
+                    now = time()
 
-                except Exception as e:
-                    e = Except.wrap(e)
-                    if error_target:
-                        try:
-                            error_target(e, _buffer)
-                        except Exception as f:
-                            Log.warning(
-                                "`error_target` should not throw, just deal",
-                                name=name,
-                                cause=f
-                            )
-                    else:
+                if item is THREAD_STOP:
+                    push_to_queue()
+                    please_stop.go()
+                    break
+                elif isinstance(item, types.FunctionType):
+                    _post_push_functions.append(item)
+                elif item is not None:
+                    _buffer.append(item)
+            except Exception as e:
+                e = Except.wrap(e)
+                if error_target:
+                    try:
+                        error_target(e, _buffer)
+                    except Exception as f:
                         Log.warning(
-                            "Problem with {{name}} pushing {{num}} items to data sink",
-                            name=name,
-                            num=len(_buffer),
-                            cause=e
+                            "`error_target` should not throw, just deal",
+                            name=self.name,
+                            cause=f
                         )
+                else:
+                    Log.warning(
+                        "Unexpected problem",
+                        name=self.name,
+                        cause=e
+                    )
 
-            if _buffer:
-                # ONE LAST PUSH, DO NOT HAVE TIME TO DEAL WITH ERRORS
-                push_to_queue()
+            try:
+                if len(_buffer) >= batch_size or next_push:
+                    if _buffer:
+                        push_to_queue()
+                        last_push = now = time()
+                    next_push = Till(till=now + period)
+            except Exception as e:
+                e = Except.wrap(e)
+                if error_target:
+                    try:
+                        error_target(e, _buffer)
+                    except Exception as f:
+                        Log.warning(
+                            "`error_target` should not throw, just deal",
+                            name=self.name,
+                            cause=f
+                        )
+                else:
+                    Log.warning(
+                        "Problem with {{name}} pushing {{num}} items to data sink",
+                        name=self.name,
+                        num=len(_buffer),
+                        cause=e
+                    )
 
-        self.thread = Thread.run("threaded queue for " + name, worker_bee) # parent_thread=self)
+        if _buffer:
+            # ONE LAST PUSH, DO NOT HAVE TIME TO DEAL WITH ERRORS
+            push_to_queue()
+        self.slow_queue.add(THREAD_STOP)
 
     def add(self, value, timeout=None):
         with self.lock:
@@ -521,7 +510,8 @@ class ThreadedQueue(Queue):
             self._wait_for_queue_space()
             if not self.closed:
                 self.queue.extend(values)
-            Log.note("{{name}} has {{num}} items", name=self.name, num=len(self.queue))
+            if not self.silent:
+                Log.note("{{name}} has {{num}} items", name=self.name, num=len(self.queue))
         return self
 
     def __enter__(self):
