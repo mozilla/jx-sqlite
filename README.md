@@ -96,7 +96,7 @@ This project is licensed under Mozilla Public License, v. 2.0. If a copy of the 
 
 ## GSOC
 
-Work done upto the deadline of GSoC'17:
+Work done up to the deadline of GSoC'17:
 
 * [Pull Requests](https://github.com/mozilla/jx-sqlite/pulls?utf8=%E2%9C%93&q=is%3Apr%20author%3Arohit-rk)
 * [Commits](https://github.com/mozilla/jx-sqlite/commits?author=rohit-rk)
