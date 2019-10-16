@@ -613,7 +613,7 @@ class TestSetOps(BaseTestCase):
             "data": [
                 {"v": "test"},
                 {"v": "not test"},
-                {"v": None},
+                {"v": NULL},
                 {},
                 {"v": "a"}
             ],
@@ -636,7 +636,7 @@ class TestSetOps(BaseTestCase):
             "data": [
                 {"v": "test"},
                 {"v": "not test"},
-                {"v": None},
+                {"v": NULL},
                 {},
                 {"v": "a"}
             ],
@@ -659,7 +659,7 @@ class TestSetOps(BaseTestCase):
             "data": [
                 {"v": "test"},
                 {"v": "not test"},
-                {"v": None},
+                {"v": NULL},
                 {},
                 {"v": "a"}
             ],
@@ -682,7 +682,7 @@ class TestSetOps(BaseTestCase):
             "data": [
                 {"v": "test"},
                 {"v": "not test"},
-                {"v": None},
+                {"v": NULL},
                 {},
                 {"v": "a"}
             ],
@@ -707,19 +707,19 @@ class TestSetOps(BaseTestCase):
     def test_left_and_right(self):
         test = {
             "data": [
-                {"i": 0, "t": -1, "v": None},
+                {"i": 0, "t": -1, "v": NULL},
                 {"i": 1, "t": -1, "v": ""},
                 {"i": 2, "t": -1, "v": "a"},
                 {"i": 3, "t": -1, "v": "abcdefg"},
-                {"i": 4, "t": 0, "v": None},
+                {"i": 4, "t": 0, "v": NULL},
                 {"i": 5, "t": 0, "v": ""},
                 {"i": 6, "t": 0, "v": "a"},
                 {"i": 7, "t": 0, "v": "abcdefg"},
-                {"i": 8, "t": 3, "v": None},
+                {"i": 8, "t": 3, "v": NULL},
                 {"i": 9, "t": 3, "v": ""},
                 {"i": 10, "t": 3, "v": "a"},
                 {"i": 11, "t": 3, "v": "abcdefg"},
-                {"i": 12, "t": 7, "v": None},
+                {"i": 12, "t": 7, "v": NULL},
                 {"i": 13, "t": 7, "v": ""},
                 {"i": 14, "t": 7, "v": "a"},
                 {"i": 15, "t": 7, "v": "abcdefg"}
@@ -1022,7 +1022,7 @@ class TestSetOps(BaseTestCase):
     def test_not_left(self):
         test = {
             "data": [
-                {"url": None},
+                {"url": NULL},
                 {"url": "/"},
                 #        012345678901234567890123456789
                 {"url": "https://hg.mozilla.org/"},
