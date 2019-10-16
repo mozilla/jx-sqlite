@@ -83,7 +83,7 @@ def assertAlmostEqual(test, expected, digits=None, places=None, msg=None, delta=
     test = unwrap(test)
     expected = unwrap(expected)
     try:
-        if test is None and expected is None:
+        if test is None and (expected is None or expected is NULL):
             return
         elif test is expected:
             return

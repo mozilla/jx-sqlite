@@ -619,6 +619,35 @@ class TestSetOps(BaseTestCase):
             ],
             "query": {
                 "from": TEST_TABLE,
+                "select": [
+                    "v",
+                    {"name": "f", "value": {"find": {"v": "test"}}}
+                ]
+            },
+            "expecting_list": {
+                "meta": {"format": "list"},
+                "data": [
+                    {"v": "test", "f": 0},
+                    {"v": "not test", "f": 4},
+                    {"v": NULL, "f": NULL},
+                    {"f": NULL},
+                    {"v": "a", "f": NULL}
+                ]
+            }
+        }
+        self.utils.execute_tests(test)
+
+    def test_where_find(self):
+        test = {
+            "data": [
+                {"v": "test"},
+                {"v": "not test"},
+                {"v": None},
+                {},
+                {"v": "a"}
+            ],
+            "query": {
+                "from": TEST_TABLE,
                 "where": {"find": {"v": "test"}}
             },
             "expecting_list": {
@@ -631,7 +660,7 @@ class TestSetOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    def test_or_find(self):
+    def test_where_or_find(self):
         test = {
             "data": [
                 {"v": "test"},
@@ -654,7 +683,7 @@ class TestSetOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    def test_and_find(self):
+    def test_where_and_find(self):
         test = {
             "data": [
                 {"v": "test"},
@@ -833,6 +862,45 @@ class TestSetOps(BaseTestCase):
             "expecting_list": {
                 "meta": {"format": "list"},
                 "data": [0, 0.5, 1, NULL]
+            }
+        }
+        self.utils.execute_tests(test)
+
+    def test_div_w_two_types(self):
+        test = {
+            "data": [
+                {"v": 0},
+                {"v": "1"},
+                {"v": 2},
+                {}
+            ],
+            "query": {
+                "select": [
+                    {"value": "v"},
+                    {"name": "div", "value": {"div": [2, "v"]}},
+                    {"name": "gt", "value": {"gt": [{"div": [2, "v"]}, 0.9]}}
+                ],
+                "from": TEST_TABLE
+            },
+            "expecting_list": {
+                "meta": {"format": "list"},
+                "data": [
+                    {
+                        "v": 0,
+                        "gt": False,
+                    },
+                    {
+                        "v": "1",
+                        "div": 2,
+                        "gt": True,
+                    },
+                    {
+                        "v": 2,
+                        "div": 1,
+                        "gt": True,
+                    },
+                    {"gt": False}
+                ]
             }
         }
         self.utils.execute_tests(test)

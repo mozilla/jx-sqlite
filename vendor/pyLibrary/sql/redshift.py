@@ -22,7 +22,7 @@ from mo_logs import Log
 from mo_logs.exceptions import suppress_exception
 from mo_logs.strings import expand_template
 from mo_threads import Lock
-from pyLibrary.sql import SQL
+from pyLibrary.sql import SQL, SQL_INSERT, sql_list, SQL_VALUES, sql_iso
 
 
 class Redshift(object):
@@ -85,11 +85,10 @@ class Redshift(object):
 
         try:
             command = (
-                "INSERT INTO " + self.quote_column(table_name) + "(" +
-                ",".join([self.quote_column(k) for k in keys]) +
-                ") VALUES (" +
-                ",".join([self.quote_value(record[k]) for k in keys]) +
-                ")"
+                SQL_INSERT + self.quote_column(table_name) +
+                sql_iso(sql_list(self.quote_column(k) for k in keys)) +
+                SQL_VALUES +
+                sql_iso(sql_list(self.quote_value(record[k]) for k in keys))
             )
 
             self.execute(command)
@@ -108,17 +107,19 @@ class Redshift(object):
 
         try:
             self.execute(
-                "DELETE FROM " + self.quote_column(table_name) + " WHERE _id IN {{ids}}",
+                "DELETE FROM " + self.quote_column(table_name) + SQL_WHERE + "_id IN {{ids}}",
                 {"ids": self.quote_column([r["_id"] for r in records])}
             )
 
             command = (
-                "INSERT INTO " + self.quote_column(table_name) + "(" +
-                ",".join([self.quote_column(k) for k in columns]) +
-                ") VALUES " + ",\n".join([
-                sql_iso(",".join([self.quote_value(r.get(k, None)) for k in columns]))
-                for r in records
-            ])
+                SQL_INSERT + self.quote_column(table_name) +
+                sql_iso(sql_list(self.quote_column(k) for k in columns)) +
+                SQL_VALUES +
+                sql_iso(sql_list(
+                    self.quote_value(r.get(k, None))
+                    for k in columns
+                    for r in records
+                ))
             )
             self.execute(command)
         except Exception as e:

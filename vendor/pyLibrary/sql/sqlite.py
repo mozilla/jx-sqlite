@@ -10,15 +10,16 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
-from mo_future import is_text, is_binary, zip_longest
-from collections import Mapping, namedtuple
 import os
 import re
 import sys
+from collections import Mapping, namedtuple
 
 from mo_dots import Data, coalesce, unwraplist
 from mo_files import File
 from mo_future import allocate_lock as _allocate_lock, text_type
+from mo_future import is_text
+from mo_future import zip_longest
 from mo_json import BOOLEAN, INTEGER, NESTED, NUMBER, OBJECT, STRING
 from mo_kwargs import override
 from mo_logs import Log

@@ -484,3 +484,27 @@ class TestAggOps(BaseTestCase):
             }
         }
         self.utils.execute_tests(test)
+
+    def test_booleans_can_be_summed(self):
+        test = {
+            "data": [
+                {"a": None, "b": True},
+                {"a": None, "b": False},
+                {"a": "a", "b": True},
+                {"a": "a", "b": False},
+                {"a": "b", "b": True},
+                {"a": "b", "b": False},
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "select": [
+                    {"value": "b", "aggregate": "sum"},
+                    {"name": "a", "value": {"eq": {"a": "a"}}, "aggregate": "sum"}
+                ]
+            },
+            "expecting_list": {
+                "meta": {"format": "value"},
+                "data": {"b": 3, "a": 2}
+            }
+        }
+        self.utils.execute_tests(test)

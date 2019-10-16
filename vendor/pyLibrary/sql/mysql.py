@@ -26,7 +26,8 @@ from mo_logs.exceptions import Except, suppress_exception
 from mo_logs.strings import expand_template, indent, outdent
 from mo_math import is_number
 from mo_times import Date
-from pyLibrary.sql import SQL, SQL_AND, SQL_ASC, SQL_DESC, SQL_FROM, SQL_IS_NULL, SQL_LEFT_JOIN, SQL_LIMIT, SQL_NULL, SQL_ONE, SQL_SELECT, SQL_TRUE, SQL_WHERE, sql_alias, sql_iso, sql_list
+from pyLibrary.sql import SQL, SQL_AND, SQL_ASC, SQL_DESC, SQL_FROM, SQL_IS_NULL, SQL_LEFT_JOIN, SQL_LIMIT, SQL_NULL, \
+    SQL_ONE, SQL_SELECT, SQL_TRUE, SQL_WHERE, sql_alias, sql_iso, sql_list, SQL_INSERT, SQL_VALUES
 from pyLibrary.sql.sqlite import join_column
 
 DEBUG = False
@@ -375,9 +376,9 @@ class MySQL(object):
 
         try:
             command = (
-                "INSERT INTO " + quote_column(table_name) +
+                SQL_INSERT + quote_column(table_name) +
                 sql_iso(sql_list([quote_column(k) for k in keys])) +
-                " VALUES " +
+                SQL_VALUES +
                 sql_iso(sql_list([quote_value(record[k]) for k in keys]))
             )
             self.execute(command)
@@ -396,7 +397,7 @@ class MySQL(object):
             for k in candidate_key
         ])
         command = (
-            "INSERT INTO " + quote_column(table_name) + sql_iso(sql_list(
+            SQL_INSERT + quote_column(table_name) + sql_iso(sql_list(
                 quote_column(k) for k in new_record.keys()
             )) +
             SQL_SELECT + "a.*" + SQL_FROM + sql_iso(
@@ -428,12 +429,12 @@ class MySQL(object):
 
         try:
             command = (
-                "INSERT INTO " + quote_column(table_name) +
+                SQL_INSERT + quote_column(table_name) +
                 sql_iso(sql_list([quote_column(k) for k in keys])) +
-                " VALUES " + sql_list([
-                sql_iso(sql_list([quote_value(r[k]) for k in keys]))
-                for r in records
-            ])
+                SQL_VALUES + sql_list(
+                    sql_iso(sql_list([quote_value(r[k]) for k in keys]))
+                    for r in records
+                )
             )
             self.execute(command)
         except Exception as e:

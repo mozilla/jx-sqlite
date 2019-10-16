@@ -220,7 +220,7 @@ class TestTime(BaseTestCase):
             {"a": today, "t": Date("2018-10-17").unix, "v": 5},
             {"a": today, "t": Date("2018-10-16").unix, "v": 7},
             {"a": today, "t": Date("2018-10-15").unix, "v": 11},
-            {"a": today, "t": NULL, "v": 27},
+            {"a": today, "t": None, "v": 27},
             {"a": today, "t": Date("2018-10-19").unix, "v": 13},
             {"a": today, "t": Date("2018-10-18").unix, "v": 17},
             {"a": today, "t": Date("2018-10-16").unix, "v": 19},

@@ -370,8 +370,8 @@ class InsertTable(BaseTable):
             )
 
             # BUILD THE RECORDS
-            records = SQL_UNION_ALL.join(
-                SQL_SELECT + sql_list(quote_value(row.get(c)) for c in all_columns)
+            records = SQL_VALUES + sql_list(
+                sql_iso(sql_list(quote_value(row.get(c)) for c in all_columns))
                 for row in unwrap(rows)
             )
 

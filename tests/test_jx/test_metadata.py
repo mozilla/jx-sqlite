@@ -10,7 +10,7 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.meta_columns import META_COLUMNS_NAME
+from jx_base.meta_columns import META_COLUMNS_NAME, META_TABLES_NAME
 from mo_dots import wrap
 from mo_logs import Log
 from pyLibrary.meta import extenstion_method
@@ -28,13 +28,16 @@ class TestMetadata(BaseTestCase):
             }
         }
         self.utils.execute_tests(pre_test)
+        table_name = pre_test['query']['from']
 
         test = {
             "query": {
-                "from": META_COLUMNS_NAME
+                "from": META_TABLES_NAME,
+                "where": {"eq": {"name": table_name}}
             },
             "expecting_list": {
-                "meta": {"format": "list"}
+                "meta": {"format": "list"},
+                "data": [{"name": table_name}]
             }
         }
         self.utils.send_queries(test)
