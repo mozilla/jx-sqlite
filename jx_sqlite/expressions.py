@@ -663,9 +663,7 @@ class FloorOp(FloorOp_):
             floor = "CAST" + sql_iso(lhs + " AS INTEGER")
             sql = sql_iso(floor) + "-" + sql_iso(modifier)
 
-
         return wrap([{"name": ".", "sql": {"n": sql}}])
-
 
 
 class NotOp(NotOp_):
