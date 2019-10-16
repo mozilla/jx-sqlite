@@ -24,7 +24,8 @@ from mo_future import text_type
 from mo_json import STRUCT
 from mo_logs import Log
 from mo_times import Date
-from pyLibrary.sql import SQL_AND, SQL_FROM, SQL_INNER_JOIN, SQL_NULL, SQL_SELECT, SQL_TRUE, SQL_UNION_ALL, SQL_WHERE, sql_iso, sql_list
+from pyLibrary.sql import SQL_AND, SQL_FROM, SQL_INNER_JOIN, SQL_NULL, SQL_SELECT, SQL_TRUE, SQL_UNION_ALL, SQL_WHERE, \
+    sql_iso, sql_list, SQL_VALUES
 from pyLibrary.sql.sqlite import join_column, json_type_to_sqlite_type, quote_column, quote_value
 
 
@@ -364,16 +365,14 @@ class InsertTable(BaseTable):
 
             all_columns = meta_columns + active_columns.es_column
 
-            prefix = (
+            command = (
                 "INSERT INTO " + quote_column(table_name) +
-                sql_iso(sql_list(map(quote_column, all_columns)))
-            )
-
-            # BUILD THE RECORDS
-            records = SQL_VALUES + sql_list(
-                sql_iso(sql_list(quote_value(row.get(c)) for c in all_columns))
-                for row in unwrap(rows)
+                sql_iso(sql_list(map(quote_column, all_columns))) +
+                SQL_VALUES + sql_list(
+                    sql_iso(sql_list(quote_value(row.get(c)) for c in all_columns))
+                    for row in unwrap(rows)
+                )
             )
 
             with self.db.transaction() as t:
-                t.execute(prefix + records)
+                t.execute(command)

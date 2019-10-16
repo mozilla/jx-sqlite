@@ -280,10 +280,11 @@ class Expression(BaseExpression):
         Log.note("this is slow on {{type}}", type=text_type(self_class.__name__))
         return self.__data__() == other.__data__()
 
-    def to_sql(self, *args, **kwargs):
-        Log.warning("wrong path")
-        from jx_sqlite.expressions import SQLang
-        return SQLang[self].to_sql(*args, **kwargs)
+    # def to_sql(self, *args, **kwargs):
+    #     Log.warning("wrong path")
+    #     from jx_sqlite.expressions import SQLang
+    #     to_sql = self.__class__.to_sql
+    #     return SQLang[self].to_sql(*args, **kwargs)
 
 
 class Variable(Expression):
@@ -2269,7 +2270,7 @@ class ConcatOp(Expression):
             k, v = first(terms.items())
             terms = [Variable(k), Literal(v)]
         else:
-            terms = map(jx_expression, terms)
+            terms = list(map(jx_expression, terms))
 
         return cls.lang[ConcatOp(
             terms,

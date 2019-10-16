@@ -29,7 +29,7 @@ from jx_base.expressions import (
     ExistsOp as ExistsOp_,
     ExpOp as ExpOp_,
     FALSE,
-    FalseOp as FalseOp_,
+    FalseOp,
     FirstOp as FirstOp_,
     FindOp as FindOp_,
     FloorOp as FloorOp_,
@@ -76,7 +76,7 @@ from jx_base.expressions import (
     SubOp as SubOp_,
     SuffixOp as SuffixOp_,
     TRUE,
-    TrueOp as TrueOp_,
+    TrueOp,
     TupleOp as TupleOp_,
     UnixOp as UnixOp_,
     Variable as Variable_,
@@ -86,7 +86,7 @@ from jx_base.expressions import (
     define_language,
     extend,
     simplified,
-)
+    is_literal)
 from jx_base.language import is_op
 from jx_base.queries import get_property_name
 from jx_sqlite import GUID, quoted_GUID
@@ -99,8 +99,10 @@ from mo_dots import (
     split_field,
     startswith_field,
     wrap,
-    FlatList, is_data)
-from mo_future import PY2, text_type
+    FlatList,
+    is_data,
+)
+from mo_future import PY2, text_type, decorate
 import mo_json
 from mo_json import BOOLEAN, EXISTS, NESTED, OBJECT, json2value
 from mo_logs import Log
@@ -132,8 +134,9 @@ from pyLibrary.sql.sqlite import quote_column, quote_value
 
 
 def check(func):
+    @decorate(func)
     def to_sql(self, schema, not_null=False, boolean=False, **kwargs):
-        if kwargs.get('many')!=None:
+        if kwargs.get("many") != None:
             Log.error("not expecting many")
         try:
             output = func(self, schema, not_null, boolean)
@@ -144,11 +147,12 @@ def check(func):
         if not is_data(output[0].sql):
             Log.error("expecting Data")
         for k, v in output[0].sql.items():
-            if k not in {'b', 'n', 's', 'j', '0'}:
+            if k not in {"b", "n", "s", "j", "0"}:
                 Log.error("expecting datatypes")
             if not isinstance(v, text_type):
                 Log.error("expecting text")
         return output
+
     return to_sql
 
 
@@ -174,7 +178,7 @@ class SQLScript(SQLScript_):
         return self.data_type
 
     def __str__(self):
-        missing = self.miss.partial_eval()
+        missing = SQLang[self.miss].partial_eval()
         if missing is FALSE:
             return self.partial_eval().to_sql.expr
         elif missing is TRUE:
@@ -279,7 +283,7 @@ class RowsOp(RowsOp_):
 class BooleanOp(BooleanOp_):
     @check
     def to_sql(self, schema, not_null=False, boolean=False):
-        term = self.term.partial_eval()
+        term = SQLang[self.term].partial_eval()
         if term.type == "boolean":
             sql = term.to_sql(schema)
             return sql
@@ -328,19 +332,19 @@ class Literal(Literal_):
 @extend(NullOp)
 @check
 def to_sql(self, schema, not_null=False, boolean=False):
-    return wrap([{"name": ".", "sql": {"j": SQL_NULL}}])
+    return wrap([{"name": ".", "sql": {"0": SQL_NULL}}])
 
 
-class TrueOp(TrueOp_):
-    @check
-    def to_sql(self, schema, not_null=False, boolean=False):
-        return wrap([{"name": ".", "sql": {"b": SQL_TRUE}}])
+@extend(TrueOp)
+@check
+def to_sql(self, schema, not_null=False, boolean=False):
+    return wrap([{"name": ".", "sql": {"b": SQL_TRUE}}])
 
 
-class FalseOp(FalseOp_):
-    @check
-    def to_sql(self, schema, not_null=False, boolean=False):
-        return wrap([{"name": ".", "sql": {"b": SQL_FALSE}}])
+@extend(FalseOp)
+@check
+def to_sql(self, schema, not_null=False, boolean=False):
+    return wrap([{"name": ".", "sql": {"b": SQL_FALSE}}])
 
 
 class DateOp(DateOp_):
@@ -352,7 +356,9 @@ class DateOp(DateOp_):
 class TupleOp(TupleOp_):
     @check
     def to_sql(self, schema, not_null=False, boolean=False):
-        return wrap([{"name": ".", "sql": SQLang[t].to_sql(schema)[0].sql} for t in self.terms])
+        return wrap(
+            [{"name": ".", "sql": SQLang[t].to_sql(schema)[0].sql} for t in self.terms]
+        )
 
 
 class LeavesOp(LeavesOp_):
@@ -419,6 +425,7 @@ class LtOp(LtOp_):
 class LteOp(LteOp_):
     to_sql = _inequality_to_sql
 
+
 @check
 def _binaryop_to_sql(self, schema, not_null=False, boolean=False, many=True):
     op, identity = _sql_operators[self.op]
@@ -430,10 +437,14 @@ def _binaryop_to_sql(self, schema, not_null=False, boolean=False, many=True):
     if missing is FALSE:
         sql = script
     else:
-        sql = "CASE WHEN " + missing.to_sql(schema, boolean=True)[0].sql.b + " THEN NULL ELSE " + script + " END"
-    return wrap([
-        {"name": ".", "sql": {"n": sql}}
-    ])
+        sql = (
+            "CASE WHEN "
+            + missing.to_sql(schema, boolean=True)[0].sql.b
+            + " THEN NULL ELSE "
+            + script
+            + " END"
+        )
+    return wrap([{"name": ".", "sql": {"n": sql}}])
 
 
 class SubOp(SubOp_):
@@ -463,18 +474,6 @@ class InOp(InOp_):
             return SQL_OR.join(sql_iso(var + "==" + quote_value(v)) for v in j_value)
         else:
             return wrap([{"name": ".", "sql": {"b": SQL_FALSE}}])
-
-
-class FloorOp(FloorOp_):
-    @check
-    def to_sql(self, schema, not_null=False, boolean=False, many=False):
-        return (
-            "mo_math.floor("
-            + SQL[self.lhs].to_sql(schema)
-            + ", "
-            + SQL[self.rhs].to_sql(schema)
-            + ")"
-        )
 
 
 class EqOp(EqOp_):
@@ -513,7 +512,6 @@ class EqOp(EqOp_):
         else:
             rhs_missing = rhs.missing().partial_eval()
             return CaseOp(
-                "case",
                 [
                     WhenOp(lhs.missing(), **{"then": rhs_missing}),
                     WhenOp(rhs_missing, **{"then": FALSE}),
@@ -590,9 +588,9 @@ class BasicIndexOfOp(BasicIndexOfOp_):
 class BasicSubstringOp(BasicSubstringOp_):
     @check
     def to_sql(self, schema, not_null=False, boolean=False):
-        value = self.value.to_sql(schema)[0].sql.s
+        value = SQLang[self.value].to_sql(schema)[0].sql.s
         start = (
-            AddOp([self.start, Literal(None, 1)]).partial_eval().to_sql(schema)[0].sql.n
+            AddOp([self.start, Literal(1)]).partial_eval().to_sql(schema)[0].sql.n
         )
         length = SubOp([self.end, self.start]).partial_eval().to_sql(schema)[0].sql.n
 
@@ -611,23 +609,23 @@ class BasicSubstringOp(BasicSubstringOp_):
 class MinOp(MinOp_):
     @check
     def to_sql(self, schema, not_null=False, boolean=False):
-        terms = [t.partial_eval().to_sql(schema)[0].sql.n for t in self.terms]
+        terms = [SQLang[t].partial_eval().to_sql(schema)[0].sql.n for t in self.terms]
         return wrap([{"name": ".", "sql": {"n": "min" + sql_iso((sql_list(terms)))}}])
 
 
 class MaxOp(MaxOp_):
     @check
     def to_sql(self, schema, not_null=False, boolean=False):
-        terms = [t.partial_eval().to_sql(schema)[0].sql.n for t in self.terms]
+        terms = [SQLang[t].partial_eval().to_sql(schema)[0].sql.n for t in self.terms]
         return wrap([{"name": ".", "sql": {"n": "max" + sql_iso((sql_list(terms)))}}])
 
 
 class DivOp(DivOp_):
     @check
     def to_sql(self, schema, not_null=False, boolean=False):
-        lhs = self.lhs.to_sql(schema)[0].sql.n
-        rhs = self.rhs.to_sql(schema)[0].sql.n
-        d = self.default.to_sql(schema)[0].sql.n
+        lhs = SQLang[self.lhs].to_sql(schema)[0].sql.n
+        rhs = SQLang[self.rhs].to_sql(schema)[0].sql.n
+        d = SQLang[self.default].to_sql(schema)[0].sql.n
 
         if lhs and rhs:
             if d == None:
@@ -654,44 +652,20 @@ class DivOp(DivOp_):
 class FloorOp(FloorOp_):
     @check
     def to_sql(self, schema, not_null=False, boolean=False):
-        lhs = self.lhs.to_sql(schema)
-        rhs = self.rhs.to_sql(schema)
-        acc = []
-        if len(lhs) != len(rhs):
-            Log.error("lhs and rhs have different dimensionality!?")
-        for l, r in zip(lhs, rhs):
-            for t in "bsnj":
-                if l.sql[t] == None:
-                    if r.sql[t] == None:
-                        pass
-                    else:
-                        acc.append(sql_iso(r.sql[t]) + " IS " + SQL_NULL)
-                else:
-                    if r.sql[t] == None:
-                        acc.append(sql_iso(l.sql[t]) + " IS " + SQL_NULL)
-                    else:
-                        acc.append(
-                            "("
-                            + sql_iso(l.sql[t])
-                            + " = "
-                            + sql_iso(r.sql[t])
-                            + " OR ("
-                            + sql_iso(l.sql[t])
-                            + " IS"
-                            + SQL_NULL
-                            + SQL_AND
-                            + "("
-                            + r.sql[t]
-                            + ") IS NULL))"
-                        )
-        if not acc:
-            return FALSE.to_sql(schema)
-        else:
-            return wrap([{"name": ".", "sql": {"b": SQL_OR.join(acc)}}])
+        lhs = SQLang[self.lhs].to_sql(schema)[0].sql.n
+        rhs = SQLang[self.rhs].to_sql(schema)[0].sql.n
+        modifier = lhs + " < 0 "
 
-    # @extend(NeOp)
-    # def to_sql(self, schema, not_null=False, boolean=False):
-    #     return NotOp(EqOp([self.lhs, self.rhs])).to_sql(schema, not_null, boolean)
+        if rhs.strip() != "1":
+            floor = "CAST" + sql_iso(lhs + "/" + rhs + " AS INTEGER")
+            sql = sql_iso(sql_iso(floor) + "-" + sql_iso(modifier)) + "*" + rhs
+        else:
+            floor = "CAST" + sql_iso(lhs + " AS INTEGER")
+            sql = sql_iso(floor) + "-" + sql_iso(modifier)
+
+
+        return wrap([{"name": ".", "sql": {"n": sql}}])
+
 
 
 class NotOp(NotOp_):
@@ -726,7 +700,9 @@ class AndOp(AndOp_):
                         "sql": {
                             "b": SQL_AND.join(
                                 [
-                                    sql_iso(SQLang[t].to_sql(schema, boolean=True)[0].sql.b)
+                                    sql_iso(
+                                        SQLang[t].to_sql(schema, boolean=True)[0].sql.b
+                                    )
                                     for t in self.terms
                                 ]
                             )
@@ -759,8 +735,8 @@ class OrOp(OrOp_):
 class LengthOp(LengthOp_):
     @check
     def to_sql(self, schema, not_null=False, boolean=False):
-        term = self.term.partial_eval()
-        if isinstance(term, Literal):
+        term = SQLang[self.term].partial_eval()
+        if is_literal(term):
             val = term.value
             if isinstance(val, text_type):
                 return wrap([{"name": ".", "sql": {"n": convert.value2json(len(val))}}])
@@ -932,7 +908,7 @@ class MulOp(MulOp_):
 
 def basic_multiop_to_sql(self, schema, not_null=False, boolean=False, many=False):
     op, identity = _sql_operators[self.op.split("basic.")[1]]
-    sql = op.join(sql_iso(t.to_sql(schema)[0].sql.n) for t in self.terms)
+    sql = op.join(sql_iso(SQLang[t].to_sql(schema)[0].sql.n) for t in self.terms)
     return wrap([{"name": ".", "sql": {"n": sql}}])
 
 
@@ -1009,9 +985,9 @@ class MissingOp(MissingOp_):
 class WhenOp(WhenOp_):
     @check
     def to_sql(self, schema, not_null=False, boolean=False, many=True):
-        when = self.when.partial_eval().to_sql(schema, boolean=True)[0].sql
-        then = self.then.partial_eval().to_sql(schema, not_null=not_null)[0].sql
-        els_ = self.els_.partial_eval().to_sql(schema, not_null=not_null)[0].sql
+        when = SQLang[self.when].partial_eval().to_sql(schema, boolean=True)[0].sql
+        then = SQLang[self.then].partial_eval().to_sql(schema, not_null=not_null)[0].sql
+        els_ = SQLang[self.els_].partial_eval().to_sql(schema, not_null=not_null)[0].sql
         output = {}
         for t in "bsn":
             if then[t] == None:
@@ -1107,14 +1083,15 @@ class SuffixOp(SuffixOp_):
 class ConcatOp(ConcatOp_):
     @check
     def to_sql(self, schema, not_null=False, boolean=False):
-        defult = self.default.to_sql(schema)
+        default = self.default.to_sql(schema)
         if len(self.terms) == 0:
-            return defult
-        defult = coalesce(defult[0].sql, SQL_NULL)
-        sep = self.separator.to_sql(schema)[0].sql.s
+            return default
+        default = coalesce(default[0].sql.s, SQL_NULL)
+        sep = SQLang[self.separator].to_sql(schema)[0].sql.s
 
         acc = []
         for t in self.terms:
+            t = SQLang[t]
             missing = t.missing().partial_eval()
 
             term = t.to_sql(schema, not_null=True)[0].sql
@@ -1151,11 +1128,10 @@ class ConcatOp(ConcatOp_):
                 acc.append(sql_concat([sep, term_sql]))
 
         expr_ = (
-            "substr("
-            + sql_concat(acc)
-            + ", "
-            + LengthOp(None, self.separator).to_sql(schema)[0].sql.n
-            + "+1)"
+            "substr" + sql_iso(sql_list([
+                sql_concat(acc),
+                LengthOp(self.separator).to_sql(schema)[0].sql.n + SQL("+1")
+            ]))
         )
 
         missing = self.missing()
@@ -1169,17 +1145,11 @@ class ConcatOp(ConcatOp_):
                         "sql": {
                             "s": SQL_CASE
                             + SQL_WHEN
-                            + "("
-                            + missing.to_sql(schema, boolean=True)[0].sql.b
-                            + ")"
+                            + sql_iso(missing.to_sql(schema, boolean=True)[0].sql.b)
                             + SQL_THEN
-                            + "("
-                            + defult
-                            + ")"
+                            + sql_iso(default)
                             + SQL_ELSE
-                            + "("
-                            + expr_
-                            + ")"
+                            + sql_iso(expr_)
                             + SQL_END
                         },
                     }
@@ -1283,12 +1253,34 @@ class FindOp(FindOp_):
     @simplified
     def partial_eval(self):
         return FindOp(
-            [self.value.partial_eval(), self.find.partial_eval()],
+            [SQLang[self.value].partial_eval(), SQLang[self.find].partial_eval()],
             **{
-                "start": self.start.partial_eval(),
-                "default": self.default.partial_eval(),
+                "start": SQLang[self.start].partial_eval(),
+                "default": SQLang[self.default].partial_eval(),
             }
         )
+
+    @check
+    def to_sql(self, schema, not_null=False, boolean=False):
+        value = SQLang[self.value].partial_eval().to_sql(schema)[0].sql.s
+        find = SQLang[self.find].partial_eval().to_sql(schema)[0].sql.s
+        start = SQLang[self.start].partial_eval().to_sql(schema)[0].sql.n
+        default = coalesce(SQLang[self.default].partial_eval().to_sql(schema)[0].sql.n, SQL_NULL)
+
+        if start.sql != SQL_ZERO.sql.strip():
+            value = NotRightOp([self.value, self.start]).to_sql(schema)[0].sql.s
+
+        index = "INSTR" + sql_iso(sql_list([value, find]))
+
+        sql = (
+                SQL_CASE +
+                SQL_WHEN + index +
+                SQL_THEN + index + SQL("-1+") + start +
+                SQL_ELSE + default +
+                SQL_END
+        )
+
+        return wrap([{"name":".", "sql": {"n":sql}}])
 
 
 class BetweenOp(BetweenOp_):
@@ -1345,18 +1337,18 @@ class CaseOp(CaseOp_):
     @check
     def to_sql(self, schema, not_null=False, boolean=False):
         if len(self.whens) == 1:
-            return self.whens[-1].to_sql(schema)
+            return SQLang[self.whens[-1]].to_sql(schema)
 
         output = {}
         for t in "bsn":  # EXPENSIVE LOOP to_sql() RUN 3 TIMES
-            els_ = coalesce(self.whens[-1].to_sql(schema)[0].sql[t], SQL_NULL)
+            els_ = coalesce(SQLang[self.whens[-1]].to_sql(schema)[0].sql[t], SQL_NULL)
             acc = SQL_ELSE + els_ + SQL_END
             for w in reversed(self.whens[0:-1]):
                 acc = (
                     SQL_WHEN
-                    + w.when.to_sql(schema, boolean=True)[0].sql.b
+                    + SQLang[w.when].to_sql(schema, boolean=True)[0].sql.b
                     + SQL_THEN
-                    + coalesce(w.then.to_sql(schema)[0].sql[t], SQL_NULL)
+                    + coalesce(SQLang[w.then].to_sql(schema)[0].sql[t], SQL_NULL)
                     + acc
                 )
             output[t] = SQL_CASE + acc
@@ -1366,8 +1358,8 @@ class CaseOp(CaseOp_):
 class SqlEqOp(SqlEqOp_):
     @check
     def to_sql(self, schema, not_null=False, boolean=False):
-        lhs = self.lhs.partial_eval().to_sql(schema)[0].sql.values()[0]
-        rhs = self.rhs.partial_eval().to_sql(schema)[0].sql.values()[0]
+        lhs = SQLang[self.lhs].partial_eval().to_sql(schema)[0].sql.values()[0]
+        rhs = SQLang[self.rhs].partial_eval().to_sql(schema)[0].sql.values()[0]
 
         return wrap([{"name": ".", "sql": {"b": sql_iso(lhs) + "=" + sql_iso(rhs)}}])
 

@@ -11,6 +11,7 @@ from __future__ import absolute_import, division, unicode_literals
 
 import json
 import sys
+from functools import update_wrapper
 
 PY3 = sys.version_info[0] == 3
 PY2 = sys.version_info[0] == 2
@@ -30,7 +31,7 @@ if PY3:
     import itertools
     import collections
     from collections import Callable
-    from functools import cmp_to_key, reduce, update_wrapper
+    from functools import cmp_to_key, reduce
     from configparser import ConfigParser
     from itertools import zip_longest
     import builtins as __builtin__

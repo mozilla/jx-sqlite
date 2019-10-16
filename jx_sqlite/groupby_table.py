@@ -77,7 +77,7 @@ class GroupbyTable(EdgesTable):
 
         for i, select in enumerate(listwrap(query.select)):
             column_number = len(selects)
-            sql_type, sql = select.value.to_sql(schema)[0].sql.items()[0]
+            sql_type, sql = SQLang[select.value].to_sql(schema)[0].sql.items()[0]
             if sql == 'NULL' and not select.value.var in schema.keys():
                 Log.error("No such column {{var}}", var=select.value.var)
 
@@ -100,7 +100,7 @@ class GroupbyTable(EdgesTable):
         for w in query.window:
             selects.append(self._window_op(self, query, w))
 
-        where = query.where.to_sql(schema)[0].sql.b
+        where = SQLang[query.where].to_sql(schema)[0].sql.b
 
         command = (
             SQL_SELECT + (sql_list(selects)) +

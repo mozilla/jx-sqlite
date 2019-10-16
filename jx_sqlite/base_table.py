@@ -18,7 +18,7 @@ from jx_sqlite import UID
 from jx_sqlite.namespace import Namespace
 from mo_kwargs import override
 from mo_logs import Log
-from pyLibrary.sql import SQL_SELECT, SQL_UNION_ALL
+from pyLibrary.sql import SQL_SELECT, SQL_UNION_ALL, SQL_INSERT, sql_list, sql_iso
 from pyLibrary.sql.sqlite import Sqlite, quote_column, quote_value
 
 _config = None
@@ -62,9 +62,12 @@ class BaseTable(jx_base.Table):
                     "CREATE TABLE" + quote_column(DIGITS_TABLE) + "(value INTEGER)"
                 )
                 t.execute(
-                    "INSERT INTO"
+                    SQL_INSERT
                     + quote_column(DIGITS_TABLE)
-                    + SQL_UNION_ALL.join(SQL_SELECT + quote_value(i) for i in range(10))
+                    + sql_list(
+                        sql_iso(quote_value(i))
+                        for i in range(10)
+                    )
                 )
 
     @property

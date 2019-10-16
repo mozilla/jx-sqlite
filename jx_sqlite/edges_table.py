@@ -77,14 +77,14 @@ class EdgesTable(SetOpTable):
             elif not query_edge.value and any(query_edge.domain.partitions.where):
                 case = SQL_CASE
                 for pp, p in enumerate(query_edge.domain.partitions):
-                    w = p.where.to_sql(schema)[0].sql.b
+                    w = SQLang[p.where].to_sql(schema)[0].sql.b
                     t = quote_value(pp)
                     case += SQL_WHEN + w + SQL_THEN + t
                 case += SQL_ELSE + SQL_NULL + SQL_END  # quote value with length of partitions
                 edge_values = [("n", case)]
 
             elif query_edge.range:
-                edge_values = query_edge.range.min.to_sql(schema)[0].sql.items() + query_edge.range.max.to_sql(schema)[
+                edge_values = SQLang[query_edge.range.min].to_sql(schema)[0].sql.items() + SQLang[query_edge.range.max].to_sql(schema)[
                     0].sql.items()
 
             else:
