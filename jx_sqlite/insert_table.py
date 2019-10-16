@@ -15,10 +15,10 @@ from collections import Mapping
 
 from jx_base import Column
 from jx_base.expressions import jx_expression
-from jx_sqlite.utils import BasicSnowflake
 from jx_sqlite import GUID, ORDER, PARENT, UID, get_if_type, get_type, typed_column
 from jx_sqlite.base_table import BaseTable, generateGuid
 from jx_sqlite.expressions import json_type_to_sql_type
+from jx_sqlite.utils import BasicSnowflake
 from mo_dots import Data, Null, concat_field, listwrap, literal_field, startswith_field, unwrap, unwraplist, wrap
 from mo_future import text_type
 from mo_json import STRUCT
@@ -110,7 +110,7 @@ class InsertTable(BaseTable):
                 for d in listwrap(nested_value):
                     nested_table.flatten(d, Data(), doc_collection, path=nested_column_name)
 
-                prefix = "INSERT INTO " + quote_column(nested_table.name) + sql_iso(sql_list(
+                prefix = SQL_INSERT + quote_column(nested_table.name) + sql_iso(sql_list(
                     [self_primary_key] +
                     [quote_column(extra_key)] +
                     [
@@ -366,7 +366,7 @@ class InsertTable(BaseTable):
             all_columns = meta_columns + active_columns.es_column
 
             command = (
-                "INSERT INTO " + quote_column(table_name) +
+                SQL_INSERT + quote_column(table_name) +
                 sql_iso(sql_list(map(quote_column, all_columns))) +
                 SQL_VALUES + sql_list(
                     sql_iso(sql_list(quote_value(row.get(c)) for c in all_columns))

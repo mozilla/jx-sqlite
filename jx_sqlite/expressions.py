@@ -184,7 +184,7 @@ class SQLScript(SQLScript_):
         elif missing is TRUE:
             return "None"
 
-        return "None if (" + missing.to_sql(schema).expr + ") else (" + self.expr + ")"
+        return "None if (" + missing.to_sql(self.schema).expr + ") else (" + self.expr + ")"
 
     def __add__(self, other):
         return text_type(self) + text_type(other)

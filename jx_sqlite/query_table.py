@@ -43,11 +43,11 @@ class QueryTable(GroupbyTable):
         return bool(counter)
 
     def delete(self, where):
-        filter = where.to_sql(schema)
+        filter = where.to_sql(self.schema)
         self.db.execute("DELETE" + SQL_FROM + quote_column(self.sf.fact_name) + SQL_WHERE + filter)
 
     def vars(self):
-        return set(self.columns.keys())
+        return set(self.schema.columns.keys())
 
     def map(self, map_):
         return self
@@ -66,18 +66,18 @@ class QueryTable(GroupbyTable):
                 continue
             column_names.append(cname)
             if len(cs) == 1:
-                select.append(quote_column(c.es_column) + " " + quote_column(c.name))
+                select.append(quote_column(cs.es_column) + " " + quote_column(cs.name))
             else:
                 select.append(
                     "coalesce(" +
                     sql_list(quote_column(c.es_column) for c in cs) +
-                    ") " + quote_column(c.name)
+                    ") " + quote_column(cs.name)
                 )
 
         result = self.db.query(
             SQL_SELECT + SQL("\n,").join(select) +
             SQL_FROM + quote_column(self.sf.fact_name) +
-            SQL_WHERE + jx_expression(filter).to_sql(schema)
+            SQL_WHERE + jx_expression(filter).to_sql(self.schema)
         )
         return wrap([{c: v for c, v in zip(column_names, r)} for r in result.data])
 
