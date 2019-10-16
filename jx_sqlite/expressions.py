@@ -30,6 +30,7 @@ from jx_base.expressions import (
     ExpOp as ExpOp_,
     FALSE,
     FalseOp as FalseOp_,
+    FirstOp as FirstOp_,
     FindOp as FindOp_,
     FloorOp as FloorOp_,
     FromUnixOp as FromUnixOp_,
@@ -143,7 +144,7 @@ def check(func):
         if not is_data(output[0].sql):
             Log.error("expecting Data")
         for k, v in output[0].sql.items():
-            if k not in {'b', 'n', 's', 'j'}:
+            if k not in {'b', 'n', 's', 'j', '0'}:
                 Log.error("expecting datatypes")
             if not isinstance(v, text_type):
                 Log.error("expecting text")
@@ -351,7 +352,7 @@ class DateOp(DateOp_):
 class TupleOp(TupleOp_):
     @check
     def to_sql(self, schema, not_null=False, boolean=False):
-        return wrap([{"name": ".", "sql": t.to_sql(schema)[0].sql} for t in self.terms])
+        return wrap([{"name": ".", "sql": SQLang[t].to_sql(schema)[0].sql} for t in self.terms])
 
 
 class LeavesOp(LeavesOp_):
@@ -479,8 +480,8 @@ class FloorOp(FloorOp_):
 class EqOp(EqOp_):
     @check
     def to_sql(self, schema, not_null=False, boolean=False):
-        lhs = self.lhs.to_sql(schema)
-        rhs = self.rhs.to_sql(schema)
+        lhs = SQLang[self.lhs].to_sql(schema)
+        rhs = SQLang[self.rhs].to_sql(schema)
         acc = []
         if len(lhs) != len(rhs):
             Log.error("lhs and rhs have different dimensionality!?")
@@ -725,7 +726,7 @@ class AndOp(AndOp_):
                         "sql": {
                             "b": SQL_AND.join(
                                 [
-                                    sql_iso(t.to_sql(schema, boolean=True)[0].sql.b)
+                                    sql_iso(SQLang[t].to_sql(schema, boolean=True)[0].sql.b)
                                     for t in self.terms
                                 ]
                             )
@@ -746,7 +747,7 @@ class OrOp(OrOp_):
                     "name": ".",
                     "sql": {
                         "b": SQL_OR.join(
-                            sql_iso(t.to_sql(schema, boolean=True)[0].sql.b)
+                            sql_iso(SQLang[t].to_sql(schema, boolean=True)[0].sql.b)
                             for t in self.terms
                         )
                     },
@@ -800,10 +801,21 @@ class IntegerOp(IntegerOp_):
             return wrap([{"name": ".", "sql": {"n": sql_coalesce(acc)}}])
 
 
+class FirstOp(FirstOp_):
+    @check
+    def to_sql(self, schema, not_null=False, boolean=False):
+        value = SQLang[self.term].to_sql(schema, not_null=True)
+        for c in value:
+            for t, v in c.sql.items():
+                if t == "j":
+                    Log.error("can not handle")
+        return value
+
+
 class NumberOp(NumberOp_):
     @check
     def to_sql(self, schema, not_null=False, boolean=False):
-        value = self.term.to_sql(schema, not_null=True)
+        value = SQLang[self.term].to_sql(schema, not_null=True)
         acc = []
         for c in value:
             for t, v in c.sql.items():
@@ -946,7 +958,7 @@ class CoalesceOp(CoalesceOp_):
         acc = {"b": [], "s": [], "n": []}
 
         for term in self.terms:
-            for t, v in term.to_sql(schema)[0].sql.items():
+            for t, v in SQLang[term].to_sql(schema)[0].sql.items():
                 acc[t].append(v)
 
         output = {}
@@ -963,10 +975,10 @@ class CoalesceOp(CoalesceOp_):
 class MissingOp(MissingOp_):
     @check
     def to_sql(self, schema, not_null=False, boolean=False):
-        value = self.expr.partial_eval()
+        value = SQLang[self.expr].partial_eval()
         missing_value = value.missing().partial_eval()
 
-        if not isinstance(missing_value, MissingOp):
+        if not is_op(missing_value, MissingOp):
             return missing_value.to_sql(schema)
 
         value_sql = value.to_sql(schema)

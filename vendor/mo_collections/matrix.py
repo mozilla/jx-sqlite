@@ -397,8 +397,9 @@ def index_to_coordinate(dims):
             "\treturn " + ", ".join(coords)
         )
 
-    exec(code)
-    return output
+    fake_locals = {}
+    exec(code, globals(), fake_locals)
+    return fake_locals["output"]
 
 
 def _product(values):

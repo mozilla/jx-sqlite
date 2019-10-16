@@ -18,10 +18,11 @@ from jx_base.language import is_op
 from jx_base.query import QueryOp
 from jx_python import jx
 from jx_sqlite import GUID, sql_aggs, unique_name, untyped_column
+from jx_sqlite.expressions import SQLang
 from jx_sqlite.groupby_table import GroupbyTable
 from mo_collections.matrix import Matrix, index_to_coordinate
 from mo_dots import Data, Null, coalesce, concat_field, is_list, listwrap, relative_field, startswith_field, unwrap, unwraplist, wrap
-from mo_future import text_type
+from mo_future import text_type, transpose
 import mo_json
 from mo_json import STRING, STRUCT
 from mo_logs import Log
@@ -202,7 +203,7 @@ class QueryTable(GroupbyTable):
                     domain = SimpleSetDomain(partitions=jx.sort(set(parts)))
                 else:
                     if not columns:
-                        columns = zip(*result.data)
+                        columns = transpose(*result.data)
                     parts = set(columns[i])
                     if e.is_groupby and None in parts:
                         allowNulls = True

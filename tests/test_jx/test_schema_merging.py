@@ -110,7 +110,7 @@ class TestSchemaMerging(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_tests(test, typed=True)
+        self.utils.execute_tests(test, tjson=True)
 
     def test_dots_in_property_names(self):
         test = {

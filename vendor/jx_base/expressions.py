@@ -280,6 +280,11 @@ class Expression(BaseExpression):
         Log.note("this is slow on {{type}}", type=text_type(self_class.__name__))
         return self.__data__() == other.__data__()
 
+    def to_sql(self, *args, **kwargs):
+        Log.warning("wrong path")
+        from jx_sqlite.expressions import SQLang
+        return SQLang[self].to_sql(*args, **kwargs)
+
 
 class Variable(Expression):
 

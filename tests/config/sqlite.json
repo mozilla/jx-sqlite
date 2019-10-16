@@ -3,7 +3,8 @@
 	"db":{
 		"name": "testing",
 		"filename":"test.sqlite",
-		"upgrade": false
+		"upgrade": true,
+		"load_functions": true
 	},
 	"constants": {
 		"pyLibrary.sql.sqlite.DEBUG": true

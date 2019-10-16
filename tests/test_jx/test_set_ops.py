@@ -615,7 +615,7 @@ class TestSetOps(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_tests(test, typed=False)
+        self.utils.execute_tests(test, tjson=False)
 
     @skipIf(global_settings.use == "sqlite", "no need for limit when using own resources")
     def test_max_limit(self):

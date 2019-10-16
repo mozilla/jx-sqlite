@@ -11,11 +11,13 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
+from jx_base.language import is_op
+
 from mo_future import is_text, is_binary
 from jx_base.domains import DefaultDomain, DurationDomain, TimeDomain
 from jx_python import jx
 from jx_sqlite import ColumnMapping, STATS, _make_column_name, get_column, quoted_PARENT, quoted_UID, sql_aggs, sql_text_array_to_set, untyped_column
-from jx_sqlite.expressions import TupleOp, Variable, sql_type_to_json_type
+from jx_sqlite.expressions import TupleOp, Variable, sql_type_to_json_type, SQLang
 from jx_sqlite.setop_table import SetOpTable
 from mo_dots import coalesce, concat_field, join_field, listwrap, relative_field, split_field, startswith_field, tail_field
 from mo_future import text_type, unichr
@@ -29,6 +31,7 @@ EXISTS_COLUMN = quote_column("__exists__")
 
 class EdgesTable(SetOpTable):
     def _edges_op(self, query, frum):
+        schema = frum
         query = query.copy()  # WE WILL BE MARKING UP THE QUERY
         index_to_column = {}  # MAP FROM INDEX TO COLUMN (OR SELECT CLAUSE)
         outer_selects = []  # EVERY SELECT CLAUSE (NOT TO BE USED ON ALL TABLES, OF COURSE)
@@ -37,8 +40,6 @@ class EdgesTable(SetOpTable):
             nested_path: quote_column("__" + unichr(ord('a') + i) + "__")
             for i, (nested_path, sub_table) in enumerate(self.sf.tables)
         }
-
-        schema = self.sf.tables[relative_field(frum, self.sf.fact_name)].schema
 
         tables = []
         for n, a in nest_to_alias.items():
@@ -53,7 +54,7 @@ class EdgesTable(SetOpTable):
                 SQL_ON + join_column(t.alias, quoted_PARENT) + " = " + join_column(previous.alias, quoted_UID)
             )
 
-        main_filter = query.where.to_sql(schema, boolean=True)[0].sql.b
+        main_filter = SQLang[query.where].to_sql(schema, boolean=True)[0].sql.b
 
         # SHIFT THE COLUMN DEFINITIONS BASED ON THE NESTED QUERY DEPTH
         ons = []
@@ -65,13 +66,13 @@ class EdgesTable(SetOpTable):
         orderby = []
         domains = []
 
-        select_clause = [SQL_ONE + EXISTS_COLUMN] + [quote_column(c.es_column) for c in self.sf.tables["."].columns]
+        select_clause = [SQL_ONE + EXISTS_COLUMN] + [quote_column(c.es_column) for c in self.sf.columns]
 
         for edge_index, query_edge in enumerate(query.edges):
             edge_alias = quote_column("e" + text_type(edge_index))
 
             if query_edge.value:
-                edge_values = [p for c in query_edge.value.to_sql(schema).sql for p in c.items()]
+                edge_values = [p for c in SQLang[query_edge.value].to_sql(schema).sql for p in c.items()]
 
             elif not query_edge.value and any(query_edge.domain.partitions.where):
                 case = SQL_CASE
@@ -385,7 +386,7 @@ class EdgesTable(SetOpTable):
 
                 raise NotImplementedError()
             elif s.aggregate == "cardinality":
-                for details in s.value.to_sql(schema):
+                for details in SQLang[s.value].to_sql(schema):
                     for json_type, sql in details.sql.items():
                         column_number = len(outer_selects)
                         count_sql = sql_alias(sql_count("DISTINCT" + sql_iso(sql)), _make_column_name(column_number))
@@ -401,7 +402,7 @@ class EdgesTable(SetOpTable):
                             type=sql_type_to_json_type[json_type]
                         )
             elif s.aggregate == "union":
-                for details in s.value.to_sql(schema):
+                for details in SQLang[s.value].to_sql(schema):
                     for sql_type, sql in details.sql.items():
                         column_number = len(outer_selects)
                         outer_selects.append(sql_alias("JSON_GROUP_ARRAY(DISTINCT" + sql_iso(sql) + ")", _make_column_name(column_number)))
@@ -434,7 +435,7 @@ class EdgesTable(SetOpTable):
                             type="number"
                         )
             else:  # STANDARD AGGREGATES
-                for details in s.value.partial_eval().to_sql(schema):
+                for details in SQLang[s.value].partial_eval().to_sql(schema):
                     for sql_type, sql in details.sql.items():
                         column_number = len(outer_selects)
                         sql = sql_aggs[s.aggregate] + sql_iso(sql)
