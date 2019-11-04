@@ -155,7 +155,7 @@ def typed_encode(value, sub_schema, path, net_new_properties, buffer):
 
             sub_schema = {json_type_to_inserter_type[value_json_type]: sub_schema}
 
-        if value == None:
+        if value == None and path:
             from mo_logs import Log
             Log.error("can not encode null (missing) values")
         elif value is True:

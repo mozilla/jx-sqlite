@@ -79,6 +79,9 @@ class URL(object):
         output.fragment = self.fragment
         return output
 
+    def decode(self, encoding=''):
+        return text_type(self).decode(encoding)
+
     def __data__(self):
         return str(self)
 

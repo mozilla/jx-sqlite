@@ -33,6 +33,7 @@ except Exception:
     pass
 
 ISO8601 = '%Y-%m-%dT%H:%M:%SZ'
+RFC1123 = '%a, %d %b %Y %H:%M:%S GMT'
 
 
 class Date(object):
@@ -442,6 +443,10 @@ def unicode2Date(value, format=None):
         "%d%b%y",
         "%d%B%Y",
         "%d%B%y",
+        "%B%d%Y",
+        "%b%d%Y",
+        "%B%d%",
+        "%b%d%y",
         "%Y%m%d%H%M%S",
         "%Y%m%dT%H%M%S",
         "%d%m%Y%H%M%S",

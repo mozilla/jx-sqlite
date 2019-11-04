@@ -9,6 +9,7 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
+import mo_json
 from jx_base.expressions import (
     AddOp as AddOp_,
     AndOp as AndOp_,
@@ -17,6 +18,7 @@ from jx_base.expressions import (
     BasicIndexOfOp as BasicIndexOfOp_,
     BasicMulOp as BasicMulOp_,
     BasicSubstringOp as BasicSubstringOp_,
+    BasicStartsWithOp as BasicStartsWithOp_,
     BetweenOp as BetweenOp_,
     BooleanOp as BooleanOp_,
     CaseOp as CaseOp_,
@@ -86,7 +88,8 @@ from jx_base.expressions import (
     define_language,
     extend,
     simplified,
-    is_literal)
+    is_literal,
+)
 from jx_base.language import is_op
 from jx_base.queries import get_property_name
 from jx_sqlite import GUID, quoted_GUID
@@ -103,7 +106,6 @@ from mo_dots import (
     is_data,
 )
 from mo_future import PY2, text_type, decorate
-import mo_json
 from mo_json import BOOLEAN, EXISTS, NESTED, OBJECT, json2value
 from mo_logs import Log
 from mo_math import is_number
@@ -124,16 +126,22 @@ from pyLibrary.sql import (
     SQL_TRUE,
     SQL_WHEN,
     sql_coalesce,
-    sql_concat,
     sql_iso,
     sql_list,
     SQL_ZERO,
     SQL_ONE,
+    ConcatSQL,
+    SQL_LIKE,
+    SQL_ESCAPE,
 )
 from pyLibrary.sql.sqlite import quote_column, quote_value
 
 
 def check(func):
+    """
+    SIMPLY TO VERIFY OUTPUT OF to_sql
+    """
+
     @decorate(func)
     def to_sql(self, schema, not_null=False, boolean=False, **kwargs):
         if kwargs.get("many") != None:
@@ -149,7 +157,7 @@ def check(func):
         for k, v in output[0].sql.items():
             if k not in {"b", "n", "s", "j", "0"}:
                 Log.error("expecting datatypes")
-            if not isinstance(v, text_type):
+            if not isinstance(v, SQL):
                 Log.error("expecting text")
         return output
 
@@ -184,7 +192,13 @@ class SQLScript(SQLScript_):
         elif missing is TRUE:
             return "None"
 
-        return "None if (" + missing.to_sql(self.schema).expr + ") else (" + self.expr + ")"
+        return (
+            "None if ("
+            + missing.to_sql(self.schema).expr
+            + ") else ("
+            + self.expr
+            + ")"
+        )
 
     def __add__(self, other):
         return text_type(self) + text_type(other)
@@ -516,7 +530,7 @@ class EqOp(EqOp_):
                     WhenOp(lhs.missing(), **{"then": rhs_missing}),
                     WhenOp(rhs_missing, **{"then": FALSE}),
                     SqlEqOp([lhs, rhs]),
-                ],
+                ]
             ).partial_eval()
 
 
@@ -589,9 +603,7 @@ class BasicSubstringOp(BasicSubstringOp_):
     @check
     def to_sql(self, schema, not_null=False, boolean=False):
         value = SQLang[self.value].to_sql(schema)[0].sql.s
-        start = (
-            AddOp([self.start, Literal(1)]).partial_eval().to_sql(schema)[0].sql.n
-        )
+        start = AddOp([self.start, Literal(1)]).partial_eval().to_sql(schema)[0].sql.n
         length = SubOp([self.end, self.start]).partial_eval().to_sql(schema)[0].sql.n
 
         return wrap(
@@ -809,8 +821,8 @@ class NumberOp(NumberOp_):
 class StringOp(StringOp_):
     @check
     def to_sql(self, schema, not_null=False, boolean=False):
-        test = self.term.missing().to_sql(schema, boolean=True)[0].sql.b
-        value = self.term.to_sql(schema, not_null=True)[0].sql
+        test = SQLang[self.term].missing().to_sql(schema, boolean=True)[0].sql.b
+        value = SQLang[self.term].to_sql(schema, not_null=True)[0].sql
         acc = []
         for t, v in value.items():
             if t == "b":
@@ -1119,17 +1131,19 @@ class ConcatOp(ConcatOp_):
                     + SQL_THEN
                     + SQL_EMPTY_STRING
                     + SQL_ELSE
-                    + sql_iso(sql_concat([sep, term_sql]))
+                    + sql_iso(ConcatSQL([sep, term_sql]))
                     + SQL_END
                 )
             else:
-                acc.append(sql_concat([sep, term_sql]))
+                acc.append(ConcatSQL([sep, term_sql]))
 
-        expr_ = (
-            "substr" + sql_iso(sql_list([
-                sql_concat(acc),
-                LengthOp(self.separator).to_sql(schema)[0].sql.n + SQL("+1")
-            ]))
+        expr_ = "substr" + sql_iso(
+            sql_list(
+                [
+                    ConcatSQL(acc),
+                    LengthOp(self.separator).to_sql(schema)[0].sql.n + SQL("+1"),
+                ]
+            )
         )
 
         missing = self.missing()
@@ -1263,7 +1277,9 @@ class FindOp(FindOp_):
         value = SQLang[self.value].partial_eval().to_sql(schema)[0].sql.s
         find = SQLang[self.find].partial_eval().to_sql(schema)[0].sql.s
         start = SQLang[self.start].partial_eval().to_sql(schema)[0].sql.n
-        default = coalesce(SQLang[self.default].partial_eval().to_sql(schema)[0].sql.n, SQL_NULL)
+        default = coalesce(
+            SQLang[self.default].partial_eval().to_sql(schema)[0].sql.n, SQL_NULL
+        )
 
         if start.sql != SQL_ZERO.sql.strip():
             value = NotRightOp([self.value, self.start]).to_sql(schema)[0].sql.s
@@ -1271,14 +1287,19 @@ class FindOp(FindOp_):
         index = "INSTR" + sql_iso(sql_list([value, find]))
 
         sql = (
-                SQL_CASE +
-                SQL_WHEN + index +
-                SQL_THEN + index + SQL("-1+") + start +
-                SQL_ELSE + default +
-                SQL_END
+            SQL_CASE
+            + SQL_WHEN
+            + index
+            + SQL_THEN
+            + index
+            + SQL("-1+")
+            + start
+            + SQL_ELSE
+            + default
+            + SQL_END
         )
 
-        return wrap([{"name":".", "sql": {"n":sql}}])
+        return wrap([{"name": ".", "sql": {"n": sql}}])
 
 
 class BetweenOp(BetweenOp_):
@@ -1342,12 +1363,14 @@ class CaseOp(CaseOp_):
             els_ = coalesce(SQLang[self.whens[-1]].to_sql(schema)[0].sql[t], SQL_NULL)
             acc = SQL_ELSE + els_ + SQL_END
             for w in reversed(self.whens[0:-1]):
-                acc = (
-                    SQL_WHEN
-                    + SQLang[w.when].to_sql(schema, boolean=True)[0].sql.b
-                    + SQL_THEN
-                    + coalesce(SQLang[w.then].to_sql(schema)[0].sql[t], SQL_NULL)
-                    + acc
+                acc = ConcatSQL(
+                    (
+                        SQL_WHEN,
+                        SQLang[w.when].to_sql(schema, boolean=True)[0].sql.b,
+                        SQL_THEN,
+                        coalesce(SQLang[w.then].to_sql(schema)[0].sql[t], SQL_NULL),
+                        acc,
+                    )
                 )
             output[t] = SQL_CASE + acc
         return wrap([{"name": ".", "sql": output}])
@@ -1413,6 +1436,28 @@ class SqlSubstrOp(SqlSubstrOp_):
             if length is NULL:
                 return value
         return SqlSubstrOp([value, start, length])
+
+
+class BasicStartsWithOp(BasicStartsWithOp_):
+    @check
+    def to_sql(self, schema, not_null=False, boolean=False):
+        prefix = SQLang[self.prefix].partial_eval()
+        if is_literal(prefix):
+            value = SQLang[self.value].partial_eval().to_sql(schema)[0].sql.s
+            prefix = prefix.to_sql(schema)[0].sql.s
+            if "%" in prefix or "_" in prefix:
+                for r in "\\_%":
+                    prefix = prefix.replaceAll(r, "\\" + r)
+                sql = ConcatSQL((value, SQL_LIKE, prefix, SQL_ESCAPE, SQL("\\")))
+            else:
+                sql = ConcatSQL((value, SQL_LIKE, prefix))
+            return wrap([{"name": ".", "sql": {"b": sql}}])
+        else:
+            return (
+                SqlEqOp([SqlSubstrOp([self.value, ONE, LengthOp(prefix)]), prefix])
+                .partial_eval()
+                .to_sql()
+            )
 
 
 SQLang = define_language("SQLang", vars())

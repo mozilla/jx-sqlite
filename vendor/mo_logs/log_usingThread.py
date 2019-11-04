@@ -11,7 +11,6 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
-from mo_future import is_text, is_binary
 from mo_logs import Except, Log, suppress_exception
 from mo_logs.log_usingNothing import StructuredLogger
 from mo_threads import Queue, THREAD_STOP, Thread, Till

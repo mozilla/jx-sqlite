@@ -12,19 +12,20 @@
 from __future__ import absolute_import, division, unicode_literals
 
 from jx_base import Column
-from jx_sqlite.expressions import BooleanOp
 from jx_base.language import is_op
 from jx_base.queries import get_property_name
-from jx_sqlite import COLUMN, ColumnMapping, ORDER, _make_column_name, get_column, quoted_ORDER, quoted_PARENT, quoted_UID, set_column
+from jx_sqlite import COLUMN, ColumnMapping, ORDER, _make_column_name, get_column, UID
+from jx_sqlite.expressions import BooleanOp
 from jx_sqlite.expressions import LeavesOp, SQLang, sql_type_to_json_type
 from jx_sqlite.insert_table import InsertTable
-from mo_dots import Data, Null, concat_field, is_list, listwrap, literal_field, startswith_field, tail_field, unwrap, unwraplist
+from mo_dots import Data, Null, concat_field, is_list, listwrap, literal_field, startswith_field, unwrap, unwraplist
 from mo_future import text_type, unichr
 from mo_json import IS_NULL, STRUCT
-from mo_math import MAX, UNION
+from mo_math import UNION
 from mo_times import Date
-from pyLibrary.sql import SQL_AND, SQL_FROM, SQL_IS_NOT_NULL, SQL_IS_NULL, SQL_LEFT_JOIN, SQL_LIMIT, SQL_NULL, SQL_ON, SQL_ORDERBY, SQL_SELECT, SQL_TRUE, SQL_UNION_ALL, SQL_WHERE, sql_alias, sql_iso, sql_list
-from pyLibrary.sql.sqlite import join_column, quote_column, quote_value, json_type_to_sqlite_type
+from pyLibrary.sql import SQL_AND, SQL_FROM, SQL_IS_NOT_NULL, SQL_IS_NULL, SQL_LEFT_JOIN, SQL_LIMIT, SQL_NULL, SQL_ON, \
+    SQL_ORDERBY, SQL_SELECT, SQL_TRUE, SQL_UNION_ALL, SQL_WHERE, sql_alias, sql_iso, sql_list
+from pyLibrary.sql.sqlite import quote_column, quote_value, json_type_to_sqlite_type
 
 
 class SetOpTable(InsertTable):
@@ -111,7 +112,7 @@ class SetOpTable(InsertTable):
 
             # WE ALWAYS ADD THE UID
             column_number = index_to_uid[step] = nested_doc_details['id_coord'] = len(sql_selects)
-            sql_select = join_column(alias, quoted_UID)
+            sql_select = quote_column(alias, UID)
             sql_selects.append(sql_alias(sql_select, _make_column_name(column_number)))
             if step != ".":
                 # ID AND ORDER FOR CHILD TABLES
@@ -122,7 +123,7 @@ class SetOpTable(InsertTable):
                     column_alias=_make_column_name(column_number)
                 )
                 column_number = len(sql_selects)
-                sql_select = join_column(alias, quoted_ORDER)
+                sql_select = quote_column(alias, ORDER)
                 sql_selects.append(sql_alias(sql_select, _make_column_name(column_number)))
                 index_to_column[column_number] = ColumnMapping(
                     sql=sql_select,
@@ -491,9 +492,9 @@ class SetOpTable(InsertTable):
                 else:
                     from_clause += (
                         SQL_LEFT_JOIN + sql_alias(quote_column(concat_field(self.sf.fact_name, sub_table.name)), alias) +
-                        SQL_ON + join_column(alias, quoted_PARENT) + " = " + join_column(parent_alias, quoted_UID)
+                        SQL_ON + quote_column(alias, PARENT) + " = " + quote_column(parent_alias, UID)
                     )
-                    where_clause = sql_iso(where_clause) + SQL_AND + join_column(alias, quoted_ORDER) + " > 0"
+                    where_clause = sql_iso(where_clause) + SQL_AND + quote_column(alias, ORDER) + " > 0"
                 parent_alias = alias
 
             elif startswith_field(primary_nested_path, nested_path):
@@ -505,9 +506,9 @@ class SetOpTable(InsertTable):
                     parent_alias = alias = unichr(ord('a') + i - 1)
                     from_clause += (
                         SQL_LEFT_JOIN + quote_column(concat_field(self.sf.fact_name, sub_table.name)) + " " + alias +
-                        SQL_ON + join_column(alias, quoted_PARENT) + " = " + join_column(parent_alias, quoted_UID)
+                        SQL_ON + quote_column(alias, PARENT) + " = " + quote_column(parent_alias, UID)
                     )
-                    where_clause = sql_iso(where_clause) + SQL_AND + join_column(parent_alias, quoted_ORDER) + " > 0"
+                    where_clause = sql_iso(where_clause) + SQL_AND + quote_column(parent_alias, ORDER) + " > 0"
                 parent_alias = alias
 
             elif startswith_field(nested_path, primary_nested_path):
@@ -515,8 +516,8 @@ class SetOpTable(InsertTable):
                 # GET FIRST ROW FOR EACH NESTED TABLE
                 from_clause += (
                     SQL_LEFT_JOIN + sql_alias(quote_column(concat_field(self.sf.fact_name, sub_table.name)), alias) +
-                    SQL_ON + join_column(alias, quoted_PARENT) + " = " + join_column(parent_alias, quoted_UID) +
-                    SQL_AND + join_column(alias, ORDER) + " = 0"
+                    SQL_ON + quote_column(alias, PARENT) + " = " + quote_column(parent_alias, UID) +
+                    SQL_AND + quote_column(alias, ORDER) + " = 0"
                 )
 
                 # IMMEDIATE CHILDREN ONLY

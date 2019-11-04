@@ -9,15 +9,14 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from datetime import datetime
 import os
 import platform
 import sys
+from datetime import datetime
 
 from mo_dots import Data, FlatList, coalesce, is_data, is_list, listwrap, unwraplist, wrap
 from mo_future import PY3, is_text, text_type
-
-from mo_logs import constants
+from mo_logs import constants, exceptions, strings
 from mo_logs.exceptions import Except, LogItem, suppress_exception
 from mo_logs.strings import CR, indent
 

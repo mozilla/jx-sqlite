@@ -39,6 +39,7 @@ JSON_TYPES = [BOOLEAN, INTEGER, NUMBER, STRING, OBJECT]
 PRIMITIVE = [EXISTS, BOOLEAN, INTEGER, NUMBER, STRING]
 STRUCT = [EXISTS, OBJECT, NESTED]
 
+true, false, null = True, False, None
 
 _get = object.__getattribute__
 

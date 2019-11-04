@@ -74,32 +74,34 @@ class AllThread(object):
             Log.error("Problem in child threads", cause=exceptions)
 
 
-    def add(self, target, *args, **kwargs):
+    def add(self, name, target, *args, **kwargs):
         """
         target IS THE FUNCTION TO EXECUTE IN THE THREAD
         """
-        t = Thread.run(target.__name__, target, *args, **kwargs)
+        t = Thread.run(name, target, *args, **kwargs)
         self.threads.append(t)
+
+    run = add
 
 
 class BaseThread(object):
-    __slots__ = ["id", "name", "children", "child_lock", "cprofiler"]
+    __slots__ = ["id", "name", "children", "child_locker", "cprofiler"]
 
     def __init__(self, ident):
         self.id = ident
         if ident != -1:
             self.name = "Unknown Thread " + text_type(ident)
-        self.child_lock = allocate_lock()
+        self.child_locker = allocate_lock()
         self.children = []
         self.cprofiler = None
 
     def add_child(self, child):
-        with self.child_lock:
+        with self.child_locker:
             self.children.append(child)
 
     def remove_child(self, child):
         try:
-            with self.child_lock:
+            with self.child_locker:
                 self.children.remove(child)
         except Exception:
             pass
@@ -128,7 +130,7 @@ class MainThread(BaseThread):
         self.please_stop.go()
 
         join_errors = []
-        with self.child_lock:
+        with self.child_locker:
             children = copy(self.children)
         for c in reversed(children):
             DEBUG and c.name and Log.note("Stopping thread {{name|quote}}", name=c.name)
@@ -186,7 +188,7 @@ class MainThread(BaseThread):
 
         if not wait_forever:
             # TRIGGER SIGNAL WHEN ALL CHILDREN THREADS ARE DONE
-            with self_thread.child_lock:
+            with self_thread.child_locker:
                 pending = copy(self_thread.children)
             children_done = AndSignals(please_stop, len(pending))
             children_done.signal.then(self.please_stop.go)
@@ -262,7 +264,7 @@ class Thread(BaseThread):
         """
         SEND STOP SIGNAL, DO NOT BLOCK
         """
-        with self.child_lock:
+        with self.child_locker:
             children = copy(self.children)
         for c in children:
             DEBUG and c.name and Log.note("Stopping thread {{name|quote}}", name=c.name)
@@ -283,7 +285,7 @@ class Thread(BaseThread):
                 e = Except.wrap(e)
                 with self.synch_lock:
                     self.end_of_thread.exception = e
-                with self.parent.child_lock:
+                with self.parent.child_locker:
                     emit_problem = self not in self.parent.children
                 if emit_problem:
                     # THREAD FAILURES ARE A PROBLEM ONLY IF NO ONE WILL BE JOINING WITH IT
@@ -293,7 +295,7 @@ class Thread(BaseThread):
                         sys.stderr.write(str("ERROR in thread: " + self.name + " " + text_type(e) + "\n"))
             finally:
                 try:
-                    with self.child_lock:
+                    with self.child_locker:
                         children = copy(self.children)
                     for c in children:
                         try:
@@ -329,7 +331,7 @@ class Thread(BaseThread):
         if self is Thread:
             Log.error("Thread.join() is not a valid call, use t.join()")
 
-        with self.child_lock:
+        with self.child_locker:
             children = copy(self.children)
         for c in children:
             c.join(till=till)

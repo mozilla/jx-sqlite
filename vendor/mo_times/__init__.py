@@ -10,7 +10,6 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
-from mo_future import is_text, is_binary
 from mo_times.dates import Date
 from mo_times.durations import DAY, Duration, HOUR, MINUTE, MONTH, QUARTER, SECOND, WEEK, YEAR, ZERO
 from mo_times.timer import Timer

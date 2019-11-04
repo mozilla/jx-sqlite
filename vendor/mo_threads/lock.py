@@ -76,7 +76,7 @@ class Lock(object):
             waiter = self.waiting.pop()
             waiter.go()
         self.lock.release()
-        self.debug and _Log.note(" released lock {{name|quote}}", name=self.name)
+        self.debug and _Log.note("released lock {{name|quote}}", name=self.name)
 
     def wait(self, till=None):
         """

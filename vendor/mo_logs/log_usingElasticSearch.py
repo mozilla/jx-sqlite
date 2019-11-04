@@ -13,8 +13,8 @@ from datetime import date, datetime
 import sys
 
 from jx_python import jx
-from mo_dots import coalesce, listwrap, set_default, wrap
-from mo_future import number_types, text_type
+from mo_dots import coalesce, listwrap, set_default, wrap, is_data, is_sequence
+from mo_future import number_types, text_type, is_text, is_binary
 from mo_json import datetime2unix, json2value, value2json
 from mo_kwargs import override
 from mo_logs import Log, strings
@@ -56,11 +56,17 @@ class StructuredLogger_usingElasticSearch(StructuredLogger):
         rollover_interval = coalesce(kwargs.rollover.interval, kwargs.rollover.max, "year")
         rollover_max = coalesce(kwargs.rollover.max, kwargs.rollover.interval, "year")
 
+        schema = set_default(
+            kwargs.schema,
+            {"mappings": {kwargs.type: {"properties": {"~N~": {"type": "nested"}}}}},
+            json2value(value2json(SCHEMA), leaves=True)
+        )
+
         self.es = RolloverIndex(
             rollover_field={"get": [{"first": "."}, {"literal": "timestamp"}]},
             rollover_interval=rollover_interval,
             rollover_max=rollover_max,
-            schema=set_default(kwargs.schema, json2value(value2json(SCHEMA), leaves=True)),
+            schema=schema,
             limit_replicas=True,
             typed=True,
             read_only=False,
@@ -96,12 +102,12 @@ class StructuredLogger_usingElasticSearch(StructuredLogger):
                             please_stop.go()
                             continue
                         try:
-                            messages = flatten_causal_chain(message.value)
+                            chain = flatten_causal_chain(message.value)
                             scrubbed.append(
                                 {
                                     "value": [
-                                        _deep_json_to_string(m, depth=3)
-                                        for m in messages
+                                        _deep_json_to_string(link, depth=3)
+                                        for link in chain
                                     ]
                                 }
                             )
@@ -118,6 +124,7 @@ class StructuredLogger_usingElasticSearch(StructuredLogger):
                         "Given up trying to write debug logs to ES index {{index}}",
                         index=self.es.settings.index,
                     )
+                    break
                 Till(seconds=PAUSE_AFTER_BAD_INSERT).wait()
 
         # CONTINUE TO DRAIN THIS QUEUE

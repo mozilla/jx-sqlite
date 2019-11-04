@@ -18,7 +18,6 @@
 
 from __future__ import absolute_import, division
 
-from mo_future import is_text, is_binary
 from contextlib import closing
 from copy import copy
 from mmap import mmap
@@ -30,7 +29,7 @@ from requests import Response, sessions
 from jx_python import jx
 from mo_dots import Data, Null, coalesce, is_list, set_default, unwrap, wrap
 from mo_files.url import URL
-from mo_future import PY2, text_type
+from mo_future import PY2, is_text, text_type
 from mo_json import json2value, value2json
 from mo_logs import Log
 from mo_logs.exceptions import Except

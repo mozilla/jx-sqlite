@@ -24,7 +24,6 @@ _Query = None
 
 
 def _delayed_imports():
-    global type2container
     global _ListContainer
     global _Cube
     global _run

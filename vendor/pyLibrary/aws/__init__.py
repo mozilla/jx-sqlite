@@ -9,7 +9,6 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from mo_future import is_text, is_binary
 import time
 
 from boto import sqs, utils as boto_utils
@@ -23,9 +22,7 @@ from mo_kwargs import override
 from mo_logs import Log, machine_metadata
 from mo_logs.exceptions import Except, suppress_exception
 import mo_math
-from mo_threads import Thread
-from mo_threads.signal import Signal
-from mo_threads.till import Till
+from mo_threads import Thread, Till, Signal
 from mo_times import timer
 from mo_times.durations import Duration, SECOND
 

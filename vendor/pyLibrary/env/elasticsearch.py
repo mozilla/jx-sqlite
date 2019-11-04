@@ -31,6 +31,7 @@ from mo_times import Date, MINUTE, Timer, HOUR
 from pyLibrary.convert import quote2string, value2number
 from pyLibrary.env import http
 
+DEBUG = True
 DEBUG_METADATA_UPDATE = False
 
 ES_STRUCT = ["object", "nested"]
@@ -320,6 +321,10 @@ class Index(Features):
                 Log.error('Expecting {"id":id, "value":document} form.  Not expecting _id')
             id, version, json_bytes = self.encode(r)
 
+            if DEBUG and not json_bytes.startswith('{'):
+                self.encode(r)
+                Log.error("string {{doc}} will not be accepted as a document", doc=json_bytes)
+
             if version:
                 yield unicode2utf8(value2json({"index": {"_id": id, "version": int(version), "version_type": "external_gte"}}))
             else:
@@ -340,7 +345,9 @@ class Index(Features):
         if not records:
             return
         if isinstance(records, generator_types):
-            Log.error("generators no longer accepted, use lambda to make generator")
+            Log.error("single use generators no longer accepted")
+        if not hasattr(records, "__iter__"):
+            Log.error("records must have __iter__")
 
         try:
             with Timer("Add {{num}} documents to {{index}}", {"num": "unknown", "index": self.settings.index}, silent=not self.debug):

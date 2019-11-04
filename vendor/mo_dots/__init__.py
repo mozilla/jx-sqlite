@@ -9,12 +9,10 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
-from importlib import import_module
 import sys
 
-from mo_future import binary_type, generator_types, is_binary, is_text, text_type
-
 from mo_dots.utils import CLASS, OBJ, get_logger, get_module
+from mo_future import binary_type, generator_types, is_binary, is_text, text_type
 
 none_type = type(None)
 ModuleType = type(sys.modules[__name__])
@@ -59,6 +57,14 @@ def zip(keys, values):
             break
         output[k] = values[i]
     return output
+
+
+def missing(value):
+    return value == None or value == ''
+
+
+def exists(value):
+    return value != None and value != ''
 
 
 def literal_field(field):
@@ -609,6 +615,7 @@ from mo_dots.nones import Null, NullType
 from mo_dots.lists import FlatList, is_list, is_sequence, is_container, is_many
 from mo_dots.objects import DataObject
 
+# EXPORT
 import mo_dots.nones as temp
 temp.wrap = wrap
 temp.is_sequence = is_sequence

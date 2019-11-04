@@ -19,7 +19,7 @@ from mo_dots import concat_field, join_field, listwrap, split_field, startswith_
 from mo_future import unichr
 from mo_logs import Log
 from pyLibrary.sql import SQL_FROM, SQL_GROUPBY, SQL_IS_NULL, SQL_LEFT_JOIN, SQL_NULL, SQL_ON, SQL_ONE, SQL_ORDERBY, SQL_SELECT, SQL_WHERE, sql_alias, sql_count, sql_iso, sql_list
-from pyLibrary.sql.sqlite import join_column, quote_column
+from pyLibrary.sql.sqlite import quote_column
 
 
 class GroupbyTable(EdgesTable):
@@ -44,7 +44,7 @@ class GroupbyTable(EdgesTable):
         for t in tables[1::]:
             from_sql += (
                 SQL_LEFT_JOIN + quote_column(concat_field(base_table, t.nest)) + " " + t.alias +
-                SQL_ON + join_column(t.alias, quoted_PARENT) + " = " + join_column(previous.alias, quoted_UID)
+                SQL_ON + quote_column(t.alias, PARENT) + " = " + quote_column(previous.alias, UID)
             )
 
         selects = []

@@ -23,3 +23,7 @@ class Facts(object):
     @property
     def namespace(self):
         return self.container.namespace
+
+    @property
+    def schema(self):
+        return self.snowflake.schema

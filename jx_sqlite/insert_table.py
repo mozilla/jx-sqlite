@@ -25,8 +25,8 @@ from mo_json import STRUCT
 from mo_logs import Log
 from mo_times import Date
 from pyLibrary.sql import SQL_AND, SQL_FROM, SQL_INNER_JOIN, SQL_NULL, SQL_SELECT, SQL_TRUE, SQL_UNION_ALL, SQL_WHERE, \
-    sql_iso, sql_list, SQL_VALUES
-from pyLibrary.sql.sqlite import join_column, json_type_to_sqlite_type, quote_column, quote_value
+    sql_iso, sql_list, SQL_VALUES, SQL_INSERT, ConcatSQL
+from pyLibrary.sql.sqlite import json_type_to_sqlite_type, quote_column, quote_value
 
 
 class InsertTable(BaseTable):
@@ -141,9 +141,9 @@ class InsertTable(BaseTable):
                     prefix +
                     SQL_SELECT +
                     sql_list(
-                        [join_column("p", c.es_column) for u in self.uid for c in self.columns[u]] +
-                        [join_column("c", extra_key)] +
-                        [join_column("c", c.es_column) for c in doc_collection.get(".", Null).active_columns]
+                        [quote_column("p", c.es_column) for u in self.uid for c in self.columns[u]] +
+                        [quote_column("c", extra_key)] +
+                        [quote_column("c", c.es_column) for c in doc_collection.get(".", Null).active_columns]
                     ) +
                     SQL_FROM + sql_iso(parent) + " p" +
                     SQL_INNER_JOIN + sql_iso(children) + " c" + " ON " + SQL_TRUE
@@ -365,14 +365,16 @@ class InsertTable(BaseTable):
 
             all_columns = meta_columns + active_columns.es_column
 
-            command = (
-                SQL_INSERT + quote_column(table_name) +
-                sql_iso(sql_list(map(quote_column, all_columns))) +
-                SQL_VALUES + sql_list(
+            command = ConcatSQL([
+                SQL_INSERT,
+                quote_column(table_name),
+                sql_iso(sql_list(map(quote_column, all_columns))),
+                SQL_VALUES,
+                sql_list(
                     sql_iso(sql_list(quote_value(row.get(c)) for c in all_columns))
                     for row in unwrap(rows)
                 )
-            )
+            ])
 
             with self.db.transaction() as t:
                 t.execute(command)

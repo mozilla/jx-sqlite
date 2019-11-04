@@ -13,7 +13,7 @@ from copy import copy
 from math import isnan
 
 from mo_dots import Data, data_types, listwrap
-from mo_dots.lists import list_types
+from mo_dots.lists import list_types, is_many
 from mo_future import boolean_type, long, none_type, text_type, transpose
 from mo_logs import Log
 from mo_times import Date
@@ -138,12 +138,14 @@ def is_op(call, op):
 
 
 def is_expression(call):
+    if is_many(call):
+        return False
     try:
         output = getattr(call, ID, None) != None
     except Exception:
         output = False
-    if output != isinstance(call, Expression):
-        Log.error("programmer error")
+    # if output != isinstance(call, Expression):
+    #     Log.error("programmer error")
     return output
 
 

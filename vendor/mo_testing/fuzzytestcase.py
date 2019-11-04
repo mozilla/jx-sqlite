@@ -12,7 +12,7 @@ from __future__ import unicode_literals
 import types
 import unittest
 
-from jx_base.expressions import NULL
+from jx_base.expressions import NULL, NullOp
 from mo_collections.unique_index import UniqueIndex
 import mo_dots
 from mo_dots import coalesce, is_container, is_list, literal_field, unwrap, wrap
@@ -83,7 +83,7 @@ def assertAlmostEqual(test, expected, digits=None, places=None, msg=None, delta=
     test = unwrap(test)
     expected = unwrap(expected)
     try:
-        if test is None and (expected is None or expected is NULL):
+        if test is None and (expected is NULL or expected is None):
             return
         elif test is expected:
             return

@@ -8,9 +8,6 @@
 #
 from __future__ import unicode_literals
 
-from mo_future import is_text, is_binary
-from activedata_etl import etl2path, key2etl
-
 from jx_python import jx
 from jx_python.containers.list_usingPythonList import ListContainer
 from mo_dots import Null, coalesce, wrap
@@ -26,6 +23,7 @@ from mo_times.durations import Duration
 from mo_times.timer import Timer
 from pyLibrary.aws.s3 import KEY_IS_WRONG_FORMAT, strip_extension
 from pyLibrary.env import elasticsearch
+
 
 MAX_RECORD_LENGTH = 400000
 DATA_TOO_OLD = "data is too old to be indexed"
@@ -85,7 +83,7 @@ class RolloverIndex(object):
         if queue == None:
             candidates = jx.run({
                 "from": ListContainer(".", self.cluster.get_aliases()),
-                "where": {"regex": {"index": self.settings.index + "\d\d\d\d\d\d\d\d_\d\d\d\d\d\d"}},
+                "where": {"regex": {"index": self.settings.index + "\\d\\d\\d\\d\\d\\d\\d\\d_\\d\\d\\d\\d\\d\\d"}},
                 "sort": "index"
             })
             best = None
@@ -136,6 +134,7 @@ class RolloverIndex(object):
 
     # ADD keys() SO ETL LOOP CAN FIND WHAT'S GETTING REPLACED
     def keys(self, prefix=None):
+        from activedata_etl import etl2path, key2etl
         path = jx.reverse(etl2path(key2etl(prefix)))
 
         if self.cluster.version.startswith(("5.", "6.")):
@@ -159,6 +158,9 @@ class RolloverIndex(object):
             return set()
 
     def extend(self, documents, queue=None):
+        if len(documents) == 0:
+            return
+
         i = 0
         if queue == None:
             for i, doc in enumerate(documents):
