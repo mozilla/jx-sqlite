@@ -9,7 +9,6 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-import mo_json
 from jx_base.expressions import (
     AddOp as AddOp_,
     AndOp as AndOp_,
@@ -106,7 +105,7 @@ from mo_dots import (
     is_data,
 )
 from mo_future import PY2, text_type, decorate
-from mo_json import BOOLEAN, EXISTS, NESTED, OBJECT, json2value
+from mo_json import BOOLEAN, EXISTS, NESTED, OBJECT, json2value, STRING, NUMBER, IS_NULL
 from mo_logs import Log
 from mo_math import is_number
 from pyLibrary import convert
@@ -133,8 +132,8 @@ from pyLibrary.sql import (
     ConcatSQL,
     SQL_LIKE,
     SQL_ESCAPE,
-    JoinSQL, SQL_EQ, SQL_NOT, SQL_PLUS, SQL_STAR, SQL_LT)
-from pyLibrary.sql.sqlite import quote_column, quote_value
+    JoinSQL, SQL_EQ, SQL_NOT, SQL_PLUS, SQL_STAR, SQL_LT, sql_concat_text, SQL_IN)
+from pyLibrary.sql.sqlite import quote_column, quote_value, quote_list
 
 
 def check(func):
@@ -195,6 +194,10 @@ class SQLScript(SQLScript_):
     def type(self):
         return self.data_type
 
+    @property
+    def name(self):
+        return "."
+
     def __getitem__(self, item):
         if not self.many:
             if item == 0:
@@ -204,17 +207,30 @@ class SQLScript(SQLScript_):
         else:
             Log.error("do not know how to handle")
 
+    def __iter__(self):
+        if not self.many:
+            yield self
+        else:
+            Log.error("do not know how to handle")
+
+
     @property
     def sql(self):
-        return wrap({json_type_to_sql_type[self.data_type]: ConcatSQL((
-            SQL_CASE,
-            SQL_WHEN,
-            SQL_NOT,
-            sql_iso(SQLang[self.miss].to_sql(self.schema)[0].sql.b),
-            SQL_THEN,
-            self.expr,
-            SQL_END
-        ))})
+        self.miss = self.miss.partial_eval()
+        if self.miss is TRUE:
+            return wrap({json_type_to_sql_type[self.data_type]: SQL_NULL})
+        elif self.miss is FALSE:
+            return wrap({json_type_to_sql_type[self.data_type]: self.expr})
+        else:
+            return wrap({json_type_to_sql_type[self.data_type]: ConcatSQL((
+                SQL_CASE,
+                SQL_WHEN,
+                SQL_NOT,
+                sql_iso(SQLang[self.miss].to_sql(self.schema)[0].sql.b),
+                SQL_THEN,
+                self.expr,
+                SQL_END
+            ))})
 
     def __str__(self):
         return str(self.sql)
@@ -323,6 +339,11 @@ class BooleanOp(BooleanOp_):
         if term.type == "boolean":
             sql = term.to_sql(schema)
             return sql
+        elif is_literal(term) and term.value in ('T', 'F'):
+            if term.value == 'T':
+                return TRUE.to_sql(schema)
+            else:
+                return FALSE.to_sql(schema)
         else:
             sql = term.exists().partial_eval().to_sql(schema)
             return sql
@@ -773,22 +794,15 @@ class LengthOp(LengthOp_):
         if is_literal(term):
             val = term.value
             if isinstance(val, text_type):
-                return wrap([{"name": ".", "sql": {"n": convert.value2json(len(val))}}])
+                sql = quote_value(len(val))
             elif isinstance(val, (float, int)):
-                return wrap(
-                    [
-                        {
-                            "name": ".",
-                            "sql": {
-                                "n": convert.value2json(len(convert.value2json(val)))
-                            },
-                        }
-                    ]
-                )
+                sql = quote_value(len(convert.value2json(val)))
             else:
                 return Null
-        value = term.to_sql(schema, not_null=not_null)[0].sql.s
-        return wrap([{"name": ".", "sql": {"n": "LENGTH" + sql_iso(value)}}])
+        else:
+            value = term.to_sql(schema, not_null=not_null)[0].sql.s
+            sql = ConcatSQL((SQL("LENGTH"), sql_iso(value)))
+        return wrap([{"name": ".", "sql": {"n": sql}}])
 
 
 class IntegerOp(IntegerOp_):
@@ -1160,42 +1174,29 @@ class ConcatOp(ConcatOp_):
                     + SQL_THEN
                     + SQL_EMPTY_STRING
                     + SQL_ELSE
-                    + sql_iso(ConcatSQL([sep, term_sql]))
+                    + sql_iso(sql_concat_text([sep, term_sql]))
                     + SQL_END
                 )
             else:
-                acc.append(ConcatSQL([sep, term_sql]))
+                acc.append(sql_concat_text([sep, term_sql]))
 
         expr_ = "SUBSTR" + sql_iso(
             sql_list(
                 [
-                    ConcatSQL(acc),
+                    sql_concat_text(acc),
                     LengthOp(self.separator).to_sql(schema)[0].sql.n + SQL("+1"),
                 ]
             )
         )
 
-        missing = self.missing()
-        if not missing:
-            return wrap([{"name": ".", "sql": {"s": expr_}}])
-        else:
-            return wrap(
-                [
-                    {
-                        "name": ".",
-                        "sql": {
-                            "s": SQL_CASE
-                            + SQL_WHEN
-                            + sql_iso(missing.to_sql(schema, boolean=True)[0].sql.b)
-                            + SQL_THEN
-                            + sql_iso(default)
-                            + SQL_ELSE
-                            + sql_iso(expr_)
-                            + SQL_END
-                        },
-                    }
-                ]
-            )
+        return SQLScript(
+            expr=expr_,
+            data_type=STRING,
+            frum=self,
+            miss=self.missing(),
+            many=False,
+            schema=schema
+        )
 
 
 class UnixOp(UnixOp_):
@@ -1410,6 +1411,11 @@ class SqlEqOp(SqlEqOp_):
         rhs = SQLang[self.rhs].partial_eval()
         lhs_sql = lhs.to_sql(schema, not_null=True)
         rhs_sql = rhs.to_sql(schema, not_null=True)
+        if is_literal(rhs) and lhs_sql[0].sql.b != None and rhs.value in ('T', 'F'):
+            rhs_sql = BooleanOp(rhs).to_sql(schema)
+        if is_literal(lhs) and rhs_sql[0].sql.b != None and lhs.value in ('T', 'F'):
+            lhs_sql = BooleanOp(lhs).to_sql(schema)
+
         if len(lhs_sql) != len(rhs_sql):
             Log.error("lhs and rhs have different dimensionality!?")
 
@@ -1512,19 +1518,19 @@ _sql_operators = {
 
 
 json_type_to_sql_type = {
-    mo_json.IS_NULL: "0",
-    mo_json.BOOLEAN: "b",
-    mo_json.NUMBER: "n",
-    mo_json.STRING: "s",
-    mo_json.OBJECT: "j",
-    mo_json.NESTED: "N",
+    IS_NULL: "0",
+    BOOLEAN: "b",
+    NUMBER: "n",
+    STRING: "s",
+    OBJECT: "j",
+    NESTED: "N",
 }
 
 sql_type_to_json_type = {
     None: None,
-    "0": mo_json.IS_NULL,
-    "b": mo_json.BOOLEAN,
-    "n": mo_json.NUMBER,
-    "s": mo_json.STRING,
-    "j": mo_json.OBJECT,
+    "0": IS_NULL,
+    "b": BOOLEAN,
+    "n": NUMBER,
+    "s": STRING,
+    "j": OBJECT,
 }
