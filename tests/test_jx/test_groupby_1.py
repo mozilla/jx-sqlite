@@ -424,7 +424,7 @@ class TestgroupBy1(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(int(global_settings.elasticsearch.version.split(".")[0]) <= 4, "version 4 and below do not implement")
+    @skipIf(global_settings.elasticsearch.version and int(global_settings.elasticsearch.version.split(".")[0]) <= 4, "version 4 and below do not implement")
     def test_count_values(self):
         # THIS IS NOT PART OF THE JX SPEC, IT IS AN INTERMEDIATE FORM FOR DEBUGGING
         test = {

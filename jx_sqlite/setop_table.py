@@ -24,8 +24,8 @@ from mo_json import IS_NULL, STRUCT
 from mo_math import UNION
 from mo_times import Date
 from pyLibrary.sql import SQL_AND, SQL_FROM, SQL_IS_NOT_NULL, SQL_IS_NULL, SQL_LEFT_JOIN, SQL_LIMIT, SQL_NULL, SQL_ON, \
-    SQL_ORDERBY, SQL_SELECT, SQL_TRUE, SQL_UNION_ALL, SQL_WHERE, sql_alias, sql_iso, sql_list
-from pyLibrary.sql.sqlite import quote_column, quote_value, json_type_to_sqlite_type
+    SQL_ORDERBY, SQL_SELECT, SQL_TRUE, SQL_UNION_ALL, SQL_WHERE, sql_iso, sql_list
+from pyLibrary.sql.sqlite import quote_column, quote_value, json_type_to_sqlite_type, sql_alias
 
 
 class SetOpTable(InsertTable):
@@ -76,11 +76,11 @@ class SetOpTable(InsertTable):
                     column_alias = _make_column_name(column_number)
                     sql_selects.append(sql_alias(sql, column_alias))
                     if select.sort == -1:
-                        sorts.append(column_alias + SQL_IS_NOT_NULL)
-                        sorts.append(column_alias + " DESC")
+                        sorts.append(quote_column(column_alias) + SQL_IS_NOT_NULL)
+                        sorts.append(quote_column(column_alias) + " DESC")
                     else:
-                        sorts.append(column_alias + SQL_IS_NULL)
-                        sorts.append(column_alias)
+                        sorts.append(quote_column(column_alias) + SQL_IS_NULL)
+                        sorts.append(quote_column(column_alias))
 
         primary_doc_details = Data()
         # EVERY SELECT STATEMENT THAT WILL BE REQUIRED, NO MATTER THE DEPTH
@@ -470,7 +470,7 @@ class SetOpTable(InsertTable):
             if any(startswith_field(nested_path, d) for d in done):
                 continue
 
-            alias = quote_column("__" + unichr(ord('a') + i) + "__")
+            alias = "__" + unichr(ord('a') + i) + "__"
 
             if primary_nested_path == nested_path:
                 select_clause = []

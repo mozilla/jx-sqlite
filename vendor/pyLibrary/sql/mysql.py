@@ -28,7 +28,7 @@ from mo_math import is_number
 from mo_times import Date
 from pyLibrary.sql import SQL, SQL_AND, SQL_ASC, SQL_DESC, SQL_FROM, SQL_IS_NULL, SQL_LEFT_JOIN, SQL_LIMIT, SQL_NULL, \
     SQL_ONE, SQL_SELECT, SQL_TRUE, SQL_WHERE, sql_iso, sql_list, SQL_INSERT, SQL_VALUES, ConcatSQL, SQL_EQ, \
-    SQL_UPDATE, SQL_SET, _Join, SQL_DOT
+    SQL_UPDATE, SQL_SET, JoinSQL, SQL_DOT
 
 DEBUG = False
 MAX_BATCH_SIZE = 1
@@ -579,7 +579,7 @@ def quote_value(value):
 def quote_column(*path):
     if not path:
         Log.error("missing column_name")
-    return _Join(SQL_DOT, map(quote_column, path))
+    return JoinSQL(SQL_DOT, map(quote_column, path))
 
 
 def quote_sql(value, param=None):

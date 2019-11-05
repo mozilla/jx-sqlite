@@ -886,6 +886,9 @@ class TupleOp(Expression):
         else:
             self.terms = [terms]
 
+    def __iter__(self):
+        return self.terms.__iter__()
+
     def __data__(self):
         return {"tuple": [t.__data__() for t in self.terms]}
 
@@ -1555,7 +1558,7 @@ class BooleanOp(Expression):
         elif term.type is BOOLEAN:
             return term
 
-        exists = self.lang[term.exists()]
+        exists = self.lang[term].exists().partial_eval()
         return exists
 
 
@@ -2270,7 +2273,7 @@ class ConcatOp(Expression):
             k, v = first(terms.items())
             terms = [Variable(k), Literal(v)]
         else:
-            terms = map(jx_expression, terms)
+            terms = [jx_expression(t) for t in terms]
 
         return cls.lang[ConcatOp(
             terms,
@@ -2420,7 +2423,7 @@ class NotLeftOp(Expression):
         length = self.length.partial_eval()
         max_length = LengthOp(value)
 
-        return self.lang[WhenOp(
+        output = self.lang[WhenOp(
             self.missing(),
             **{
                 "else": BasicSubstringOp([
@@ -2430,6 +2433,7 @@ class NotLeftOp(Expression):
                 ])
             }
         )].partial_eval()
+        return output
 
 
 class RightOp(Expression):
@@ -2559,9 +2563,6 @@ class FindOp(Expression):
             start=self.start.map(map_),
             default=self.default.map(map_)
         )
-
-    def exists(self):
-        return TRUE
 
 
 class SplitOp(Expression):

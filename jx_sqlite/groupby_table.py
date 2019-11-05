@@ -12,14 +12,14 @@
 from __future__ import absolute_import, division, unicode_literals
 
 from jx_python import jx
-from jx_sqlite import ColumnMapping, _make_column_name, get_column, quoted_PARENT, quoted_UID, sql_aggs
+from jx_sqlite import ColumnMapping, _make_column_name, get_column, quoted_PARENT, quoted_UID, sql_aggs, PARENT, UID
 from jx_sqlite.edges_table import EdgesTable
 from jx_sqlite.expressions import sql_type_to_json_type, SQLang
 from mo_dots import concat_field, join_field, listwrap, split_field, startswith_field
 from mo_future import unichr
 from mo_logs import Log
-from pyLibrary.sql import SQL_FROM, SQL_GROUPBY, SQL_IS_NULL, SQL_LEFT_JOIN, SQL_NULL, SQL_ON, SQL_ONE, SQL_ORDERBY, SQL_SELECT, SQL_WHERE, sql_alias, sql_count, sql_iso, sql_list
-from pyLibrary.sql.sqlite import quote_column
+from pyLibrary.sql import SQL_FROM, SQL_GROUPBY, SQL_IS_NULL, SQL_LEFT_JOIN, SQL_NULL, SQL_ON, SQL_ONE, SQL_ORDERBY, SQL_SELECT, SQL_WHERE, sql_count, sql_iso, sql_list
+from pyLibrary.sql.sqlite import quote_column, sql_alias
 
 
 class GroupbyTable(EdgesTable):
@@ -82,9 +82,9 @@ class GroupbyTable(EdgesTable):
                 Log.error("No such column {{var}}", var=select.value.var)
 
             if select.value == "." and select.aggregate == "count":
-                selects.append(sql_alias(sql_count(SQL_ONE) , quote_column(select.name)))
+                selects.append(sql_alias(sql_count(SQL_ONE) , select.name))
             else:
-                selects.append(sql_alias(sql_aggs[select.aggregate] + sql_iso(sql),quote_column(select.name)))
+                selects.append(sql_alias(sql_aggs[select.aggregate] + sql_iso(sql), select.name))
 
             index_to_column[column_number] = ColumnMapping(
                 push_name=select.name,
@@ -113,7 +113,7 @@ class GroupbyTable(EdgesTable):
             command += SQL_ORDERBY + sql_list(
                 sql_iso(sql[t]) + SQL_IS_NULL + "," +
                 sql[t] + (" DESC" if s.sort == -1 else "")
-                for s, sql in [(s, s.value.to_sql(schema)[0].sql) for s in query.sort]
+                for s, sql in [(s, SQLang[s.value].to_sql(schema)[0].sql) for s in query.sort]
                 for t in "bns" if sql[t]
             )
 

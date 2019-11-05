@@ -229,7 +229,8 @@ class InsertTable(BaseTable):
         # KEEP TRACK OF WHAT TABLE WILL BE MADE (SHORTLY)
         required_changes = []
         snowflake = self.facts.snowflake
-        abs_schema = BasicSnowflake(snowflake.query_paths, snowflake.columns)
+        # abs_schema = BasicSnowflake(snowflake.query_paths, snowflake.columns)
+        abs_schema = snowflake
 
         def _flatten(data, uid, parent_id, order, full_path, nested_path, row=None, guid=None):
             """
@@ -248,11 +249,13 @@ class InsertTable(BaseTable):
                 row = {GUID: guid, UID: uid, PARENT: parent_id, ORDER: order}
                 insertion.rows.append(row)
 
-            if not isinstance(data, Mapping):
-                data = {".": data}
-            for k, v in data.items():
-                insertion = doc_collection[nested_path[0]]
-                cname = concat_field(full_path, literal_field(k))
+            if isinstance(data, Mapping):
+                items = ((k, v,  concat_field(full_path, literal_field(k))) for k, v in data.items())
+            else:
+                # PRIMITIVE VALUES
+                items = [(None, data, full_path)]
+
+            for k, v, cname in items:
                 value_type = get_type(v)
                 if value_type is None:
                     continue
@@ -262,6 +265,7 @@ class InsertTable(BaseTable):
                 else:
                     c = unwraplist([cc for cc in abs_schema.column[cname] if cc.jx_type == value_type])
 
+                insertion = doc_collection[nested_path[0]]
                 if not c:
                     # WHAT IS THE NESTING LEVEL FOR THIS PATH?
                     deeper_nested_path = "."
@@ -293,26 +297,26 @@ class InsertTable(BaseTable):
                 elif len(c.nested_path) < len(nested_path):
                     from_doc = doc_collection.get(c.nested_path[0], None)
                     column = c.es_column
-                    from_doc.active_columns.remove(c)
-                    abs_schema._remove_column(c)
                     required_changes.append({"nest": (c, nested_path)})
                     deep_c = Column(
                         name=cname,
                         jx_type=value_type,
-                        es_column=typed_column(cname, json_type_to_sql_type(value_type)),
+                        es_type=json_type_to_sqlite_type.get(value_type, value_type),
+                        es_column=typed_column(cname, json_type_to_sql_type.get(value_type)),
                         es_index=table,
                         nested_path=nested_path,
                         last_updated=Date.now()
                     )
-                    abs_schema._add_column(deep_c)
                     insertion.active_columns.add(deep_c)
+                    abs_schema._add_column(deep_c)
+                    abs_schema._drop_column(c)
+                    from_doc.active_columns.remove(c)
 
                     for r in from_doc.rows:
                         r1 = unwrap(r)
                         if column in r1:
                             row1 = {UID: self.next_uid(), PARENT: r1["__id__"], ORDER: 0, column: r1[column]}
                             insertion.rows.append(row1)
-
                 elif len(c.nested_path) > len(nested_path):
                     insertion = doc_collection[c.nested_path[0]]
                     row = {UID: self.next_uid(), PARENT: uid, ORDER: order}

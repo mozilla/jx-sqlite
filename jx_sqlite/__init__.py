@@ -127,7 +127,7 @@ def untyped_column(column_name):
 
 
 def _make_column_name(number):
-    return SQL(COLUMN + text_type(number))
+    return COLUMN + text_type(number)
 
 
 sql_aggs = {

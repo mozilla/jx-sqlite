@@ -43,7 +43,7 @@ from pyLibrary.sql import (
     SQL_EQ,
     SQL_IS_NULL,
     SQL_COMMA,
-    _Join,
+    JoinSQL,
     SQL_FROM,
     SQL_WHERE,
     SQL_ORDERBY,
@@ -54,7 +54,7 @@ from pyLibrary.sql import (
     SQL_OP,
     SQL_CP,
     SQL_DOT,
-    SQL_LT)
+    SQL_LT, SQL_SPACE, SQL_AS)
 
 DEBUG = True
 TRACE = True
@@ -580,10 +580,18 @@ _simple_word = re.compile(r"^\w+$", re.UNICODE)
 def quote_column(*path):
     if not path:
         Log.error("expecting a name")
+    if any(not is_text(p) for p in path):
+        Log.error("expecting strings, not SQL")
     try:
-        return _Join(SQL_DOT, [SQL(quote(p)) for p in path])
+        return ConcatSQL((SQL_SPACE, JoinSQL(SQL_DOT, [SQL(quote(p)) for p in path]), SQL_SPACE))
     except Exception as e:
         Log.error("Not expacted", cause=e)
+
+
+def sql_alias(value, alias):
+    if not isinstance(value, SQL) or not is_text(alias):
+        Log.error("Expecting (SQL, text) parameters")
+    return ConcatSQL((value, SQL_AS, quote_column(alias)))
 
 
 def quote_value(value):
@@ -646,7 +654,7 @@ def sql_query(command):
     command = wrap(command)
     acc = [SQL_SELECT]
     if command.select:
-        acc.append(_Join(SQL_COMMA, map(quote_column, listwrap(command.select))))
+        acc.append(JoinSQL(SQL_COMMA, map(quote_column, listwrap(command.select))))
     else:
         acc.append(SQL_STAR)
 
@@ -657,7 +665,7 @@ def sql_query(command):
         acc.append(sql_eq(**command.where.eq))
     if command.orderby:
         acc.append(SQL_ORDERBY)
-        acc.append(_Join(SQL_COMMA, map(quote_column, listwrap(command.orderby))))
+        acc.append(JoinSQL(SQL_COMMA, map(quote_column, listwrap(command.orderby))))
     return ConcatSQL(acc)
 
 

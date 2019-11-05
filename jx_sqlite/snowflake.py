@@ -12,7 +12,7 @@ import jx_base
 from jx_sqlite import quoted_ORDER, quoted_PARENT, quoted_UID
 from jx_sqlite.schema import Schema
 from jx_sqlite.table import Table
-from mo_dots import concat_field, wrap
+from mo_dots import concat_field, wrap, split_field
 from mo_future import text_type
 from mo_logs import Log
 from pyLibrary.sql import SQL_FROM, SQL_LIMIT, SQL_SELECT, SQL_STAR, SQL_ZERO, sql_iso, sql_list
@@ -58,10 +58,26 @@ class Snowflake(jx_base.Snowflake):
         with self.namespace.db.transaction() as t:
             t.execute(
                 "ALTER TABLE" + quote_column(table) +
-                "ADD COLUMN" + quote_column(column.es_column) + " " + column.es_type
+                "ADD COLUMN" + quote_column(column.es_column) + column.es_type
             )
 
         self.namespace.columns.add(column)
+
+    def _drop_column(self, column):
+        # DROP COLUMN BY RENAMING IT, WITH __ PREFIX TO HIDE IT
+        cname = column.name
+        if column.jx_type == "nested":
+            # WE ARE ALSO NESTING
+            self._nest_column(column, [cname]+column.nested_path)
+
+        table = concat_field(self.fact_name, column.nested_path[0])
+
+        with self.namespace.db.transaction() as t:
+            t.execute(
+                "ALTER TABLE" + quote_column(table) +
+                "RENAME COLUMN" + quote_column(column.es_column) + " TO " + quote_column("__" + column.es_column)
+            )
+        self.namespace.columns.remove(column)
 
     def _nest_column(self, column, new_path):
         destination_table = concat_field(self.fact_name, new_path[0])

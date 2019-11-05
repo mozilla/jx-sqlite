@@ -10,7 +10,7 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
-from mo_dots import is_container
+from mo_dots import is_container, is_sequence
 from mo_future import is_text, PY2
 from mo_logs import Log
 
@@ -53,7 +53,7 @@ class SQL(object):
             return ConcatSQL((other, self))
 
     def join(self, list_):
-        return _Join(self, list_)
+        return JoinSQL(self, list_)
 
     def __data__(self):
         return self.sql
@@ -82,7 +82,7 @@ class TextSQL(SQL):
         yield self.value
 
 
-class _Join(SQL):
+class JoinSQL(SQL):
     __slots__ = ["sep", "concat"]
 
     def __init__(self, sep, concat):
@@ -119,7 +119,7 @@ class ConcatSQL(SQL):
 
     def __init__(self, concat):
         SQL.__init__(self)
-        if not is_container(concat):
+        if not is_sequence(concat):
             concat = list(concat)
         if DEBUG and any(not isinstance(s, SQL) for s in concat):
             Log.error("Can only join other SQL")
@@ -132,6 +132,7 @@ class ConcatSQL(SQL):
 
 
 SQL_STAR = SQL(" * ")
+SQL_PLUS = SQL(" + ")
 
 SQL_AND = SQL(" AND ")
 SQL_OR = SQL(" OR ")
@@ -144,16 +145,17 @@ SQL_THEN = SQL(" THEN ")
 SQL_ELSE = SQL(" ELSE ")
 SQL_END = SQL(" END ")
 
+SQL_SPACE = SQL(" ")
 SQL_COMMA = SQL(", ")
 SQL_UNION_ALL = SQL("\nUNION ALL\n")
 SQL_UNION = SQL("\nUNION\n")
 SQL_LEFT_JOIN = SQL("\nLEFT JOIN\n")
 SQL_INNER_JOIN = SQL("\nJOIN\n")
 SQL_EMPTY_STRING = SQL("''")
-SQL_TRUE = SQL(" 1 ")
-SQL_FALSE = SQL(" 0 ")
-SQL_ONE = SQL(" 1 ")
 SQL_ZERO = SQL(" 0 ")
+SQL_ONE = SQL(" 1 ")
+SQL_TRUE = SQL_ONE
+SQL_FALSE = SQL_ZERO
 SQL_NEG_ONE = SQL(" -1 ")
 SQL_NULL = SQL(" NULL ")
 SQL_IS_NULL = SQL(" IS NULL ")
@@ -176,7 +178,6 @@ SQL_CONCAT = SQL(" || ")
 SQL_AS = SQL(" AS ")
 SQL_LIKE = SQL(" LIKE ")
 SQL_ESCAPE = SQL(" ESCAPE ")
-SQL_SPACE = SQL(" ")
 SQL_OP = SQL("(")
 SQL_CP = SQL(")")
 SQL_EQ = SQL(" = ")
@@ -194,7 +195,7 @@ class DB(object):
 
 
 def sql_list(list_):
-    return ConcatSQL((SQL_SPACE, _Join(SQL_COMMA, list_), SQL_SPACE))
+    return ConcatSQL((SQL_SPACE, JoinSQL(SQL_COMMA, list_), SQL_SPACE))
 
 
 def sql_iso(sql):
@@ -209,14 +210,10 @@ def sql_concat_text(list_):
     """
     TEXT CONCATENATION WITH "||"
     """
-    return _Join(SQL_CONCAT, [sql_iso(l) for l in list_])
-
-
-def sql_alias(value, alias):
-    return ConcatSQL((value, SQL_AS, alias))
+    return JoinSQL(SQL_CONCAT, [sql_iso(l) for l in list_])
 
 
 def sql_coalesce(list_):
-    return ConcatSQL((SQL("COALESCE("), _Join(SQL_COMMA, list_), SQL_CP))
+    return ConcatSQL((SQL("COALESCE("), JoinSQL(SQL_COMMA, list_), SQL_CP))
 
 
