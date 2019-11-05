@@ -17,6 +17,7 @@ import signal
 import subprocess
 from copy import deepcopy
 
+from jx_sqlite.container import Container
 from pyLibrary.sql.sqlite import Sqlite
 
 import mo_json_config
@@ -33,6 +34,7 @@ from jx_python import jx
 from jx_base.query import QueryOp
 
 from tests import test_jx
+from tests.test_jx import TEST_TABLE
 
 
 class SQLiteUtils(object):
@@ -44,7 +46,8 @@ class SQLiteUtils(object):
         self._index = None
 
     def setUp(self):
-        self._index = QueryTable(name="testing", kwargs=test_jx.global_settings)
+        container = Container(db = test_jx.global_settings.db)
+        self._index = QueryTable(name="testing", container=container)
 
     def tearDown(self):
 
@@ -83,7 +86,7 @@ class SQLiteUtils(object):
 
         frum = subtest.query['from']
         if isinstance(frum, text_type):
-            subtest.query["from"] = frum.replace(test_jx.TEST_TABLE, self._index.facts.snowflake.fact_name)
+            subtest.query["from"] = frum.replace(TEST_TABLE, self._index.name)
         else:
             Log.error("Do not know how to handle")
 
@@ -121,7 +124,7 @@ class SQLiteUtils(object):
 
     def execute_query(self, query):
         try:
-            if startswith_field(query["from"], self._index.facts.snowflake.fact_name):
+            if startswith_field(query["from"], self._index.name):
                 return self._index.query(deepcopy(query))
             elif query["from"] == "meta.columns":
                 return self._index.query_metadata(deepcopy(query))

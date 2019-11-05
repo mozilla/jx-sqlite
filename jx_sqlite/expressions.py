@@ -139,9 +139,8 @@ from pyLibrary.sql.sqlite import quote_column, quote_value
 
 def check(func):
     """
-    SIMPLY TO VERIFY OUTPUT OF to_sql
+    TEMPORARY TYPE CHECKING TO ENSURE to_sql() IS OUTPUTTING THE CORRECT FORMAT
     """
-
     @decorate(func)
     def to_sql(self, schema, not_null=False, boolean=False, **kwargs):
         if kwargs.get("many") != None:
@@ -504,14 +503,15 @@ class DivOp(DivOp_):
 class InOp(InOp_):
     @check
     def to_sql(self, schema, not_null=False, boolean=False):
-        if not isinstance(self.superset, Literal):
+        if not is_op(self.superset, Literal):
             Log.error("Not supported")
         j_value = json2value(self.superset.json)
         if j_value:
-            var = self.value.to_sql(schema)
-            return SQL_OR.join(sql_iso(var + "==" + quote_value(v)) for v in j_value)
+            var = SQLang[self.value].to_sql(schema)
+            sql = SQL_OR.join(sql_iso(ConcatSQL((v, SQL_IN , quote_list(j_value)))) for t, v in var[0].sql.items())
         else:
-            return wrap([{"name": ".", "sql": {"b": SQL_FALSE}}])
+            sql = SQL_FALSE
+        return wrap([{"name": ".", "sql": {"b": sql}}])
 
 
 class EqOp(EqOp_):

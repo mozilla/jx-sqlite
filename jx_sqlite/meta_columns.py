@@ -11,19 +11,20 @@ from __future__ import absolute_import, division, unicode_literals
 
 import jx_base
 from jx_base import Column, Table
-from jx_base.meta_columns import META_COLUMNS_DESC, META_COLUMNS_NAME, META_COLUMNS_TYPE_NAME, SIMPLE_METADATA_COLUMNS
+from jx_base.meta_columns import META_COLUMNS_DESC, META_COLUMNS_NAME, SIMPLE_METADATA_COLUMNS
 from jx_base.schema import Schema
 from jx_python import jx
 from jx_sqlite import untyped_column
 from jx_sqlite.expressions import sql_type_to_json_type
-from mo_dots import Data, Null, coalesce, is_data, is_list, literal_field, startswith_field, tail_field, unwraplist, wrap
+from mo_dots import Data, Null, coalesce, is_data, is_list, literal_field, startswith_field, tail_field, unwraplist, \
+    wrap
 from mo_json import STRUCT, IS_NULL
-from mo_json.typed_encoder import unnest_path, untype_path, untyped
+from mo_json.typed_encoder import unnest_path, untyped
 from mo_logs import Log
 from mo_threads import Lock, Queue
 from mo_times.dates import Date
-from pyLibrary.sql import sql_iso
-from pyLibrary.sql.sqlite import quote_column
+from pyLibrary.sql import SQL_STAR
+from pyLibrary.sql.sqlite import sql_query
 
 DEBUG = False
 singlton = None
@@ -32,10 +33,19 @@ COLUMN_EXTRACT_PERIOD = 2 * 60
 ID = {"field": ["es_index", "es_column"], "version": "last_updated"}
 
 
-class ColumnList(Table, jx_base.Container):
+CACHE = {}  # MAP FROM id(db) TO ColumnList MANAGING THAT DB
+
+
+class ColumnList(jx_base.Table, jx_base.Container):
     """
     OPTIMIZED FOR fact column LOOKUP
     """
+
+    def __new__(cls, db):
+        output = CACHE.get(id(db))
+        if not output:
+            output = CACHE[id(db)] = object.__new__(cls)
+        return output
 
     def __init__(self, db):
         Table.__init__(self, META_COLUMNS_NAME)
@@ -62,30 +72,36 @@ class ColumnList(Table, jx_base.Container):
 
     def _load_from_database(self):
         # FIND ALL TABLES
-        result = self.db.query("SELECT * FROM sqlite_master WHERE type='table' ORDER BY name")
+        result = self.db.query(sql_query({
+            "from": "sqlite_master",
+            "where": {"eq": {"type": "table"}},
+            "orderby": "name"
+        }))
         tables = wrap([{k: d for k, d in zip(result.header, row)} for row in result.data])
-        last_nested_path = []
+        last_nested_path = ["."]
         for table in tables:
             if table.name.startswith("__"):
                 continue
             base_table, nested_path = tail_field(table.name)
 
             # FIND COMMON NESTED PATH SUFFIX
-            for i, p in enumerate(last_nested_path):
-                if startswith_field(nested_path, p):
-                    last_nested_path = last_nested_path[i:]
-                    break
-            else:
+            if nested_path == ".":
                 last_nested_path = []
+            else:
+                for i, p in enumerate(last_nested_path):
+                    if startswith_field(nested_path, p):
+                        last_nested_path = last_nested_path[i:]
+                        break
+                else:
+                    last_nested_path = []
 
             full_nested_path = [nested_path] + last_nested_path
             self._snowflakes[literal_field(base_table)] += [full_nested_path]
 
             # LOAD THE COLUMNS
-            command = "PRAGMA table_info" + sql_iso(quote_column(table.name))
-            details = self.db.query(command)
+            details = self.db.about(table.name)
 
-            for cid, name, dtype, notnull, dfft_value, pk in details.data:
+            for cid, name, dtype, notnull, dfft_value, pk in details:
                 if name.startswith("__"):
                     continue
                 cname, ctype = untyped_column(name)
@@ -365,7 +381,7 @@ class ColumnList(Table, jx_base.Container):
             output = [
                 {
                     "table": c.es_index,
-                    "name": untype_path(c.name),
+                    "name": untyped_column(c.name),
                     "cardinality": c.cardinality,
                     "es_column": c.es_column,
                     "es_index": c.es_index,

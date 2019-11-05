@@ -15,7 +15,7 @@ from jx_sqlite.table import Table
 from mo_dots import concat_field, wrap, split_field
 from mo_future import text_type
 from mo_logs import Log
-from pyLibrary.sql import SQL_FROM, SQL_LIMIT, SQL_SELECT, SQL_STAR, SQL_ZERO, sql_iso, sql_list
+from pyLibrary.sql import SQL_FROM, SQL_LIMIT, SQL_SELECT, SQL_STAR, SQL_ZERO, sql_iso, sql_list, SQL_CREATE
 from pyLibrary.sql.sqlite import quote_column
 
 
@@ -24,11 +24,11 @@ class Snowflake(jx_base.Snowflake):
     MANAGE SINGLE HIERARCHY IN SQLITE DATABASE
     """
     def __init__(self, fact_name, namespace):
-        if not namespace._snowflakes[fact_name]:
+        if not namespace.columns._snowflakes[fact_name]:
             Log.error("{{name}} does not exist", name=fact_name)
+
         self.fact_name = fact_name  # THE CENTRAL FACT TABLE
         self.namespace = namespace
-        self.column = Schema(".", self)
 
     def __copy__(self):
         Log.error("con not copy")
@@ -94,11 +94,10 @@ class Snowflake(jx_base.Snowflake):
 
         # DEFINE A NEW TABLE?
         # LOAD THE COLUMNS
-        command = "PRAGMA table_info"+sql_iso(quote_column(destination_table))
-        details = self.namespace.db.query(command)
+        details = self.namespace.db.about(destination_table)
         if not details.data:
             command = (
-                "CREATE TABLE " + quote_column(destination_table) + sql_iso(sql_list([
+                SQL_CREATE + quote_column(destination_table) + sql_iso(sql_list([
                     quoted_UID + "INTEGER",
                     quoted_PARENT + "INTEGER",
                     quoted_ORDER + "INTEGER",
@@ -131,14 +130,14 @@ class Snowflake(jx_base.Snowflake):
                     " RENAME TO " + quote_column(tmp_table)
                 )
                 t.execute(
-                    "CREATE TABLE " + quote_column(existing_table) + " AS " +
+                    SQL_CREATE + quote_column(existing_table) + SQL_AS +
                     SQL_SELECT + sql_list([quote_column(c) for c in columns if c != column]) +
                     SQL_FROM + quote_column(tmp_table)
                 )
                 t.execute("DROP TABLE " + quote_column(tmp_table))
 
     def add_table(self, nested_path):
-        query_paths = self.namespace._snowflakes[self.fact_name]
+        query_paths = self.namespace.columns._snowflakes[self.fact_name]
         if nested_path in query_paths:
             Log.error("table exists")
         query_paths.append(nested_path)
@@ -149,10 +148,14 @@ class Snowflake(jx_base.Snowflake):
         """
         :return:  LIST OF (nested_path, full_name) PAIRS
         """
-        return [(path, concat_field(self.fact_name, path)) for path in self.query_paths]
+        return [(path[0], concat_field(self.fact_name, path[0])) for path in self.query_paths]
 
     def get_schema(self, nested_path):
         return Schema(nested_path, self)
+
+    @property
+    def schema(self):
+        return Schema(["."], self)
 
     @property
     def columns(self):
@@ -160,5 +163,5 @@ class Snowflake(jx_base.Snowflake):
 
     @property
     def query_paths(self):
-        return self.namespace._snowflakes[self.fact_name]
+        return self.namespace.columns._snowflakes[self.fact_name]
 

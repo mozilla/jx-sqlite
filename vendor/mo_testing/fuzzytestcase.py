@@ -157,7 +157,7 @@ def assertAlmostEqualValue(test, expected, digits=None, places=None, msg=None, d
         if test == None:  # pandas dataframes reject any comparision with an exception!
             return
         else:
-            raise AssertionError(expand_template("{{test}} != {{expected}}", locals()))
+            raise AssertionError(expand_template("{{test}} != NULL", locals()))
 
     if expected == None:  # None has no expectations
         return

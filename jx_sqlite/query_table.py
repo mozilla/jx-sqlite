@@ -11,22 +11,24 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
+import mo_json
 from jx_base import Column
+from jx_base.container import type2container
 from jx_base.domains import SimpleSetDomain
 from jx_base.expressions import TupleOp, Variable, jx_expression
 from jx_base.language import is_op
 from jx_base.query import QueryOp
 from jx_python import jx
 from jx_sqlite import GUID, sql_aggs, unique_name, untyped_column
-from jx_sqlite.expressions import SQLang
 from jx_sqlite.groupby_table import GroupbyTable
 from mo_collections.matrix import Matrix, index_to_coordinate
-from mo_dots import Data, Null, coalesce, concat_field, is_list, listwrap, relative_field, startswith_field, unwrap, unwraplist, wrap
+from mo_dots import Data, Null, coalesce, concat_field, is_list, listwrap, relative_field, startswith_field, unwrap, \
+    unwraplist, wrap
 from mo_future import text_type, transpose
-import mo_json
 from mo_json import STRING, STRUCT
 from mo_logs import Log
-from pyLibrary.sql import SQL, SQL_FROM, SQL_ORDERBY, SQL_SELECT, SQL_WHERE, sql_count, sql_iso, sql_list
+from pyLibrary.sql import SQL, SQL_FROM, SQL_ORDERBY, SQL_SELECT, SQL_WHERE, sql_count, sql_iso, sql_list, SQL_CREATE, \
+    SQL_AS
 from pyLibrary.sql.sqlite import quote_column
 
 
@@ -86,13 +88,13 @@ class QueryTable(GroupbyTable):
         :param query:  JSON Query Expression, SET `format="container"` TO MAKE NEW TABLE OF RESULT
         :return:
         """
-        if not startswith_field(query['from'], self.sf.fact_name):
+        if not startswith_field(query['from'], self.name):
             Log.error("Expecting table, or some nested table")
-        query = QueryOp.wrap(query, self, self.namespace)
+        query = QueryOp.wrap(query, self.container, self.namespace)
         new_table = "temp_" + unique_name()
 
         if query.format == "container":
-            create_table = "CREATE TABLE " + quote_column(new_table) + " AS "
+            create_table = SQL_CREATE + quote_column(new_table) + SQL_AS
         else:
             create_table = ""
 
@@ -449,7 +451,33 @@ class QueryTable(GroupbyTable):
             Log.error("not done")
         return output
 
+    def transaction(self):
+        """
+        PERFORM MULTIPLE ACTIONS IN A TRANSACTION
+        """
+        return Transaction(
+            self
+        )
 
-from jx_base.container import type2container
+
+class Transaction:
+
+    def __init__(self, table):
+        self.transaction = None
+        self.table = table
+
+    def __enter__(self):
+        self.transaction = self.container.db.transaction()
+        self.table.db = self.transaction  # REDIRECT SQL TO TRANSACTION
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.table.db = self.table.container.db
+        self.transaction.__exit__(exc_type, exc_val, exc_tb)
+        self.transaction = None
+
+    def __getattr__(self, item):
+        return getattr(self.table, item)
+
 
 type2container["sqlite"] = QueryTable

@@ -18,13 +18,14 @@ from jx_sqlite import COLUMN, ColumnMapping, ORDER, _make_column_name, get_colum
 from jx_sqlite.expressions import BooleanOp
 from jx_sqlite.expressions import LeavesOp, SQLang, sql_type_to_json_type
 from jx_sqlite.insert_table import InsertTable
-from mo_dots import Data, Null, concat_field, is_list, listwrap, literal_field, startswith_field, unwrap, unwraplist
+from mo_dots import Data, Null, concat_field, is_list, listwrap, literal_field, startswith_field, unwrap, unwraplist, \
+    exists
 from mo_future import text_type, unichr
 from mo_json import IS_NULL, STRUCT
 from mo_math import UNION
 from mo_times import Date
 from pyLibrary.sql import SQL_AND, SQL_FROM, SQL_IS_NOT_NULL, SQL_IS_NULL, SQL_LEFT_JOIN, SQL_LIMIT, SQL_NULL, SQL_ON, \
-    SQL_ORDERBY, SQL_SELECT, SQL_TRUE, SQL_UNION_ALL, SQL_WHERE, sql_iso, sql_list
+    SQL_ORDERBY, SQL_SELECT, SQL_TRUE, SQL_UNION_ALL, SQL_WHERE, sql_iso, sql_list, ConcatSQL, SQL_STAR
 from pyLibrary.sql.sqlite import quote_column, quote_value, json_type_to_sqlite_type, sql_alias
 
 
@@ -49,7 +50,7 @@ class SetOpTable(InsertTable):
                     jx_type=IS_NULL,
                     es_column=".",
                     es_index=".",
-                    es_type=json_type_to_sqlite_type[IS_NULL],
+                    es_type='NULL',
                     nested_path=["."],
                     last_updated=Date.now()
                 ))
@@ -59,7 +60,7 @@ class SetOpTable(InsertTable):
         index_to_uid = {}  # FROM NESTED PATH TO THE INDEX OF UID
         sql_selects = []  # EVERY SELECT CLAUSE (NOT TO BE USED ON ALL TABLES, OF COURSE)
         nest_to_alias = {
-            nested_path: "__" + unichr(ord('a') + i) + "__"
+            nested_path[0]: "__" + unichr(ord('a') + i) + "__"
             for i, nested_path in enumerate(self.sf.query_paths)
         }
 
@@ -193,12 +194,12 @@ class SetOpTable(InsertTable):
         for n, _ in self.sf.tables:
             sorts.append(quote_column(COLUMN + text_type(index_to_uid[n])))
 
-        ordered_sql = (
-            SQL_SELECT + "*" +
-            SQL_FROM + sql_iso(unsorted_sql) +
-            SQL_ORDERBY + sql_list(sorts) +
-            SQL_LIMIT + quote_value(query.limit)
-        )
+        ordered_sql = ConcatSQL((
+            SQL_SELECT, SQL_STAR,
+            SQL_FROM, sql_iso(unsorted_sql),
+            SQL_ORDERBY, sql_list(sorts),
+            SQL_LIMIT, quote_value(query.limit)
+        ))
         self.db.create_new_functions()  # creating new functions: regexp
         result = self.db.query(ordered_sql)
 
@@ -216,7 +217,7 @@ class SetOpTable(InsertTable):
             :return: the nested property (usually an array)
             """
             previous_doc_id = None
-            doc = Data()
+            doc = Null
             output = []
             id_coord = nested_doc_details['id_coord']
 
@@ -229,32 +230,31 @@ class SetOpTable(InsertTable):
 
                 if doc_id != previous_doc_id:
                     previous_doc_id = doc_id
-                    doc = Data()
+                    doc = Null
                     curr_nested_path = nested_doc_details['nested_path'][0]
                     index_to_column = nested_doc_details['index_to_column'].items()
-                    if index_to_column:
-                        for i, c in index_to_column:
-                            value = row[i]
-                            if is_list(query.select) or is_op(query.select.value, LeavesOp):
-                                # ASSIGN INNER PROPERTIES
-                                relative_field = concat_field(c.push_name, c.push_child)
-                            else:  # FACT IS EXPECTED TO BE A SINGLE VALUE, NOT AN OBJECT
-                                relative_field = c.push_child
+                    for i, c in index_to_column:
+                        value = row[i]
+                        if is_list(query.select) or is_op(query.select.value, LeavesOp):
+                            # ASSIGN INNER PROPERTIES
+                            relative_field = concat_field(c.push_name, c.push_child)
+                        else:  # FACT IS EXPECTED TO BE A SINGLE VALUE, NOT AN OBJECT
+                            relative_field = c.push_child
 
-                            if relative_field == ".":
-                                if value == '':
-                                    doc = Null
-                                else:
-                                    doc = value
-                            elif value != None and value != '':
-                                doc[relative_field] = value
+                        if relative_field == ".":
+                            if exists(value):
+                                doc = value
+                        elif exists(value):
+                            if doc is Null:
+                                doc = Data()
+                            doc[relative_field] = value
 
                 for child_details in nested_doc_details['children']:
                     # EACH NESTED TABLE MUST BE ASSEMBLED INTO A LIST OF OBJECTS
                     child_id = row[child_details['id_coord']]
                     if child_id is not None:
                         nested_value = _accumulate_nested(rows, row, child_details, doc_id, id_coord)
-                        if nested_value:
+                        if nested_value != None:
                             push_name = child_details['nested_path'][0]
                             if is_list(query.select) or is_op(query.select.value, LeavesOp):
                                 # ASSIGN INNER PROPERTIES
@@ -262,9 +262,7 @@ class SetOpTable(InsertTable):
                             else:  # FACT IS EXPECTED TO BE A SINGLE VALUE, NOT AN OBJECT
                                 relative_field = "."
 
-                            if relative_field == "." and doc is Null:
-                                doc = nested_value
-                            elif relative_field == ".":
+                            if relative_field == ".":
                                 doc = unwraplist(nested_value)
                             else:
                                 doc[relative_field] = unwraplist(nested_value)
