@@ -24,7 +24,7 @@ from jx_sqlite.groupby_table import GroupbyTable
 from mo_collections.matrix import Matrix, index_to_coordinate
 from mo_dots import Data, Null, coalesce, concat_field, is_list, listwrap, relative_field, startswith_field, unwrap, \
     unwraplist, wrap
-from mo_future import text_type, transpose
+from mo_future import text, transpose
 from mo_json import STRING, STRUCT
 from mo_logs import Log
 from pyLibrary.sql import SQL, SQL_FROM, SQL_ORDERBY, SQL_SELECT, SQL_WHERE, sql_count, sql_iso, sql_list, SQL_CREATE, \
@@ -421,8 +421,8 @@ class QueryTable(GroupbyTable):
                 ") AS " + quote_column(window.name)
             )
 
-        range_min = text_type(coalesce(window.range.min, "UNBOUNDED"))
-        range_max = text_type(coalesce(window.range.max, "UNBOUNDED"))
+        range_min = text(coalesce(window.range.min, "UNBOUNDED"))
+        range_max = text(coalesce(window.range.max, "UNBOUNDED"))
 
         return (
             sql_aggs[window.aggregate] + sql_iso(window.value.to_sql(schema)) + " OVER (" +

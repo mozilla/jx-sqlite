@@ -14,7 +14,7 @@ from unittest import skip, skipIf
 
 from jx_base.expressions import NULL
 from mo_dots import set_default, wrap
-from mo_future import text_type
+from mo_future import text
 from tests.test_jx import BaseTestCase, TEST_TABLE, global_settings
 
 
@@ -409,7 +409,7 @@ class TestgroupBy1(BaseTestCase):
     @skipIf(global_settings.elasticsearch.version.startswith("5."), "Not supported by es5")
     def test_groupby_left_id(self):
         test = {
-            "data": [set_default(d, {"_id": "aa" + text_type(i)}) for i, d in enumerate(simple_test_data)],
+            "data": [set_default(d, {"_id": "aa" + text(i)}) for i, d in enumerate(simple_test_data)],
             "query": {
                 "from": TEST_TABLE,
                 "groupby": {"name": "prefix", "value": {"left": {"_id": 2}}}

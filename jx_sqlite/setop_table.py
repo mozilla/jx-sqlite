@@ -20,7 +20,7 @@ from jx_sqlite.expressions import LeavesOp, SQLang, sql_type_to_json_type
 from jx_sqlite.insert_table import InsertTable
 from mo_dots import Data, Null, concat_field, is_list, listwrap, literal_field, startswith_field, unwrap, unwraplist, \
     exists
-from mo_future import text_type, unichr
+from mo_future import text, unichr
 from mo_json import IS_NULL, STRUCT
 from mo_math import UNION
 from mo_times import Date
@@ -192,7 +192,7 @@ class SetOpTable(InsertTable):
         )
 
         for n, _ in self.sf.tables:
-            sorts.append(quote_column(COLUMN + text_type(index_to_uid[n])))
+            sorts.append(quote_column(COLUMN + text(index_to_uid[n])))
 
         ordered_sql = ConcatSQL((
             SQL_SELECT, SQL_STAR,

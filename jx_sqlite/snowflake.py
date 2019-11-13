@@ -13,7 +13,7 @@ from jx_sqlite import quoted_ORDER, quoted_PARENT, quoted_UID
 from jx_sqlite.schema import Schema
 from jx_sqlite.table import Table
 from mo_dots import concat_field, wrap, split_field
-from mo_future import text_type
+from mo_future import text
 from mo_logs import Log
 from pyLibrary.sql import SQL_FROM, SQL_LIMIT, SQL_SELECT, SQL_STAR, SQL_ZERO, sql_iso, sql_list, SQL_CREATE
 from pyLibrary.sql.sqlite import quote_column
@@ -124,7 +124,7 @@ class Snowflake(jx_base.Snowflake):
             for col in moving_columns:
                 column = col.es_column
                 tmp_table = "tmp_" + existing_table
-                columns = list(map(text_type, t.query(SQL_SELECT + SQL_STAR + SQL_FROM + quote_column(existing_table) + SQL_LIMIT + SQL_ZERO).header))
+                columns = list(map(text, t.query(SQL_SELECT + SQL_STAR + SQL_FROM + quote_column(existing_table) + SQL_LIMIT + SQL_ZERO).header))
                 t.execute(
                     "ALTER TABLE " + quote_column(existing_table) +
                     " RENAME TO " + quote_column(tmp_table)

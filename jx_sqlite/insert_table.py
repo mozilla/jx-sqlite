@@ -20,7 +20,7 @@ from jx_sqlite.base_table import BaseTable
 from jx_sqlite.expressions import json_type_to_sql_type
 from mo_dots import Data, Null, concat_field, listwrap, startswith_field, unwrap, unwraplist, wrap, \
     is_many
-from mo_future import text_type
+from mo_future import text
 from mo_json import STRUCT, NESTED
 from mo_logs import Log
 from mo_times import Date
@@ -82,7 +82,7 @@ class InsertTable(BaseTable):
                 nested_table_name = concat_field(self.name, nested_column_name)
                 nested_table = nested_tables[nested_column_name]
                 self_primary_key = sql_list(quote_column(c.es_column) for u in self.uid for c in self.columns[u])
-                extra_key_name = UID + text_type(len(self.uid))
+                extra_key_name = UID + text(len(self.uid))
                 extra_key = [e for e in nested_table.columns[extra_key_name]][0]
 
                 sql_command = (

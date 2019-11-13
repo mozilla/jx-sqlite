@@ -104,7 +104,7 @@ from mo_dots import (
     FlatList,
     is_data,
 )
-from mo_future import PY2, text_type, decorate
+from mo_future import PY2, text, decorate
 from mo_json import BOOLEAN, EXISTS, NESTED, OBJECT, json2value, STRING, NUMBER, IS_NULL
 from mo_logs import Log
 from mo_math import is_number
@@ -239,10 +239,10 @@ class SQLScript(SQLScript_):
         return unicode(self.sql)
 
     def __add__(self, other):
-        return text_type(self) + text_type(other)
+        return text(self) + text(other)
 
     def __radd__(self, other):
-        return text_type(other) + text_type(self)
+        return text(other) + text(self)
 
     if PY2:
         __unicode__ = __str__
@@ -375,7 +375,7 @@ class Literal(Literal_):
         value = self.value
         if value == None:
             return wrap([{"name": "."}])
-        elif isinstance(value, text_type):
+        elif isinstance(value, text):
             return wrap([{"name": ".", "sql": {"s": quote_value(value)}}])
         elif is_number(value):
             return wrap([{"name": ".", "sql": {"n": quote_value(value)}}])
@@ -713,7 +713,7 @@ class FloorOp(FloorOp_):
         rhs = SQLang[self.rhs].to_sql(schema)[0].sql.n
         modifier = lhs + " < 0 "
 
-        if text_type(rhs).strip() != "1":
+        if text(rhs).strip() != "1":
             floor = "CAST" + sql_iso(lhs + "/" + rhs + " AS INTEGER")
             sql = sql_iso(sql_iso(floor) + "-" + sql_iso(modifier)) + "*" + rhs
         else:
@@ -793,7 +793,7 @@ class LengthOp(LengthOp_):
         term = SQLang[self.term].partial_eval()
         if is_literal(term):
             val = term.value
-            if isinstance(val, text_type):
+            if isinstance(val, text):
                 sql = quote_value(len(val))
             elif isinstance(val, (float, int)):
                 sql = quote_value(len(convert.value2json(val)))
