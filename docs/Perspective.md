@@ -12,7 +12,7 @@ A snowflake is a set of tables, plus the set of hierarchical foreign relations b
 
 **Path taken to row is important**
 
-The snowflake assumes the data is denormalized in document form; every fact in the fact table and all its foreign rows, are not shared with any other fact. This assumption is only a conceptual model, an not seriously expected in practice; A database is often normalized to minimize  redundancy. Therefore, it is important not to talk about any row in a table (which might be shared), but rather the path taken along the foreign relations; starting from the fact to the row in question. 
+The snowflake assumes the data is denormalized in document form; every fact in the fact table and all its foreign rows, are not shared with any other fact. This assumption is only a conceptual model, and not seriously expected in practice; A database is often normalized to minimize  redundancy. Therefore, it is important not to talk about any row in a table (which might be shared), but rather the path taken along the foreign relations; starting from the fact to the row in question. 
 
 **Paths to tables**
 

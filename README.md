@@ -1,11 +1,50 @@
 # jx-sqlite 
+
 JSON query expressions using SQLite
 
-## Motivation
-JSON is a nice format to store data, and it has become quite prevalent. Unfortunately, databases do not handle it well, often a human is required to declare a schema that can hold the JSON before it can be queried. If we are not overwhelmed by the diversity of JSON now, we soon will be. There will be more JSON, of more different shapes, as the number of connected devices( and the information they generate) continues to increase.
+## Summary
+
+This library will manage your database schema to store JSON documents. You get all the speed of a well-formed database schema without the schema migration headaches. 
+
+https://www.youtube.com/watch?v=0_YLzb7BegI&list=PLSE8ODhjZXja7K1hjZ01UTVDnGQdx5v5U&index=26&t=260s
 
 
-## Synopsis
+
+## Installation
+
+    pip install jx-sqlite
+
+## Code Example
+
+Open a database 
+
+```python
+container = Container()
+```
+
+Declare a table
+
+```python
+table = container.get_or_create_facts("my_table")
+```
+
+Pour JSON documents into it
+
+```python
+table.add({"os":"linux", "value":42})
+```
+
+Query the table
+
+```python
+table.query({
+    "select": "os", 
+    "where": {"gt": {"value": 0}}
+})
+```
+
+## More
+
 An attempt to store JSON documents in SQLite so that they are accessible via SQL. The hope is this will serve a basis for a general document-relational map (DRM), and leverage the database's query optimizer.
 jx-sqlite  is also responsible for making the schema, and changing it dynamically as new JSON schema are encountered and to ensure that the old queries against the new schema have the same meaning.
 
@@ -15,15 +54,10 @@ The most interesting, and most important feature is that we query nested object 
 2. Schemas can be expanded from one-to-one  to one-to-many `{"a": [{"b": 0}, {"b": 1}]}`.
 
 
-## Installation
-Python2.7 required. Package can be installed via pypi see below:
-        
-    pip install jx-sqlite
 
+## Motivation
 
-
-## Code Example
-
+JSON is a nice format to store data, and it has become quite prevalent. Unfortunately, databases do not handle it well, often a human is required to declare a schema that can hold the JSON before it can be queried. If we are not overwhelmed by the diversity of JSON now, we soon will be. There will be more JSON, of more different shapes, as the number of connected devices( and the information they generate) continues to increase.
 
 
 ## Contributing
