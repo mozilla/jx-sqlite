@@ -5,7 +5,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+# Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 from __future__ import absolute_import, division, unicode_literals
 
@@ -15,7 +15,7 @@ import sys
 from datetime import datetime
 
 from mo_dots import Data, FlatList, coalesce, is_data, is_list, listwrap, unwraplist, wrap
-from mo_future import PY3, is_text, text_type
+from mo_future import PY3, is_text, text
 from mo_logs import constants, exceptions, strings
 from mo_logs.exceptions import Except, LogItem, suppress_exception
 from mo_logs.strings import CR, indent
@@ -112,16 +112,19 @@ class Log(object):
 
         if settings["class"]:
             if settings["class"].startswith("logging.handlers."):
-                from mo_logs.log_usingLogger import StructuredLogger_usingLogger
+                from mo_logs.log_usingHandler import StructuredLogger_usingHanlder
 
-                return StructuredLogger_usingLogger(settings)
+                return StructuredLogger_usingHanlder(settings)
             else:
                 with suppress_exception:
                     from mo_logs.log_usingLogger import make_log_from_settings
 
                     return make_log_from_settings(settings)
-                  # OH WELL :(
+                # OH WELL :(
 
+        if settings.log_type == "logger":
+            from mo_logs.log_usingLogger import StructuredLogger_usingLogger
+            return StructuredLogger_usingLogger(settings)
         if settings.log_type == "file" or settings.file:
             return StructuredLogger_usingFile(settings.file)
         if settings.log_type == "file" or settings.filename:
@@ -218,7 +221,7 @@ class Log(object):
 
         params = Data(dict(default_params, **more_params))
         cause = unwraplist([Except.wrap(c) for c in listwrap(cause)])
-        trace = exceptions.extract_stack(stack_depth + 1)
+        trace = exceptions.get_stacktrace(stack_depth + 1)
 
         e = Except(exceptions.UNEXPECTED, template=template, params=params, cause=cause, trace=trace)
         Log._annotate(
@@ -291,7 +294,7 @@ class Log(object):
 
         params = Data(dict(default_params, **more_params))
         cause = unwraplist([Except.wrap(c) for c in listwrap(cause)])
-        trace = exceptions.extract_stack(stack_depth + 1)
+        trace = exceptions.get_stacktrace(stack_depth + 1)
 
         e = Except(exceptions.WARNING, template=template, params=params, cause=cause, trace=trace)
         Log._annotate(
@@ -344,7 +347,7 @@ class Log(object):
             causes = None
             Log.error("can only accept Exception, or list of exceptions")
 
-        trace = exceptions.extract_stack(stack_depth + 1)
+        trace = exceptions.get_stacktrace(stack_depth + 1)
 
         if add_to_trace:
             cause[0].trace.extend(trace[1:])
@@ -370,7 +373,7 @@ class Log(object):
 
         item.format = strings.limit(item.format, 10000)
         if item.format == None:
-            format = text_type(item)
+            format = text(item)
         else:
             format = item.format.replace("{{", "{{params.")
         if not format.startswith(CR) and format.find(CR) > -1:
@@ -381,8 +384,8 @@ class Log(object):
             f = sys._getframe(stack_depth + 1)
             item.location = {
                 "line": f.f_lineno,
-                "file": text_type(f.f_code.co_filename),
-                "method": text_type(f.f_code.co_name)
+                "file": text(f.f_code.co_filename),
+                "method": text(f.f_code.co_name)
             }
             thread = _Thread.current()
             item.thread = {"name": thread.name, "id": thread.id}
@@ -402,9 +405,9 @@ def _same_frame(frameA, frameB):
 # GET THE MACHINE METADATA
 machine_metadata = wrap({
     "pid":  os.getpid(),
-    "python": text_type(platform.python_implementation()),
-    "os": text_type(platform.system() + platform.release()).strip(),
-    "name": text_type(platform.node())
+    "python": text(platform.python_implementation()),
+    "os": text(platform.system() + platform.release()).strip(),
+    "name": text(platform.node())
 })
 
 

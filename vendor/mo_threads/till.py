@@ -5,7 +5,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+# Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 # THIS THREADING MODULE IS PERMEATED BY THE please_stop SIGNAL.
 # THIS SIGNAL IS IMPORTANT FOR PROPER SIGNALLING WHICH ALLOWS
@@ -17,7 +17,7 @@ from collections import namedtuple
 from time import sleep, time
 from weakref import ref
 
-from mo_future import allocate_lock as _allocate_lock, text_type
+from mo_future import allocate_lock as _allocate_lock, text
 from mo_logs import Log
 
 from mo_threads.signals import DONE, Signal
@@ -68,7 +68,7 @@ class Till(Signal):
             from mo_logs import Log
             raise Log.error("Should not happen")
 
-        Signal.__init__(self, name=text_type(timeout))
+        Signal.__init__(self, name=text(timeout))
 
         with Till.locker:
             if timeout != None:

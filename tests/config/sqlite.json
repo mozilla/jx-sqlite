@@ -7,7 +7,7 @@
 		"load_functions": true
 	},
 	"constants": {
-		"pyLibrary.sql.sqlite.DEBUG": true
+		"jx_sqlitel.sqlite.DEBUG": true
 	},
 	"debug": {
 		"trace":true

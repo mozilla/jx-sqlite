@@ -4,7 +4,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+# Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
 from __future__ import absolute_import, absolute_import, division, unicode_literals
@@ -13,21 +13,21 @@ import ast
 import base64
 import cgi
 import datetime
-from decimal import Decimal
 import gzip
 import hashlib
-from io import BytesIO
 import json
 import re
+from decimal import Decimal
+from io import BytesIO
 from tempfile import TemporaryFile
 
-from mo_dots import concat_field, unwrap, unwraplist, wrap
-from mo_future import HTMLParser, PY3, StringIO, is_binary, is_text, long, text_type
 import mo_json
+import mo_math
+from mo_dots import concat_field, unwrap, unwraplist, wrap
+from mo_future import HTMLParser, PY3, StringIO, is_binary, is_text, long, text
 from mo_logs import Log
 from mo_logs.exceptions import suppress_exception
 from mo_logs.strings import expand_template, quote
-import mo_math
 from mo_times.dates import Date
 
 """
@@ -226,7 +226,7 @@ def value2string(value):
     # PROPER NULL HANDLING
     if value == None:
         return None
-    return text_type(value)
+    return text(value)
 
 
 def value2quote(value):
@@ -234,7 +234,7 @@ def value2quote(value):
     if is_text(value):
         return string2quote(value)
     else:
-        return text_type(repr(value))
+        return text(repr(value))
 
 
 def string2quote(value):
@@ -327,7 +327,7 @@ def quote2string(value):
 # RETURN PYTHON CODE FOR THE SAME
 
 def value2code(value):
-    return text_type(repr(value))
+    return text(repr(value))
 
 
 def DataFrame2string(df, columns=None):
@@ -432,7 +432,7 @@ def latin12unicode(value):
     if is_text(value):
         Log.error("can not convert unicode from latin1")
     try:
-        return text_type(value.decode('latin1'))
+        return text(value.decode('latin1'))
     except Exception as e:
         Log.error("Can not convert {{value|quote}} to unicode", value=value)
 
@@ -604,15 +604,24 @@ def table2csv(table_data):
     """
     text_data = [tuple(value2json(vals, pretty=True) for vals in rows) for rows in table_data]
 
-    col_widths = [max(len(text) for text in cols) for cols in zip(*text_data)]
+    col_widths = [max(len(t) for t in cols) for cols in zip(*text_data)]
     template = ", ".join(
-        "{{" + text_type(i) + "|left_align(" + text_type(w) + ")}}"
+        "{{" + text(i) + "|left_align(" + text(w) + ")}}"
         for i, w in enumerate(col_widths)
     )
-    text = "\n".join(expand_template(template, d) for d in text_data)
-    return text
+    output = "\n".join(expand_template(template, d) for d in text_data)
+    return output
+
 
 ZeroMoment2dict = mo_math.stats.ZeroMoment2dict
 
 
+def text2QRCode(value):
+    from qrcode import QRCode
 
+    qr = QRCode()
+    qr.add_data(value)
+    qr_code = StringIO()
+    qr.print_ascii(out=qr_code)
+    ascii = qr_code.getvalue()
+    return ascii

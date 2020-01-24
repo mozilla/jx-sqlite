@@ -4,7 +4,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+# Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
 # MIMICS THE requests API (http://docs.python-requests.org/en/latest/)
@@ -18,6 +18,8 @@
 
 from __future__ import absolute_import, division
 
+from mo_future import StringIO
+import zipfile
 from contextlib import closing
 from copy import copy
 from mmap import mmap
@@ -26,15 +28,14 @@ from tempfile import TemporaryFile
 
 from requests import Response, sessions
 
+import mo_math
 from jx_python import jx
 from mo_dots import Data, Null, coalesce, is_list, set_default, unwrap, wrap
 from mo_files.url import URL
-from mo_future import PY2, is_text, text_type
+from mo_future import PY2, is_text, text
 from mo_json import json2value, value2json
 from mo_logs import Log
 from mo_logs.exceptions import Except
-from mo_logs.strings import unicode2utf8, utf82unicode
-import mo_math
 from mo_threads import Lock, Till
 from mo_times.durations import Duration
 from pyLibrary import convert
@@ -80,7 +81,7 @@ def request(method, url, headers=None, zip=None, retry=None, **kwargs):
     global request_count
 
     if not _warning_sent and not default_headers:
-        Log.warning(text_type(
+        Log.warning(text(
             "The pyLibrary.env.http module was meant to add extra " +
             "default headers to all requests, specifically the 'Referer' " +
             "header with a URL to the project. Use the `pyLibrary.debug.constants.set()` " +
@@ -116,7 +117,7 @@ def request(method, url, headers=None, zip=None, retry=None, **kwargs):
             url = url.encode('ascii')
 
         try:
-            set_default(kwargs, {"zip":zip, "retry": retry}, DEFAULTS)
+            set_default(kwargs, {"zip": zip, "retry": retry}, DEFAULTS)
             _to_ascii_dict(kwargs)
 
             # HEADERS
@@ -154,7 +155,7 @@ def request(method, url, headers=None, zip=None, retry=None, **kwargs):
                 Till(seconds=retry.sleep).wait()
 
             try:
-                DEBUG and Log.note(u"http {{method|upper}} to {{url}}", method=method, url=text_type(url))
+                DEBUG and Log.note(u"http {{method|upper}} to {{url}}", method=method, url=text(url))
                 request_count += 1
                 return session.request(method=method, headers=headers, url=str(url), **kwargs)
             except Exception as e:
@@ -199,7 +200,15 @@ def get_json(url, **kwargs):
     response = get(url, **kwargs)
     try:
         c = response.all_content
-        return json2value(utf82unicode(c))
+        path = URL(url).path
+        if path.endswith(".zip"):
+            buff = StringIO(c)
+            archive = zipfile.ZipFile(buff, mode='r')
+            c = archive.read(archive.namelist()[0])
+        elif path.endswith(".gz"):
+            c = convert.zip2bytes(c)
+
+        return json2value(c.decode('utf8'))
     except Exception as e:
         if mo_math.round(response.status_code, decimal=-2) in [400, 500]:
             Log.error(u"Bad GET response: {{code}}", code=response.status_code)
@@ -224,14 +233,14 @@ def post_json(url, **kwargs):
     ASSUME RESPONSE IN IN JSON
     """
     if 'json' in kwargs:
-        kwargs['data'] = unicode2utf8(value2json(kwargs['json']))
+        kwargs['data'] = value2json(kwargs['json']).encode('utf8')
         del kwargs['json']
     elif 'data' in kwargs:
-        kwargs['data'] = unicode2utf8(value2json(kwargs['data']))
+        kwargs['data'] = value2json(kwargs['data']).encode('utf8')
     else:
         Log.error(u"Expecting `json` parameter")
     response = post(url, **kwargs)
-    details = json2value(utf82unicode(response.content))
+    details = json2value(response.content.decode('utf8'))
     if response.status_code not in [200, 201, 202]:
 
         if "template" in details:

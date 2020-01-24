@@ -4,7 +4,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+# Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 from __future__ import absolute_import, division, unicode_literals
 
@@ -120,7 +120,7 @@ class Python(object):
     def __getattr__(self, item):
         def output(*args, **kwargs):
             if len(args):
-                if len(kwargs.keys()):
+                if kwargs.keys():
                     Log.error("Not allowed to use both args and kwargs")
                 return self._execute({item: args})
             else:

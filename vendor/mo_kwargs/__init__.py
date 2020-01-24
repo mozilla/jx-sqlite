@@ -5,17 +5,18 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+# Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 from __future__ import absolute_import, division, unicode_literals
 
 from functools import update_wrapper
 
 from mo_dots import get_logger, is_data, wrap, zip as dict_zip
-from mo_future import get_function_arguments, get_function_defaults, get_function_name, text_type
+from mo_future import get_function_arguments, get_function_defaults, get_function_name, text
 from mo_logs import Except
 
 KWARGS = str("kwargs")
+
 
 def override(func):
     """
@@ -40,9 +41,13 @@ def override(func):
         defaults = {k: v for k, v in zip(reversed(params), reversed(get_function_defaults(func)))}
 
     def raise_error(e, packed):
-        err = text_type(e)
+        err = text(e)
         e = Except.wrap(e)
-        if err.startswith(func_name) and ("takes at least" in err or "required positional argument" in err):
+        if err.startswith(func_name) and (
+                "takes at least" in err or
+                "takes exactly " in err or
+                "required positional argument" in err
+        ):
             missing = [p for p in params if str(p) not in packed]
             given = [p for p in params if str(p) in packed]
             if not missing:
@@ -59,7 +64,7 @@ def override(func):
         raise e
 
     if KWARGS not in params:
-        # WE ASSUME WE ARE ONLY ADDING A kwargs PARAMETER TO SOME REGULAR METHOD
+        # ADDING A kwargs PARAMETER TO SOME REGULAR METHOD
         def wo_kwargs(*args, **kwargs):
             settings = kwargs.get(KWARGS, {})
             ordered_params = dict(zip(params, args))
@@ -68,39 +73,24 @@ def override(func):
                 return func(**packed)
             except TypeError as e:
                 raise_error(e, packed)
+
         return update_wrapper(wo_kwargs, func)
 
-    elif func_name in ("__init__", "__new__"):
-        def w_constructor(*args, **kwargs):
-            if KWARGS in kwargs:
-                packed = params_pack(params, defaults, kwargs[KWARGS], kwargs, dict_zip(params[1:], args[1:]))
-            elif len(args) == 2 and len(kwargs) == 0 and is_data(args[1]):
-                # ASSUME SECOND UNNAMED PARAM IS kwargs
-                packed = params_pack(params, defaults, args[1])
-            else:
-                # DO NOT INCLUDE self IN kwargs
-                packed = params_pack(params, defaults, kwargs, dict_zip(params[1:], args[1:]))
-            try:
-                return func(args[0], **packed)
-            except TypeError as e:
-                packed['self'] = args[0]  # DO NOT SAY IS MISSING
-                raise_error(e, packed)
-        return update_wrapper(w_constructor, func)
-
-    elif params[0] == "self":
+    elif func_name in ("__init__", "__new__") or params[0] in ("self", "cls"):
         def w_bound_method(*args, **kwargs):
             if len(args) == 2 and len(kwargs) == 0 and is_data(args[1]):
                 # ASSUME SECOND UNNAMED PARAM IS kwargs
-                packed = params_pack(params, defaults, args[1])
+                packed = params_pack(params, defaults, args[1], {params[0]: args[0]}, kwargs)
             elif KWARGS in kwargs and is_data(kwargs[KWARGS]):
                 # PUT args INTO kwargs
-                packed = params_pack(params, defaults, kwargs[KWARGS], dict_zip(params[1:], args[1:]), kwargs)
+                packed = params_pack(params, defaults, kwargs[KWARGS], dict_zip(params, args), kwargs)
             else:
-                packed = params_pack(params, defaults, dict_zip(params[1:], args[1:]), kwargs)
+                packed = params_pack(params, defaults, dict_zip(params, args), kwargs)
             try:
-                return func(args[0], **packed)
+                return func(**packed)
             except TypeError as e:
                 raise_error(e, packed)
+
         return update_wrapper(w_bound_method, func)
 
     else:
@@ -118,6 +108,7 @@ def override(func):
                 return func(**packed)
             except TypeError as e:
                 raise_error(e, packed)
+
         return update_wrapper(w_kwargs, func)
 
 

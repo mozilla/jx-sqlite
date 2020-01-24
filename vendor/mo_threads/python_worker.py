@@ -4,7 +4,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+# Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 from __future__ import absolute_import, division, unicode_literals
 
@@ -14,7 +14,7 @@ from mo_dots import is_list
 from mo_dots import set_default, listwrap, coalesce
 from mo_files import File
 from mo_future import is_text
-from mo_future import text_type
+from mo_future import text
 from mo_json import json2value, value2json
 from mo_logs import Log, constants, Except
 
@@ -84,7 +84,7 @@ num_temps = 0
 def temp_var():
     global num_temps
     try:
-        return "temp_var" + text_type(num_temps)
+        return "temp_var" + text(num_temps)
     finally:
         num_temps += 1
 

@@ -4,7 +4,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+# Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 from __future__ import absolute_import, division, unicode_literals
 
@@ -13,15 +13,13 @@ from ssl import PROTOCOL_SSLv23, SSLContext
 
 import flask
 from flask import Response
-from mo_threads.threads import register_thread
 
 from mo_dots import coalesce, is_data
-from mo_files import File, TempFile, URL
-from mo_future import text_type, decorate
+from mo_files import File, TempFile, URL, mimetype
+from mo_future import decorate, text
 from mo_json import value2json
 from mo_logs import Log
-from mo_logs.strings import unicode2utf8
-from mo_threads import Thread
+from mo_threads.threads import register_thread, Thread
 from pyLibrary.env import git
 from pyLibrary.env.big_data import ibytes2icompressed
 
@@ -57,6 +55,7 @@ def cors_wrapper(func):
             return
         obj.setdefault(key, value)
 
+    @decorate(func)
     def output(*args, **kwargs):
         response = func(*args, **kwargs)
         headers = response.headers
@@ -79,10 +78,11 @@ def cors_wrapper(func):
         )
         _setdefault(
             headers,
-            "Access-Control-Allow-Methods",
-            flask.request.headers.get("Access-Control-Request-Methods"),
+            "Access-Control-Allow-Methods",                              # PLURAL "Methods"
+            flask.request.headers.get("Access-Control-Request-Method"),  # SINGULAR "Method"
+            # "GET, PUT, POST, DELETE, PATCH, OPTIONS"
         )
-        _setdefault(headers, "Content-Type", "application/json")
+        _setdefault(headers, "Content-Type", mimetype.JSON)
         _setdefault(
             headers,
             "Strict-Transport-Security",
@@ -110,7 +110,7 @@ def dockerflow(flask_app, backend_check):
         @cors_wrapper
         def version():
             return Response(
-                VERSION_JSON, status=200, headers={"Content-Type": "application/json"}
+                VERSION_JSON, status=200, headers={"Content-Type": mimetype.JSON}
             )
 
         @cors_wrapper
@@ -121,9 +121,9 @@ def dockerflow(flask_app, backend_check):
             except Exception as e:
                 Log.warning("heartbeat failure", cause=e)
                 return Response(
-                    unicode2utf8(value2json(e)),
+                    value2json(e).encode('utf8'),
                     status=500,
-                    headers={"Content-Type": "application/json"},
+                    headers={"Content-Type": mimetype.JSON},
                 )
 
         @cors_wrapper
@@ -165,25 +165,25 @@ def add_version(flask_app):
     :return:
     """
     try:
-        version_info = unicode2utf8(
-            value2json(
-                {
-                    "source": "https://github.com/mozilla/ActiveData/tree/"
-                    + git.get_branch(),
-                    # "version": "",
-                    "commit": git.get_revision(),
-                },
-                pretty=True,
-            )
-            + text_type("\n")
-        )
+        rev = coalesce(git.get_revision(), "")
+        branch = "https://github.com/mozilla/ActiveData/tree/" + coalesce(git.get_branch())
+
+        version_info = value2json(
+            {
+                "source": "https://github.com/mozilla/ActiveData/tree/" + rev,
+                "branch": branch,
+                "commit": rev,
+            },
+            pretty=True,
+        ).encode('utf8') + text("\n")
 
         Log.note("Using github version\n{{version}}", version=version_info)
 
+        @register_thread
         @cors_wrapper
         def version():
             return Response(
-                version_info, status=200, headers={"Content-Type": "application/json"}
+                version_info, status=200, headers={"Content-Type": mimetype.JSON}
             )
 
         flask_app.add_url_rule(
@@ -260,9 +260,9 @@ def limit_body(size):
         @decorate(func)
         def output(*args, **kwargs):
             if flask.request.headers.get("content-length", "") in ["", "0"]:
-                Log.error("Expected known Content-Length")
+                Log.error("Expecting Content-Length in request headers")
             elif int(flask.request.headers["content-length"]) > size:
-                Log.error("Query is too large to parse")
+                Log.error("Body is limited to {{size}} bytes", size=size)
             return func(*args, **kwargs)
         return output
     return decorator

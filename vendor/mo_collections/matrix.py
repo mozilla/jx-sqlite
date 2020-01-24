@@ -5,12 +5,12 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+# Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 from __future__ import absolute_import, division, unicode_literals
 
 from mo_dots import Data, Null, coalesce, get_module, is_sequence
-from mo_future import text_type, transpose, xrange
+from mo_future import text, transpose, xrange
 from mo_logs import Log
 
 
@@ -379,10 +379,10 @@ def index_to_coordinate(dims):
     coords = []
     for i in domain:
         if i == num_dims - 1:
-            commands.append("\tc" + text_type(i) + " = index")
+            commands.append("\tc" + text(i) + " = index")
         else:
-            commands.append("\tc" + text_type(i) + ", index = divmod(index, " + text_type(prod[i]) + ")")
-        coords.append("c" + text_type(i))
+            commands.append("\tc" + text(i) + ", index = divmod(index, " + text(prod[i]) + ")")
+        coords.append("c" + text(i))
     output = None
     if num_dims == 1:
         code = (

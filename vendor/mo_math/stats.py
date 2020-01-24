@@ -5,19 +5,19 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+# Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
 from __future__ import absolute_import, division, unicode_literals
 
-from mo_future import is_text, is_binary
 import math
-from math import sqrt
 import sys
+from math import sqrt
 
 from mo_dots import Data, Null, coalesce
-from mo_future import text_type
+from mo_future import text
 from mo_logs import Log
+
 from mo_math import OR, almost_equal
 from mo_math.vendor import strangman
 
@@ -37,21 +37,17 @@ if DEBUG_STRANGMAN:
 
 def chisquare(f_obs, f_exp):
     try:
-        py_result = strangman.stats.chisquare(
-            f_obs,
-            f_exp
-        )
+        py_result = strangman.stats.chisquare(f_obs, f_exp)
     except Exception as e:
         Log.error("problem with call", e)
 
     if DEBUG_STRANGMAN:
         from mo_testing.fuzzytestcase import assertAlmostEqualValue
 
-        sp_result = scipy.stats.chisquare(
-            np.array(f_obs),
-            f_exp=np.array(f_exp)
-        )
-        if not assertAlmostEqualValue(sp_result[0], py_result[0], digits=9) and assertAlmostEqualValue(sp_result[1], py_result[1], delta=1e-8):
+        sp_result = scipy.stats.chisquare(np.array(f_obs), f_exp=np.array(f_exp))
+        if not assertAlmostEqualValue(
+            sp_result[0], py_result[0], digits=9
+        ) and assertAlmostEqualValue(sp_result[1], py_result[1], delta=1e-8):
             Log.error("problem with stats lib")
 
     return py_result
@@ -60,14 +56,20 @@ def chisquare(f_obs, f_exp):
 def Stats2ZeroMoment(stats):
     # MODIFIED FROM http://statsmodels.sourceforge.net/devel/_modules/statsmodels/stats/moment_helpers.html
     # ADDED count
-    mc0, mc1, mc2, skew, kurt = stats.count, coalesce(stats.mean, 0), coalesce(stats.variance, 0), coalesce(stats.skew, 0), coalesce(stats.kurtosis, 0)
+    mc0, mc1, mc2, skew, kurt = (
+        stats.count,
+        coalesce(stats.mean, 0),
+        coalesce(stats.variance, 0),
+        coalesce(stats.skew, 0),
+        coalesce(stats.kurtosis, 0),
+    )
 
     mz0 = mc0
     mz1 = mc1 * mc0
     mz2 = (mc2 + mc1 * mc1) * mc0
-    mc3 = coalesce(skew, 0) * (mc2 ** 1.5) # 3rd central moment
+    mc3 = coalesce(skew, 0) * (mc2 ** 1.5)  # 3rd central moment
     mz3 = (mc3 + 3 * mc1 * mc2 + mc1 ** 3) * mc0  # 3rd non-central moment
-    mc4 = (coalesce(kurt, 0) + 3.0) * (mc2 ** 2.0) # 4th central moment
+    mc4 = (coalesce(kurt, 0) + 3.0) * (mc2 ** 2.0)  # 4th central moment
     mz4 = (mc4 + 4 * mc1 * mc3 + 6 * mc1 * mc1 * mc2 + mc1 ** 4) * mc0
 
     m = ZeroMoment(mz0, mz1, mz2, mz3, mz4)
@@ -110,19 +112,13 @@ def ZeroMoment2Stats(z_moment):
             skew = None
             kurtosis = None
         else:
-            variance = (Z2 - mean * mean)
-            mc3 = (Z3 - (3 * mean * variance + mean ** 3))  # 3rd central moment
-            mc4 = (Z4 - (4 * mean * mc3 + 6 * mean * mean * variance + mean ** 4))
+            variance = Z2 - mean * mean
+            mc3 = Z3 - (3 * mean * variance + mean ** 3)  # 3rd central moment
+            mc4 = Z4 - (4 * mean * mc3 + 6 * mean * mean * variance + mean ** 4)
             skew = mc3 / (variance ** 1.5)
             kurtosis = (mc4 / (variance ** 2.0)) - 3.0
 
-    stats = Stats(
-        count=N,
-        mean=mean,
-        variance=variance,
-        skew=skew,
-        kurtosis=kurtosis
-    )
+    stats = Stats(count=N, mean=mean, variance=variance, skew=skew, kurtosis=kurtosis)
 
     if DEBUG:
         from mo_testing.fuzzytestcase import assertAlmostEqualValue
@@ -134,11 +130,12 @@ def ZeroMoment2Stats(z_moment):
             for i in range(5):
                 assertAlmostEqualValue(v.S[i], Z[i], places=7)
         except Exception as e:
-            Log.error("Conversion failed.  Programmer error:\nfrom={{from|indent}},\nresult stats={{stats|indent}},\nexpected param={{expected|indent}}",
+            Log.error(
+                "Conversion failed.  Programmer error:\nfrom={{from|indent}},\nresult stats={{stats|indent}},\nexpected param={{expected|indent}}",
                 {"from": Z},
                 stats=stats,
                 expected=v.S,
-                cause=e
+                cause=e,
             )
         globals()["DEBUG"] = True
 
@@ -185,19 +182,25 @@ class Stats(Data):
         elif "skew" not in kwargs:
             self.count = kwargs["count"]
             self.mean = kwargs["mean"]
-            self.variance = kwargs["variance"] if "variance" in kwargs else kwargs["std"] ** 2
+            self.variance = (
+                kwargs["variance"] if "variance" in kwargs else kwargs["std"] ** 2
+            )
             self.skew = None
             self.kurtosis = None
         elif "kurtosis" not in kwargs:
             self.count = kwargs["count"]
             self.mean = kwargs["mean"]
-            self.variance = kwargs["variance"] if "variance" in kwargs else kwargs["std"] ** 2
+            self.variance = (
+                kwargs["variance"] if "variance" in kwargs else kwargs["std"] ** 2
+            )
             self.skew = kwargs["skew"]
             self.kurtosis = None
         else:
             self.count = kwargs["count"]
             self.mean = kwargs["mean"]
-            self.variance = kwargs["variance"] if "variance" in kwargs else kwargs["std"] ** 2
+            self.variance = (
+                kwargs["variance"] if "variance" in kwargs else kwargs["std"] ** 2
+            )
             self.skew = kwargs["skew"]
             self.kurtosis = kwargs["kurtosis"]
 
@@ -222,15 +225,20 @@ class ZeroMoment(object):
         elif other == None:
             return self
         else:
-            return ZeroMoment(*map(add, self.S, (
-                1,
-                other,
-                pow(other, 2),
-                pow(other, 3),
-                pow(other, 4),
-                pow(other, 2)
-            )))
-
+            return ZeroMoment(
+                *map(
+                    add,
+                    self.S,
+                    (
+                        1,
+                        other,
+                        pow(other, 2),
+                        pow(other, 3),
+                        pow(other, 4),
+                        pow(other, 2),
+                    ),
+                )
+            )
 
     def __sub__(self, other):
         if isinstance(other, ZeroMoment):
@@ -240,25 +248,21 @@ class ZeroMoment(object):
         elif other == None:
             return self
         else:
-            return ZeroMoment(*map(sub, self.S, (
-                1,
-                other,
-                pow(other, 2),
-                pow(other, 3),
-                pow(other, 4)
-            )))
-
+            return ZeroMoment(
+                *map(
+                    sub, self.S, (1, other, pow(other, 2), pow(other, 3), pow(other, 4))
+                )
+            )
 
     @property
     def tuple(self):
-    # RETURN AS ORDERED TUPLE
+        # RETURN AS ORDERED TUPLE
         return self.S
 
     @property
     def dict(self):
-    # RETURN HASH OF SUMS
-        return {u"s" + text_type(i): m for i, m in enumerate(self.S)}
-
+        # RETURN HASH OF SUMS
+        return {"s" + text(i): m for i, m in enumerate(self.S)}
 
     @staticmethod
     def new_instance(values=None):
@@ -271,7 +275,7 @@ class ZeroMoment(object):
             sum(vals),
             sum([pow(n, 2) for n in vals]),
             sum([pow(n, 3) for n in vals]),
-            sum([pow(n, 4) for n in vals])
+            sum([pow(n, 4) for n in vals]),
         )
 
     @property
@@ -289,7 +293,7 @@ def sub(a, b):
 
 def ZeroMoment2dict(z):
     # RETURN HASH OF SUMS
-    return {u"s" + text_type(i): m for i, m in enumerate(z.S)}
+    return {"s" + text(i): m for i, m in enumerate(z.S)}
 
 
 def median(values, simple=True, mean_weight=0.0):
@@ -343,11 +347,13 @@ def median(values, simple=True, mean_weight=0.0):
                 return (_median - 0.5) + (middle - start_index) / num_middle
         else:
             if num_middle == 1:
-                return (1 - mean_weight) * _median + mean_weight * (_sorted[middle - 1] + _sorted[middle + 1]) / 2
+                return (1 - mean_weight) * _median + mean_weight * (
+                    _sorted[middle - 1] + _sorted[middle + 1]
+                ) / 2
             else:
                 return (_median - 0.5) + (middle + 0.5 - start_index) / num_middle
     except Exception as e:
-        Log.error("problem with median of {{values}}",  values= values, cause=e)
+        Log.error("problem with median of {{values}}", values=values, cause=e)
 
 
 def percentile(values, percent):

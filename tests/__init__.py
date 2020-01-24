@@ -18,18 +18,17 @@ import subprocess
 from copy import deepcopy
 
 from jx_sqlite.container import Container
-from pyLibrary.sql.sqlite import Sqlite
 
 import mo_json_config
 from mo_future import text_type
 from mo_dots import wrap, coalesce, unwrap, listwrap, Data, startswith_field
+from mo_json import json2value
 from mo_kwargs import override
 from mo_logs import Log, Except, constants
-from mo_logs.exceptions import extract_stack
+from mo_logs.exceptions import get_stacktrace
 from mo_testing.fuzzytestcase import assertAlmostEqual
 
 from jx_sqlite.query_table import QueryTable
-from pyLibrary import convert
 from jx_python import jx
 from jx_base.query import QueryOp
 
@@ -64,7 +63,7 @@ class SQLiteUtils(object):
 
     def execute_tests(self, subtest, tjson=False, places=6):
         subtest = wrap(subtest)
-        subtest.name = extract_stack()[1]['method']
+        subtest.name = get_stacktrace()[1]['method']
 
         if subtest.disable:
             return
@@ -134,7 +133,7 @@ class SQLiteUtils(object):
             Log.error("Failed query", e)
 
     def try_till_response(self, *args, **kwargs):
-        self.execute_query(convert.json2value(convert.utf82unicode(kwargs["data"])))
+        self.execute_query(json2value(kwargs["data"].decode('utf8')))
 
 
 def compare_to_expected(query, result, expect):
@@ -237,10 +236,10 @@ def sort_table(result):
 
 
 def error(response):
-    response = convert.utf82unicode(response.content)
+    response = response.content.decode('utf8')
 
     try:
-        e = Except.new_instance(convert.json2value(response))
+        e = Except.new_instance(json2value(response))
     except Exception:
         e = None
 

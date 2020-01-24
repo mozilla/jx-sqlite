@@ -5,14 +5,14 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http:# mozilla.org/MPL/2.0/.
 #
-# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+# Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
 
 from __future__ import absolute_import, division, unicode_literals
 
 import mo_json
-from jx_base import Column
+from jx_base import Column, Facts
 from jx_base.container import type2container
 from jx_base.domains import SimpleSetDomain
 from jx_base.expressions import TupleOp, Variable, jx_expression
@@ -20,6 +20,8 @@ from jx_base.language import is_op
 from jx_base.query import QueryOp
 from jx_python import jx
 from jx_sqlite import GUID, sql_aggs, unique_name, untyped_column
+from jx_sqlite.base_table import BaseTable
+from jx_sqlite.expressions._utils import SQLang
 from jx_sqlite.groupby_table import GroupbyTable
 from mo_collections.matrix import Matrix, index_to_coordinate
 from mo_dots import Data, Null, coalesce, concat_field, is_list, listwrap, relative_field, startswith_field, unwrap, \
@@ -27,26 +29,31 @@ from mo_dots import Data, Null, coalesce, concat_field, is_list, listwrap, relat
 from mo_future import text, transpose
 from mo_json import STRING, STRUCT
 from mo_logs import Log
-from pyLibrary.sql import SQL, SQL_FROM, SQL_ORDERBY, SQL_SELECT, SQL_WHERE, sql_count, sql_iso, sql_list, SQL_CREATE, \
-    SQL_AS
-from pyLibrary.sql.sqlite import quote_column
+from mo_sql import SQL_FROM, SQL_ORDERBY, SQL_SELECT, SQL_WHERE, sql_count, sql_iso, sql_list, SQL_CREATE, \
+    SQL_AS, SQL_DELETE, ConcatSQL, JoinSQL, SQL_COMMA
+from jx_sqlite.sqlite import quote_column, sql_alias
 
 
-class QueryTable(GroupbyTable):
+class QueryTable(GroupbyTable, Facts):
+    def __init__(self, name, container):
+        BaseTable.__init__(self, name, container)
+        Facts.__init__(self, name, container)
+
     def get_column_name(self, column):
-        return relative_field(column.name, self.sf.fact_name)
+        return relative_field(column.name, self.snowflake.fact_name)
 
     def __len__(self):
-        counter = self.db.query(SQL_SELECT + sql_count("*") + SQL_FROM + quote_column(self.sf.fact_name))[0][0]
+        counter = self.db.query(SQL_SELECT + sql_count("*") + SQL_FROM + quote_column(self.snowflake.fact_name))[0][0]
         return counter
 
     def __nonzero__(self):
-        counter = self.db.query(SQL_SELECT + sql_count("*") + SQL_FROM + quote_column(self.sf.fact_name))[0][0]
+        counter = self.db.query(SQL_SELECT + sql_count("*") + SQL_FROM + quote_column(self.snowflake.fact_name))[0][0]
         return bool(counter)
 
     def delete(self, where):
-        filter = where.to_sql(self.schema)
-        self.db.execute("DELETE" + SQL_FROM + quote_column(self.sf.fact_name) + SQL_WHERE + filter)
+        filter = SQLang[jx_expression(where)].to_sql(self.schema)
+        with self.db.transaction() as t:
+            t.execute(ConcatSQL((SQL_DELETE, SQL_FROM, quote_column(self.snowflake.fact_name), SQL_WHERE, filter)))
 
     def vars(self):
         return set(self.schema.columns.keys())
@@ -62,25 +69,21 @@ class QueryTable(GroupbyTable):
         """
         select = []
         column_names = []
-        for cname, cs in self.columns.items():
-            cs = [c for c in cs if c.jx_type not in STRUCT and len(c.nested_path) == 1]
-            if len(cs) == 0:
+        for c in self.schema.columns:
+            if c.jx_type in STRUCT:
                 continue
-            column_names.append(cname)
-            if len(cs) == 1:
-                select.append(quote_column(cs.es_column) + " " + quote_column(cs.name))
-            else:
-                select.append(
-                    "coalesce(" +
-                    sql_list(quote_column(c.es_column) for c in cs) +
-                    ") " + quote_column(cs.name)
-                )
+            if len(c.nested_path) != 1:
+                continue
+            column_names.append(c.name)
+            select.append(sql_alias(quote_column(c.es_column), c.name))
 
-        result = self.db.query(
-            SQL_SELECT + SQL("\n,").join(select) +
-            SQL_FROM + quote_column(self.sf.fact_name) +
-            SQL_WHERE + jx_expression(filter).to_sql(self.schema)
-        )
+        where_sql = SQLang[jx_expression(filter)].to_sql(self.schema)[0].sql.b
+        result = self.db.query(ConcatSQL((
+            SQL_SELECT, JoinSQL(SQL_COMMA, select),
+            SQL_FROM, quote_column(self.snowflake.fact_name),
+            SQL_WHERE, where_sql
+        )))
+
         return wrap([{c: v for c, v in zip(column_names, r)} for r in result.data])
 
     def query(self, query):
@@ -88,7 +91,9 @@ class QueryTable(GroupbyTable):
         :param query:  JSON Query Expression, SET `format="container"` TO MAKE NEW TABLE OF RESULT
         :return:
         """
-        if not startswith_field(query['from'], self.name):
+        if not query.get('from'):
+            query['from'] = self.name
+        elif not startswith_field(query['from'], self.name):
             Log.error("Expecting table, or some nested table")
         query = QueryOp.wrap(query, self.container, self.namespace)
         new_table = "temp_" + unique_name()
@@ -340,9 +345,9 @@ class QueryTable(GroupbyTable):
 
     def query_metadata(self, query):
         frum, query['from'] = query['from'], self
-        schema = self.sf.tables["."].schema
+        schema = self.snowflake.tables["."].schema
         query = QueryOp.wrap(query, schema)
-        columns = self.sf.columns
+        columns = self.snowflake.columns
         where = query.where
         table_name = None
         column_name = None
@@ -357,7 +362,7 @@ class QueryTable(GroupbyTable):
         else:
             Log.error("Only simple filters are expected like: \"eq\" on table and column name")
 
-        tables = [concat_field(self.sf.fact_name, i) for i in self.tables.keys()]
+        tables = [concat_field(self.snowflake.fact_name, i) for i in self.tables.keys()]
 
         metadata = []
         if columns[-1].es_column != GUID:
@@ -365,7 +370,7 @@ class QueryTable(GroupbyTable):
                 name=GUID,
                 jx_type=STRING,
                 es_column=GUID,
-                es_index=self.sf.fact_name,
+                es_index=self.snowflake.fact_name,
                 nested_path=["."]
             ))
 

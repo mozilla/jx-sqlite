@@ -5,7 +5,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+# Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 from __future__ import absolute_import, division, unicode_literals
 
@@ -13,7 +13,7 @@ import datetime
 import re
 
 from mo_dots import get_module, wrap
-from mo_future import is_text, text_type
+from mo_future import is_text, text
 from mo_math import MIN, is_nan, is_number, abs, floor, round
 from mo_times.vendor.dateutil.relativedelta import relativedelta
 
@@ -241,25 +241,25 @@ class Duration(object):
         # MILLI
         rem = rest % 1000
         if rem != 0:
-            output = "+" + text_type(rem) + "milli" + output
+            output = "+" + text(rem) + "milli" + output
         rest = floor(rest / 1000)
 
         # SECOND
         rem = rest % 60
         if rem != 0:
-            output = "+" + text_type(rem) + "second" + output
+            output = "+" + text(rem) + "second" + output
         rest = floor(rest / 60)
 
         # MINUTE
         rem = rest % 60
         if rem != 0:
-            output = "+" + text_type(rem) + "minute" + output
+            output = "+" + text(rem) + "minute" + output
         rest = floor(rest / 60)
 
         # HOUR
         rem = rest % 24
         if rem != 0:
-            output = "+" + text_type(rem) + "hour" + output
+            output = "+" + text(rem) + "hour" + output
         rest = floor(rest / 24)
 
         # DAY
@@ -271,11 +271,11 @@ class Duration(object):
             rest = floor(rest / 7)
 
         if rem != 0:
-            output = "+" + text_type(rem) + "day" + output
+            output = "+" + text(rem) + "day" + output
 
         # WEEK
         if rest != 0:
-            output = "+" + text_type(rest) + "week" + output
+            output = "+" + text(rest) + "week" + output
 
         if isNegative:
             output = output.replace("+", "-")
@@ -286,13 +286,13 @@ class Duration(object):
             month = abs(self.month)
 
             if month <= 18 and month != 12:
-                output = sign + text_type(month) + "month" + output
+                output = sign + text(month) + "month" + output
             else:
                 m = month % 12
                 if m != 0:
-                    output = sign + text_type(m) + "month" + output
+                    output = sign + text(m) + "month" + output
                 y = floor(month / 12)
-                output = sign + text_type(y) + "year" + output
+                output = sign + text(y) + "year" + output
 
         if output[0] == "+":
             output = output[1::]

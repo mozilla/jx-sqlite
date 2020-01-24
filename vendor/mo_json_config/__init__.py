@@ -5,19 +5,18 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+# Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
 from __future__ import absolute_import, division, unicode_literals
 
-from mo_future import is_text, is_binary
 import os
 
-import mo_dots
-from mo_dots import is_data, is_list, set_default, unwrap, wrap
+from mo_dots import is_data, is_list, set_default, unwrap, wrap, is_sequence, coalesce, get_attr
 from mo_files import File
 from mo_files.url import URL
-from mo_future import text_type
+from mo_future import is_text
+from mo_future import text
 from mo_json import json2value
 from mo_json_config.convert import ini2value
 from mo_logs import Except, Log
@@ -37,7 +36,7 @@ def get(url):
     """
     USE json.net CONVENTIONS TO LINK TO INLINE OTHER JSON
     """
-    url = text_type(url)
+    url = text(url)
     if url.find("://") == -1:
         Log.error("{{url}} must have a prototcol (eg http://) declared", url=url)
 
@@ -115,7 +114,7 @@ def _replace_ref(node, url):
             raise Log.error("unknown protocol {{scheme}}", scheme=ref.scheme)
 
         if ref.fragment:
-            new_value = mo_dots.get_attr(new_value, ref.fragment)
+            new_value = get_attr(new_value, ref.fragment)
 
         DEBUG and Log.note("Replace {{ref}} with {{new_value}}", ref=ref, new_value=new_value)
 
@@ -146,6 +145,10 @@ def _replace_locals(node, doc_path):
         for k, v in node.items():
             if k == "$ref":
                 ref = v
+            elif k == "$concat":
+                if not is_sequence(v):
+                    Log.error("$concat expects an array of strings")
+                return coalesce(node.get("separator"), "").join(v)
             elif v == None:
                 continue
             else:
@@ -162,13 +165,13 @@ def _replace_locals(node, doc_path):
                 if p != ".":
                     if i>len(doc_path):
                         Log.error("{{frag|quote}} reaches up past the root document",  frag=frag)
-                    new_value = mo_dots.get_attr(doc_path[i-1], frag[i::])
+                    new_value = get_attr(doc_path[i-1], frag[i::])
                     break
             else:
                 new_value = doc_path[len(frag) - 1]
         else:
             # ABSOLUTE
-            new_value = mo_dots.get_attr(doc_path[-1], frag)
+            new_value = get_attr(doc_path[-1], frag)
 
         new_value = _replace_locals(new_value, [new_value] + doc_path)
 

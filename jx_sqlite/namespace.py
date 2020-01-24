@@ -15,8 +15,6 @@ from jx_base import Facts
 from jx_sqlite.meta_columns import ColumnList
 from jx_sqlite.schema import Schema
 from jx_sqlite.snowflake import Snowflake
-from mo_dots import concat_field
-from pyLibrary.sql.sqlite import quote_column
 
 
 class Namespace(jx_base.Namespace):

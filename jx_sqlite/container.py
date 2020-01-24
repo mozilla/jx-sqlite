@@ -18,13 +18,13 @@ from jx_sqlite.snowflake import Snowflake
 from mo_future import first
 from mo_kwargs import override
 from mo_logs import Log
-from pyLibrary.sql import (
+from mo_sql import (
     SQL_SELECT,
     SQL_FROM,
     SQL_UPDATE,
     SQL_SET,
 )
-from pyLibrary.sql.sqlite import (
+from jx_sqlite.sqlite import (
     Sqlite,
     quote_column,
     sql_eq,
@@ -46,6 +46,8 @@ class Container(object):
             self.db = db
         else:
             self.db = db = Sqlite(db)
+
+        self.db.create_new_functions()  # creating new functions: regexp
 
         if not _config:
             # REGISTER sqlite AS THE DEFAULT CONTAINER TYPE
@@ -98,11 +100,11 @@ class Container(object):
     def create_or_replace_facts(self, fact_name, uid=UID):
         """
         MAKE NEW TABLE, REPLACE OLD ONE IF EXISTS
-        :param fact_name:  NAME FOR THE CENTRAL FACTS
+        :param fact_name:  NAME FOR THE CENTRAL INDEX
         :param uid: name, or list of names, for the GUID
         :return: Facts
         """
-        self.ns.remove_snowflake(fact_name)
+        self.remove_facts(fact_name)
         self.ns.columns._snowflakes[fact_name] = ["."]
 
         if uid != UID:
@@ -128,7 +130,7 @@ class Container(object):
     def get_or_create_facts(self, fact_name, uid=UID):
         """
         FIND TABLE BY NAME, OR CREATE IT IF IT DOES NOT EXIST
-        :param fact_name:  NAME FOR THE CENTRAL FACTS
+        :param fact_name:  NAME FOR THE CENTRAL INDEX
         :param uid: name, or list of names, for the GUID
         :return: Facts
         """
@@ -143,8 +145,7 @@ class Container(object):
             with self.db.transaction() as t:
                 t.execute(command)
 
-        snowflake = Snowflake(fact_name, self.ns)
-        return Facts(self, snowflake)
+        return QueryTable(fact_name, self)
 
     def get_table(self, table_name):
         return QueryTable(table_name, self)

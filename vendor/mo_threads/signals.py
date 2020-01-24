@@ -5,7 +5,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+# Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 # THIS THREADING MODULE IS PERMEATED BY THE please_stop SIGNAL.
 # THIS SIGNAL IS IMPORTANT FOR PROPER SIGNALLING WHICH ALLOWS
@@ -16,7 +16,7 @@ from __future__ import absolute_import, division, unicode_literals
 import random
 from weakref import ref
 
-from mo_future import allocate_lock as _allocate_lock, text_type
+from mo_future import allocate_lock as _allocate_lock, text
 from mo_logs import Log
 
 DEBUG = False
@@ -143,10 +143,10 @@ class Signal(object):
             return self._name
 
     def __str__(self):
-        return self.name.decode(text_type)
+        return self.name.decode(text)
 
     def __repr__(self):
-        return text_type(repr(self._go))
+        return text(repr(self._go))
 
     def __or__(self, other):
         if other == None:

@@ -4,7 +4,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+# Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 from __future__ import absolute_import, division, unicode_literals
 
@@ -17,7 +17,7 @@ import time
 import zipfile
 import zlib
 
-from mo_future import PY3, long, text_type
+from mo_future import PY3, long, text
 from mo_logs import Log
 from mo_logs.exceptions import suppress_exception
 import mo_math
@@ -30,7 +30,7 @@ MIN_READ_SIZE = 8 * 1024
 MAX_STRING_SIZE = 1 * 1024 * 1024
 
 
-class FileString(text_type):
+class FileString(text):
     """
     ACTS LIKE A STRING, BUT IS A FILE
     """
@@ -45,7 +45,7 @@ class FileString(text_type):
         return self
 
     def split(self, sep):
-        if sep != "\n":
+        if sep not in (b"\n", u"\n"):
             Log.error("Can only split by lines")
         self.file.seek(0)
         return LazyLines(self.file)

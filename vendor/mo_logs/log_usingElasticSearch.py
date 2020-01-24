@@ -5,7 +5,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+# Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 from __future__ import absolute_import, division, unicode_literals
 
@@ -14,7 +14,7 @@ import sys
 
 from jx_python import jx
 from mo_dots import coalesce, listwrap, set_default, wrap, is_data, is_sequence
-from mo_future import number_types, text_type, is_text, is_binary
+from mo_future import number_types, text, is_text, is_binary
 from mo_json import datetime2unix, json2value, value2json
 from mo_kwargs import override
 from mo_logs import Log, strings
@@ -25,7 +25,7 @@ from mo_threads import Queue, THREAD_STOP, Thread, Till
 from mo_times import Duration, MINUTE
 from mo_times.dates import datetime2unix
 from pyLibrary.convert import bytes2base64
-from pyLibrary.env.rollover_index import RolloverIndex
+from jx_elasticsearch.rollover_index import RolloverIndex
 
 MAX_BAD_COUNT = 5
 LOG_STRING_LENGTH = 2000
@@ -83,7 +83,7 @@ class StructuredLogger_usingElasticSearch(StructuredLogger):
             params.format = None
             self.queue.add({"value": _deep_json_to_string(params, 3)}, timeout=3 * 60)
         except Exception as e:
-            sys.stdout.write(text_type(Except.wrap(e)))
+            sys.stdout.write(text(Except.wrap(e)))
         return self
 
     def _insert_loop(self, please_stop=None):

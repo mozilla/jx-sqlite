@@ -5,7 +5,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+# Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
 from __future__ import absolute_import, division, unicode_literals
@@ -67,7 +67,6 @@ class _Multiset(Multiset):
         for k, m in self.dic.items():
             for i in range(m):
                 yield k
-
 
     def items(self):
         return self.dic.items()

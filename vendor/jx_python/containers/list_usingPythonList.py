@@ -5,7 +5,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+# Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 from __future__ import absolute_import, division, unicode_literals
 
@@ -203,10 +203,6 @@ class ListContainer(Container, jx_base.Namespace, jx_base.Table):
         # _ = window
         jx.window(self.data, window)
         return self
-
-    def having(self, having):
-        _ = having
-        raise NotImplementedError()
 
     def format(self, format):
         if format == "table":

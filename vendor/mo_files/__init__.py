@@ -5,25 +5,24 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+# Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 import base64
-from datetime import datetime
 import io
-from mimetypes import MimeTypes
 import os
 import re
 import shutil
+from datetime import datetime
+from mimetypes import MimeTypes
 from tempfile import NamedTemporaryFile, mkdtemp
 
 from mo_dots import Null, coalesce, get_module, is_list
+from mo_files import mimetype
 from mo_files.url import URL
-from mo_future import PY3, binary_type, text_type, is_text
+from mo_future import PY3, binary_type, text, is_text
 from mo_logs import Except, Log
-from mo_logs.exceptions import extract_stack
+from mo_logs.exceptions import get_stacktrace
 from mo_threads import Thread, Till
-
-mime = MimeTypes()
 
 
 class File(object):
@@ -48,7 +47,7 @@ class File(object):
 
         self._mime_type = mime_type
 
-        if isinstance(filename, (binary_type, text_type)):
+        if isinstance(filename, (binary_type, text)):
             try:
                 self.key = None
                 if filename==".":
@@ -76,7 +75,7 @@ class File(object):
         self.buffering = buffering
 
         if suffix:
-            self._filename = File.add_suffix(self._filename, suffix)
+            self._filename = add_suffix(self._filename, suffix)
 
     @classmethod
     def new_instance(cls, *path):
@@ -116,17 +115,11 @@ class File(object):
             else:
                 return os.path.abspath(self._filename)
 
-    @staticmethod
-    def add_suffix(filename, suffix):
+    def add_suffix(self, suffix):
         """
         ADD suffix TO THE filename (NOT INCLUDING THE FILE EXTENSION)
         """
-        path = filename.split("/")
-        parts = path[-1].split(".")
-        i = max(len(parts) - 2, 0)
-        parts[i] = parts[i] + suffix
-        path[-1] = ".".join(parts)
-        return "/".join(path)
+        return File(add_suffix(self._filename, suffix))
 
     @property
     def extension(self):
@@ -152,8 +145,9 @@ class File(object):
             elif self.abspath.endswith(".css"):
                 self._mime_type = "text/css"
             elif self.abspath.endswith(".json"):
-                self._mime_type = "application/json"
+                self._mime_type = mimetype.JSON
             else:
+                mime = MimeTypes()
                 self._mime_type, _ = mime.guess_type(self.abspath)
                 if not self._mime_type:
                     self._mime_type = "application/binary"
@@ -188,6 +182,12 @@ class File(object):
 
         path[-1] = ".".join(parts)
         return File("/".join(path))
+
+    def add_extension(self, ext):
+        """
+        RETURN NEW FILE WITH EXTENSION ADDED (OLD EXTENSION IS A SUFFIX)
+        """
+        return File(self._filename + "." + text(ext))
 
     def set_name(self, name):
         """
@@ -278,7 +278,7 @@ class File(object):
 
             if is_list(data):
                 pass
-            elif isinstance(data, (binary_type, text_type)):
+            elif isinstance(data, (binary_type, text)):
                 data=[data]
             elif hasattr(data, "__iter__"):
                 pass
@@ -287,7 +287,7 @@ class File(object):
                 if not is_text(d):
                     Log.error(u"Expecting unicode data only")
                 if self.key:
-                    from mo_math.crypto import encrypt
+                    from mo_math.aes_crypto import encrypt
                     f.write(encrypt(d, self.key).encode("utf8"))
                 else:
                     f.write(d.encode("utf8"))
@@ -335,7 +335,7 @@ class File(object):
                 self.parent.create()
             with open(self._filename, "ab") as output_file:
                 for c in content:
-                    if isinstance(c, str):
+                    if not isinstance(c, text):
                         Log.error(u"expecting to write unicode only")
 
                     output_file.write(c.encode("utf8"))
@@ -450,7 +450,7 @@ class TempDirectory(File):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        Thread.run("delete dir " + self.name, delete_daemon, file=self, caller_stack=extract_stack(1))
+        Thread.run("delete dir " + self.name, delete_daemon, file=self, caller_stack=get_stacktrace(1))
 
 
 class TempFile(File):
@@ -472,7 +472,7 @@ class TempFile(File):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        Thread.run("delete file " + self.name, delete_daemon, file=self, caller_stack=extract_stack(1))
+        Thread.run("delete file " + self.name, delete_daemon, file=self, caller_stack=get_stacktrace(1))
 
 
 def _copy(from_, to_):
@@ -570,3 +570,16 @@ def delete_daemon(file, caller_stack, please_stop):
 
             Log.warning(u"problem deleting file {{file}}", file=file.abspath, cause=e)
             (Till(seconds=10)|please_stop).wait()
+
+
+def add_suffix(filename, suffix):
+    """
+    ADD suffix TO THE filename (NOT INCLUDING THE FILE EXTENSION)
+    """
+    path = filename.split("/")
+    parts = path[-1].split(".")
+    i = max(len(parts) - 2, 0)
+    parts[i] = parts[i] + "." + text(suffix).strip(".")
+    path[-1] = ".".join(parts)
+    return File("/".join(path))
+

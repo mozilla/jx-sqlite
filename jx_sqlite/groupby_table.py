@@ -5,21 +5,22 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http:# mozilla.org/MPL/2.0/.
 #
-# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+# Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
 
 from __future__ import absolute_import, division, unicode_literals
 
 from jx_python import jx
-from jx_sqlite import ColumnMapping, _make_column_name, get_column, quoted_PARENT, quoted_UID, sql_aggs, PARENT, UID
+from jx_sqlite import ColumnMapping, _make_column_name, get_column, sql_aggs, PARENT, UID
 from jx_sqlite.edges_table import EdgesTable
-from jx_sqlite.expressions import sql_type_to_json_type, SQLang
+from jx_sqlite.expressions._utils import SQLang, sql_type_to_json_type
 from mo_dots import concat_field, join_field, listwrap, split_field, startswith_field
 from mo_future import unichr
 from mo_logs import Log
-from pyLibrary.sql import SQL_FROM, SQL_GROUPBY, SQL_IS_NULL, SQL_LEFT_JOIN, SQL_NULL, SQL_ON, SQL_ONE, SQL_ORDERBY, SQL_SELECT, SQL_WHERE, sql_count, sql_iso, sql_list
-from pyLibrary.sql.sqlite import quote_column, sql_alias
+from mo_sql import SQL_FROM, SQL_GROUPBY, SQL_IS_NULL, SQL_LEFT_JOIN, SQL_NULL, SQL_ON, SQL_ONE, SQL_ORDERBY, \
+    SQL_SELECT, SQL_WHERE, sql_count, sql_iso, sql_list
+from jx_sqlite.sqlite import quote_column, sql_alias
 
 
 class GroupbyTable(EdgesTable):
@@ -27,7 +28,7 @@ class GroupbyTable(EdgesTable):
         base_table = schema.snowflake.fact_name
         path = schema.nested_path
         # base_table, path = tail_field(frum)
-        # schema = self.sf.tables[path].schema
+        # schema = self.snowflake.tables[path].schema
         index_to_column = {}
         nest_to_alias = {
             nested_path: "__" + unichr(ord('a') + i) + "__"

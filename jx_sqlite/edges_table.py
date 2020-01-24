@@ -5,29 +5,30 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http:# mozilla.org/MPL/2.0/.
 #
-# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+# Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
 
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.language import is_op
-
-from mo_future import is_text, is_binary
+import mo_math
 from jx_base.domains import DefaultDomain, DurationDomain, TimeDomain
+from jx_base.language import is_op
 from jx_python import jx
-from jx_sqlite import ColumnMapping, STATS, _make_column_name, get_column, quoted_PARENT, quoted_UID, sql_aggs, sql_text_array_to_set, untyped_column
-from jx_sqlite.expressions import TupleOp, Variable, sql_type_to_json_type, SQLang
+from jx_sqlite import ColumnMapping, STATS, _make_column_name, get_column, sql_aggs, sql_text_array_to_set, \
+    untyped_column, PARENT, UID
+from jx_sqlite.expressions._utils import SQLang, sql_type_to_json_type
+from jx_sqlite.expressions.tuple_op import TupleOp
+from jx_sqlite.expressions.variable import Variable
 from jx_sqlite.setop_table import SetOpTable
-from mo_dots import coalesce, concat_field, join_field, listwrap, relative_field, split_field, startswith_field, tail_field
+from mo_dots import coalesce, concat_field, join_field, listwrap, split_field, startswith_field
 from mo_future import text, unichr
 from mo_logs import Log
-import mo_math
-from pyLibrary.sql import SQL, SQL_AND, SQL_CASE, SQL_COMMA, SQL_DESC, SQL_ELSE, SQL_END, SQL_FROM, SQL_GROUPBY, \
+from mo_sql import SQL, SQL_AND, SQL_CASE, SQL_COMMA, SQL_DESC, SQL_ELSE, SQL_END, SQL_FROM, SQL_GROUPBY, \
     SQL_INNER_JOIN, SQL_IS_NOT_NULL, SQL_IS_NULL, SQL_LEFT_JOIN, SQL_LIMIT, SQL_NULL, SQL_ON, SQL_ONE, SQL_OR, \
     SQL_ORDERBY, SQL_SELECT, SQL_STAR, SQL_THEN, SQL_TRUE, SQL_UNION_ALL, SQL_WHEN, SQL_WHERE, sql_coalesce, \
     sql_count, sql_iso, sql_list, SQL_DOT
-from pyLibrary.sql.sqlite import quote_column, quote_value, sql_alias
+from jx_sqlite.sqlite import quote_column, quote_value, sql_alias
 
 EXISTS_COLUMN = quote_column("__exists__")
 
@@ -41,7 +42,7 @@ class EdgesTable(SetOpTable):
         base_table, path = schema.snowflake.fact_name, schema.nested_path
         nest_to_alias = {
             nested_path: quote_column("__" + unichr(ord('a') + i) + "__")
-            for i, (nested_path, sub_table) in enumerate(self.sf.tables)
+            for i, (nested_path, sub_table) in enumerate(self.snowflake.tables)
         }
 
         tables = []
@@ -69,7 +70,7 @@ class EdgesTable(SetOpTable):
         orderby = []
         domains = []
 
-        select_clause = [SQL_ONE + EXISTS_COLUMN] + [quote_column(c.es_column) for c in self.sf.columns]
+        select_clause = [SQL_ONE + EXISTS_COLUMN] + [quote_column(c.es_column) for c in self.snowflake.columns]
 
         for edge_index, query_edge in enumerate(query.edges):
             edge_alias = "e" + text(edge_index)
@@ -218,13 +219,13 @@ class EdgesTable(SetOpTable):
             elif len(edge_names) > 1:
                 domain_names = ["d" + text(edge_index) + "c" + text(i) for i, _ in enumerate(edge_names)]
                 query_edge.allowNulls = False
-                domain_columns = [c for c in self.sf.columns if quote_column(c.es_column) in vals]
+                domain_columns = [c for c in self.snowflake.columns if quote_column(c.es_column) in vals]
                 if not domain_columns:
                     domain_nested_path = "."
                     Log.note("expecting a known column")
                 else:
                     domain_nested_path = domain_columns[0].nested_path
-                domain_table = quote_column(concat_field(self.sf.fact_name, domain_nested_path[0]))
+                domain_table = quote_column(concat_field(self.snowflake.fact_name, domain_nested_path[0]))
                 limit = mo_math.min(query.limit, query_edge.domain.limit)
                 domain = (
                     SQL_SELECT + sql_list(sql_alias(g, n) for n, g in zip(domain_names, vals)) +
@@ -248,13 +249,13 @@ class EdgesTable(SetOpTable):
                 null_on_clause = None
             elif query_edge.domain.type == "default" or isinstance(query_edge.domain, DefaultDomain):
                 domain_names = ["d" + text(edge_index) + "c" + text(i) for i, _ in enumerate(edge_names)]
-                domain_columns = [c for c in self.sf.columns if quote_column(c.es_column) in vals]
+                domain_columns = [c for c in self.snowflake.columns if quote_column(c.es_column) in vals]
                 if not domain_columns:
                     domain_nested_path = "."
                     Log.note("expecting a known column")
                 else:
                     domain_nested_path = domain_columns[0].nested_path
-                domain_table = quote_column(concat_field(self.sf.fact_name, domain_nested_path[0]))
+                domain_table = quote_column(concat_field(self.snowflake.fact_name, domain_nested_path[0]))
                 limit = mo_math.min(query.limit, query_edge.domain.limit)
                 domain = (
                     SQL_SELECT + sql_list(sql_alias(g, n) for n, g in zip(domain_names, vals)) +
@@ -369,7 +370,7 @@ class EdgesTable(SetOpTable):
                 )
             elif s.aggregate == "count" and (not query.edges and not query.groupby):
                 value = s.value.var
-                columns = [c.es_column for c in self.sf.columns if untyped_column(c.es_column)[0] == value]
+                columns = [c.es_column for c in self.snowflake.columns if untyped_column(c.es_column)[0] == value]
                 sql = SQL("+").join(sql_count(quote_column(col)) for col in columns)
                 column_number = len(outer_selects)
                 outer_selects.append(sql_alias(sql, _make_column_name(column_number)))

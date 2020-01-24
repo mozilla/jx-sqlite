@@ -5,7 +5,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+# Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 from __future__ import absolute_import, division, unicode_literals
 
@@ -13,17 +13,18 @@ from collections import Mapping
 from copy import copy
 
 import jx_base
+import mo_math
 from jx_base.dimensions import Dimension
 from jx_base.domains import DefaultDomain, Domain, SetDomain
-from jx_base.expressions import Expression, FALSE, LeavesOp, QueryOp as QueryOp_, ScriptOp, TRUE, Variable, jx_expression
-from jx_base.utils import is_variable_name
+from jx_base.expressions import Expression, FALSE, LeavesOp, QueryOp as QueryOp_, ScriptOp, Variable, jx_expression
 from jx_base.language import is_expression, is_op
-from mo_dots import Data, FlatList, Null, coalesce, concat_field, is_container, is_data, is_list, listwrap, literal_field, relative_field, set_default, unwrap, unwraplist, wrap, is_many
-from mo_future import is_text, text_type
+from jx_base.utils import is_variable_name
+from mo_dots import Data, FlatList, Null, coalesce, concat_field, is_container, is_data, is_list, listwrap, \
+    literal_field, relative_field, set_default, unwrap, unwraplist, wrap
+from mo_future import is_text, text
 from mo_json import STRUCT
 from mo_json.typed_encoder import untype_path
 from mo_logs import Log
-import mo_math
 from mo_math import AND, UNION, is_number
 
 DEFAULT_LIMIT = 10
@@ -46,15 +47,9 @@ def _late_import():
 
 
 class QueryOp(QueryOp_):
-    __slots__ = ["frum", "select", "edges", "groupby", "where", "window", "sort", "limit", "having", "format", "isLean"]
+    __slots__ = ["frum", "select", "edges", "groupby", "where", "window", "sort", "limit", "format", "chunk_size", "destination"]
 
-    # def __new__(cls, op=None, frum=None, select=None, edges=None, groupby=None, window=None, where=None, sort=None, limit=None, format=None):
-    #     output = object.__new__(cls)
-    #     for s in QueryOp.__slots__:
-    #         setattr(output, s, None)
-    #     return output
-
-    def __init__(self,frum, select=None, edges=None, groupby=None, window=None, where=None, sort=None, limit=None, format=None):
+    def __init__(self,frum, select=None, edges=None, groupby=None, window=None, where=None, sort=None, limit=None, format=None, chunk_size=None, destination=None):
         if isinstance(frum, jx_base.Table):
             pass
         else:
@@ -68,6 +63,8 @@ class QueryOp(QueryOp_):
         self.sort = sort
         self.limit = limit
         self.format = format
+        self.chunk_size = chunk_size
+        self.destination = destination
 
     def __data__(self):
         def select___data__():
@@ -210,8 +207,11 @@ class QueryOp(QueryOp_):
         output = QueryOp(
             frum=table,
             format=query.format,
-            limit=mo_math.min(MAX_LIMIT, coalesce(query.limit, DEFAULT_LIMIT))
+            chunk_size=query.chunk_size,
+            destination=query.destination,
         )
+        from jx_elasticsearch.es52 import temper_limit
+        output.limit=temper_limit(query.limit, query)
 
         if query.select or isinstance(query.select, (Mapping, list)):
             output.select = _normalize_selects(query.select, query.frum, schema=schema)
@@ -235,12 +235,9 @@ class QueryOp(QueryOp_):
 
         output.where = _normalize_where({"and": listwrap(query.where)}, schema=schema)
         output.window = [_normalize_window(w) for w in listwrap(query.window)]
-        output.having = None
         output.sort = _normalize_sort(query.sort)
-        if not mo_math.is_integer(output.limit) or output.limit < 0:
+        if output.limit != None and (not mo_math.is_integer(output.limit) or output.limit < 0):
             Log.error("Expecting limit >= 0")
-
-        output.isLean = query.isLean
 
         return output
 
@@ -285,7 +282,7 @@ canonical_aggregates = wrap({
 
 
 def _normalize_selects(selects, frum, schema=None, ):
-    if frum == None or isinstance(frum, (list, set, text_type)):
+    if frum == None or isinstance(frum, (list, set, text)):
         if is_list(selects):
             if len(selects) == 0:
                 return Null
@@ -406,7 +403,7 @@ def _normalize_select_no_context(select, schema=None):
                 output.value = jx_expression(select.value, schema=schema)
     elif is_number(output.value):
         if not output.name:
-            output.name = text_type(output.value)
+            output.name = text(output.value)
         output.value = jx_expression(select.value, schema=schema)
     else:
         output.value = jx_expression(select.value, schema=schema)

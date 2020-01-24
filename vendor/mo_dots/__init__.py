@@ -4,15 +4,16 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+# Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
 from __future__ import absolute_import, division, unicode_literals
 
 import sys
+from collections import OrderedDict
 
 from mo_dots.utils import CLASS, OBJ, get_logger, get_module
-from mo_future import binary_type, generator_types, is_binary, is_text, text_type
+from mo_future import binary_type, generator_types, is_binary, is_text, text
 
 none_type = type(None)
 ModuleType = type(sys.modules[__name__])
@@ -312,7 +313,7 @@ def _getdefault(obj, key):
 
     # TODO: FIGURE OUT WHY THIS WAS EVER HERE (AND MAKE A TEST)
     # try:
-    #     return eval("obj."+text_type(key))
+    #     return eval("obj."+text(key))
     # except Exception as f:
     #     pass
     return NullType(obj, key)
@@ -367,10 +368,10 @@ def _get_attr(obj, path):
         File = get_module("mo_files").File
         possible_error = None
         python_file = (File(obj.__file__).parent / attr_name).set_extension("py")
-        python_module = (File(obj.__file__).parent / attr_name / "__init__.py")
+        python_module = (File(obj.__file__).parent / attr_name / "bigquery.py")
         if python_file.exists or python_module.exists:
             try:
-                # THIS CASE IS WHEN THE __init__.py DOES NOT IMPORT THE SUBDIR FILE
+                # THIS CASE IS WHEN THE bigquery.py DOES NOT IMPORT THE SUBDIR FILE
                 # WE CAN STILL PUT THE PATH TO THE FILE IN THE from CLAUSE
                 if len(path) == 1:
                     # GET MODULE OBJECT
@@ -424,14 +425,15 @@ def _set_attr(obj_, path, value):
     # ACTUAL SETTING OF VALUE
     try:
         old_value = _get_attr(obj, [attr_name])
-        if old_value == None:
+        old_type = _get(old_value, CLASS)
+        if old_value == None or old_type in (bool, int, float, text, binary_type):
             old_value = None
             new_value = value
         elif value == None:
             new_value = None
         else:
             new_value = _get(old_value, CLASS)(value)  # TRY TO MAKE INSTANCE OF SAME CLASS
-    except Exception as e:
+    except Exception:
         old_value = None
         new_value = value
 
@@ -443,11 +445,11 @@ def _set_attr(obj_, path, value):
             obj[attr_name] = new_value
             return old_value
         except Exception as f:
-            get_logger().error(PATH_NOT_FOUND, cause=e)
+            get_logger().error(PATH_NOT_FOUND, cause=[f, e])
 
 
 def lower_match(value, candidates):
-    return [v for v in candidates if v.lower()==value.lower()]
+    return [v for v in candidates if v.lower() == value.lower()]
 
 
 def wrap(v):
@@ -459,7 +461,7 @@ def wrap(v):
 
     type_ = _get(v, CLASS)
 
-    if type_ is dict:
+    if type_ in (dict, OrderedDict):
         m = object.__new__(Data)
         _set(m, SLOT, v)
         return m
@@ -485,7 +487,7 @@ def _wrap_leaves(value):
         return None
 
     class_ = _get(value, CLASS)
-    if class_ in (text_type, binary_type, int, float):
+    if class_ in (text, binary_type, int, float):
         return value
     if class_ in data_types:
         if class_ is Data:

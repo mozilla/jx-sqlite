@@ -4,7 +4,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+# Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
 from __future__ import absolute_import, division, unicode_literals
@@ -13,7 +13,7 @@ from collections import Mapping
 from datetime import date, datetime
 from decimal import Decimal
 
-from mo_future import binary_type, generator_types, get_function_arguments, get_function_defaults, none_type, text_type
+from mo_future import binary_type, generator_types, get_function_arguments, get_function_defaults, none_type, text
 
 from mo_dots import Data, FlatList, NullType, SLOT, get_attr, set_attr, unwrap, wrap
 from mo_dots.datas import register_data
@@ -84,7 +84,7 @@ class DataObject(Mapping):
 
     def __unicode__(self):
         obj = _get(self, OBJ)
-        return text_type(obj)
+        return text(obj)
 
     def __str__(self):
         obj = _get(self, OBJ)
@@ -111,11 +111,11 @@ def datawrap(v):
         return m
     elif type_ is list:
         return FlatList(v)
-    elif type_ in (Data, DataObject, none_type, FlatList, text_type, binary_type, int, float, Decimal, datetime, date, NullType, none_type):
+    elif type_ in (Data, DataObject, none_type, FlatList, text, binary_type, int, float, Decimal, datetime, date, NullType, none_type):
         return v
     elif type_ in generator_types:
         return (wrap(vv) for vv in v)
-    elif isinstance(v, (text_type, binary_type, int, float, Decimal, datetime, date, FlatList, NullType, Mapping, none_type)):
+    elif isinstance(v, (text, binary_type, int, float, Decimal, datetime, date, FlatList, NullType, Mapping, none_type)):
         return v
     elif hasattr(v, "__data__"):
         return v.__data__()
@@ -154,7 +154,7 @@ def params_pack(params, *args):
     settings = {}
     for a in args:
         for k, v in a.items():
-            k = text_type(k)
+            k = text(k)
             if k in settings:
                 continue
             settings[k] = v

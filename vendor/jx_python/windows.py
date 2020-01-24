@@ -5,7 +5,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+# Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
 from __future__ import absolute_import, division, unicode_literals
@@ -319,6 +319,9 @@ class List(WindowFunction):
         return copy(self.agg)
 
 
+def median(*args, **kwargs):
+    return Percentile(0.5, *args, **kwargs)
+
 name2accumulator = {
     "count": Count,
     "sum": Sum,
@@ -328,6 +331,7 @@ name2accumulator = {
     "list": List,
     "min": Min,
     "minimum": Min,
+    "median": median,
     "percentile": Percentile,
     "one": One
 }

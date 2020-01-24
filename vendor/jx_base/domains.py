@@ -5,7 +5,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with self file,
 # You can obtain one at http:# mozilla.org/MPL/2.0/.
 #
-# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+# Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 from __future__ import absolute_import, division, unicode_literals
 
@@ -15,7 +15,7 @@ from numbers import Number
 from jx_base.expressions import jx_expression
 from mo_collections.unique_index import UniqueIndex
 from mo_dots import Data, FlatList, Null, coalesce, is_container, is_data, listwrap, set_default, unwrap, wrap
-from mo_future import text_type
+from mo_future import text
 from mo_logs import Log
 from mo_math import MAX, MIN
 from mo_times.dates import Date
@@ -224,7 +224,7 @@ class SimpleSetDomain(Domain):
         if isinstance(self.key, set):
             Log.error("problem")
 
-        if not desc.key and (len(desc.partitions)==0 or isinstance(desc.partitions[0], (text_type, Number, tuple))):
+        if not desc.key and (len(desc.partitions)==0 or isinstance(desc.partitions[0], (text, Number, tuple))):
             # ASSUME PARTS ARE STRINGS, CONVERT TO REAL PART OBJECTS
             self.key = "value"
             self.map = {}
@@ -235,7 +235,7 @@ class SimpleSetDomain(Domain):
                 self.map[p] = part
                 self.order[p] = i
                 if isinstance(p, (int, float)):
-                    text_part = text_type(float(p))  # ES CAN NOT HANDLE NUMERIC PARTS
+                    text_part = text(float(p))  # ES CAN NOT HANDLE NUMERIC PARTS
                     self.map[text_part] = part
                     self.order[text_part] = i
             self.label = coalesce(self.label, "name")
@@ -378,7 +378,7 @@ class SetDomain(Domain):
         if isinstance(self.key, set):
             Log.error("problem")
 
-        if isinstance(desc.partitions[0], (int, float, text_type)):
+        if isinstance(desc.partitions[0], (int, float, text)):
             # ASSMUE PARTS ARE STRINGS, CONVERT TO REAL PART OBJECTS
             self.key = "value"
             self.order[None] = len(desc.partitions)

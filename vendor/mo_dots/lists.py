@@ -4,19 +4,19 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+# Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
 from __future__ import absolute_import, division, unicode_literals
 
 from copy import deepcopy
 
-from mo_future import generator_types, text_type
+from mo_future import generator_types, text, first
 
 from mo_dots import CLASS, coalesce, unwrap, wrap
 from mo_dots.nones import Null
 
-LIST = text_type("list")
+LIST = text("list")
 
 _get = object.__getattribute__
 _get_list = lambda self: _get(self, LIST)
@@ -228,7 +228,7 @@ class FlatList(list):
         WITH SLICES BEING FLAT, WE NEED A SIMPLE WAY TO SLICE FROM THE RIGHT [-num:]
         """
         if num == None:
-            return FlatList([_get_list(self)[-1]])
+            return self
         if num <= 0:
             return Null
 
@@ -239,7 +239,7 @@ class FlatList(list):
         NOT REQUIRED, BUT EXISTS AS OPPOSITE OF right()
         """
         if num == None:
-            return FlatList([_get_list(self)[0]])
+            return self
         if num <= 0:
             return Null
 
@@ -250,7 +250,7 @@ class FlatList(list):
         WITH SLICES BEING FLAT, WE NEED A SIMPLE WAY TO SLICE FROM THE LEFT [:-num:]
         """
         if num == None:
-            return FlatList([_get_list(self)[:-1:]])
+            return self
         if num <= 0:
             return FlatList.EMPTY
 
@@ -261,7 +261,7 @@ class FlatList(list):
         NOT REQUIRED, EXISTS AS OPPOSITE OF not_right()
         """
         if num == None:
-            return FlatList([_get_list(self)[-1]])
+            return self
         if num <= 0:
             return self
 
@@ -281,6 +281,18 @@ class FlatList(list):
             return FlatList([oper(v) for v in _get_list(self)])
         else:
             return FlatList([oper(v) for v in _get_list(self) if v != None])
+
+
+def last(values):
+    if len(values):
+        if isinstance(values, FlatList):
+            return values.last()
+        if is_sequence(values):
+            return values[-1]
+        else:
+            return first(values)
+    else:
+        return Null
 
 
 FlatList.EMPTY = Null

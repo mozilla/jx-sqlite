@@ -5,7 +5,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+# Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
 from __future__ import absolute_import, division, unicode_literals
@@ -488,7 +488,7 @@ THE columns DO NOT GET MARKED WITH NESTED (AS THEY SHOULD)
 type_to_name = {
     int: "long",
     str: "string",
-    text_type: "string",
+    text: "string",
     float: "double",
     Number: "double",
     Data: "object",
@@ -554,15 +554,18 @@ def sort(data, fieldnames=None, already_normalized=False):
         if data == None:
             return Null
 
-        if not fieldnames:
-            return wrap(sort_using_cmp(data, value_compare))
-
-        if already_normalized:
-            formal = fieldnames
+        if isinstance(fieldnames, int):
+            funcs = [(lambda t: t[fieldnames], 1)]
         else:
-            formal = query._normalize_sort(fieldnames)
+            if not fieldnames:
+                return wrap(sort_using_cmp(data, value_compare))
 
-        funcs = [(jx_expression_to_function(f.value), f.sort) for f in formal]
+            if already_normalized:
+                formal = fieldnames
+            else:
+                formal = query._normalize_sort(fieldnames)
+
+            funcs = [(jx_expression_to_function(f.value), f.sort) for f in formal]
 
         def comparer(left, right):
             for func, sort_ in funcs:

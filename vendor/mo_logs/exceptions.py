@@ -5,7 +5,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+# Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
 
@@ -15,7 +15,7 @@ from mo_future import is_text, is_binary
 import sys
 
 from mo_dots import Data, Null, is_data, listwrap, unwraplist
-from mo_future import PY3, text_type
+from mo_future import PY3, text
 from mo_logs.strings import CR, expand_template, indent
 
 FATAL = "FATAL"
@@ -66,7 +66,7 @@ class Except(Exception, LogItem):
         )
 
         if not trace:
-            self.trace = extract_stack(2)
+            self.trace = get_stacktrace(2)
         else:
             self.trace = trace
 
@@ -91,15 +91,15 @@ class Except(Exception, LogItem):
             if tb is not None:
                 trace = _parse_traceback(tb)
             else:
-                trace = _extract_traceback(0)
+                trace = get_traceback(0)
 
             cause = Except.wrap(getattr(e, '__cause__', None))
             if hasattr(e, "message") and e.message:
-                output = Except(context=ERROR, template=text_type(e.message), trace=trace, cause=cause)
+                output = Except(context=ERROR, template=text(e.message), trace=trace, cause=cause)
             else:
-                output = Except(context=ERROR, template=text_type(e), trace=trace, cause=cause)
+                output = Except(context=ERROR, template=text(e), trace=trace, cause=cause)
 
-            trace = extract_stack(stack_depth + 2)  # +2 = to remove the caller, and it's call to this' Except.wrap()
+            trace = get_stacktrace(stack_depth + 2)  # +2 = to remove the caller, and it's call to this' Except.wrap()
             output.trace.extend(trace)
             return output
 
@@ -131,9 +131,9 @@ class Except(Exception, LogItem):
             cause_strings = []
             for c in listwrap(self.cause):
                 try:
-                    cause_strings.append(text_type(c))
+                    cause_strings.append(text(c))
                 except Exception as e:
-                    sys.stderr("Problem serializing cause"+text_type(c))
+                    sys.stderr("Problem serializing cause"+text(c))
 
             output += "caused by\n\t" + "and caused by\n\t".join(cause_strings)
 
@@ -152,7 +152,7 @@ class Except(Exception, LogItem):
         return output
 
 
-def extract_stack(start=0):
+def get_stacktrace(start=0):
     """
     SNAGGED FROM traceback.py
     Altered to return Data
@@ -183,7 +183,7 @@ def extract_stack(start=0):
     return stack
 
 
-def _extract_traceback(start):
+def get_traceback(start):
     """
     SNAGGED FROM traceback.py
 

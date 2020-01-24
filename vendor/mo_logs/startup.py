@@ -5,7 +5,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+# Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
 from __future__ import absolute_import, division, unicode_literals
@@ -60,9 +60,8 @@ def argparse(defs):
 def read_settings(defs=None, filename=None, default_filename=None):
     """
     :param filename: Force load a file
-    :param defs: arguments you want to accept
+    :param defs: more arguments you want to accept (see https://docs.python.org/3/library/argparse.html#argparse.ArgumentParser.add_argument)
     :param default_filename: A config file from an environment variable (a fallback config file, if no other provided)
-    :return:
     """
     # READ SETTINGS
     defs = listwrap(defs)
@@ -108,7 +107,7 @@ class SingleInstance:
     with SingleInstance(settings.args.filename):
         <your code here>
 
-    This option is very useful if you have scripts executed by crontab at small amounts of time.
+    This option is very useful if you have scripts executed by crontab at small intervals, causing multiple instances
 
     Remember that this works by creating a lock file with a filename based on the full path to the script file.
     """

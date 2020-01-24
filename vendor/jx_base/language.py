@@ -5,23 +5,24 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+# Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 from __future__ import absolute_import, division, unicode_literals
 
 from copy import copy
+from decimal import Decimal
 from math import isnan
 
-from mo_dots import Data, data_types, listwrap
+from mo_dots import Data, data_types, listwrap, NullType, startswith_field
 from mo_dots.lists import list_types, is_many
-from mo_future import boolean_type, long, none_type, text_type, transpose
+from mo_future import boolean_type, long, none_type, text, transpose
 from mo_logs import Log
 from mo_times import Date
 
 builtin_tuple = tuple
 
 Expression = None
-expression_module = None
+expression_module = "jx_base.expressions"
 JX = None
 ID = "_op_id"
 
@@ -48,7 +49,7 @@ class LanguageElement(type):
     def __new__(cls, name, bases, dct):
         x = type.__new__(cls, name, bases, dct)
         x.lang = None
-        if x.__module__ == expression_module:
+        if startswith_field(x.__module__, expression_module):
             # ALL OPS IN expression_module ARE GIVEN AN ID, NO OTHERS
             setattr(x, ID, next_id())
         return x
@@ -68,8 +69,46 @@ BaseExpression = LanguageElement(str("BaseExpression"), (object,), {})
 class Language(object):
 
     def __init__(self, name):
+        global JX
+        if not name:
+            name = "JX"
+            JX = self
         self.name = name
         self.ops = None
+
+    def register_ops(self, module_vars):
+        global JX
+
+        if self.name != "JX":
+            self.ops = copy(JX.ops)
+        else:
+            num_ops = 1 + max(
+                obj.get_id()
+                for obj in module_vars.values()
+                if isinstance(obj, type) and hasattr(obj, ID)
+            )
+            self.ops = [None] * num_ops
+
+        for _, new_op in module_vars.items():
+            if isinstance(new_op, type) and hasattr(new_op, ID):
+                # EXPECT OPERATORS TO HAVE id
+                # EXPECT NEW DEFINED OPS IN THIS MODULE TO HAVE lang NOT SET
+                curr = getattr(new_op, "lang")
+                if not curr:
+                    old_op = self.ops[new_op.get_id()]
+                    if old_op is not None and old_op.__name__ != new_op.__name__:
+                        Log.error("Logic error")
+                    self.ops[new_op.get_id()] = new_op
+                    setattr(new_op, "lang", self)
+
+        if self.name:
+            # ENSURE THE ALL OPS ARE DEFINED ON THE NEW LANGUAGE
+            for base_op, new_op in transpose(JX.ops, self.ops):
+                if new_op is base_op:
+                    # MISSED DEFINITION, ADD ONE
+                    new_op = type(base_op.__name__, (base_op,), {})
+                    self.ops[new_op.get_id()] = new_op
+                    setattr(new_op, "lang", self)
 
     def __getitem__(self, item):
         if item == None:
@@ -82,47 +121,6 @@ class Language(object):
 
     def __str__(self):
         return self.name
-
-
-def define_language(lang_name, module_vars):
-    # LET ALL EXPRESSIONS POINT TO lang OBJECT WITH ALL EXPRESSIONS
-    # ENSURE THIS IS BELOW ALL SUB_CLASS DEFINITIONS SO var() CAPTURES ALL EXPRESSIONS
-    global JX
-
-    if lang_name:
-        language = Language(lang_name)
-        language.ops = copy(JX.ops)
-    else:
-        num_ops = 1 + max(
-            obj.get_id()
-            for obj in module_vars.values()
-            if isinstance(obj, type) and hasattr(obj, ID)
-        )
-        language = JX = Language("JX")
-        language.ops = [None] * num_ops
-
-    for _, new_op in module_vars.items():
-        if isinstance(new_op, type) and hasattr(new_op, ID):
-            # EXPECT OPERATORS TO HAVE id
-            # EXPECT NEW DEFINED OPS IN THIS MODULE TO HAVE lang NOT SET
-            curr = getattr(new_op, "lang")
-            if not curr:
-                old_op = language.ops[new_op.get_id()]
-                if old_op is not None and old_op.__name__ != new_op.__name__:
-                    Log.error("Logic error")
-                language.ops[new_op.get_id()] = new_op
-                setattr(new_op, "lang", language)
-
-    if lang_name:
-        # ENSURE THE ALL OPS ARE DEFINED ON THE NEW LANGUAGE
-        for base_op, new_op in transpose(JX.ops, language.ops):
-            if new_op is base_op:
-                # MISSED DEFINITION, ADD ONE
-                new_op = type(base_op.__name__, (base_op,), {})
-                language.ops[new_op.get_id()] = new_op
-                setattr(new_op, "lang", language)
-
-    return language
 
 
 def is_op(call, op):
@@ -189,15 +187,14 @@ def value_compare(left, right, ordering=1):
             right = None
             rtype = none_type
 
-        null_order = ordering*10
-        ltype_num = TYPE_ORDER.get(ltype, null_order)
-        rtype_num = TYPE_ORDER.get(rtype, null_order)
+        ltype_num = type_order(ltype, ordering)
+        rtype_num = type_order(rtype, ordering)
 
         type_diff = ltype_num - rtype_num
         if type_diff != 0:
             return ordering if type_diff > 0 else -ordering
 
-        if ltype_num == null_order:
+        if ltype_num in (-10, 10):
             return 0
         elif ltype is builtin_tuple:
             for a, b in zip(left, right):
@@ -221,17 +218,33 @@ def value_compare(left, right, ordering=1):
         Log.error("Can not compare values {{left}} to {{right}}", left=left, right=right, cause=e)
 
 
+def type_order(dtype, ordering):
+    o = TYPE_ORDER.get(dtype)
+    if o is None:
+        if dtype in NULL_TYPES:
+            return ordering * 10
+        else:
+            Log.warning("type will be treated as its own type while sorting")
+            TYPE_ORDER[dtype] = 6
+            return 6
+    return o
+
+
+NULL_TYPES = (none_type, NullType)
+
+
 TYPE_ORDER = {
     boolean_type: 0,
     int: 1,
     float: 1,
+    Decimal: 1,
     Date: 1,
     long: 1,
-    text_type: 2,
-    list: 3,
-    builtin_tuple: 3,
-    dict: 4,
-    Data: 4
+    text: 3,
+    list: 4,
+    builtin_tuple: 4,
+    dict: 5,
+    Data: 5
 }
 
 

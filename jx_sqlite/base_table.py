@@ -5,7 +5,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http:# mozilla.org/MPL/2.0/.
 #
-# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+# Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
 
@@ -29,7 +29,7 @@ class BaseTable(jx_base.Table):
         self.container = container
 
     @property
-    def sf(self):
+    def snowflake(self):
         return self.schema.snowflake
 
     @property

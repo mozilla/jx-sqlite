@@ -5,7 +5,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+# Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 from __future__ import absolute_import, division, unicode_literals
 
@@ -15,7 +15,7 @@ from jx_base.expressions import jx_expression
 from jx_python.expressions import Literal, Python
 from mo_dots import coalesce, listwrap, wrap
 from mo_dots.datas import register_data
-from mo_future import is_text, text_type
+from mo_future import is_text, text
 from mo_json import value2json
 from mo_logs import Log
 from mo_logs.strings import expand_template, quote
@@ -33,7 +33,7 @@ def generateGuid():
     print(a)
     print(uuid.UUID(a).hex)
     """
-    return text_type(uuid4())
+    return text(uuid4())
 
 
 def _exec(code, name):
