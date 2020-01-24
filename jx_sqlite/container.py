@@ -59,9 +59,7 @@ class Container(object):
         self.setup()
         self.ns = Namespace(db=db)
         self.about = QueryTable("meta.about", self)
-        self.next_uid = (
-            self._gen_ids().__next__
-        )  # A DELIGHTFUL SOURCE OF UNIQUE INTEGERS
+        self.next_uid = lambda: next(self._gen_ids())  # A DELIGHTFUL SOURCE OF UNIQUE INTEGERS
 
     def _gen_ids(self):
         while True:

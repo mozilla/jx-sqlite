@@ -18,7 +18,7 @@ from collections import Mapping, namedtuple
 from jx_base import jx_expression
 from mo_dots import Data, coalesce, unwraplist, listwrap, wrap
 from mo_files import File
-from mo_future import allocate_lock as _allocate_lock, text, first, is_text, zip_longest
+from mo_future import allocate_lock as _allocate_lock, text, first, is_text, zip_longest, binary_type
 from mo_json import BOOLEAN, INTEGER, NESTED, NUMBER, OBJECT, STRING
 from mo_kwargs import override
 from mo_logs import Log
@@ -579,8 +579,9 @@ _simple_word = re.compile(r"^\w+$", re.UNICODE)
 def quote_column(*path):
     if not path:
         Log.error("expecting a name")
-    if any(not is_text(p) for p in path):
-        Log.error("expecting strings, not SQL")
+    for p in path:
+        if not is_text(p):
+            Log.error("expecting strings, not {{type}}", type=p.__class__.__name__)
     try:
         return ConcatSQL((SQL_SPACE, JoinSQL(SQL_DOT, [SQL(quote(p)) for p in path]), SQL_SPACE))
     except Exception as e:
@@ -632,9 +633,9 @@ def sql_eq(**item):
     """
     return SQL_AND.join(
         [
-            ConcatSQL((quote_column(k), SQL_EQ, quote_value(v)))
+            ConcatSQL((quote_column(text(k)), SQL_EQ, quote_value(v)))
             if v != None
-            else ConcatSQL((quote_column(k), SQL_IS_NULL))
+            else ConcatSQL((quote_column(text(k)), SQL_IS_NULL))
             for k, v in item.items()
         ]
     )

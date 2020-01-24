@@ -15,7 +15,7 @@ from unittest import skipIf
 from jx_base.expressions import NULL
 from mo_dots import wrap
 from mo_logs import Log
-from mo_logs.exceptions import extract_stack
+from mo_logs.exceptions import get_stacktrace
 from mo_times import Date
 from tests.test_jx import BaseTestCase, TEST_TABLE, global_settings
 
@@ -163,7 +163,7 @@ class TestSorting(BaseTestCase):
         }
 
         subtest = wrap(test)
-        subtest.name = extract_stack()[0]['method']
+        subtest.name = get_stacktrace()[0]['method']
         self.utils.fill_container(test)
 
         test = wrap(test)

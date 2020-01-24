@@ -9,7 +9,8 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions import NumberOp as NumberOp_, _utils
+from jx_base.expressions import NumberOp as NumberOp_
+from jx_sqlite.expressions import _utils
 from jx_sqlite.expressions._utils import SQLang, check
 from mo_dots import wrap
 from mo_sql import sql_coalesce

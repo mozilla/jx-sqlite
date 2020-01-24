@@ -9,7 +9,8 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions import FALSE, NULL, ONE, SQLScript as SQLScript_, TRUE, ZERO, _utils
+from jx_base.expressions import FALSE, NULL, ONE, SQLScript as SQLScript_, TRUE, ZERO
+from jx_sqlite.expressions import _utils
 from jx_sqlite.expressions._utils import json_type_to_sql_type, SQLang, check
 from mo_dots import coalesce, wrap
 from mo_future import PY2, text

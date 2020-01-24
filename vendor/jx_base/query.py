@@ -11,6 +11,7 @@ from __future__ import absolute_import, division, unicode_literals
 
 from collections import Mapping
 from copy import copy
+from importlib import import_module
 
 import jx_base
 import mo_math
@@ -210,8 +211,9 @@ class QueryOp(QueryOp_):
             chunk_size=query.chunk_size,
             destination=query.destination,
         )
-        from jx_elasticsearch.es52 import temper_limit
-        output.limit=temper_limit(query.limit, query)
+
+        _import_temper_limit()
+        output.limit = temper_limit(query.limit, query)
 
         if query.select or isinstance(query.select, (Mapping, list)):
             output.select = _normalize_selects(query.select, query.frum, schema=schema)
@@ -268,6 +270,18 @@ class QueryOp(QueryOp_):
     def __data__(self):
         output = wrap({s: getattr(self, s) for s in QueryOp.__slots__})
         return output
+
+
+def temper_limit(limit, query):
+    return coalesce(query.limit, 10)
+
+
+def _import_temper_limit():
+    global temper_limit
+    try:
+        temper_limit = import_module("jx_elasticsearch.es52").temper_limit
+    except Exception as e:
+        pass
 
 
 canonical_aggregates = wrap({
