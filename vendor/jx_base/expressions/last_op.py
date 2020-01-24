@@ -57,8 +57,6 @@ class LastOp(Expression):
         elif term is NULL:
             return term
         elif is_literal(term):
-            if is_many(term):
-                return last(term)
-            return term
+            return last(term)
         else:
             return self.lang[LastOp(term)]

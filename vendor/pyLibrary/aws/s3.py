@@ -359,7 +359,7 @@ class Bucket(object):
         retry = 3
         while retry:
             try:
-                with Timer("Sending {{count}} lines in {{file_length|comma}} bytes for {{key}}", {"key": key, "file_length": file_length, "count": count}, silent=not self.settings.debug):
+                with Timer("Sending {{count}} lines in {{file_length|comma}} bytes for {{key}}", {"key": key, "file_length": file_length, "count": count}, verbose=self.settings.debug):
                     buff.seek(0)
                     storage.set_contents_from_file(buff)
                 break

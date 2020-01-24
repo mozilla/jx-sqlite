@@ -81,3 +81,8 @@ class PrefixOp(Expression):
                 ]
             )
         ].partial_eval()
+
+    def __eq__(self, other):
+        if not is_op(other, PrefixOp):
+            return False
+        return self.expr == other.expr and self.prefix == other.prefix

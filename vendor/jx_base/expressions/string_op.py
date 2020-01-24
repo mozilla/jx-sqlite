@@ -28,7 +28,7 @@ from jx_base.expressions.literal import Literal
 from jx_base.expressions.literal import is_literal
 from jx_base.expressions.null_op import NULL
 from jx_base.language import is_op
-from mo_json import IS_NULL, STRING
+from mo_json import STRING, IS_NULL
 
 
 class StringOp(Expression):
@@ -68,3 +68,8 @@ class StringOp(Expression):
             else:
                 return self.lang[Literal(mo_json.value2json(term.value))]
         return self
+
+    def __eq__(self, other):
+        if not is_op(other, StringOp):
+            return False
+        return self.term == other.term

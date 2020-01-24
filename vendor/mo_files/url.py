@@ -20,7 +20,15 @@ class URL(object):
     [1] https://docs.python.org/3/library/urllib.parse.html
     """
 
+    def __new__(cls, value, *args, **kwargs):
+        if isinstance(value, URL):
+            return value
+        else:
+            return object.__new__(cls)
+
     def __init__(self, value, port=None, path=None, query=None, fragment=None):
+        if isinstance(value, URL):
+            return
         try:
             self.scheme = None
             self.host = None

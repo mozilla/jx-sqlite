@@ -194,7 +194,7 @@ if "windows" in platform.system().lower():
         return "prompt "+PROMPT+"$g"
 
     def cmd():
-        return "%windir%\system32\cmd.exe"
+        return "%windir%\\system32\\cmd.exe"
 
     def to_text(value):
         return value.decode("latin1")

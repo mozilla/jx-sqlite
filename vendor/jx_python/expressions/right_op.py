@@ -26,7 +26,7 @@ class RightOp(RightOp_):
             + v
             + "[max(0, len("
             + v
-            + ")-("
+            + ")-int("
             + l
             + ")):]"
         )

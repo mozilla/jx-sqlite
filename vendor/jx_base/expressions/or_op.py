@@ -75,7 +75,7 @@ class OrOp(Expression):
             elif simple is FALSE:
                 pass
             elif is_op(simple, OrOp):
-                terms.extend(tt for tt in simple.terms if tt not in terms)
+                terms.extend([tt for tt in simple.terms if tt not in terms])
             elif is_op(simple, AndOp):
                 ands.append(simple)
             elif simple not in terms:

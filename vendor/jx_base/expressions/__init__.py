@@ -1,5 +1,4 @@
-from jx_base.expressions import _utils
-from jx_base.expressions._utils import simplified, extend, jx_expression, merge_types, operators, language
+from jx_base.expressions._utils import simplified, extend, jx_expression, merge_types, operators, language, _jx_expression
 from jx_base.expressions.abs_op import AbsOp
 from jx_base.expressions.add_op import AddOp
 from jx_base.expressions.and_op import AndOp
@@ -82,7 +81,7 @@ from jx_base.expressions.true_op import TrueOp, TRUE
 from jx_base.expressions.tuple_op import TupleOp
 from jx_base.expressions.union_op import UnionOp
 from jx_base.expressions.unix_op import UnixOp
-from jx_base.expressions.variable import Variable
+from jx_base.expressions.variable import Variable, IDENTITY
 from jx_base.expressions.when_op import WhenOp
 from mo_dots import set_default
 

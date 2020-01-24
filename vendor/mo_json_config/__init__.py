@@ -26,7 +26,7 @@ DEBUG = False
 
 def get_file(file):
     file = File(file)
-    if os.sep=="\\":
+    if os.sep == "\\":
         return get("file:///" + file.abspath)
     else:
         return get("file://" + file.abspath)
@@ -248,10 +248,14 @@ def get_http(ref, url):
 def _get_env(ref, url):
     # GET ENVIRONMENT VARIABLES
     ref = ref.host
+    raw_value = os.environ.get(ref)
+    if not raw_value:
+        Log.error("expecting environment variable with name {{env_var}}", env_var=ref)
+
     try:
-        new_value = json2value(os.environ[ref])
+        new_value = json2value(raw_value)
     except Exception as e:
-        new_value = os.environ.get(ref)
+        new_value = raw_value
     return new_value
 
 

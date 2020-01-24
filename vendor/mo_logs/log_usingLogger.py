@@ -19,6 +19,7 @@ from mo_logs.strings import expand_template
 class StructuredLogger_usingLogger(StructuredLogger):
     def __init__(self, settings):
         self.logger = logging.getLogger(settings.name)
+        self.logger.setLevel(logging.INFO)
 
     def write(self, template, params):
         log_line = expand_template(template, params)

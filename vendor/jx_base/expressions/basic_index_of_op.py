@@ -8,25 +8,18 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-"""
-# NOTE:
-
-THE self.lang[operator] PATTERN IS CASTING NEW OPERATORS TO OWN LANGUAGE;
-KEEPING Python AS# Python, ES FILTERS AS ES FILTERS, AND Painless AS
-Painless. WE COULD COPY partial_eval(), AND OTHERS, TO THIER RESPECTIVE
-LANGUAGE, BUT WE KEEP CODE HERE SO THERE IS LESS OF IT
-
-"""
 from __future__ import absolute_import, division, unicode_literals
+
+from jx_base.language import is_op
 
 from jx_base.expressions._utils import simplified
 from jx_base.expressions.expression import Expression
 from jx_base.expressions.false_op import FALSE
 from jx_base.expressions.integer_op import IntegerOp
+from jx_base.expressions.literal import ZERO
 from jx_base.expressions.max_op import MaxOp
 from jx_base.expressions.string_op import StringOp
 from mo_json import INTEGER
-from mo_times import ZERO
 
 
 class BasicIndexOfOp(Expression):
@@ -67,3 +60,8 @@ class BasicIndexOfOp(Expression):
                 ]
             )
         ]
+
+    def __eq__(self, other):
+        if not is_op(other, BasicIndexOfOp):
+            return False
+        return self.value == self.value and self.find == other.find and self.start == other.start

@@ -127,7 +127,7 @@ def _keep_whitespace(value):
         return None
 
 
-def _trim_whitespace(value):
+def trim_whitespace(value):
     value_ = value.strip()
     if value_:
         return value_
@@ -242,7 +242,7 @@ def value2json(obj, pretty=False, sort_keys=False, keep_whitespace=True):
     :return:
     """
     if FIND_LOOPS:
-        obj = scrub(obj, scrub_text=_keep_whitespace if keep_whitespace else _trim_whitespace())
+        obj = scrub(obj, scrub_text=_keep_whitespace if keep_whitespace else trim_whitespace())
     try:
         json = json_encoder(obj, pretty=pretty)
         if json == None:
@@ -381,7 +381,7 @@ def datetime2unix(d):
 
 
 python_type_to_json_type = {
-    int: NUMBER,
+    int: INTEGER,
     text: STRING,
     float: NUMBER,
     bool: BOOLEAN,
@@ -401,7 +401,7 @@ python_type_to_json_type = {
 
 if PY2:
     python_type_to_json_type[str] = STRING
-    python_type_to_json_type[long] = NUMBER
+    python_type_to_json_type[long] = INTEGER
 
 for k, v in items(python_type_to_json_type):
     python_type_to_json_type[k.__name__] = v

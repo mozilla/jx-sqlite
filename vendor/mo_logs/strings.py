@@ -587,7 +587,7 @@ def deformat(value):
 
     FOR SOME REASON translate CAN NOT BE CALLED:
         ERROR: translate() takes exactly one argument (2 given)
-        File "C:\Python27\lib\string.py", line 493, in translate
+        File "C:\\Python27\\lib\\string.py", line 493, in translate
     """
     output = []
     for c in value:

@@ -9,12 +9,13 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
+import collections
+import types
 from copy import deepcopy
-
-from mo_future import generator_types, text, first
 
 from mo_dots import CLASS, coalesce, unwrap, wrap
 from mo_dots.nones import Null
+from mo_future import generator_types, text, first
 
 LIST = text("list")
 
@@ -30,8 +31,8 @@ def _late_import():
     global _datawrap
     global Log
 
-
     from mo_dots.objects import datawrap as _datawrap
+
     try:
         from mo_logs import Log
     except Exception:
@@ -46,6 +47,7 @@ class FlatList(list):
     ENCAPSULATES FLAT SLICES ([::]) FOR USE IN WINDOW FUNCTIONS
     https://github.com/klahnakoski/mo-dots/tree/dev/docs#flatlist-is-flat
     """
+
     EMPTY = None
 
     def __init__(self, vals=None):
@@ -64,7 +66,9 @@ class FlatList(list):
             if index.step is not None:
                 if not Log:
                     _late_import()
-                Log.error("slice step must be None, do not know how to deal with values")
+                Log.error(
+                    "slice step must be None, do not know how to deal with values"
+                )
             length = len(_get_list(self))
 
             i = index.start
@@ -111,7 +115,9 @@ class FlatList(list):
         """
         if not Log:
             _late_import()
-        return FlatList(vals=[unwrap(coalesce(_datawrap(v), Null)[key]) for v in _get_list(self)])
+        return FlatList(
+            vals=[unwrap(coalesce(_datawrap(v), Null)[key]) for v in _get_list(self)]
+        )
 
     def select(self, key):
         if not Log:
@@ -119,12 +125,16 @@ class FlatList(list):
         Log.error("Not supported.  Use `get()`")
 
     def filter(self, _filter):
-        return FlatList(vals=[unwrap(u) for u in (wrap(v) for v in _get_list(self)) if _filter(u)])
+        return FlatList(
+            vals=[unwrap(u) for u in (wrap(v) for v in _get_list(self)) if _filter(u)]
+        )
 
     def __delslice__(self, i, j):
         if not Log:
             _late_import()
-        Log.error("Can not perform del on slice: modulo arithmetic was performed on the parameters.  You can try using clear()")
+        Log.error(
+            "Can not perform del on slice: modulo arithmetic was performed on the parameters.  You can try using clear()"
+        )
 
     def __clear__(self):
         self.list = []
@@ -153,7 +163,9 @@ class FlatList(list):
             _emit_slice_warning = False
             if not Log:
                 _late_import()
-            Log.warning("slicing is broken in Python 2.7: a[i:j] == a[i+len(a), j] sometimes.  Use [start:stop:step] (see https://github.com/klahnakoski/pyLibrary/blob/master/pyLibrary/dot/README.md#the-slice-operator-in-python27-is-inconsistent)")
+            Log.warning(
+                "slicing is broken in Python 2.7: a[i:j] == a[i+len(a), j] sometimes.  Use [start:stop:step] (see https://github.com/klahnakoski/pyLibrary/blob/master/pyLibrary/dot/README.md#the-slice-operator-in-python27-is-inconsistent)"
+            )
         return self[i:j:]
 
     def __list__(self):
@@ -284,34 +296,66 @@ class FlatList(list):
 
 
 def last(values):
-    if len(values):
+    if is_many(values):
+        if not values:
+            return Null
         if isinstance(values, FlatList):
             return values.last()
-        if is_sequence(values):
+        elif is_list(values):
+            if not values:
+                return Null
             return values[-1]
+        elif is_sequence(values):
+            l = Null
+            for i in values:
+                l = i
+            return l
         else:
             return first(values)
-    else:
-        return Null
+
+    return values
 
 
 FlatList.EMPTY = Null
 
 list_types = (list, FlatList)
 container_types = (list, FlatList, set)
-sequence_types = (list, FlatList, tuple)
-many_types = tuple(set(list_types + container_types + sequence_types + generator_types))
+sequence_types = (list, FlatList, tuple) + generator_types
+many_types = tuple(set(list_types + container_types + sequence_types))
+
+not_many_names = ("str", "unicode", "binary", "NullType", "NoneType", "dict", "Data")  # ITERATORS THAT ARE CONSIDERED PRIMITIVE
 
 
 def is_list(l):
+    # ORDERED, AND CAN CHANGE CONTENTS
     return l.__class__ in list_types
 
+
 def is_container(l):
+    # CAN ADD AND REMOVE ELEMENTS
     return l.__class__ in container_types
 
+
 def is_sequence(l):
+    # HAS AN ORDER, INCLUDES GENERATORS
     return l.__class__ in sequence_types
 
-def is_many(l):
-    return l.__class__ in many_types
 
+def is_many(value):
+    # REPRESENTS MULTIPLE VALUES
+    # TODO: CLEAN UP THIS LOGIC
+    # THIS IS COMPLICATED BECAUSE I AM UNSURE ABOUT ALL THE "PRIMITIVE TYPES"
+    # I WOULD LIKE TO POSITIVELY CATCH many_types, BUT MAYBE IT IS EASIER TO DETECT: Iterable, BUT NOT PRIMITIVE
+    # UNTIL WE HAVE A COMPLETE LIST, WE KEEP ALL THIS warning() CODE
+    global many_types
+    type_ = value.__class__
+    if type_ in many_types:
+        return True
+
+    if issubclass(type_, types.GeneratorType):
+        if not Log:
+            _late_import()
+        many_types = many_types + (type_,)
+        Log.warning("is_many() can not detect generator {{type}}", type=type_.__name__)
+        return True
+    return False

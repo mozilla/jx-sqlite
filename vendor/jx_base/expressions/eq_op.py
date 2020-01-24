@@ -94,11 +94,11 @@ class EqOp(Expression):
             return FALSE if value_compare(lhs.value, rhs.value) else TRUE
         else:
             return self.lang[
-                CaseOp(
+                self.lang[CaseOp(
                     [
                         WhenOp(lhs.missing(), **{"then": rhs.missing()}),
                         WhenOp(rhs.missing(), **{"then": FALSE}),
                         BasicEqOp([lhs, rhs]),
                     ]
-                )
+                )]
             ].partial_eval()

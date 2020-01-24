@@ -26,6 +26,8 @@ from mo_future import items as items_, text
 from mo_json import BOOLEAN, OBJECT
 from mo_logs import Log
 
+FALSE, Literal, is_literal, MissingOp, NotOp, NULL, Variable = [None]*7
+
 
 class Expression(BaseExpression):
     data_type = OBJECT
@@ -35,8 +37,9 @@ class Expression(BaseExpression):
         self.simplified = False
         # SOME BASIC VERIFICATION THAT THESE ARE REASONABLE PARAMETERS
         if is_sequence(args):
-            if not all(t == None or is_expression(t) for t in args):
-                Log.error("Expecting an expression")
+            bad = [t for t in args if t != None and not is_expression(t)]
+            if bad:
+                Log.error("Expecting an expression, not {{bad}}", bad=bad)
         elif is_data(args):
             if not all(is_op(k, Variable) and is_literal(v) for k, v in args.items()):
                 Log.error("Expecting an {<variable>: <literal>}")
@@ -171,9 +174,3 @@ class Expression(BaseExpression):
         return self.__data__() == other.__data__()
 
 
-from jx_base.expressions.false_op import FALSE
-from jx_base.expressions.null_op import NULL
-from jx_base.expressions.literal import Literal, is_literal
-from jx_base.expressions.missing_op import MissingOp
-from jx_base.expressions.not_op import NotOp
-from jx_base.expressions.variable import Variable

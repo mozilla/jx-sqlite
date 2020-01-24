@@ -19,7 +19,7 @@ LANGUAGE, BUT WE KEEP CODE HERE SO THERE IS LESS OF IT
 """
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions import literal
+from jx_base.expressions import literal, expression
 from jx_base.expressions.literal import Literal
 from mo_json import BOOLEAN
 
@@ -78,4 +78,5 @@ class FalseOp(Literal):
 
 FALSE = FalseOp()
 
+expression.FALSE = FALSE
 literal.FALSE = FALSE

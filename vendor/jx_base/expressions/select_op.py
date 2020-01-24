@@ -19,7 +19,7 @@ LANGUAGE, BUT WE KEEP CODE HERE SO THERE IS LESS OF IT
 """
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions.expression import Expression
+from jx_base.expressions.expression import jx_expression, Expression, _jx_expression
 from jx_base.utils import is_variable_name
 from mo_dots import wrap, is_container
 from mo_future import is_text

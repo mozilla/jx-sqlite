@@ -18,5 +18,5 @@ class BooleanOp(BooleanOp_):
         return assign_and_eval(
             "f",
             Python[self.term].to_python(),
-            "False if f is False or f is None else True",
+            "bool(f)",
         )

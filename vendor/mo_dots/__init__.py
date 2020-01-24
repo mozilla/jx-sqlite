@@ -156,6 +156,8 @@ def startswith_field(field, prefix):
     """
     RETURN True IF field PATH STRING STARTS WITH prefix PATH STRING
     """
+    if prefix == None:
+        return False
     if prefix.startswith("."):
         return True
         # f_back = len(field) - len(field.strip("."))
@@ -234,7 +236,10 @@ def _all_default(d, default, seen=None):
 
     for k, default_value in default.items():
         default_value = unwrap(default_value)  # TWO DIFFERENT Dicts CAN SHARE id() BECAUSE THEY ARE SHORT LIVED
-        existing_value = _get_attr(d, [k])
+        if is_data(d):
+            existing_value = d.get(k)
+        else:
+            existing_value = _get_attr(d, [k])
 
         if existing_value == None:
             if default_value != None:
@@ -368,10 +373,10 @@ def _get_attr(obj, path):
         File = get_module("mo_files").File
         possible_error = None
         python_file = (File(obj.__file__).parent / attr_name).set_extension("py")
-        python_module = (File(obj.__file__).parent / attr_name / "bigquery.py")
+        python_module = (File(obj.__file__).parent / attr_name / "__init__.py")
         if python_file.exists or python_module.exists:
             try:
-                # THIS CASE IS WHEN THE bigquery.py DOES NOT IMPORT THE SUBDIR FILE
+                # THIS CASE IS WHEN THE __init__.py DOES NOT IMPORT THE SUBDIR FILE
                 # WE CAN STILL PUT THE PATH TO THE FILE IN THE from CLAUSE
                 if len(path) == 1:
                     # GET MODULE OBJECT

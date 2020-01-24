@@ -72,7 +72,7 @@ class AndOp(Expression):
             if simple.type != BOOLEAN:
                 simple = simple.exists()
 
-            if simple is TRUE:
+            if simple is self.lang[TRUE]:
                 continue
             elif simple is FALSE:
                 return FALSE
@@ -82,7 +82,10 @@ class AndOp(Expression):
                 continue
             elif is_op(simple, OrOp):
                 or_terms = [
-                    and_terms + [o] for o in simple.terms for and_terms in or_terms
+                    and_terms + ([o] if o not in and_terms else [])
+                    for o in simple.terms
+                    for and_terms in or_terms
+                    if self.lang[NotOp(o)].partial_eval() not in and_terms
                 ]
                 continue
             for and_terms in list(or_terms):
@@ -109,4 +112,4 @@ class AndOp(Expression):
                     for and_terms in or_terms
                 ]
             )
-        ]
+        ].partial_eval()

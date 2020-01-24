@@ -14,7 +14,8 @@ from datetime import date, datetime, timedelta
 from decimal import Decimal
 from json.encoder import encode_basestring
 
-from mo_dots import CLASS, Data, DataObject, FlatList, NullType, SLOT, _get, is_data, join_field, split_field
+from mo_dots import CLASS, Data, DataObject, FlatList, NullType, SLOT, _get, is_data, join_field, split_field, \
+    concat_field
 from mo_dots.objects import OBJ
 from mo_future import binary_type, generator_types, integer_types, is_binary, is_text, sort_using_key, text
 from mo_json import BOOLEAN, ESCAPE_DCT, EXISTS, INTEGER, NESTED, NUMBER, STRING, float2json, python_type_to_json_type
@@ -56,6 +57,18 @@ def unnest_path(encoded):
             return "."
 
     return join_field([decode_property(c) for c in path[:-1] if not c.startswith(TYPE_PREFIX)] + [decode_property(path[-1])])
+
+
+def get_nested_path(typed_path):
+    # CONSTRUCT THE nested_path FROM THE typed_path
+    path = split_field(typed_path)
+    parent = "."
+    nested_path = (parent,)
+    for i, p in enumerate(path[:-1]):
+        if p == NESTED_TYPE:
+            step = concat_field(parent, join_field(path[0:i + 1]))
+            nested_path = (step,) + nested_path
+    return nested_path
 
 
 def untyped(value):

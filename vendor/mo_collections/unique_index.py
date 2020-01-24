@@ -10,11 +10,9 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
-from collections import Iterable, Mapping, Set
-
 from mo_dots import is_data, is_sequence, tuplewrap, unwrap, wrap
 from mo_dots.objects import datawrap
-from mo_future import PY2, iteritems
+from mo_future import PY2, iteritems, Set, Mapping, Iterable
 from mo_logs import Log
 from mo_logs.exceptions import suppress_exception
 

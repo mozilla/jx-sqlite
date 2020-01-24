@@ -19,7 +19,7 @@ LANGUAGE, BUT WE KEEP CODE HERE SO THERE IS LESS OF IT
 """
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions import and_op, exists_op
+from jx_base.expressions import and_op, exists_op, expression
 from jx_base.expressions._utils import simplified
 from jx_base.expressions.and_op import AndOp
 from jx_base.expressions.basic_index_of_op import BasicIndexOfOp
@@ -123,3 +123,4 @@ class NotOp(Expression):
 
 and_op.NotOp = NotOp
 exists_op.NotOp = NotOp
+expression.NotOp =NotOp
