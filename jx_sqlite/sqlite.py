@@ -55,10 +55,10 @@ from mo_sql import (
     SQL_DOT,
     SQL_LT, SQL_SPACE, SQL_AS, SQL_LIMIT)
 
-DEBUG = False
+DEBUG = True
 TRACE = True
 
-FORMAT_COMMAND = "Running command\n{{command|limit(1000)|indent}}"
+FORMAT_COMMAND = "Running command from \"{{file}}:{{line}}\"\n{{command|limit(1000)|indent}}"
 DOUBLE_TRANSACTION_ERROR = (
     "You can not query outside a transaction you have open already"
 )
@@ -393,7 +393,7 @@ class Sqlite(DB):
     def _process_command_item(self, command_item):
         query, result, signal, trace, transaction = command_item
 
-        with Timer("SQL Timing", silent=not self.debug):
+        with Timer("SQL Timing", verbose=self.debug):
             if transaction is None:
                 # THIS IS A TRANSACTIONLESS QUERY, DELAY IT IF THERE IS A CURRENT TRANSACTION
                 if self.transaction_stack:
@@ -543,7 +543,7 @@ class Transaction(object):
 
             # RUN THEM
             for c in todo:
-                self.db.debug and Log.note(FORMAT_COMMAND, command=c.command)
+                self.db.debug and Log.note(FORMAT_COMMAND, command=c.command, file=c.trace[0]['file'], line=c.trace[0]['line'])
                 self.db.db.execute(text(c.command))
         except Exception as e:
             Log.error("problem running commands", current=c, cause=e)

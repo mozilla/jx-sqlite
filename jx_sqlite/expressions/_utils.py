@@ -161,24 +161,32 @@ _sql_operators = {
     "lt": (SQL_LT, None),
 }
 
+SQL_IS_NULL_TYPE = "0"
+SQL_BOOLEAN_TYPE = "b"
+SQL_NUMBER_TYPE = "n"
+SQL_TIME_TYPE = "t"
+SQL_INTERVAL_TYPE = "n"
+SQL_STRING_TYPE = "s"
+SQL_OBJECT_TYPE = "j"
+SQL_NESTED_TYPE = "a"
 
 json_type_to_sql_type = {
-    IS_NULL: "0",
-    BOOLEAN: "b",
-    NUMBER: "n",
-    TIME: "t",
-    INTERVAL: "n",
-    STRING: "s",
-    OBJECT: "j",
-    NESTED: "N",
+    IS_NULL: SQL_IS_NULL_TYPE,
+    BOOLEAN: SQL_BOOLEAN_TYPE,
+    NUMBER: SQL_NUMBER_TYPE,
+    TIME: SQL_TIME_TYPE,
+    INTERVAL: SQL_INTERVAL_TYPE,
+    STRING: SQL_STRING_TYPE,
+    OBJECT: SQL_OBJECT_TYPE,
+    NESTED: SQL_NESTED_TYPE,
 }
 
 sql_type_to_json_type = {
     None: None,
-    "0": IS_NULL,
-    "b": BOOLEAN,
-    "n": NUMBER,
-    "t": TIME,
-    "s": STRING,
-    "j": OBJECT,
+    SQL_IS_NULL_TYPE: IS_NULL,
+    SQL_BOOLEAN_TYPE: BOOLEAN,
+    SQL_NUMBER_TYPE: NUMBER,
+    SQL_TIME_TYPE: TIME,
+    SQL_STRING_TYPE: STRING,
+    SQL_OBJECT_TYPE: OBJECT,
 }

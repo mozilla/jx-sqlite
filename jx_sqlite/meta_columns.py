@@ -380,7 +380,7 @@ class ColumnList(jx_base.Table, jx_base.Container):
             output = [
                 {
                     "table": c.es_index,
-                    "name": untyped_column(c.name),
+                    "name": untyped_column(c.name)[0],
                     "cardinality": c.cardinality,
                     "es_column": c.es_column,
                     "es_index": c.es_index,

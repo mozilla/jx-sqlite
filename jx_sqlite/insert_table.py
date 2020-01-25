@@ -15,17 +15,18 @@ from collections import Mapping
 
 from jx_base import Column, generateGuid
 from jx_base.expressions import jx_expression
-from jx_sqlite import GUID, ORDER, PARENT, UID, get_if_type, get_type, typed_column, untyped_column
+from jx_sqlite import GUID, ORDER, PARENT, UID, get_if_type, get_jx_type, typed_column, untyped_column
 from jx_sqlite.base_table import BaseTable
 from jx_sqlite.expressions._utils import json_type_to_sql_type
+from mo_collections.queue import Queue
 from mo_dots import Data, Null, concat_field, listwrap, startswith_field, unwrap, unwraplist, wrap, \
     is_many
-from mo_future import text
-from mo_json import STRUCT, NESTED
+from mo_future import text, first
+from mo_json import STRUCT, NESTED, OBJECT
 from mo_logs import Log
 from mo_times import Date
 from mo_sql import SQL_AND, SQL_FROM, SQL_INNER_JOIN, SQL_NULL, SQL_SELECT, SQL_TRUE, SQL_UNION_ALL, SQL_WHERE, \
-    sql_iso, sql_list, SQL_VALUES, SQL_INSERT, ConcatSQL, SQL_EQ, SQL_UPDATE, SQL_SET, SQL_ONE, SQL_DELETE
+    sql_iso, sql_list, SQL_VALUES, SQL_INSERT, ConcatSQL, SQL_EQ, SQL_UPDATE, SQL_SET, SQL_ONE, SQL_DELETE, SQL_ON
 from jx_sqlite.sqlite import json_type_to_sqlite_type, quote_column, quote_value, sql_alias
 
 
@@ -65,7 +66,7 @@ class InsertTable(BaseTable):
         new_columns = set(command.set.keys()) - set(self.columns.keys())
         for new_column_name in new_columns:
             nested_value = command.set[new_column_name]
-            ctype = get_type(nested_value)
+            ctype = get_jx_type(nested_value)
             column = Column(
                 name=new_column_name,
                 jx_type=ctype,
@@ -78,7 +79,7 @@ class InsertTable(BaseTable):
 
         # UPDATE THE NESTED VALUES
         for nested_column_name, nested_value in command.set.items():
-            if get_type(nested_value) == "nested":
+            if get_jx_type(nested_value) == "nested":
                 nested_table_name = concat_field(self.name, nested_column_name)
                 nested_table = nested_tables[nested_column_name]
                 self_primary_key = sql_list(quote_column(c.es_column) for u in self.uid for c in self.columns[u])
@@ -133,9 +134,9 @@ class InsertTable(BaseTable):
                 # BUILD THE RECORDS
                 children = SQL_UNION_ALL.join(
                     SQL_SELECT +
-                    quote_value(i) + " " + quote_column(extra_key.es_column) + "," +
+                    sql_alias(quote_value(i), extra_key.es_column) + SQL_COMMA +
                     sql_list(
-                        quote_value(row[c.name]) + " " + quote_column(c.es_column)
+                        sql_alias(quote_value(row[c.name]), quote_column(c.es_column))
                         for c in doc_collection.get(".", Null).active_columns
                     )
                     for i, row in enumerate(doc_collection.get(".", Null).rows)
@@ -150,7 +151,7 @@ class InsertTable(BaseTable):
                         [quote_column("c", c.es_column) for c in doc_collection.get(".", Null).active_columns]
                     ) +
                     SQL_FROM + sql_iso(parent) + " p" +
-                    SQL_INNER_JOIN + sql_iso(children) + " c" + " ON " + SQL_TRUE
+                    SQL_INNER_JOIN + sql_iso(children) + " c" + SQL_ON + SQL_TRUE
                 )
 
                 self.db.execute(sql_command)
@@ -179,7 +180,7 @@ class InsertTable(BaseTable):
                 [
                     quote_column(c) + SQL_EQ + quote_value(get_if_type(v, c.jx_type))
                     for k, v in command.set.items()
-                    if get_type(v) != "nested"
+                    if get_jx_type(v) != "nested"
                     for c in self.columns[k]
                     if c.jx_type != "nested" and len(c.nested_path) == 1
                 ] +
@@ -202,7 +203,7 @@ class InsertTable(BaseTable):
 
     def flatten_many(self, docs, path="."):
         """
-        :param docs: THE JSON DOCUMENT
+        :param docs: THE JSON DOCUMENTS
         :param path: FULL PATH TO THIS (INNER/NESTED) DOCUMENT
         :return: TUPLE (success, command, doc_collection) WHERE
                  success: BOOLEAN INDICATING PROPER PARSING
@@ -216,7 +217,7 @@ class InsertTable(BaseTable):
         # COLLECT AS MANY doc THAT DO NOT REQUIRE SCHEMA CHANGE
 
         _insertion = Data(
-            active_columns=set(),
+            active_columns=Queue(),
             rows=[]
         )
         doc_collection = {".": _insertion}
@@ -243,30 +244,33 @@ class InsertTable(BaseTable):
                 insertion.rows.append(row)
 
             if isinstance(data, Mapping):
-                items = ((concat_field(full_path, k), v ) for k, v in wrap(data).leaves())
+                items = [(concat_field(full_path, k), v ) for k, v in wrap(data).leaves()]
             else:
                 # PRIMITIVE VALUES
                 items = [(full_path, data)]
 
             for cname, v in items:
-                value_type = get_type(v)
-                if value_type is None:
+                jx_type = get_jx_type(v)
+                if jx_type is None:
                     continue
 
-                if value_type == NESTED:
-                    c = unwraplist([
-                        cc
-                        for cc in snowflake.columns
-                        if cc.jx_type in STRUCT and untyped_column(cc.name) == cname
-                    ])
-                else:
-                    c = unwraplist([
-                        cc
-                        for cc in snowflake.columns
-                        if cc.jx_type == value_type and cc.name == cname
-                    ])
-
                 insertion = doc_collection[nested_path[0]]
+                if jx_type == NESTED:
+                    c = first(
+                        cc
+                        for cc in insertion.active_columns + snowflake.columns
+                        if cc.jx_type in STRUCT and untyped_column(cc.name)[0] == cname
+                    )
+                else:
+                    c = first(
+                        cc
+                        for cc in insertion.active_columns + snowflake.columns
+                        if cc.jx_type == jx_type and cc.name == cname
+                    )
+
+                if isinstance(c, list):
+                    Log.error("confused")
+
                 if not c:
                     # WHAT IS THE NESTING LEVEL FOR THIS PATH?
                     deeper_nested_path = "."
@@ -276,36 +280,35 @@ class InsertTable(BaseTable):
 
                     c = Column(
                         name=cname,
-                        jx_type=value_type,
-                        es_type=json_type_to_sqlite_type.get(value_type, value_type),
-                        es_column=typed_column(cname, json_type_to_sql_type.get(value_type)),
+                        jx_type=jx_type,
+                        es_type=json_type_to_sqlite_type.get(jx_type, jx_type),
+                        es_column=typed_column(cname, json_type_to_sql_type.get(jx_type)),
                         es_index=table,
                         nested_path=nested_path,
                         last_updated=Date.now()
                     )
-                    if value_type == "nested":
+                    insertion.active_columns.add(c)
+                    if jx_type == NESTED:
                         snowflake.query_paths.append(c.es_column)
-                        required_changes.append({'nest': (c, nested_path)})
+                        required_changes.append({'nest': c})
                     else:
                         snowflake.columns.append(c)
                         required_changes.append({"add": c})
-
-                        # INSIDE IF BLOCK BECAUSE WE DO NOT WANT IT TO ADD WHAT WE columns.get() ALREADY
-                        insertion.active_columns.add(c)
-                elif c.jx_type == "nested" and value_type == "object":
-                    value_type = "nested"
+                elif c.jx_type == NESTED and jx_type == OBJECT:
+                    # ALWAYS PROMOTE OBJECTS TO NESTED
+                    jx_type = NESTED
                     v = [v]
                 elif len(c.nested_path) < len(nested_path):
                     from_doc = doc_collection.get(c.nested_path[0], None)
                     column = c.es_column
                     from_doc.active_columns.remove(c)
                     snowflake._remove_column(c)
-                    required_changes.append({"nest": (c, nested_path)})
+                    required_changes.append({"nest": c})
                     deep_c = Column(
                         name=cname,
-                        jx_type=value_type,
-                        es_type=json_type_to_sqlite_type.get(value_type, value_type),
-                        es_column=typed_column(cname, json_type_to_sql_type.get(value_type)),
+                        jx_type=jx_type,
+                        es_type=json_type_to_sqlite_type.get(jx_type, jx_type),
+                        es_column=typed_column(cname, json_type_to_sql_type.get(jx_type)),
                         es_index=table,
                         nested_path=nested_path,
                         last_updated=Date.now()
@@ -325,23 +328,22 @@ class InsertTable(BaseTable):
                     insertion.rows.append(row)
 
                 # BE SURE TO NEST VALUES, IF NEEDED
-                if value_type == "nested":
+                if jx_type == NESTED:
                     row[c.es_column] = "."
                     deeper_nested_path = [cname] + nested_path
                     insertion = doc_collection.get(cname, None)
                     if not insertion:
                         insertion = doc_collection[cname] = Data(
-                            active_columns=set(),
+                            active_columns=Queue(),
                             rows=[]
                         )
                     for i, r in enumerate(v):
                         child_uid = self.container.next_uid()
                         _flatten(r, child_uid, uid, i, cname, deeper_nested_path)
-                elif value_type == "object":
+                elif jx_type == OBJECT:
                     row[c.es_column] = "."
                     _flatten(v, uid, parent_id, order, cname, nested_path, row=row)
                 elif c.jx_type:
-                    insertion.active_columns.add(c)
                     row[c.es_column] = v
 
         for doc in docs:

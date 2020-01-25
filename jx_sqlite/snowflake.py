@@ -9,14 +9,16 @@
 from __future__ import absolute_import, division, unicode_literals
 
 import jx_base
-from jx_sqlite import quoted_ORDER, quoted_PARENT, quoted_UID
+from jx_sqlite import quoted_ORDER, quoted_PARENT, quoted_UID, untyped_column
+from jx_sqlite.expressions._utils import SQL_NESTED_TYPE
 from jx_sqlite.schema import Schema
+from jx_sqlite.sqlite import quote_column
 from jx_sqlite.table import Table
 from mo_dots import concat_field, wrap
 from mo_future import text
+from mo_json import NESTED
 from mo_logs import Log
 from mo_sql import SQL_FROM, SQL_LIMIT, SQL_SELECT, SQL_STAR, SQL_ZERO, sql_iso, sql_list, SQL_CREATE, SQL_AS
-from jx_sqlite.sqlite import quote_column
 
 
 class Snowflake(jx_base.Snowflake):
@@ -44,12 +46,11 @@ class Snowflake(jx_base.Snowflake):
             if required_change.add:
                 self._add_column(required_change.add)
             elif required_change.nest:
-                column, nested_path = required_change.nest
-                self._nest_column(column, nested_path)
+                self._nest_column(required_change.nest)
 
     def _add_column(self, column):
         cname = column.name
-        if column.jx_type == "nested":
+        if column.jx_type == NESTED:
             # WE ARE ALSO NESTING
             self._nest_column(column, [cname]+column.nested_path)
 
@@ -92,8 +93,11 @@ class Snowflake(jx_base.Snowflake):
             )
         self.namespace.columns.remove(column)
 
-    def _nest_column(self, column, new_path):
-        destination_table = concat_field(self.fact_name, new_path[0])
+    def _nest_column(self, column):
+        new_path, type_ = untyped_column(column.es_column)
+        if type_ != SQL_NESTED_TYPE:
+            Log.error("only nested types can be nested")
+        destination_table = concat_field(self.fact_name, new_path)
         existing_table = concat_field(self.fact_name, column.nested_path[0])
 
         # FIND THE INNER COLUMNS WE WILL BE MOVING
@@ -105,10 +109,10 @@ class Snowflake(jx_base.Snowflake):
 
         # TODO: IF THERE ARE CHILD TABLES, WE MUST UPDATE THEIR RELATIONS TOO?
 
-        # DEFINE A NEW TABLE?
         # LOAD THE COLUMNS
-        details = self.namespace.db.about(destination_table)
-        if not details.data:
+        data = self.namespace.db.about(destination_table)
+        if not data:
+            # DEFINE A NEW TABLE
             command = (
                 SQL_CREATE + quote_column(destination_table) + sql_iso(sql_list([
                     quoted_UID + "INTEGER",
@@ -120,7 +124,7 @@ class Snowflake(jx_base.Snowflake):
             )
             with self.namespace.db.transaction() as t:
                 t.execute(command)
-                self.add_table(new_path)
+                self.add_table([new_path]+column.nested_path)
 
         # TEST IF THERE IS ANY DATA IN THE NEW NESTED ARRAY
         if not moving_columns:

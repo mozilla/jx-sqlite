@@ -15,7 +15,7 @@ from jx_sqlite import UID, GUID, DIGITS_TABLE, ABOUT_TABLE
 from jx_sqlite.namespace import Namespace
 from jx_sqlite.query_table import QueryTable
 from jx_sqlite.snowflake import Snowflake
-from mo_future import first
+from mo_future import first, PY3
 from mo_kwargs import override
 from mo_logs import Log
 from mo_sql import (
@@ -56,31 +56,36 @@ class Container(object):
         self.setup()
         self.ns = Namespace(db=db)
         self.about = QueryTable("meta.about", self)
-        self.next_uid = lambda: next(self._gen_ids())  # A DELIGHTFUL SOURCE OF UNIQUE INTEGERS
+        self.next_uid = self._gen_ids()  # A DELIGHTFUL SOURCE OF UNIQUE INTEGERS
 
     def _gen_ids(self):
-        while True:
-            with self.db.transaction() as t:
-                top_id = first(
-                    first(
-                        t.query(
-                            SQL_SELECT
-                            + quote_column("next_id")
-                            + SQL_FROM
-                            + quote_column(ABOUT_TABLE)
-                        ).data
+        def output():
+            while True:
+                with self.db.transaction() as t:
+                    top_id = first(
+                        first(
+                            t.query(
+                                SQL_SELECT
+                                + quote_column("next_id")
+                                + SQL_FROM
+                                + quote_column(ABOUT_TABLE)
+                            ).data
+                        )
                     )
-                )
-                max_id = top_id + 1000
-                t.execute(
-                    SQL_UPDATE
-                    + quote_column(ABOUT_TABLE)
-                    + SQL_SET
-                    + sql_eq(next_id=max_id)
-                )
-            while top_id < max_id:
-                yield top_id
-                top_id += 1
+                    max_id = top_id + 1000
+                    t.execute(
+                        SQL_UPDATE
+                        + quote_column(ABOUT_TABLE)
+                        + SQL_SET
+                        + sql_eq(next_id=max_id)
+                    )
+                while top_id < max_id:
+                    yield top_id
+                    top_id += 1
+        if PY3:
+            return output().__next__
+        else:
+            return output().next
 
     def setup(self):
         if not self.db.about(ABOUT_TABLE):

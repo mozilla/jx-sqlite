@@ -93,7 +93,7 @@ class Schema(object):
         return set(
             c
             for c in self.snowflake.namespace.columns.find(self.snowflake.fact_name)
-            for k in [untyped_column(c.name)]
+            for k, t in [untyped_column(c.name)]
             if k == full_name and k != GUID
             if c.jx_type not in [OBJECT, EXISTS]
         )
