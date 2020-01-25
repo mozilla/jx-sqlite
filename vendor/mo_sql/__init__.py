@@ -37,18 +37,18 @@ class SQL(object):
     def __add__(self, other):
         if not isinstance(other, SQL):
             if is_text(other) and DEBUG and all(c not in other for c in ('"', "'", "`")):
-                return ConcatSQL((self, SQL(other)))
+                return ConcatSQL(self, SQL(other))
             Log.error("Can only concat other SQL")
         else:
-            return ConcatSQL((self, other))
+            return ConcatSQL(self, other)
 
     def __radd__(self, other):
         if not isinstance(other, SQL):
             if is_text(other) and DEBUG and all(c not in other for c in ('"', "'", "`")):
-                return ConcatSQL((SQL(other), self))
+                return ConcatSQL(SQL(other), self)
             Log.error("Can only concat other SQL")
         else:
-            return ConcatSQL((other, self))
+            return ConcatSQL(other, self)
 
     def join(self, list_):
         return JoinSQL(self, list_)
@@ -118,8 +118,10 @@ class ConcatSQL(SQL):
     """
     __slots__ = ["concat"]
 
-    def __init__(self, concat):
+    def __init__(self, *concat):
         SQL.__init__(self)
+        if len(concat) == 1:
+            Log.error("Expecting at least 2 parameters")
         if not is_sequence(concat):
             concat = list(concat)
         if DEBUG and any(not isinstance(s, SQL) for s in concat):
@@ -202,11 +204,11 @@ class DB(object):
 
 
 def sql_list(list_):
-    return ConcatSQL((SQL_SPACE, JoinSQL(SQL_COMMA, list_), SQL_SPACE))
+    return ConcatSQL(SQL_SPACE, JoinSQL(SQL_COMMA, list_), SQL_SPACE)
 
 
 def sql_iso(sql):
-    return ConcatSQL((SQL_OP, sql, SQL_CP))
+    return ConcatSQL(SQL_OP, sql, SQL_CP)
 
 
 def sql_count(sql):
@@ -219,7 +221,8 @@ def sql_concat_text(list_):
     """
     return JoinSQL(SQL_CONCAT, [sql_iso(l) for l in list_])
 
+
 def sql_coalesce(list_):
-    return ConcatSQL((SQL("COALESCE("), JoinSQL(SQL_COMMA, list_), SQL_CP))
+    return ConcatSQL(SQL("COALESCE("), JoinSQL(SQL_COMMA, list_), SQL_CP)
 
 

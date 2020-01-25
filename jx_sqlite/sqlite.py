@@ -583,7 +583,7 @@ def quote_column(*path):
         if not is_text(p):
             Log.error("expecting strings, not {{type}}", type=p.__class__.__name__)
     try:
-        return ConcatSQL((SQL_SPACE, JoinSQL(SQL_DOT, [SQL(quote(p)) for p in path]), SQL_SPACE))
+        return ConcatSQL(SQL_SPACE, JoinSQL(SQL_DOT, [SQL(quote(p)) for p in path]), SQL_SPACE)
     except Exception as e:
         Log.error("Not expacted", cause=e)
 
@@ -591,14 +591,14 @@ def quote_column(*path):
 def sql_alias(value, alias):
     if not isinstance(value, SQL) or not is_text(alias):
         Log.error("Expecting (SQL, text) parameters")
-    return ConcatSQL((value, SQL_AS, quote_column(alias)))
+    return ConcatSQL(value, SQL_AS, quote_column(alias))
 
 
 def sql_call(func_name, parameters):
-    return ConcatSQL((
+    return ConcatSQL(
         SQL(func_name),
         sql_iso(JoinSQL(SQL_COMMA, parameters))
-    ))
+    )
 
 
 def quote_value(value):
@@ -633,9 +633,9 @@ def sql_eq(**item):
     """
     return SQL_AND.join(
         [
-            ConcatSQL((quote_column(text(k)), SQL_EQ, quote_value(v)))
+            ConcatSQL(quote_column(text(k)), SQL_EQ, quote_value(v))
             if v != None
-            else ConcatSQL((quote_column(text(k)), SQL_IS_NULL))
+            else ConcatSQL(quote_column(text(k)), SQL_IS_NULL)
             for k, v in item.items()
         ]
     )
@@ -649,7 +649,7 @@ def sql_lt(**item):
     :return: SQL
     """
     k, v = first(item.items())
-    return ConcatSQL((quote_column(k), SQL_LT, quote_value(v)))
+    return ConcatSQL(quote_column(k), SQL_LT, quote_value(v))
 
 
 def sql_query(command):
@@ -686,7 +686,7 @@ def sql_query(command):
         acc.append(SQL_LIMIT)
         acc.append(JoinSQL(SQL_COMMA, map(quote_value, listwrap(command.limit))))
 
-    return ConcatSQL(acc)
+    return ConcatSQL(*acc)
 
 
 def sql_create(table, properties, primary_key=None, unique=None):
@@ -714,22 +714,20 @@ def sql_create(table, properties, primary_key=None, unique=None):
         acc.append(sql_iso(sql_list([quote_column(c) for c in listwrap(unique)])))
 
     acc.append(SQL_CP)
-    return ConcatSQL(acc)
+    return ConcatSQL(*acc)
 
 
 def sql_insert(table, records):
     records = listwrap(records)
     keys = list({k for r in records for k in r.keys()})
     return ConcatSQL(
-        [
-            SQL_INSERT,
-            quote_column(table),
-            sql_iso(sql_list(map(quote_column, keys))),
-            SQL_VALUES,
-            sql_list(
-                sql_iso(sql_list([quote_value(r[k]) for k in keys])) for r in records
-            ),
-        ]
+        SQL_INSERT,
+        quote_column(table),
+        sql_iso(sql_list(map(quote_column, keys))),
+        SQL_VALUES,
+        sql_list(
+            sql_iso(sql_list([quote_value(r[k]) for k in keys])) for r in records
+        ),
     )
 
 

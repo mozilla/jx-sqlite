@@ -32,5 +32,5 @@ class LengthOp(LengthOp_):
                 return Null
         else:
             value = term.to_sql(schema, not_null=not_null)[0].sql.s
-            sql = ConcatSQL((SQL("LENGTH"), sql_iso(value)))
+            sql = ConcatSQL(SQL("LENGTH"), sql_iso(value))
         return wrap([{"name": ".", "sql": {"n": sql}}])

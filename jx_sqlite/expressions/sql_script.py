@@ -81,15 +81,13 @@ class SQLScript(SQLScript_, SQL):
             return wrap(
                 {
                     json_type_to_sql_type[self.data_type]: ConcatSQL(
-                        (
-                            SQL_CASE,
-                            SQL_WHEN,
-                            SQL_NOT,
-                            sql_iso(SQLang[self.miss].to_sql(self.schema)[0].sql.b),
-                            SQL_THEN,
-                            self.expr,
-                            SQL_END,
-                        )
+                        SQL_CASE,
+                        SQL_WHEN,
+                        SQL_NOT,
+                        sql_iso(SQLang[self.miss].to_sql(self.schema)[0].sql.b),
+                        SQL_THEN,
+                        self.expr,
+                        SQL_END,
                     )
                 }
             )

@@ -41,17 +41,15 @@ class CountOp(CountOp_):
                     if t in ["b", "s", "n"]:
                         acc.append(
                             ConcatSQL(
-                                (
-                                    SQL_CASE,
-                                    SQL_WHEN,
-                                    sql_iso(v),
-                                    SQL_IS_NULL,
-                                    SQL_THEN,
-                                    SQL_ZERO,
-                                    SQL_ELSE,
-                                    SQL_ONE,
-                                    SQL_END,
-                                )
+                                SQL_CASE,
+                                SQL_WHEN,
+                                sql_iso(v),
+                                SQL_IS_NULL,
+                                SQL_THEN,
+                                SQL_ZERO,
+                                SQL_ELSE,
+                                SQL_ONE,
+                                SQL_END,
                             )
                         )
                     else:

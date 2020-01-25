@@ -26,7 +26,8 @@ from mo_json import IS_NULL, STRUCT
 from mo_math import UNION
 from mo_times import Date
 from mo_sql import SQL_AND, SQL_FROM, SQL_IS_NULL, SQL_LEFT_JOIN, SQL_LIMIT, SQL_NULL, SQL_ON, \
-    SQL_ORDERBY, SQL_SELECT, SQL_TRUE, SQL_UNION_ALL, SQL_WHERE, sql_iso, sql_list, ConcatSQL, SQL_STAR
+    SQL_ORDERBY, SQL_SELECT, SQL_TRUE, SQL_UNION_ALL, SQL_WHERE, sql_iso, sql_list, ConcatSQL, SQL_STAR, SQL_EQ, \
+    SQL_ZERO
 from jx_sqlite.sqlite import quote_column, quote_value, sql_alias
 
 
@@ -195,12 +196,12 @@ class SetOpTable(InsertTable):
         for n, _ in self.snowflake.tables:
             sorts.append(quote_column(COLUMN + text(index_to_uid[n])))
 
-        ordered_sql = ConcatSQL((
+        ordered_sql = ConcatSQL(
             SQL_SELECT, SQL_STAR,
             SQL_FROM, sql_iso(unsorted_sql),
             SQL_ORDERBY, sql_list(sorts),
             SQL_LIMIT, quote_value(query.limit)
-        ))
+        )
         result = self.db.query(ordered_sql)
 
         def _accumulate_nested(rows, row, nested_doc_details, parent_doc_id, parent_id_coord):
@@ -514,8 +515,8 @@ class SetOpTable(InsertTable):
                 # GET FIRST ROW FOR EACH NESTED TABLE
                 from_clause += (
                     SQL_LEFT_JOIN + sql_alias(quote_column(concat_field(self.snowflake.fact_name, sub_table.name)), alias) +
-                    SQL_ON + quote_column(alias, PARENT) + " = " + quote_column(parent_alias, UID) +
-                    SQL_AND + quote_column(alias, ORDER) + " = 0"
+                    SQL_ON + quote_column(alias, PARENT) + SQL_EQ + quote_column(parent_alias, UID) +
+                    SQL_AND + quote_column(alias, ORDER) + SQL_EQ + SQL_ZERO
                 )
 
                 # IMMEDIATE CHILDREN ONLY

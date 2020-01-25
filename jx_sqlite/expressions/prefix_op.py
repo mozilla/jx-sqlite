@@ -10,7 +10,7 @@
 from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions import PrefixOp as PrefixOp_
-from jx_sqlite.expressions._utils import check
+from jx_sqlite.expressions._utils import check, SQLang
 from mo_dots import wrap
 from mo_sql import SQL_TRUE, sql_iso
 
@@ -28,9 +28,9 @@ class PrefixOp(PrefixOp_):
                         "sql": {
                             "b": "INSTR"
                             + sql_iso(
-                                self.expr.to_sql(schema)[0].sql.s
+                                SQLang[self.expr].to_sql(schema)[0].sql.s
                                 + ", "
-                                + self.prefix.to_sql(schema)[0].sql.s
+                                + SQLang[self.prefix].to_sql(schema)[0].sql.s
                             )
                             + "==1"
                         },

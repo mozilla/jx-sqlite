@@ -28,9 +28,9 @@ class BasicStartsWithOp(BasicStartsWithOp_):
             if "%" in prefix or "_" in prefix:
                 for r in "\\_%":
                     prefix = prefix.replaceAll(r, "\\" + r)
-                sql = ConcatSQL((value, SQL_LIKE, prefix, SQL_ESCAPE, SQL("\\")))
+                sql = ConcatSQL(value, SQL_LIKE, prefix, SQL_ESCAPE, SQL("\\"))
             else:
-                sql = ConcatSQL((value, SQL_LIKE, prefix))
+                sql = ConcatSQL(value, SQL_LIKE, prefix)
             return wrap([{"name": ".", "sql": {"b": sql}}])
         else:
             return (

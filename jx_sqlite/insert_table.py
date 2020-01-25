@@ -366,7 +366,7 @@ class InsertTable(BaseTable):
                 meta_columns = [UID, PARENT, ORDER]
 
             all_columns = meta_columns + active_columns.es_column  # ONLY THE PRIMITIVE VALUE COLUMNS
-            command = ConcatSQL([
+            command = ConcatSQL(
                 SQL_INSERT,
                 quote_column(table_name),
                 sql_iso(sql_list(map(quote_column, all_columns))),
@@ -375,7 +375,7 @@ class InsertTable(BaseTable):
                     sql_iso(sql_list(quote_value(row.get(c)) for c in all_columns))
                     for row in unwrap(rows)
                 )
-            ])
+            )
 
             with self.db.transaction() as t:
                 t.execute(command)

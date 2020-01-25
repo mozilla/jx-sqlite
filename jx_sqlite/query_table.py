@@ -53,7 +53,7 @@ class QueryTable(GroupbyTable, Facts):
     def delete(self, where):
         filter = SQLang[jx_expression(where)].to_sql(self.schema)
         with self.db.transaction() as t:
-            t.execute(ConcatSQL((SQL_DELETE, SQL_FROM, quote_column(self.snowflake.fact_name), SQL_WHERE, filter)))
+            t.execute(ConcatSQL(SQL_DELETE, SQL_FROM, quote_column(self.snowflake.fact_name), SQL_WHERE, filter))
 
     def vars(self):
         return set(self.schema.columns.keys())
@@ -78,11 +78,11 @@ class QueryTable(GroupbyTable, Facts):
             select.append(sql_alias(quote_column(c.es_column), c.name))
 
         where_sql = SQLang[jx_expression(filter)].to_sql(self.schema)[0].sql.b
-        result = self.db.query(ConcatSQL((
+        result = self.db.query(ConcatSQL(
             SQL_SELECT, JoinSQL(SQL_COMMA, select),
             SQL_FROM, quote_column(self.snowflake.fact_name),
             SQL_WHERE, where_sql
-        )))
+        ))
 
         return wrap([{c: v for c, v in zip(column_names, r)} for r in result.data])
 
