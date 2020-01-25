@@ -142,14 +142,14 @@ class EdgesTable(SetOpTable):
                 if query_edge.value:
                     domain = SQL_UNION_ALL.join(
                         SQL_SELECT +
-                        sql_alias(quote_value(coalesce(p.dataIndex, i)), quote_column("rownum")) + SQL_COMMA +
+                        sql_alias(quote_value(coalesce(p.dataIndex, i)), "rownum") + SQL_COMMA +
                         sql_alias(quote_value(p.value), domain_name)
                         for i, p in enumerate(query_edge.domain.partitions)
                     )
                     if query_edge.allowNulls:
                         domain += (
                             SQL_UNION_ALL + SQL_SELECT +
-                            sql_alias(quote_value(len(query_edge.domain.partitions)), quote_column("rownum")) + SQL_COMMA +
+                            sql_alias(quote_value(len(query_edge.domain.partitions)), "rownum") + SQL_COMMA +
                             sql_alias(SQL_NULL, domain_name)
                         )
                     where = None
