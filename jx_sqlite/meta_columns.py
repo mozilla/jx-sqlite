@@ -10,7 +10,7 @@
 from __future__ import absolute_import, division, unicode_literals
 
 import jx_base
-from jx_base import Column, Table
+from jx_base import Column, Table, jx_expression
 from jx_base.meta_columns import META_COLUMNS_DESC, META_COLUMNS_NAME, SIMPLE_METADATA_COLUMNS
 from jx_base.schema import Schema
 from jx_python import jx

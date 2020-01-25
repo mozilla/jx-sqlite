@@ -68,10 +68,10 @@ class SQLiteUtils(object):
         if subtest.disable:
             return
 
-        self.fill_container(subtest, tjson=tjson)
+        self.fill_container(subtest, typed=tjson)
         self.send_queries(subtest)
 
-    def fill_container(self, subtest, tjson=False):
+    def fill_container(self, subtest, typed=False):
         """
         RETURN SETTINGS THAT CAN BE USED TO POINT TO THE INDEX THAT'S FILLED
         """

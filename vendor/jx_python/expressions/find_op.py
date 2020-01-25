@@ -62,7 +62,6 @@ class FindOp(FindOp_):
         return output
 
     def to_python(self, not_null=False, boolean=False, many=False):
-        # [Null if f==-1 else f for f in [(self.value.find(self.find))]][0]
         return assign_and_eval(
             "f",
             "("

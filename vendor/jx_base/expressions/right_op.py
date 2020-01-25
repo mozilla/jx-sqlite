@@ -47,6 +47,9 @@ class RightOp(Expression):
         else:
             self.value, self.length = term
 
+        if is_literal(self.value):
+            Log.note("")
+
     def __data__(self):
         if is_op(self.value, Variable) and is_literal(self.length):
             return {"right": {self.value.var: self.length.value}}

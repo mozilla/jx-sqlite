@@ -111,7 +111,13 @@ class {{class_name}}(Mapping):
         try:
             return {{constraint_expr}}
         except Exception as e:
-            return False
+            Log.error(
+                "constraint\\n{" + "{code}}\\nnot satisfied {" + "{expect}}\\n{" + "{value|indent}}",
+                code={{constraint_expr|quote}}, 
+                expect={{constraint}}, 
+                value=row,
+                cause=e
+            )
 
     def __init__(self, **kwargs):
         if not kwargs:
@@ -128,8 +134,7 @@ class {{class_name}}(Mapping):
         if illegal:
             Log.error("{"+"{names}} are not a valid properties", names=illegal)
 
-        if not self._constraint(0, [self]):
-            Log.error("constraint not satisfied {"+"{expect}}\\n{"+"{value|indent}}", expect={{constraint}}, value=self)
+        self._constraint(0, [self])
 
     def __getitem__(self, item):
         return getattr(self, item)
@@ -142,8 +147,7 @@ class {{class_name}}(Mapping):
         if item not in {{slots}}:
             Log.error("{"+"{item|quote}} not valid attribute", item=item)
         object.__setattr__(self, item, value)
-        if not self._constraint(0, [self]):
-            Log.error("constraint not satisfied {"+"{expect}}\\n{"+"{value|indent}}", expect={{constraint}}, value=self)
+        self._constraint(0, [self])
 
     def __getattr__(self, item):
         Log.error("{"+"{item|quote}} not valid attribute", item=item)
@@ -238,7 +242,7 @@ Column = DataClass(
             },
             {
                 "when": {"gte": [{"count": "nested_path"}, 2]},
-                "then": {"ne": [{"first": {"right": {"nested_path", 2}}}, {"literal": "."}]},  # SECOND-LAST ELEMENT
+                "then": {"ne": [{"first": {"right": {"nested_path": 2}}}, {"literal": "."}]},  # SECOND-LAST ELEMENT
                 "else": True
             }
         ]
@@ -250,3 +254,5 @@ from jx_base.facts import Facts
 from jx_base.snowflake import Snowflake
 from jx_base.table import Table
 from jx_base.schema import Schema
+
+

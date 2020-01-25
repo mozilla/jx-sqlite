@@ -10,23 +10,12 @@
 from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions import RightOp as RightOp_
-from jx_python.expressions._utils import Python
+from jx_python.expressions._utils import Python, assign_and_eval
 
 
 class RightOp(RightOp_):
     def to_python(self, not_null=False, boolean=False, many=False):
         v = Python[self.value].to_python()
         l = Python[self.length].to_python()
-        return (
-            "None if "
-            + v
-            + " == None or "
-            + l
-            + " == None else "
-            + v
-            + "[max(0, len("
-            + v
-            + ")-int("
-            + l
-            + ")):]"
-        )
+
+        return assign_and_eval("v", v, "None if v == None else v[max(0, len(v)-int(" + l + ")):]")
