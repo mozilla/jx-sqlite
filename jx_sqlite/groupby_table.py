@@ -19,8 +19,8 @@ from mo_dots import concat_field, join_field, listwrap, split_field, startswith_
 from mo_future import unichr
 from mo_logs import Log
 from mo_sql import SQL_FROM, SQL_GROUPBY, SQL_IS_NULL, SQL_LEFT_JOIN, SQL_NULL, SQL_ON, SQL_ONE, SQL_ORDERBY, \
-    SQL_SELECT, SQL_WHERE, sql_count, sql_iso, sql_list
-from jx_sqlite.sqlite import quote_column, sql_alias
+    SQL_SELECT, SQL_WHERE, sql_count, sql_iso, sql_list, SQL_EQ, sql_coalesce
+from jx_sqlite.sqlite import quote_column, sql_alias, sql_call, quote_value
 
 
 class GroupbyTable(EdgesTable):
@@ -82,10 +82,16 @@ class GroupbyTable(EdgesTable):
             if sql == 'NULL' and not select.value.var in schema.keys():
                 Log.error("No such column {{var}}", var=select.value.var)
 
+            # AGGREGATE
             if select.value == "." and select.aggregate == "count":
-                selects.append(sql_alias(sql_count(SQL_ONE) , select.name))
+                sql = sql_count(SQL_ONE)
             else:
-                selects.append(sql_alias(sql_aggs[select.aggregate] + sql_iso(sql), select.name))
+                sql = sql_call(sql_aggs[select.aggregate], (sql,))
+
+            if select.default != None:
+                sql = sql_coalesce([sql, quote_value(select.default)])
+
+            selects.append(sql_alias(sql, select.name))
 
             index_to_column[column_number] = ColumnMapping(
                 push_name=select.name,
