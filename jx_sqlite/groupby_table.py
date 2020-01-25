@@ -45,7 +45,7 @@ class GroupbyTable(EdgesTable):
         for t in tables[1::]:
             from_sql += (
                 SQL_LEFT_JOIN + quote_column(concat_field(base_table, t.nest)) + " " + t.alias +
-                SQL_ON + quote_column(t.alias, PARENT) + " = " + quote_column(previous.alias, UID)
+                SQL_ON + quote_column(t.alias, PARENT) + SQL_EQ + quote_column(previous.alias, UID)
             )
 
         selects = []

@@ -631,14 +631,12 @@ def sql_eq(**item):
     :param item: keyword parameters representing variable and value
     :return: SQL
     """
-    return SQL_AND.join(
-        [
-            ConcatSQL(quote_column(text(k)), SQL_EQ, quote_value(v))
-            if v != None
-            else ConcatSQL(quote_column(text(k)), SQL_IS_NULL)
-            for k, v in item.items()
-        ]
-    )
+    return SQL_AND.join([
+        ConcatSQL(quote_column(text(k)), SQL_EQ, quote_value(v))
+        if v != None
+        else ConcatSQL(quote_column(text(k)), SQL_IS_NULL)
+        for k, v in item.items()
+    ])
 
 
 def sql_lt(**item):

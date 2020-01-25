@@ -28,7 +28,7 @@ from mo_logs import Log
 from mo_sql import SQL, SQL_AND, SQL_CASE, SQL_COMMA, SQL_DESC, SQL_ELSE, SQL_END, SQL_FROM, SQL_GROUPBY, \
     SQL_INNER_JOIN, SQL_IS_NOT_NULL, SQL_IS_NULL, SQL_LEFT_JOIN, SQL_LIMIT, SQL_NULL, SQL_ON, SQL_ONE, SQL_OR, \
     SQL_ORDERBY, SQL_SELECT, SQL_STAR, SQL_THEN, SQL_TRUE, SQL_UNION_ALL, SQL_WHEN, SQL_WHERE, sql_coalesce, \
-    sql_count, sql_iso, sql_list, SQL_DOT, SQL_PLUS, ConcatSQL
+    sql_count, sql_iso, sql_list, SQL_DOT, SQL_PLUS, ConcatSQL, SQL_EQ
 from jx_sqlite.sqlite import quote_column, quote_value, sql_alias
 
 EXISTS_COLUMN = quote_column("__exists__")
@@ -56,7 +56,7 @@ class EdgesTable(SetOpTable):
         for previous, t in zip(tables, tables[1::]):
             from_sql += (
                 SQL_LEFT_JOIN + quote_column(concat_field(base_table, t.nest)) + t.alias +
-                SQL_ON + quote_column(t.alias, PARENT) + " = " + quote_column(previous.alias, UID)
+                SQL_ON + quote_column(t.alias, PARENT) + SQL_EQ + quote_column(previous.alias, UID)
             )
 
         main_filter = SQLang[query.where].to_sql(schema, boolean=True)[0].sql.b
@@ -156,7 +156,7 @@ class EdgesTable(SetOpTable):
                     join_type = SQL_LEFT_JOIN if query_edge.allowNulls else SQL_INNER_JOIN
                     on_clause = (
                         SQL_OR.join(
-                            quote_column(edge_alias, k) + " = " + v
+                            quote_column(edge_alias, k) + SQL_EQ + v
                             for k, v in zip(domain_names, vals)
                         ) +
                         SQL_OR + sql_iso(
@@ -173,7 +173,7 @@ class EdgesTable(SetOpTable):
                     where = None
                     join_type = SQL_LEFT_JOIN if query_edge.allowNulls else SQL_INNER_JOIN
                     on_clause = SQL_AND.join(
-                        quote_column(edge_alias, k) + " = " + sql
+                        quote_column(edge_alias, k) + SQL_EQ + sql
                         for k, (t, sql) in zip(domain_names, edge_values)
                     )
                     null_on_clause = None
@@ -243,7 +243,7 @@ class EdgesTable(SetOpTable):
                             quote_column(edge_alias, k) + SQL_IS_NULL + SQL_AND +
                             v + SQL_IS_NULL
                         ) + SQL_OR +
-                        quote_column(edge_alias, k) + " = " + v
+                        quote_column(edge_alias, k) + SQL_EQ + v
                     )
                     for k, v in zip(domain_names, vals)
                 )
@@ -281,7 +281,7 @@ class EdgesTable(SetOpTable):
                 join_type = SQL_LEFT_JOIN if query_edge.allowNulls else SQL_INNER_JOIN
                 on_clause = (
                     SQL_OR.join(  # "OR" IS FOR MATCHING DIFFERENT TYPES OF SAME NAME
-                        quote_column(edge_alias, k) + " = " + v
+                        quote_column(edge_alias, k) + SQL_EQ + v
                         for k, v in zip(domain_names, vals)
                     ) +
                     SQL_OR + sql_iso(

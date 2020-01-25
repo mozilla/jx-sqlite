@@ -44,6 +44,7 @@ from jx_sqlite.expressions.prefix_op import PrefixOp
 from jx_sqlite.expressions.reg_exp_op import RegExpOp
 from jx_sqlite.expressions.sql_eq_op import SqlEqOp
 from jx_sqlite.expressions.sql_instr_op import SqlInstrOp
+from jx_sqlite.expressions.sql_substr_op import SqlSubstrOp
 from jx_sqlite.expressions.string_op import StringOp
 from jx_sqlite.expressions.sub_op import SubOp
 from jx_sqlite.expressions.suffix_op import SuffixOp

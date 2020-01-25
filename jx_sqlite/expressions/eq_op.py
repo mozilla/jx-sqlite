@@ -59,7 +59,7 @@ class EqOp(EqOp_):
                     elif r.sql[t] is ZERO:
                         acc.append(l.sql[t])
                     else:
-                        acc.append(sql_iso(l.sql[t]) + " = " + sql_iso(r.sql[t]))
+                        acc.append(sql_iso(l.sql[t]) + SQL_EQ + sql_iso(r.sql[t]))
         if not acc:
             return FALSE.to_sql(schema)
         else:
