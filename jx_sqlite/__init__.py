@@ -22,6 +22,11 @@ from mo_math.randoms import Random
 from mo_times import Date
 from jx_sqlite.sqlite import quote_column
 
+
+DIGITS_TABLE = "__digits__"
+ABOUT_TABLE = "meta.about"
+
+
 GUID = "_id"  # user accessible, unique value across many machines
 UID = "__id__"  # internal numeric id for single-database use
 ORDER = "__order__"

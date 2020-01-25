@@ -17,6 +17,7 @@ from jx_base.language import is_op
 from jx_python import jx
 from jx_sqlite import ColumnMapping, STATS, _make_column_name, get_column, sql_aggs, sql_text_array_to_set, \
     untyped_column, PARENT, UID
+from jx_sqlite.container import DIGITS_TABLE
 from jx_sqlite.expressions._utils import SQLang, sql_type_to_json_type
 from jx_sqlite.expressions.tuple_op import TupleOp
 from jx_sqlite.expressions.variable import Variable
@@ -27,7 +28,7 @@ from mo_logs import Log
 from mo_sql import SQL, SQL_AND, SQL_CASE, SQL_COMMA, SQL_DESC, SQL_ELSE, SQL_END, SQL_FROM, SQL_GROUPBY, \
     SQL_INNER_JOIN, SQL_IS_NOT_NULL, SQL_IS_NULL, SQL_LEFT_JOIN, SQL_LIMIT, SQL_NULL, SQL_ON, SQL_ONE, SQL_OR, \
     SQL_ORDERBY, SQL_SELECT, SQL_STAR, SQL_THEN, SQL_TRUE, SQL_UNION_ALL, SQL_WHEN, SQL_WHERE, sql_coalesce, \
-    sql_count, sql_iso, sql_list, SQL_DOT
+    sql_count, sql_iso, sql_list, SQL_DOT, SQL_PLUS, ConcatSQL
 from jx_sqlite.sqlite import quote_column, quote_value, sql_alias
 
 EXISTS_COLUMN = quote_column("__exists__")
@@ -194,7 +195,7 @@ class EdgesTable(SetOpTable):
                     join_type = SQL_LEFT_JOIN if query_edge.allowNulls else SQL_INNER_JOIN
                     on_clause = SQL_AND.join(
                         quote_column(edge_alias)+SQL_DOT+k + " <= " + v + SQL_AND +
-                        v + " < (" + quote_column(edge_alias)+SQL_DOT+k + " + " + text(
+                        v + " < (" + quote_column(edge_alias)+SQL_DOT+k + SQL_PLUS + text(
                             d.interval) + ")"
                         for k, (t, v) in zip(domain_names, edge_values)
                     )
@@ -211,7 +212,7 @@ class EdgesTable(SetOpTable):
                     join_type = SQL_LEFT_JOIN if query_edge.allowNulls else SQL_INNER_JOIN
                     on_clause = (
                         quote_column(edge_alias, domain_name) + " < " + edge_values[1][1] + SQL_AND +
-                        edge_values[0][1] + " < " + sql_iso(quote_column(edge_alias, domain_name) + " + " + text(d.interval))
+                        edge_values[0][1] + " < " + sql_iso(quote_column(edge_alias, domain_name) + SQL_PLUS + text(d.interval))
                     )
                     null_on_clause = None
                 else:
@@ -303,7 +304,7 @@ class EdgesTable(SetOpTable):
                     on_clause = (
                         SQL_AND.join(
                             quote_column(edge_alias, k) + " <= " + v + SQL_AND +
-                            v + " < " + sql_iso(quote_column(edge_alias, k) + " + " + quote_value(d.interval))
+                            v + " < " + sql_iso(quote_column(edge_alias, k) + SQL_PLUS + quote_value(d.interval))
                             for k, (t, v) in zip(domain_names, edge_values)
                         ) + SQL_OR +
                         sql_iso(SQL_AND.join(
@@ -322,7 +323,7 @@ class EdgesTable(SetOpTable):
                     domain = self._make_range_domain(domain=d, column_name=domain_name)
                     on_clause = (
                         quote_column(edge_alias, domain_name) + " < " + edge_values[1][1] + SQL_AND +
-                        edge_values[0][1] + " < " + sql_iso(quote_column(edge_alias, domain_name) + " + " + quote_value(d.interval))
+                        edge_values[0][1] + " < " + sql_iso(quote_column(edge_alias, domain_name) + SQL_PLUS + quote_value(d.interval))
                     )
                 else:
                     Log.error("do not know how to handle")
@@ -509,33 +510,35 @@ class EdgesTable(SetOpTable):
         width = (domain.max - domain.min) / domain.interval
         digits = mo_math.floor(mo_math.log10(width - 1))
         if digits == 0:
-            value = "a.value"
+            value = quote_column("a", "value")
         else:
-            value = SQL("+").join("1" + ("0" * j) + SQL_STAR + text(chr(ord(b'a') + j)) + ".value" for j in range(digits + 1))
+            value = SQL_PLUS.join("1" + ("0" * j) + SQL_STAR + text(chr(ord(b'a') + j)) + ".value" for j in range(digits + 1))
         if domain.interval == 1:
             if domain.min == 0:
                 domain = (
                     SQL_SELECT + sql_alias(value, column_name) +
-                    SQL_FROM + "__digits__ a"
+                    SQL_FROM + sql_alias(quote_column(DIGITS_TABLE), "a")
                 )
             else:
                 domain = (
-                    SQL_SELECT + sql_alias(sql_iso(value) + " + " + quote_value(domain.min), column_name) +
-                    SQL_FROM + "__digits__ a"
+                    SQL_SELECT + sql_alias(sql_iso(value) + SQL_PLUS + quote_value(domain.min), column_name) +
+                    SQL_FROM + sql_alias(quote_column(DIGITS_TABLE), "a")
                 )
         else:
             if domain.min == 0:
-                domain = (
-                    SQL_SELECT + sql_alias(value + " * " + quote_value(domain.interval), column_name) +
-                    SQL_FROM + "__digits__ a"
+                domain = ConcatSQL(
+                    SQL_SELECT, sql_alias(value + SQL_STAR + quote_value(domain.interval), column_name),
+                    SQL_FROM, sql_alias(quote_column(DIGITS_TABLE), "a")
                 )
             else:
-                domain = (
-                    SQL_SELECT + sql_alias(sql_iso(value + " * " + quote_value(domain.interval)) + " + " + quote_value(domain.min),  column_name) +
-                    SQL_FROM + "__digits__ a"
+                domain = ConcatSQL(
+                    SQL_SELECT, sql_alias(
+                        sql_iso(value + SQL_STAR + quote_value(domain.interval)) + SQL_PLUS + quote_value(domain.min),
+                        column_name),
+                    SQL_FROM, sql_alias(quote_column(DIGITS_TABLE), "a")
                 )
 
         for j in range(digits):
-            domain += SQL_INNER_JOIN + "__digits__" + text(chr(ord(b'a') + j + 1)) + " ON " + SQL_TRUE
+            domain += SQL_INNER_JOIN + sql_alias(quote_column(DIGITS_TABLE), text(chr(ord(b'a') + j + 1))) + SQL_ON + SQL_TRUE
         domain += SQL_WHERE + value + " < " + quote_value(width)
         return domain

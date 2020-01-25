@@ -11,7 +11,7 @@ from __future__ import absolute_import, division, unicode_literals
 from mo_dots import concat_field
 
 from jx_base import Facts
-from jx_sqlite import UID, GUID
+from jx_sqlite import UID, GUID, DIGITS_TABLE, ABOUT_TABLE
 from jx_sqlite.namespace import Namespace
 from jx_sqlite.query_table import QueryTable
 from jx_sqlite.snowflake import Snowflake
@@ -31,9 +31,6 @@ from jx_sqlite.sqlite import (
     sql_create,
     sql_insert,
 )
-
-DIGITS_TABLE = "__digits__"
-ABOUT_TABLE = "meta.about"
 
 _config = None
 

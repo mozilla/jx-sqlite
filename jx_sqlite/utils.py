@@ -1,7 +1,5 @@
 from jx_base import Snowflake
 from mo_json.typed_encoder import untype_path
-
-
 class BasicSnowflake(Snowflake):
     def __init__(self, query_paths, columns):
         self._query_paths = query_paths

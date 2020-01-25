@@ -25,6 +25,7 @@ from jx_sqlite.expressions.gte_op import GteOp
 from jx_sqlite.expressions.in_op import InOp
 from jx_sqlite.expressions.integer_op import IntegerOp
 from jx_sqlite.expressions.leaves_op import LeavesOp
+from jx_sqlite.expressions.left_op import LeftOp
 from jx_sqlite.expressions.length_op import LengthOp
 from jx_sqlite.expressions.literal import Literal
 from jx_sqlite.expressions.lt_op import LtOp
@@ -35,14 +36,16 @@ from jx_sqlite.expressions.missing_op import MissingOp
 from jx_sqlite.expressions.mul_op import MulOp
 from jx_sqlite.expressions.ne_op import NeOp
 from jx_sqlite.expressions.not_left_op import NotLeftOp
+from jx_sqlite.expressions.not_left_op import NotLeftOp
 from jx_sqlite.expressions.not_op import NotOp
 from jx_sqlite.expressions.number_op import NumberOp
 from jx_sqlite.expressions.or_op import OrOp
 from jx_sqlite.expressions.prefix_op import PrefixOp
-from jx_sqlite.expressions.string_op import StringOp
-from jx_sqlite.expressions.sub_op import SubOp
+from jx_sqlite.expressions.reg_exp_op import RegExpOp
 from jx_sqlite.expressions.sql_eq_op import SqlEqOp
 from jx_sqlite.expressions.sql_instr_op import SqlInstrOp
+from jx_sqlite.expressions.string_op import StringOp
+from jx_sqlite.expressions.sub_op import SubOp
 from jx_sqlite.expressions.suffix_op import SuffixOp
 from jx_sqlite.expressions.tuple_op import TupleOp
 from jx_sqlite.expressions.variable import Variable
