@@ -10,21 +10,23 @@
 from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions import NULL
-from mo_dots import wrap
-from tests.test_jx import BaseTestCase
+from tests.test_jx import BaseTestCase, TEST_TABLE
 
 
 class TestUpdate(BaseTestCase):
 
     def test_new_field(self):
         settings = self.utils.fill_container(
-            wrap({"data": [
-                {"a": 1, "b": 5},
-                {"a": 3, "b": 4},
-                {"a": 4, "b": 3},
-                {"a": 6, "b": 2},
-                {"a": 2}
-            ]}),
+            {
+                "query": {"from": TEST_TABLE},
+                "data": [
+                    {"a": 1, "b": 5},
+                    {"a": 3, "b": 4},
+                    {"a": 4, "b": 3},
+                    {"a": 6, "b": 2},
+                    {"a": 2}
+                ]
+            },
             typed=False
         )
         import jx_elasticsearch
