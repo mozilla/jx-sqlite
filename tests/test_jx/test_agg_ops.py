@@ -248,7 +248,7 @@ class TestAggOps(BaseTestCase):
 
     def test_simplest_on_value(self):
         test = {
-            "data": range(30),
+            "data": list(range(30)),
             "query": {
                 "from": TEST_TABLE,
                 "select": {"aggregate": "count"}

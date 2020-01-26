@@ -21,7 +21,7 @@ from mo_sql import (
     SQL_OR,
     SQL_TRUE,
     sql_iso,
-)
+    SQL_EQ, ConcatSQL)
 
 
 class MissingOp(MissingOp_):
@@ -41,16 +41,14 @@ class MissingOp(MissingOp_):
         acc = []
         for c in value_sql:
             for t, v in c.sql.items():
-                if t == "b":
-                    acc.append(sql_iso(v) + SQL_IS_NULL)
+                if t in "bn":
+                    acc.append(ConcatSQL(sql_iso(v), SQL_IS_NULL))
                 if t == "s":
-                    acc.append(
-                        sql_iso(sql_iso(v) + SQL_IS_NULL)
-                        + SQL_OR
-                        + sql_iso(sql_iso(v) + "=" + SQL_EMPTY_STRING)
-                    )
-                if t == "n":
-                    acc.append(sql_iso(v) + SQL_IS_NULL)
+                    acc.append(ConcatSQL(
+                        sql_iso(sql_iso(v), SQL_IS_NULL),
+                        SQL_OR,
+                        sql_iso(sql_iso(v), SQL_EQ, SQL_EMPTY_STRING)
+                    ))
 
         if not acc:
             return wrap([{"name": ".", "sql": {"b": SQL_TRUE}}])

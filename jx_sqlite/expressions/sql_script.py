@@ -67,8 +67,7 @@ class SQLScript(SQLScript_, SQL):
         """
         ASSUMED PART OF class SQL, RETURN SQL
         """
-        for e in self.expr:
-            yield e
+        yield self
 
     @property
     def sql(self):

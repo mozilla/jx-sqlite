@@ -212,7 +212,7 @@ class EdgesTable(SetOpTable):
                     join_type = SQL_LEFT_JOIN if query_edge.allowNulls else SQL_INNER_JOIN
                     on_clause = (
                         quote_column(edge_alias, domain_name) + " < " + edge_values[1][1] + SQL_AND +
-                        edge_values[0][1] + " < " + sql_iso(quote_column(edge_alias, domain_name) + SQL_PLUS + text(d.interval))
+                        edge_values[0][1] + " < " + sql_iso(quote_column(edge_alias, domain_name), SQL_PLUS, text(d.interval))
                     )
                     null_on_clause = None
                 else:
@@ -304,7 +304,7 @@ class EdgesTable(SetOpTable):
                     on_clause = (
                         SQL_AND.join(
                             quote_column(edge_alias, k) + " <= " + v + SQL_AND +
-                            v + " < " + sql_iso(quote_column(edge_alias, k) + SQL_PLUS + quote_value(d.interval))
+                            v + " < " + sql_iso(quote_column(edge_alias, k), SQL_PLUS, quote_value(d.interval))
                             for k, (t, v) in zip(domain_names, edge_values)
                         ) + SQL_OR +
                         sql_iso(SQL_AND.join(
@@ -533,7 +533,7 @@ class EdgesTable(SetOpTable):
             else:
                 domain = ConcatSQL(
                     SQL_SELECT, sql_alias(
-                        sql_iso(value + SQL_STAR + quote_value(domain.interval)) + SQL_PLUS + quote_value(domain.min),
+                        sql_iso(value, SQL_STAR, quote_value(domain.interval)) + SQL_PLUS + quote_value(domain.min),
                         column_name),
                     SQL_FROM, sql_alias(quote_column(DIGITS_TABLE), "a")
                 )

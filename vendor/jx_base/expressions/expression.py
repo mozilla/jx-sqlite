@@ -23,7 +23,7 @@ from jx_base.expressions._utils import operators, jx_expression, _jx_expression,
 from jx_base.language import BaseExpression, ID, is_expression, is_op
 from mo_dots import is_data, is_sequence, is_container
 from mo_future import items as items_, text
-from mo_json import BOOLEAN, OBJECT
+from mo_json import BOOLEAN, OBJECT, value2json
 from mo_logs import Log
 
 FALSE, Literal, is_literal, MissingOp, NotOp, NULL, Variable = [None]*7
@@ -173,4 +173,6 @@ class Expression(BaseExpression):
         Log.note("this is slow on {{type}}", type=text(self_class.__name__))
         return self.__data__() == other.__data__()
 
+    def __str__(self):
+        return value2json(self.__data__(), pretty=True)
 

@@ -63,10 +63,13 @@ class NotLeftOp(Expression):
 
     @simplified
     def partial_eval(self):
-        value = self.value.partial_eval()
+        value = self.lang[self.value].partial_eval()
         length = self.length.partial_eval()
-        max_length = LengthOp(value)
 
+        if length is ZERO:
+            return value
+
+        max_length = LengthOp(value)
         output = self.lang[
             WhenOp(
                 self.missing(),

@@ -11,8 +11,9 @@ from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions import NotRightOp as NotRightOp_
 from jx_sqlite.expressions._utils import check
+from jx_sqlite.sqlite import sql_call
 from mo_dots import wrap
-from mo_sql import sql_iso
+from mo_sql import SQL_ONE, SQL_ZERO, SQL
 
 
 class NotRightOp(NotRightOp_):
@@ -20,6 +21,6 @@ class NotRightOp(NotRightOp_):
     def to_sql(self, schema, not_null=False, boolean=False):
         v = self.value.to_sql(schema, not_null=True)[0].sql.s
         r = self.length.to_sql(schema, not_null=True)[0].sql.n
-        l = "max(0, length" + sql_iso(v) + "-max(0, " + r + "))"
-        expr = "SUBSTR" + sql_iso(v + ", 1, " + l)
-        return wrap([{"name": ".", "sql": {"s": expr}}])
+        l = sql_call("MAX", SQL_ZERO, sql_call("length", v) + SQL(" - ") + sql_call("MAX", SQL_ZERO, r))
+        sql = sql_call("SUBSTR", v, SQL_ONE, l)
+        return wrap([{"name": ".", "sql": {"s": sql}}])

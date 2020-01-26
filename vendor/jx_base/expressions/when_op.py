@@ -61,8 +61,8 @@ class WhenOp(Expression):
     def __data__(self):
         return {
             "when": self.when.__data__(),
-            "then": self.then.__data__() if self.then else None,
-            "else": self.els_.__data__() if self.els_ else None,
+            "then": None if self.then is NULL else self.then.__data__(),
+            "else": None if self.els_ is NULL else self.els_.__data__()
         }
 
     def vars(self):

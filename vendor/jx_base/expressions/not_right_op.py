@@ -64,23 +64,18 @@ class NotRightOp(Expression):
 
     @simplified
     def partial_eval(self):
-        value = self.value.partial_eval()
+        value = self.lang[self.value].partial_eval()
         length = self.length.partial_eval()
-        max_length = LengthOp(value)
 
-        return self.lang[
-            WhenOp(
-                self.missing(),
-                **{
-                    "else": BasicSubstringOp(
-                        [
-                            value,
-                            ZERO,
-                            MaxOp(
-                                [ZERO, MinOp([max_length, SubOp([max_length, length])])]
-                            ),
-                        ]
-                    )
-                }
-            )
-        ].partial_eval()
+        if length is ZERO:
+            return value
+
+        max_length = LengthOp(value)
+        part = BasicSubstringOp(
+            [
+                value,
+                ZERO,
+                MaxOp([ZERO, MinOp([max_length, SubOp([max_length, length])])]),
+            ]
+        )
+        return self.lang[WhenOp(self.missing(), **{"else": part})].partial_eval()

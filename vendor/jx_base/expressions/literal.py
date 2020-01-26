@@ -114,6 +114,9 @@ class Literal(Expression):
     def partial_eval(self):
         return self
 
+    def str(self):
+        return str(self.value)
+
 
 ZERO = Literal(0)
 ONE = Literal(1)

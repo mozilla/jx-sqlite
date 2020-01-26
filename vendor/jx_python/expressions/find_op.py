@@ -10,7 +10,7 @@
 from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions import FindOp as FindOp_, simplified
-from jx_python.expressions._utils import assign_and_eval, Python
+from jx_python.expressions._utils import with_var, Python
 from jx_python.expressions.and_op import AndOp
 from jx_python.expressions.basic_eq_op import BasicEqOp
 from jx_python.expressions.basic_index_of_op import BasicIndexOfOp
@@ -62,7 +62,7 @@ class FindOp(FindOp_):
         return output
 
     def to_python(self, not_null=False, boolean=False, many=False):
-        return assign_and_eval(
+        return with_var(
             "f",
             "("
             + Python[self.value].to_python()

@@ -9,13 +9,13 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions import BasicStartsWithOp as BasicStartsWithOp_, ONE, is_literal
+from jx_base.expressions import BasicStartsWithOp as BasicStartsWithOp_, is_literal
 from jx_sqlite.expressions._utils import SQLang, check
-from jx_sqlite.expressions.length_op import LengthOp
 from jx_sqlite.expressions.sql_eq_op import SqlEqOp
-from jx_sqlite.expressions.sql_substr_op import SqlSubstrOp
+from jx_sqlite.expressions.sql_instr_op import SqlInstrOp
+from jx_sqlite.sqlite import quote_value
 from mo_dots import wrap
-from mo_sql import SQL, ConcatSQL, SQL_LIKE, SQL_ESCAPE
+from mo_sql import SQL, ConcatSQL, SQL_LIKE, SQL_ESCAPE, SQL_ONE
 
 
 class BasicStartsWithOp(BasicStartsWithOp_):
@@ -24,17 +24,17 @@ class BasicStartsWithOp(BasicStartsWithOp_):
         prefix = SQLang[self.prefix].partial_eval()
         if is_literal(prefix):
             value = SQLang[self.value].partial_eval().to_sql(schema)[0].sql.s
-            prefix = prefix.to_sql(schema)[0].sql.s
+            prefix = prefix.value
             if "%" in prefix or "_" in prefix:
                 for r in "\\_%":
                     prefix = prefix.replaceAll(r, "\\" + r)
-                sql = ConcatSQL(value, SQL_LIKE, prefix, SQL_ESCAPE, SQL("\\"))
+                sql = ConcatSQL(value, SQL_LIKE, quote_value(prefix+"%"), SQL_ESCAPE, SQL("\\"))
             else:
-                sql = ConcatSQL(value, SQL_LIKE, prefix)
+                sql = ConcatSQL(value, SQL_LIKE, quote_value(prefix+"%"))
             return wrap([{"name": ".", "sql": {"b": sql}}])
         else:
             return (
-                SqlEqOp([SqlSubstrOp([self.value, ONE, LengthOp(prefix)]), prefix])
+                SqlEqOp([SqlInstrOp([self.value, prefix]), SQL_ONE])
                 .partial_eval()
                 .to_sql()
             )

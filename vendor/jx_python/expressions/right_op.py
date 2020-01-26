@@ -10,7 +10,7 @@
 from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions import RightOp as RightOp_
-from jx_python.expressions._utils import Python, assign_and_eval
+from jx_python.expressions._utils import Python, with_var
 
 
 class RightOp(RightOp_):
@@ -18,4 +18,4 @@ class RightOp(RightOp_):
         v = Python[self.value].to_python()
         l = Python[self.length].to_python()
 
-        return assign_and_eval("v", v, "None if v == None else v[max(0, len(v)-int(" + l + ")):]")
+        return with_var("v", v, "None if v == None else v[max(0, len(v)-int(" + l + ")):]")

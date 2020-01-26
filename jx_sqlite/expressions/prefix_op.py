@@ -11,8 +11,9 @@ from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions import PrefixOp as PrefixOp_
 from jx_sqlite.expressions._utils import check, SQLang
+from jx_sqlite.sqlite import sql_call
 from mo_dots import wrap
-from mo_sql import SQL_TRUE, sql_iso
+from mo_sql import SQL_TRUE, ConcatSQL, SQL_EQ, SQL_ONE
 
 
 class PrefixOp(PrefixOp_):
@@ -21,19 +22,13 @@ class PrefixOp(PrefixOp_):
         if not self.expr:
             return wrap([{"name": ".", "sql": {"b": SQL_TRUE}}])
         else:
-            return wrap(
-                [
-                    {
-                        "name": ".",
-                        "sql": {
-                            "b": "INSTR"
-                            + sql_iso(
-                                SQLang[self.expr].to_sql(schema)[0].sql.s
-                                + ", "
-                                + SQLang[self.prefix].to_sql(schema)[0].sql.s
-                            )
-                            + "==1"
-                        },
-                    }
-                ]
+            sql = ConcatSQL(
+                sql_call(
+                    "INSTR",
+                    SQLang[self.expr].to_sql(schema)[0].sql.s,
+                    SQLang[self.prefix].to_sql(schema)[0].sql.s,
+                ),
+                SQL_EQ,
+                SQL_ONE,
             )
+            return wrap([{"name": ".", "sql": {"b": sql}}])

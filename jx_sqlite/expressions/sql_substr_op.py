@@ -12,8 +12,8 @@ from __future__ import absolute_import, division, unicode_literals
 from jx_base.expressions import NULL, SqlSubstrOp as SqlSubstrOp_
 from jx_sqlite.expressions._utils import check, SQLang
 from jx_sqlite.expressions.literal import Literal
+from jx_sqlite.sqlite import sql_call
 from mo_dots import wrap
-from mo_sql import sql_iso, sql_list
 
 
 class SqlSubstrOp(SqlSubstrOp_):
@@ -22,10 +22,10 @@ class SqlSubstrOp(SqlSubstrOp_):
         value = SQLang[self.value].to_sql(schema, not_null=True)[0].sql.s
         start = SQLang[self.start].to_sql(schema, not_null=True)[0].sql.n
         if self.length is NULL:
-            sql = "SUBSTR" + sql_iso(sql_list([value, start]))
+            sql = sql_call("SUBSTR", value, start)
         else:
             length = SQLang[self.length].to_sql(schema, not_null=True)[0].sql.n
-            sql = "SUBSTR" + sql_iso(sql_list([value, start, length]))
+            sql = sql_call("SUBSTR", value, start, length)
         return wrap([{"name": ".", "sql": {"s": sql}}])
 
     def partial_eval(self):

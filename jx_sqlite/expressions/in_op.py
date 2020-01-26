@@ -30,7 +30,7 @@ class InOp(InOp_):
         if j_value:
             var = SQLang[self.value].to_sql(schema)
             sql = SQL_OR.join(
-                sql_iso(ConcatSQL(v, SQL_IN, quote_list(j_value)))
+                sql_iso(v, SQL_IN, quote_list(j_value))
                 for t, v in var[0].sql.items()
             )
         else:

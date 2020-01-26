@@ -9,11 +9,11 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions import ConcatOp as ConcatOp_, TrueOp
+from jx_base.expressions import ConcatOp as ConcatOp_, TrueOp, ZERO, is_literal
 from jx_sqlite.expressions._utils import SQLang, check
 from jx_sqlite.expressions.length_op import LengthOp
 from jx_sqlite.expressions.sql_script import SQLScript
-from jx_sqlite.sqlite import quote_value
+from jx_sqlite.sqlite import quote_value, sql_call
 from mo_dots import coalesce
 from mo_json import STRING
 from mo_sql import (
@@ -28,7 +28,7 @@ from mo_sql import (
     sql_iso,
     sql_list,
     sql_concat_text,
-)
+    ConcatSQL, SQL_PLUS, SQL_ONE, SQL_ZERO)
 
 
 class ConcatOp(ConcatOp_):
@@ -37,7 +37,8 @@ class ConcatOp(ConcatOp_):
         default = self.default.to_sql(schema)
         if len(self.terms) == 0:
             return default
-        default = coalesce(default[0].sql.s, SQL_NULL)
+        len_sep = LengthOp(self.separator).partial_eval()
+        no_sep = is_literal(len_sep) and len_sep.value==0
         sep = SQLang[self.separator].to_sql(schema)[0].sql.s
 
         acc = []
@@ -62,6 +63,11 @@ class ConcatOp(ConcatOp_):
                     + SQL_END
                 )
 
+            if no_sep:
+                sep_term = term_sql
+            else:
+                sep_term = sql_iso(sql_concat_text([sep, term_sql]))
+
             if isinstance(missing, TrueOp):
                 acc.append(SQL_EMPTY_STRING)
             elif missing:
@@ -72,20 +78,20 @@ class ConcatOp(ConcatOp_):
                     + SQL_THEN
                     + SQL_EMPTY_STRING
                     + SQL_ELSE
-                    + sql_iso(sql_concat_text([sep, term_sql]))
+                    + sep_term
                     + SQL_END
                 )
             else:
-                acc.append(sql_concat_text([sep, term_sql]))
+                acc.append(sep_term)
 
-        expr_ = "SUBSTR" + sql_iso(
-            sql_list(
-                [
-                    sql_concat_text(acc),
-                    LengthOp(self.separator).to_sql(schema)[0].sql.n + SQL("+1"),
-                ]
+        if no_sep:
+            expr_ = sql_concat_text(acc)
+        else:
+            expr_ = sql_call(
+                "SUBSTR",
+                sql_concat_text(acc),
+                ConcatSQL(LengthOp(self.separator).to_sql(schema)[0].sql.n, SQL_PLUS, SQL_ONE)
             )
-        )
 
         return SQLScript(
             expr=expr_,

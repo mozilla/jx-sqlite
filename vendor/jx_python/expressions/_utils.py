@@ -104,7 +104,7 @@ def multiop_to_python(self, not_null=False, boolean=False, many=False):
         )
 
 
-def assign_and_eval(var, expression, eval):
+def with_var(var, expression, eval):
     """
     :param var: NAME GIVEN TO expression
     :param expression: THE EXPRESSION TO COMPUTE FIRST

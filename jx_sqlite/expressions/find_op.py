@@ -10,13 +10,14 @@
 from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions import FindOp as FindOp_, ZERO, simplified
-from jx_sqlite.expressions._utils import SQLang, check
+from jx_sqlite.expressions._utils import SQLang, check, with_var
 from jx_sqlite.expressions.and_op import AndOp
-from jx_sqlite.expressions.eq_op import EqOp
+from jx_sqlite.expressions.ne_op import NeOp
 from jx_sqlite.expressions.not_left_op import NotLeftOp
 from jx_sqlite.expressions.not_right_op import NotRightOp
 from jx_sqlite.expressions.or_op import OrOp
 from jx_sqlite.expressions.sql_instr_op import SqlInstrOp
+from jx_sqlite.sqlite import sql_call, quote_column
 from mo_dots import coalesce, wrap
 from mo_sql import (
     SQL,
@@ -26,9 +27,10 @@ from mo_sql import (
     SQL_NULL,
     SQL_THEN,
     SQL_WHEN,
-    sql_iso,
-    sql_list,
     SQL_ZERO,
+    ConcatSQL,
+    SQL_ONE,
+    SQL_PLUS,
 )
 
 
@@ -52,44 +54,41 @@ class FindOp(FindOp_):
             SQLang[self.default].partial_eval().to_sql(schema)[0].sql.n, SQL_NULL
         )
 
-        if start.sql != SQL_ZERO.sql.strip():
+        if start.sql != SQL_ZERO.sql:
             value = NotRightOp([self.value, self.start]).to_sql(schema)[0].sql.s
 
-        index = "INSTR" + sql_iso(sql_list([value, find]))
-
-        sql = (
-            SQL_CASE
-            + SQL_WHEN
-            + index
-            + SQL_THEN
-            + index
-            + SQL("-1+")
-            + start
-            + SQL_ELSE
-            + default
-            + SQL_END
+        index = sql_call("INSTR", value, find)
+        i = quote_column("i")
+        sql = with_var(
+            i,
+            index,
+            ConcatSQL(
+                SQL_CASE,
+                SQL_WHEN,
+                i,
+                SQL_THEN,
+                i,
+                SQL(" - "),
+                SQL_ONE,
+                SQL_PLUS,
+                start,
+                SQL_ELSE,
+                default,
+                SQL_END,
+            ),
         )
-
         return wrap([{"name": ".", "sql": {"n": sql}}])
 
     def exists(self):
-        output = OrOp(
+
+        found = NeOp(
+            [SqlInstrOp([NotLeftOp([self.value, self.start]), self.find]), ZERO]
+        )
+
+        output = self.lang[OrOp(
             [
                 self.default.exists(),
-                AndOp(
-                    [
-                        self.value.exists(),
-                        self.find.exists(),
-                        EqOp(
-                            [
-                                SqlInstrOp(
-                                    [NotLeftOp([self.value, self.start]), self.find]
-                                ),
-                                ZERO,
-                            ]
-                        ),
-                    ]
-                ),
+                AndOp([self.value.exists(), self.find.exists(), found]),
             ]
-        )
+        )].partial_eval()
         return output

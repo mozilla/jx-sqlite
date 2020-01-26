@@ -207,8 +207,8 @@ def sql_list(list_):
     return ConcatSQL(SQL_SPACE, JoinSQL(SQL_COMMA, list_), SQL_SPACE)
 
 
-def sql_iso(sql):
-    return ConcatSQL(SQL_OP, sql, SQL_CP)
+def sql_iso(*sql):
+    return ConcatSQL(*((SQL_OP,) + sql + (SQL_CP,)))
 
 
 def sql_count(sql):

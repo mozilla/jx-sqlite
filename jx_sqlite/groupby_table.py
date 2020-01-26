@@ -19,7 +19,7 @@ from mo_dots import concat_field, join_field, listwrap, split_field, startswith_
 from mo_future import unichr
 from mo_logs import Log
 from mo_sql import SQL_FROM, SQL_GROUPBY, SQL_IS_NULL, SQL_LEFT_JOIN, SQL_NULL, SQL_ON, SQL_ONE, SQL_ORDERBY, \
-    SQL_SELECT, SQL_WHERE, sql_count, sql_iso, sql_list, SQL_EQ, sql_coalesce
+    SQL_SELECT, SQL_WHERE, sql_count, sql_iso, sql_list, SQL_EQ, sql_coalesce, SQL
 from jx_sqlite.sqlite import quote_column, sql_alias, sql_call, quote_value
 
 
@@ -86,7 +86,7 @@ class GroupbyTable(EdgesTable):
             if select.value == "." and select.aggregate == "count":
                 sql = sql_count(SQL_ONE)
             else:
-                sql = sql_call(sql_aggs[select.aggregate], (sql,))
+                sql = sql_call(sql_aggs[select.aggregate], sql)
 
             if select.default != None:
                 sql = sql_coalesce([sql, quote_value(select.default)])

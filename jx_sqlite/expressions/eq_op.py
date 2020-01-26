@@ -80,11 +80,11 @@ class EqOp(EqOp_):
             return TRUE if builtin_ops["eq"](lhs.value, rhs.value) else FALSE
         else:
             rhs_missing = rhs.missing().partial_eval()
-            output = CaseOp(
+            output = self.lang[CaseOp(
                 [
                     WhenOp(lhs.missing(), **{"then": rhs_missing}),
                     WhenOp(rhs_missing, **{"then": FALSE}),
                     SqlEqOp([lhs, rhs]),
                 ]
-            ).partial_eval()
+            )].partial_eval()
             return output

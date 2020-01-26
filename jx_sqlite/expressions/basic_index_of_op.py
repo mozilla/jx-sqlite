@@ -12,8 +12,9 @@ from __future__ import absolute_import, division, unicode_literals
 from jx_base.expressions import BasicIndexOfOp as BasicIndexOfOp_
 from jx_sqlite.expressions._utils import check
 from jx_sqlite.expressions.literal import Literal
+from jx_sqlite.sqlite import sql_call
 from mo_dots import wrap
-from mo_sql import SQL_CASE, SQL_ELSE, SQL_END, SQL_THEN, SQL_WHEN, sql_iso
+from mo_sql import SQL_CASE, SQL_ELSE, SQL_END, SQL_THEN, SQL_WHEN, sql_iso, SQL_ONE
 
 
 class BasicIndexOfOp(BasicIndexOfOp_):
@@ -28,13 +29,13 @@ class BasicIndexOfOp(BasicIndexOfOp_):
                 [
                     {
                         "name": ".",
-                        "sql": {"n": "INSTR" + sql_iso(value + "," + find) + "-1"},
+                        "sql": {"n": sql_call("INSTR", value, find) + "-1"},
                     }
                 ]
             )
         else:
             start_index = start.to_sql(schema)[0].sql.n
-            found = "INSTR(SUBSTR" + sql_iso(value + "," + start_index + "+1)," + find)
+            found = sql_call("INSTR", sql_call("SUBSTR", value, start_index), SQL_ONE, find)
             return wrap(
                 [
                     {

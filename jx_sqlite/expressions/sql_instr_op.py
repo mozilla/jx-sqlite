@@ -11,8 +11,8 @@ from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions import SqlInstrOp as SqlInstrOp_
 from jx_sqlite.expressions._utils import check
+from jx_sqlite.sqlite import sql_call
 from mo_dots import wrap
-from mo_sql import sql_iso, sql_list
 
 
 class SqlInstrOp(SqlInstrOp_):
@@ -22,7 +22,7 @@ class SqlInstrOp(SqlInstrOp_):
         find = self.find.to_sql(schema, not_null=True)[0].sql.s
 
         return wrap(
-            [{"name": ".", "sql": {"n": "INSTR" + sql_iso(sql_list([value, find]))}}]
+            [{"name": ".", "sql": {"n": sql_call("INSTR", value, find)}}]
         )
 
     def partial_eval(self):

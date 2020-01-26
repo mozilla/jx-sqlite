@@ -11,6 +11,8 @@ from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions import FALSE, FalseOp, NULL, NullOp, TrueOp, extend
 from jx_base.language import Language
+from jx_sqlite import quote_column
+from jx_sqlite.sqlite import sql_call
 from mo_dots import wrap, FlatList, is_data
 from mo_future import decorate
 from mo_json import BOOLEAN, NESTED, OBJECT, STRING, NUMBER, IS_NULL, TIME, INTERVAL
@@ -26,7 +28,7 @@ from mo_sql import (
     SQL_PLUS,
     SQL_STAR,
     SQL_LT,
-)
+    ConcatSQL)
 
 NumberOp, OrOp, SQLScript = [None] * 3
 
@@ -124,17 +126,33 @@ def multiop_to_sql(self, schema, not_null=False, boolean=False, many=False):
         return SQLang[self.default].to_sql(schema)
     elif self.default is NULL:
         return sign.join(
-            "COALESCE(" + SQLang[t].to_sql(schema) + ", " + zero + ")"
+            sql_call("COALESCE", SQLang[t].to_sql(schema), zero)
             for t in self.terms
         )
     else:
-        return (
-            "COALESCE("
-            + sign.join("(" + SQLang[t].to_sql(schema) + ")" for t in self.terms)
-            + ", "
-            + SQLang[self.default].to_sql(schema)
-            + ")"
+        return sql_call(
+            "COALESCE",
+            sign.join(sql_iso(SQLang[t].to_sql(schema)) for t in self.terms),
+            SQLang[self.default].to_sql(schema)
         )
+
+
+def with_var(var, expression, eval):
+    """
+    :param var: NAME GIVEN TO expression
+    :param expression: THE EXPRESSION TO COMPUTE FIRST
+    :param eval: THE EXPRESSION TO COMPUTE SECOND, WITH var ASSIGNED
+    :return: PYTHON EXPRESSION
+    """
+    return ConcatSQL(
+        SQL("WITH x AS (SELECT ("),
+        expression,
+        SQL(") AS "),
+        var,
+        SQL(") SELECT "),
+        eval,
+        SQL(" FROM x")
+    )
 
 
 def basic_multiop_to_sql(self, schema, not_null=False, boolean=False, many=False):

@@ -26,7 +26,8 @@ from mo_json import STRUCT, NESTED, OBJECT
 from mo_logs import Log
 from mo_times import Date
 from mo_sql import SQL_AND, SQL_FROM, SQL_INNER_JOIN, SQL_NULL, SQL_SELECT, SQL_TRUE, SQL_UNION_ALL, SQL_WHERE, \
-    sql_iso, sql_list, SQL_VALUES, SQL_INSERT, ConcatSQL, SQL_EQ, SQL_UPDATE, SQL_SET, SQL_ONE, SQL_DELETE, SQL_ON
+    sql_iso, sql_list, SQL_VALUES, SQL_INSERT, ConcatSQL, SQL_EQ, SQL_UPDATE, SQL_SET, SQL_ONE, SQL_DELETE, SQL_ON, \
+    SQL_COMMA
 from jx_sqlite.sqlite import json_type_to_sqlite_type, quote_column, quote_value, sql_alias
 
 

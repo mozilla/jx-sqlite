@@ -55,7 +55,7 @@ class FindOp(Expression):
                 "find": [self.value.__data__(), self.find.__data__()],
                 "start": self.start.__data__(),
             }
-        if self.default:
+        if self.default is not NULL:
             output["default"] = self.default.__data__()
         return output
 

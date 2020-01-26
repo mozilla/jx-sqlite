@@ -10,12 +10,12 @@
 from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions import BooleanOp as BooleanOp_
-from jx_python.expressions._utils import assign_and_eval, Python
+from jx_python.expressions._utils import with_var, Python
 
 
 class BooleanOp(BooleanOp_):
     def to_python(self, not_null=False, boolean=False, many=False):
-        return assign_and_eval(
+        return with_var(
             "f",
             Python[self.term].to_python(),
             "bool(f)",

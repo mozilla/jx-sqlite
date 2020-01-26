@@ -14,8 +14,8 @@ from jx_sqlite.expressions._utils import SQLang, check
 from jx_sqlite.expressions.add_op import AddOp
 from jx_sqlite.expressions.literal import Literal
 from jx_sqlite.expressions.sub_op import SubOp
+from jx_sqlite.sqlite import sql_call
 from mo_dots import wrap
-from mo_sql import sql_iso
 
 
 class BasicSubstringOp(BasicSubstringOp_):
@@ -34,5 +34,5 @@ class BasicSubstringOp(BasicSubstringOp_):
             .to_sql(schema, not_null=True)[0]
             .sql.n
         )
-        sql = "SUBSTR" + sql_iso(value + "," + start + ", " + length)
+        sql = sql_call("SUBSTR", value, start, length)
         return wrap([{"name": ".", "sql": {"s": sql}}])

@@ -71,7 +71,7 @@ def simplified(func):
 
 def jx_expression(expr, schema=None):
     if expr == None:
-        return Null
+        return NULL
 
     # UPDATE THE VARIABLE WITH THIER KNOWN TYPES
     if not schema:
