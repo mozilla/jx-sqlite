@@ -49,7 +49,12 @@ class Queue(object):
         return set(o for o in other if o not in self.set)
 
     def __add__(self, other):
-        return list(self.list) + other
+		output = Queue()
+		output.set = copy(self.set)
+		output.list = copy(self.list)
+		for v in other:
+			output.add)
+        return output
 
     def __data__(self):
         return list(self.list)

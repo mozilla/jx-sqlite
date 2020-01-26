@@ -9,11 +9,11 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
-from collections import MutableMapping, OrderedDict
+from collections import OrderedDict
 from copy import copy, deepcopy
 from decimal import Decimal
 
-from mo_future import generator_types, iteritems, long, none_type, text
+from mo_future import generator_types, iteritems, long, none_type, text,  MutableMapping
 
 from mo_dots import _getdefault, coalesce, get_logger, hash_value, listwrap, literal_field
 from mo_dots.utils import CLASS

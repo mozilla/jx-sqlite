@@ -29,7 +29,7 @@ boolean_type = type(True)
 if PY3:
     import itertools
     import collections
-    from collections.abc import Callable, Iterable, Mapping, Set
+    from collections.abc import Callable, Iterable, Mapping, Set, MutableMapping
     from functools import cmp_to_key, reduce, update_wrapper
     from configparser import ConfigParser
     from itertools import zip_longest
@@ -123,7 +123,7 @@ if PY3:
 
 else:
     import collections
-    from collections import Callable, Iterable, Mapping, Set
+    from collections import Callable, Iterable, Mapping, Set, MutableMapping, OrderedDict
     from functools import cmp_to_key, reduce, update_wrapper
 
     import __builtin__
