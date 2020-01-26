@@ -577,13 +577,15 @@ _simple_word = re.compile(r"^\w+$", re.UNICODE)
 
 
 def quote_column(*path):
-    if not path:
-        Log.error("expecting a name")
-    for p in path:
-        if not is_text(p):
-            Log.error("expecting strings, not {{type}}", type=p.__class__.__name__)
+    if DEBUG:
+        if not path:
+            Log.error("expecting a name")
+        for p in path:
+            if not is_text(p):
+                Log.error("expecting strings, not {{type}}", type=p.__class__.__name__)
     try:
-        return ConcatSQL(SQL_SPACE, JoinSQL(SQL_DOT, [SQL(quote(p)) for p in path]), SQL_SPACE)
+        output = ConcatSQL(SQL_SPACE, JoinSQL(SQL_DOT, [SQL(quote(p)) for p in path]), SQL_SPACE)
+        return output
     except Exception as e:
         Log.error("Not expacted", cause=e)
 

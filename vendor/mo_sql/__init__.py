@@ -119,13 +119,11 @@ class ConcatSQL(SQL):
     __slots__ = ["concat"]
 
     def __init__(self, *concat):
-        SQL.__init__(self)
-        if len(concat) == 1:
-            Log.error("Expecting at least 2 parameters")
-        if not is_sequence(concat):
-            concat = list(concat)
-        if DEBUG and any(not isinstance(s, SQL) for s in concat):
-            Log.error("Can only join other SQL")
+        if DEBUG:
+            if len(concat) == 1:
+                Log.error("Expecting at least 2 parameters")
+            if any(not isinstance(s, SQL) for s in concat):
+                Log.error("Can only join other SQL")
         self.concat = concat
 
     def __iter__(self):

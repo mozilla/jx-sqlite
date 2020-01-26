@@ -112,7 +112,7 @@ class QueryTable(GroupbyTable, Facts):
             command = create_table + op
             query.edges, query.groupby = query.groupby, query.edges
         elif query.edges or any(a != "none" for a in listwrap(query.select).aggregate):
-            op, index_to_columns = self._edges_op(query, self.schema)
+            op, index_to_columns = self._edges_op(query, query.frum.schema)
             command = create_table + op
         else:
             op = self._set_op(query)

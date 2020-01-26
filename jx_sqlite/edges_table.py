@@ -42,7 +42,7 @@ class EdgesTable(SetOpTable):
         outer_selects = []  # EVERY SELECT CLAUSE (NOT TO BE USED ON ALL TABLES, OF COURSE)
         base_table, path = schema.snowflake.fact_name, schema.nested_path
         nest_to_alias = {
-            nested_path: quote_column("__" + unichr(ord('a') + i) + "__")
+            nested_path: "__" + unichr(ord('a') + i) + "__"
             for i, (nested_path, sub_table) in enumerate(self.snowflake.tables)
         }
 
@@ -52,10 +52,10 @@ class EdgesTable(SetOpTable):
                 tables.append({"nest": n, "alias": a})
         tables = jx.sort(tables, {"value": {"length": "nest"}})
 
-        from_sql = quote_column(join_field([base_table] + split_field(tables[0].nest))) + tables[0].alias
+        from_sql = sql_alias(quote_column(concat_field(base_table, tables[0].nest)),  tables[0].alias)
         for previous, t in zip(tables, tables[1::]):
             from_sql += (
-                SQL_LEFT_JOIN + quote_column(concat_field(base_table, t.nest)) + t.alias +
+                SQL_LEFT_JOIN + sql_alias(quote_column(concat_field(base_table, t.nest)), t.alias) +
                 SQL_ON + quote_column(t.alias, PARENT) + SQL_EQ + quote_column(previous.alias, UID)
             )
 

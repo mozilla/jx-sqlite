@@ -18,7 +18,7 @@ from mo_sql import sql_coalesce
 class CoalesceOp(CoalesceOp_):
     @check
     def to_sql(self, schema, not_null=False, boolean=False):
-        acc = {"b": [], "s": [], "n": []}
+        acc = {"b": [], "s": [], "n": [], "0": []}
 
         for term in self.terms:
             for t, v in SQLang[term].to_sql(schema)[0].sql.items():

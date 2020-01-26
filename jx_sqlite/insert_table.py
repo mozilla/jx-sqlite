@@ -288,12 +288,11 @@ class InsertTable(BaseTable):
                         nested_path=nested_path,
                         last_updated=Date.now()
                     )
-                    insertion.active_columns.add(c)
                     if jx_type == NESTED:
                         snowflake.query_paths.append(c.es_column)
                         required_changes.append({'nest': c})
                     else:
-                        snowflake.columns.append(c)
+                        insertion.active_columns.add(c)
                         required_changes.append({"add": c})
                 elif c.jx_type == NESTED and jx_type == OBJECT:
                     # ALWAYS PROMOTE OBJECTS TO NESTED
@@ -330,11 +329,9 @@ class InsertTable(BaseTable):
 
                 # BE SURE TO NEST VALUES, IF NEEDED
                 if jx_type == NESTED:
-                    row[c.es_column] = "."
                     deeper_nested_path = [cname] + nested_path
-                    insertion = doc_collection.get(cname, None)
-                    if not insertion:
-                        insertion = doc_collection[cname] = Data(
+                    if not doc_collection.get(cname):
+                        doc_collection[cname] = Data(
                             active_columns=Queue(),
                             rows=[]
                         )
@@ -342,7 +339,6 @@ class InsertTable(BaseTable):
                         child_uid = self.container.next_uid()
                         _flatten(r, child_uid, uid, i, cname, deeper_nested_path)
                 elif jx_type == OBJECT:
-                    row[c.es_column] = "."
                     _flatten(v, uid, parent_id, order, cname, nested_path, row=row)
                 elif c.jx_type:
                     row[c.es_column] = v
