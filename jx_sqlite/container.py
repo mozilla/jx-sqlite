@@ -8,9 +8,11 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
+from mo_json import STRING
+
 from mo_dots import concat_field
 
-from jx_base import Facts
+from jx_base import Facts, Column
 from jx_sqlite import UID, GUID, DIGITS_TABLE, ABOUT_TABLE
 from jx_sqlite.namespace import Namespace
 from jx_sqlite.query_table import QueryTable
@@ -30,7 +32,8 @@ from jx_sqlite.sqlite import (
     sql_eq,
     sql_create,
     sql_insert,
-)
+    json_type_to_sqlite_type)
+from mo_times import Date
 
 _config = None
 
@@ -140,6 +143,16 @@ class Container(object):
                 Log.error("do not know how to handle yet")
 
             self.ns.columns._snowflakes[fact_name] = ["."]
+            self.ns.columns.add(Column(
+                name="_id",
+                es_column="_id",
+                es_index=fact_name,
+                es_type=json_type_to_sqlite_type[STRING],
+                jx_type=STRING,
+                nested_path=['.'],
+                multi=1,
+                last_updated=Date.now()
+            ))
             command = sql_create(fact_name, {UID: "INTEGER PRIMARY KEY", GUID: "TEXT"}, unique=UID)
 
             with self.db.transaction() as t:
