@@ -8,6 +8,12 @@ This library will manage your database schema to store JSON documents. You get a
 
 https://www.youtube.com/watch?v=0_YLzb7BegI&list=PLSE8ODhjZXja7K1hjZ01UTVDnGQdx5v5U&index=26&t=260s
 
+## Status
+
+Significant updates to the supporting libraries has broken this ode.  It still works works for the simple cases that require it
+
+**Jan 2020** - 96/283 test failing  
+
 
 
 ## Installation
@@ -62,7 +68,7 @@ JSON is a nice format to store data, and it has become quite prevalent. Unfortun
 
 ## Contributing
 
-Contributions are always welcome! ([Issues](https://github.com/mozilla/jx-sqlite/issues))
+Contributions are always welcome! The best thing to do is find a failing test, and try to fix it.
 
 These instructions will get you a copy of the project up and running on your local machine for development and testing purposes.
 
