@@ -10,3 +10,4 @@ mo-collections>=1.2.17235
 mo-testing>=1.0.17168
 mo-json>=2.1.17319
 mo-json-config
+mo-sql
