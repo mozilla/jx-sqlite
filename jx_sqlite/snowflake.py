@@ -1,112 +1,39 @@
-from collections import OrderedDict
-from copy import copy
+# encoding: utf-8
+#
+#
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this file,
+# You can obtain one at http:# mozilla.org/MPL/2.0/.
+#
 
-from mo_dots import relative_field, listwrap, split_field, join_field, wrap, startswith_field, concat_field, Null, coalesce, set_default
+from __future__ import absolute_import, division, unicode_literals
+
+import jx_base
+from jx_sqlite import quoted_ORDER, quoted_PARENT, quoted_UID, untyped_column
+from jx_sqlite.expressions._utils import SQL_NESTED_TYPE
+from jx_sqlite.schema import Schema
+from jx_sqlite.sqlite import quote_column
+from jx_sqlite.table import Table
+from mo_dots import concat_field, wrap
+from mo_future import text
+from mo_json import NESTED
 from mo_logs import Log
-
-from jx_sqlite import quote_table, typed_column, UID, quoted_UID, quoted_GUID,sql_types, quoted_PARENT, ORDER, quoted_ORDER
-from jx_sqlite import untyped_column
-from jx_base.queries import get_property_name
-from jx_python import jx
-from jx_python.meta import Column
-from jx_base import STRUCT
-from pyLibrary.sql.sqlite import quote_column
+from mo_sql import SQL_FROM, SQL_LIMIT, SQL_SELECT, SQL_STAR, SQL_ZERO, sql_iso, sql_list, SQL_CREATE, SQL_AS
 
 
-class Snowflake(object):
+class Snowflake(jx_base.Snowflake):
     """
-    MANAGE SQLITE DATABASE
+    MANAGE SINGLE HIERARCHY IN SQLITE DATABASE
     """
-    def __init__(self, fact, uid, db):
-        self.fact = fact  # THE CENTRAL FACT TABLE
-        self.uid = uid
-        self.db = db
-        self.columns = []  # EVERY COLUMN IS ACCESSIBLE BY EVERY TABLE IN THE SNOWFLAKE
-        self.tables = OrderedDict()  # MAP FROM NESTED PATH TO Table OBJECT, PARENTS PROCEED CHILDREN
-        if not self.read_db():
-            self.create_fact(uid)
+    def __init__(self, fact_name, namespace):
+        if not namespace.columns._snowflakes[fact_name]:
+            Log.error("{{name}} does not exist", name=fact_name)
 
-    # def __del__(self):
-    #     for nested_path, table in self.tables.items():
-    #         self.db.execute("DROP TABLE " + quote_table(concat_field(self.fact, nested_path)))
+        self.fact_name = fact_name  # THE CENTRAL FACT TABLE
+        self.namespace = namespace
 
-    def read_db(self):
-        """
-        PULL SCHEMA FROM DATABASE, BUILD THE MODEL
-        :return: None
-        """
-
-        # FIND ALL TABLES
-        result = self.db.query("SELECT * FROM sqlite_master WHERE type='table' ORDER BY name")
-        tables = wrap([{k: d[i] for i, k in enumerate(result.header)} for d in result.data])
-        tables_found = False
-        for table in tables:
-            if table.name.startswith("__"):
-                continue
-            tables_found = True
-            nested_path = [join_field(split_field(tab.name)[1:]) for tab in jx.reverse(tables) if startswith_field(table.name, tab.name)]
-            self.add_table_to_schema(nested_path)
-
-            # LOAD THE COLUMNS
-            command = "PRAGMA table_info(" + quote_table(table.name) + ")"
-            details = self.db.query(command)
-
-            for cid, name, dtype, notnull, dfft_value, pk in details.data:
-                if name.startswith("__"):
-                    continue
-                cname, ctype = untyped_column(name)
-                column = Column(
-                    names={np: relative_field(cname, np) for np in nested_path},
-                    type=coalesce(ctype, {"TEXT": "string", "REAL": "number", "INTEGER": "integer"}.get(dtype)),
-                    nested_path=nested_path,
-                    es_column=name,
-                    es_index=table.name
-                )
-
-                self.add_column_to_schema(column)
-
-        return tables_found
-
-    def create_fact(self, uid=UID):
-        """
-        MAKE NEW TABLE WITH GIVEN guid
-        :param uid: name, or list of names, for the GUID
-        :return: None
-        """
-        self.add_table_to_schema(["."])
-
-        uid = listwrap(uid)
-        new_columns = []
-        for u in uid:
-            if u == UID:
-                pass
-            else:
-                c = Column(
-                    names={".": u},
-                    type="string",
-                    es_column=typed_column(u, "string"),
-                    es_index=self.fact
-                )
-                self.add_column_to_schema(c)
-                new_columns.append(c)
-
-        command = (
-            "CREATE TABLE " + quote_table(self.fact) + "(" +
-            (",".join(
-                [quoted_GUID + " TEXT "] +
-                [quoted_UID + " INTEGER"] +
-                [quote_column(c.es_column) + " " + sql_types[c.type] for c in self.tables["."].schema.columns]
-            )) +
-            ", PRIMARY KEY (" +
-            (", ".join(
-                [quoted_GUID] +
-                [quoted_UID] +
-                [quote_column(c.es_column) for c in self.tables["."].schema.columns]
-            )) +
-            "))"
-        )
-
-        self.db.execute(command)
+    def __copy__(self):
+        Log.error("con not copy")
 
     def change_schema(self, required_changes):
         """
@@ -119,201 +46,139 @@ class Snowflake(object):
             if required_change.add:
                 self._add_column(required_change.add)
             elif required_change.nest:
-                column, cname = required_change.nest
-                self._nest_column(column, cname)
-                # REMOVE KNOWLEDGE OF PARENT COLUMNS (DONE AUTOMATICALLY)
-                # TODO: DELETE PARENT COLUMNS? : Done
+                self._nest_column(required_change.nest)
 
     def _add_column(self, column):
-        cname = column.names["."]
-        if column.type == "nested":
+        cname = column.name
+        if column.jx_type == NESTED:
             # WE ARE ALSO NESTING
-            self._nest_column(column, cname)
+            self._nest_column(column, [cname]+column.nested_path)
 
-        table = concat_field(self.fact, column.nested_path[0])
+        table = concat_field(self.fact_name, column.nested_path[0])
 
-        self.db.execute(
-            "ALTER TABLE " + quote_table(table) +
-            " ADD COLUMN " + quote_column(column.es_column) + " " + sql_types[column.type]
-        )
+        try:
+            with self.namespace.db.transaction() as t:
+                t.execute(
+                    "ALTER TABLE" + quote_column(table) +
+                    "ADD COLUMN" + quote_column(column.es_column) + column.es_type
+                )
+            self.namespace.columns.add(column)
+        except Exception as e:
+            if "duplicate column name" in e:
+                # THIS HAPPENS WHEN MULTIPLE THREADS ARE ASKING FOR MORE COLUMNS TO STORE DATA
+                # THIS SHOULD NOT BE A PROBLEM SINCE THE THREADS BOTH AGREE THE COLUMNS SHOULD EXIST
+                # BUT, IT WOULD BE NICE TO MAKE LARGER TRANSACTIONS SO THIS NEVER HAPPENS
+                # CONFIRM THE COLUMN EXISTS IN LOCAL DATA STRUCTURES
+                for c in self.namespace.columns:
+                    if c.es_column == column.es_column:
+                        break
+                else:
+                    Log.error("Did not add column {{column}]", column=column.es_column, cause=e)
+            else:
+                Log.error("Did not add column {{column}]", column=column.es_column, cause=e)
 
-        self.add_column_to_schema(column)
+    def _drop_column(self, column):
+        # DROP COLUMN BY RENAMING IT, WITH __ PREFIX TO HIDE IT
+        cname = column.name
+        if column.jx_type == "nested":
+            # WE ARE ALSO NESTING
+            self._nest_column(column, [cname]+column.nested_path)
 
-    def _nest_column(self, column, new_path):
-        destination_table = concat_field(self.fact, new_path)
-        existing_table = concat_field(self.fact, column.nested_path[0])
+        table = concat_field(self.fact_name, column.nested_path[0])
+
+        with self.namespace.db.transaction() as t:
+            t.execute(
+                "ALTER TABLE" + quote_column(table) +
+                "RENAME COLUMN" + quote_column(column.es_column) + " TO " + quote_column("__" + column.es_column)
+            )
+        self.namespace.columns.remove(column)
+
+    def _nest_column(self, column):
+        new_path, type_ = untyped_column(column.es_column)
+        if type_ != SQL_NESTED_TYPE:
+            Log.error("only nested types can be nested")
+        destination_table = concat_field(self.fact_name, new_path)
+        existing_table = concat_field(self.fact_name, column.nested_path[0])
 
         # FIND THE INNER COLUMNS WE WILL BE MOVING
         moving_columns = []
         for c in self.columns:
-            if destination_table!=column.es_index and column.es_column==c.es_column:
+            if destination_table != column.es_index and column.es_column == c.es_column:
                 moving_columns.append(c)
-                c.nested_path = [new_path] + c.nested_path
+                c.nested_path = new_path
 
         # TODO: IF THERE ARE CHILD TABLES, WE MUST UPDATE THEIR RELATIONS TOO?
 
-        # DEFINE A NEW TABLE?
         # LOAD THE COLUMNS
-        command = "PRAGMA table_info(" + quote_table(destination_table) + ")"
-        details = self.db.query(command)
-        if not details.data:
+        data = self.namespace.db.about(destination_table)
+        if not data:
+            # DEFINE A NEW TABLE
             command = (
-                "CREATE TABLE " + quote_table(destination_table) + "(" +
-                (",".join(
-                    [quoted_UID + " INTEGER", quoted_PARENT + " INTEGER", quoted_ORDER+" INTEGER"]
-                )) +
-                ", PRIMARY KEY (" + quoted_UID + ")" +
-                ", FOREIGN KEY (" + quoted_PARENT + ") REFERENCES " + quote_table(existing_table) + "(" + quoted_UID + ")"
-                ")"
+                SQL_CREATE + quote_column(destination_table) + sql_iso(sql_list([
+                    quoted_UID + "INTEGER",
+                    quoted_PARENT + "INTEGER",
+                    quoted_ORDER + "INTEGER",
+                    "PRIMARY KEY " + sql_iso(quoted_UID),
+                    "FOREIGN KEY " + sql_iso(quoted_PARENT) + " REFERENCES " + quote_column(existing_table) + sql_iso(quoted_UID)
+                ]))
             )
-            self.db.execute(command)
-            self.add_table_to_schema([new_path])
+            with self.namespace.db.transaction() as t:
+                t.execute(command)
+                self.add_table([new_path]+column.nested_path)
 
         # TEST IF THERE IS ANY DATA IN THE NEW NESTED ARRAY
         if not moving_columns:
             return
 
         column.es_index = destination_table
-        self.db.execute(
-            "ALTER TABLE " + quote_table(destination_table) +
-            " ADD COLUMN " + quote_column(column.es_column) + " " + sql_types[column.type]
-        )
-
-        # Deleting parent columns
-        for col in moving_columns:
-            column = col.es_column
-            tmp_table = "tmp_" + existing_table
-            columns = self.db.query("select * from " + quote_table(existing_table) + " LIMIT 0").header
-            self.db.execute(
-                "ALTER TABLE " + quote_table(existing_table) +
-                " RENAME TO " + quote_table(tmp_table)
+        with self.namespace.db.transaction() as t:
+            t.execute(
+                "ALTER TABLE " + quote_column(destination_table) +
+                " ADD COLUMN " + quote_column(column.es_column) + " " + column.es_type
             )
-            self.db.execute(
-                "CREATE TABLE " + quote_table(existing_table) +
-                " AS SELECT " + (", ".join([quote_table(c) for c in columns if c!=column])) +
-                " FROM " + quote_table(tmp_table)
-            )
-            self.db.execute("DROP TABLE " + quote_table(tmp_table))
 
-    def add_table_to_schema(self, nested_path):
-        table = Table(nested_path)
-        self.tables[table.name] = table
-        path = table.name
+            # Deleting parent columns
+            for col in moving_columns:
+                column = col.es_column
+                tmp_table = "tmp_" + existing_table
+                columns = list(map(text, t.query(SQL_SELECT + SQL_STAR + SQL_FROM + quote_column(existing_table) + SQL_LIMIT + SQL_ZERO).header))
+                t.execute(
+                    "ALTER TABLE " + quote_column(existing_table) +
+                    " RENAME TO " + quote_column(tmp_table)
+                )
+                t.execute(
+                    SQL_CREATE + quote_column(existing_table) + SQL_AS +
+                    SQL_SELECT + sql_list([quote_column(c) for c in columns if c != column]) +
+                    SQL_FROM + quote_column(tmp_table)
+                )
+                t.execute("DROP TABLE " + quote_column(tmp_table))
 
-        for c in self.columns:
-            rel_name = c.names[path] = relative_field(c.names["."], path)
-            table.schema.add(rel_name, c)
-        return table
-
-    def add_column_to_schema(self, column):
-        self.columns.append(column)
-        abs_name = column.names["."]
-
-        for table in self.tables.values():
-            rel_name = column.names[table.name] = relative_field(abs_name, table.name)
-            table.schema.add(rel_name, column)
-
-
-class Table(object):
-
-    def __init__(self, nested_path):
-        self.nested_path = nested_path
-        self.schema = Schema(nested_path)  # MAP FROM RELATIVE NAME TO LIST OF COLUMNS
+    def add_table(self, nested_path):
+        query_paths = self.namespace.columns._snowflakes[self.fact_name]
+        if nested_path in query_paths:
+            Log.error("table exists")
+        query_paths.append(nested_path)
+        return Table(nested_path, self)
 
     @property
-    def name(self):
+    def tables(self):
         """
-        :return: THE TABLE NAME RELATIVE TO THE FACT TABLE
+        :return:  LIST OF (nested_path, full_name) PAIRS
         """
-        return self.nested_path[0]
+        return [(path[0], concat_field(self.fact_name, path[0])) for path in self.query_paths]
 
+    def get_schema(self, nested_path):
+        return Schema(nested_path, self)
 
-class Schema(object):
-    """
-    A Schema MAPS ALL COLUMNS IN SNOWFLAKE FROM THE PERSPECTIVE OF A SINGLE TABLE (a nested_path)
-    """
-
-    def __init__(self, nested_path):
-        self.map = {}
-        self.nested_path = nested_path
-
-    def add(self, column_name, column):
-        if column_name != column.names[self.nested_path[0]]:
-            Log.error("Logic error")
-
-        container = self.map.get(column_name)
-        if not container:
-            container = self.map[column_name] = []
-        container.append(column)
-
-    def remove(self, column_name, column):
-        if column_name != column.names[self.nested_path[0]]:
-            Log.error("Logic error")
-
-        self.map[column_name]=[c for c in self.map[column_name] if c != column]
-
-    def __getitem__(self, item):
-        output = self.map.get(item)
-        return output if output else Null
-
-    def __copy__(self):
-        output = Schema(self.nested_path)
-        for k, v in self.map.items():
-            output.map[k] = copy(v)
-        return output
-
-    def get_column_name(self, column):
-        """
-        RETURN THE COLUMN NAME, FROM THE PERSPECTIVE OF THIS SCHEMA
-        :param column:
-        :return: NAME OF column
-        """
-        return get_property_name(column.names[self.nested_path[0]])
-
-    def keys(self):
-        return self.map.keys()
-
-    def items(self):
-        return self.map.items()
+    @property
+    def schema(self):
+        return Schema(["."], self)
 
     @property
     def columns(self):
-        return [c for cs in self.map.values() for c in cs]
+        return self.namespace.columns.find(self.fact_name)
 
-    def map_to_sql(self, var=""):
-        """
-        RETURN A MAP FROM THE RELATIVE AND ABSOLUTE NAME SPACE TO COLUMNS 
-        """
-        origin = self.nested_path[0]
-        if startswith_field(var, origin) and origin!=var:
-            var = relative_field(var, origin)
-        fact_dict={}
-        origin_dict={}
-        for k, cs in self.map.items():
-            for c in cs :
-                if c.type not in STRUCT:
-                    if (startswith_field(get_property_name(k), var)):
-                        if c.names[origin] in origin_dict:
-                            origin_dict[c.names[origin]].append(c)
-                        else:
-                            origin_dict[c.names[origin]] = [c]
-
-                        if origin!=c.nested_path[0]:
-                            if c.names["."] in fact_dict:
-                                fact_dict[c.names["."]].append(c)
-                            else:
-                                fact_dict[c.names["."]] = [c]
-                    elif origin==var:
-                        if concat_field(var, c.names[origin]) in origin_dict:
-                            origin_dict[concat_field(var, c.names[origin])].append(c)
-                        else:
-                            origin_dict[concat_field(var, c.names[origin])] = [c]
-
-                        if origin!=c.nested_path[0]:
-                            if c.names["."] in fact_dict:
-                                fact_dict[concat_field(var, c.names["."])].append(c)
-                            else:
-                                fact_dict[concat_field(var, c.names["."])] = [c]
-
-        return set_default(origin_dict, fact_dict)
+    @property
+    def query_paths(self):
+        return self.namespace.columns._snowflakes[self.fact_name]
 

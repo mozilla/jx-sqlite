@@ -5,37 +5,35 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http:# mozilla.org/MPL/2.0/.
 #
-# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+# Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import unicode_literals
+from __future__ import absolute_import, division, unicode_literals
 
-from future.utils import text_type
 from jx_python import jx
-from jx_sqlite import UID, quote_table, get_column, _make_column_name, sql_text_array_to_set, STATS, sql_aggs, PARENT, ColumnMapping, untyped_column
-from mo_dots import listwrap, coalesce, split_field, join_field, startswith_field, relative_field, concat_field
-from mo_logs import Log
-from mo_math import Math
-
-from jx_base.domains import DefaultDomain, TimeDomain, DurationDomain
-from jx_sqlite.expressions import Variable, sql_type_to_json_type, TupleOp
+from jx_sqlite import ColumnMapping, _make_column_name, get_column, sql_aggs, PARENT, UID
 from jx_sqlite.edges_table import EdgesTable
-from pyLibrary.sql.sqlite import quote_value
+from jx_sqlite.expressions._utils import SQLang, sql_type_to_json_type
+from mo_dots import concat_field, join_field, listwrap, split_field, startswith_field
+from mo_future import unichr
+from mo_logs import Log
+from mo_sql import SQL_FROM, SQL_GROUPBY, SQL_IS_NULL, SQL_LEFT_JOIN, SQL_NULL, SQL_ON, SQL_ONE, SQL_ORDERBY, \
+    SQL_SELECT, SQL_WHERE, sql_count, sql_iso, sql_list, SQL_EQ, sql_coalesce, SQL
+from jx_sqlite.sqlite import quote_column, sql_alias, sql_call, quote_value
+
 
 class GroupbyTable(EdgesTable):
-    def _groupby_op(self, query, frum):
-        schema = self.sf.tables[join_field(split_field(frum)[1:])].schema
+    def _groupby_op(self, query, schema):
+        base_table = schema.snowflake.fact_name
+        path = schema.nested_path
+        # base_table, path = tail_field(frum)
+        # schema = self.snowflake.tables[path].schema
         index_to_column = {}
         nest_to_alias = {
             nested_path: "__" + unichr(ord('a') + i) + "__"
-            for i, (nested_path, sub_table) in enumerate(self.sf.tables.items())
-            }
-        frum_path = split_field(frum)
-        base_table = join_field(frum_path[0:1])
-        path = join_field(frum_path[1:])
+            for i, nested_path in enumerate(self.schema.snowflake.query_paths)
+        }
         tables = []
         for n, a in nest_to_alias.items():
             if startswith_field(path, n):
@@ -46,24 +44,24 @@ class GroupbyTable(EdgesTable):
         previous = tables[0]
         for t in tables[1::]:
             from_sql += (
-                "\nLEFT JOIN\n" + quote_table(concat_field(base_table, t.nest)) + " " + t.alias +
-                " ON " + t.alias + "." + PARENT + " = " + previous.alias + "." + UID
+                SQL_LEFT_JOIN + quote_column(concat_field(base_table, t.nest)) + " " + t.alias +
+                SQL_ON + quote_column(t.alias, PARENT) + SQL_EQ + quote_column(previous.alias, UID)
             )
 
         selects = []
         groupby = []
         for i, e in enumerate(query.groupby):
-            for s in e.value.to_sql(schema):
+            for edge_sql in SQLang[e.value].to_sql(schema):
                 column_number = len(selects)
-                sql_type, sql = s.sql.items()[0]
-                if sql == 'NULL'and not e.value.var in schema.keys():
+                sql_type, sql = edge_sql.sql.items()[0]
+                if sql is SQL_NULL and not e.value.var in schema.keys():
                     Log.error("No such column {{var}}", var=e.value.var)
 
                 column_alias = _make_column_name(column_number)
                 groupby.append(sql)
-                selects.append(sql + " AS " + column_alias)
-                if s.nested_path ==".":
-                    select_name = s.name
+                selects.append(sql_alias(sql, column_alias))
+                if edge_sql.nested_path == ".":
+                    select_name = edge_sql.name
                 else:
                     select_name = "."
                 index_to_column[column_number] = ColumnMapping(
@@ -78,45 +76,52 @@ class GroupbyTable(EdgesTable):
                     type=sql_type_to_json_type[sql_type]
                 )
 
-        for i, s in enumerate(listwrap(query.select)):
+        for i, select in enumerate(listwrap(query.select)):
             column_number = len(selects)
-            sql_type, sql = s.value.to_sql(schema)[0].sql.items()[0]
-            if sql == 'NULL'and not s.value.var in schema.keys():
-                Log.error("No such column {{var}}", var=s.value.var)
+            sql_type, sql = SQLang[select.value].to_sql(schema)[0].sql.items()[0]
+            if sql == 'NULL' and not select.value.var in schema.keys():
+                Log.error("No such column {{var}}", var=select.value.var)
 
-            if s.value == "." and s.aggregate == "count":
-                selects.append("COUNT(1) AS " + quote_table(s.name))
+            # AGGREGATE
+            if select.value == "." and select.aggregate == "count":
+                sql = sql_count(SQL_ONE)
             else:
-                selects.append(sql_aggs[s.aggregate] + "(" + sql + ") AS " + quote_table(s.name))
+                sql = sql_call(sql_aggs[select.aggregate], sql)
+
+            if select.default != None:
+                sql = sql_coalesce([sql, quote_value(select.default)])
+
+            selects.append(sql_alias(sql, select.name))
 
             index_to_column[column_number] = ColumnMapping(
-                push_name=s.name,
-                push_column_name=s.name,
-                push_column=i+len(query.groupby),
+                push_name=select.name,
+                push_column_name=select.name,
+                push_column=i + len(query.groupby),
                 push_child=".",
                 pull=get_column(column_number),
                 sql=sql,
-                column_alias=quote_table(s.name),
+                column_alias=quote_column(select.name),
                 type=sql_type_to_json_type[sql_type]
             )
 
         for w in query.window:
             selects.append(self._window_op(self, query, w))
 
-        where = query.where.to_sql(schema)[0].sql.b
+        where = SQLang[query.where].to_sql(schema)[0].sql.b
 
-        command = "SELECT\n" + (",\n".join(selects)) + \
-                  "\nFROM\n" + from_sql + \
-                  "\nWHERE\n" + where + \
-                  "\nGROUP BY\n" + ",\n".join(groupby)
+        command = (
+            SQL_SELECT + (sql_list(selects)) +
+            SQL_FROM + from_sql +
+            SQL_WHERE + where +
+            SQL_GROUPBY + sql_list(groupby)
+        )
 
         if query.sort:
-            command += "\nORDER BY " + ",\n".join(
-                "(" + sql[t] + ") IS NULL"  + ",\n" +
+            command += SQL_ORDERBY + sql_list(
+                sql_iso(sql[t]) + SQL_IS_NULL + "," +
                 sql[t] + (" DESC" if s.sort == -1 else "")
-                for s, sql in [(s, s.value.to_sql(schema)[0].sql) for s in query.sort]
+                for s, sql in [(s, SQLang[s.value].to_sql(schema)[0].sql) for s in query.sort]
                 for t in "bns" if sql[t]
             )
 
         return command, index_to_column
-

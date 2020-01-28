@@ -8,12 +8,13 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import division
-from __future__ import unicode_literals
+from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions import jx_expression
+from jx_base.expressions import FALSE, TRUE, jx_expression
 from jx_base.queries import is_variable_name
+from jx_python.expressions import Python
 from mo_testing.fuzzytestcase import FuzzyTestCase
+from mo_times import Date, MONTH
 
 
 class TestExpressions(FuzzyTestCase):
@@ -30,6 +31,12 @@ class TestExpressions(FuzzyTestCase):
             "That's a good variable name!"
         )
 
+    def test_dash_var(self):
+        self.assertTrue(
+            is_variable_name(u'a-b'),
+            "That's a good variable name!"
+        )
+
     def test_value_not_a_variable(self):
         result = jx_expression({"eq": {"result.test": "/XMLHttpRequest/send-entity-body-document.htm"}}).vars()
         expected = {"result.test"}
@@ -39,4 +46,46 @@ class TestExpressions(FuzzyTestCase):
         where = {"in": {"a": [1, 2]}}
         result = jx_expression(where).map({"a": "c"}).__data__()
         self.assertEqual(result, {"in": {"c": [1, 2]}})
+
+    def test_date_literal(self):
+        expr = {"date": {"literal": "today-month"}}
+
+        from jx_python.expression_compiler import compile_expression
+        result = compile_expression(Python[jx_expression(expr).partial_eval()].to_python())(None)
+        expected = (Date.today()-MONTH).unix
+        self.assertEqual(result, expected)
+
+    def test_null_startswith(self):
+        filter = jx_expression({"prefix": [{"null": {}}, {"literal": "something"}]}).partial_eval()
+        expected = FALSE
+        self.assertEqual(filter, expected)
+        self.assertEqual(expected, filter)
+
+    def test_null_startswith_null(self):
+        filter = jx_expression({"prefix": [{"null": {}}, {"literal": ""}]}).partial_eval()
+        expected = TRUE
+        self.assertEqual(filter, expected)
+        self.assertEqual(expected, filter)
+
+    def test_concat_serialization(self):
+        expecting = {"concat": ["a", "b", "c"], "separator": {"literal": ", "}}
+        op1 = jx_expression(expecting)
+        output = op1.__data__()
+        self.assertAlmostEqual(output, expecting)
+
+        expecting = {"concat": {"a": "b"}}
+        op1 = jx_expression(expecting)
+        output = op1.__data__()
+        self.assertAlmostEqual(output, expecting)
+
+
+class S(object):
+    def values(self, name, exclude=None):
+        return []
+
+    def leaves(self, name):
+        return []
+
+
+no_schema = S()
 

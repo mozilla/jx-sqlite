@@ -5,34 +5,36 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http:# mozilla.org/MPL/2.0/.
 #
-# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+# Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import unicode_literals
+from __future__ import absolute_import, division, unicode_literals
 
-from collections import Mapping
 from copy import copy
+from math import isnan
 
-from future.utils import text_type
-from mo_dots import Data, split_field, join_field, concat_field, Null
-from mo_json import json2value
+from jx_base import DataClass
+from mo_dots import Data, concat_field, is_data, is_list, join_field, split_field, is_sequence
+from mo_future import is_text, text
+from mo_json import BOOLEAN, NESTED, NUMBER, OBJECT, STRING, json2value
+from mo_logs import Log
 from mo_math.randoms import Random
 from mo_times import Date
+from jx_sqlite.sqlite import quote_column
 
-from pyLibrary.meta import DataClass
-from pyLibrary.sql.sqlite import quote_table
 
-GUID = "_id"
-UID = "__id__"  # will not be quoted
+DIGITS_TABLE = "__digits__"
+ABOUT_TABLE = "meta.about"
+
+
+GUID = "_id"  # user accessible, unique value across many machines
+UID = "__id__"  # internal numeric id for single-database use
 ORDER = "__order__"
 PARENT = "__parent__"
 COLUMN = "__column"
 
 ALL_TYPES = "bns"
-
 
 
 def unique_name():
@@ -44,11 +46,11 @@ def column_key(k, v):
         return None
     elif isinstance(v, bool):
         return k, "boolean"
-    elif isinstance(v, basestring):
+    elif is_text(v):
         return k, "string"
-    elif isinstance(v, list):
+    elif is_list(v):
         return k, None
-    elif isinstance(v, Mapping):
+    elif is_data(v):
         return k, "object"
     elif isinstance(v, Date):
         return k, "number"
@@ -56,19 +58,26 @@ def column_key(k, v):
         return k, "number"
 
 
-def get_type(v):
+POS_INF = float("+inf")
+
+
+def get_jx_type(v):
     if v == None:
         return None
     elif isinstance(v, bool):
-        return "boolean"
-    elif isinstance(v, basestring):
-        return "string"
-    elif isinstance(v, Mapping):
-        return "object"
-    elif isinstance(v, (int, float, Date)):
-        return "number"
-    elif isinstance(v, list):
-        return "nested"
+        return BOOLEAN
+    elif is_text(v):
+        return STRING
+    elif is_data(v):
+        return OBJECT
+    elif isinstance(v, float):
+        if isnan(v) or abs(v) == POS_INF:
+            return None
+        return NUMBER
+    elif isinstance(v, (int, Date)):
+        return NUMBER
+    elif is_sequence(v):
+        return NESTED
     return None
 
 
@@ -97,11 +106,11 @@ def get_if_type(value, type):
 def is_type(value, type):
     if value == None:
         return False
-    elif isinstance(value, basestring) and type == "string":
+    elif is_text(value) and type == "string":
         return value
-    elif isinstance(value, list):
+    elif is_list(value):
         return False
-    elif isinstance(value, Mapping) and type == "object":
+    elif is_data(value) and type == "object":
         return True
     elif isinstance(value, (int, float, Date)) and type == "number":
         return True
@@ -109,6 +118,8 @@ def is_type(value, type):
 
 
 def typed_column(name, type_):
+    if len(type_) > 1:
+        Log.error("not expected")
     if type_ == "nested":
         type_ = "object"
     return concat_field(name, "$" + type_)
@@ -122,12 +133,14 @@ def untyped_column(column_name):
     if "$" in column_name:
         path = split_field(column_name)
         return join_field(path[:-1]), path[-1][1:]
+    elif column_name in [GUID]:
+        return column_name, "n"
     else:
         return column_name, None
 
 
 def _make_column_name(number):
-    return COLUMN + text_type(number)
+    return COLUMN + text(number)
 
 
 sql_aggs = {
@@ -144,15 +157,6 @@ sql_aggs = {
     "sum": "SUM"
 }
 
-sql_types = {
-    "string": "TEXT",
-    "integer": "INTEGER",
-    "number": "REAL",
-    "boolean": "TINYINT",
-    "object": "TEXT",
-    "nested": "TEXT"
-}
-
 STATS = {
     "count": "COUNT({{value}})",
     "std": "SQRT((1-1.0/COUNT({{value}}))*VARIANCE({{value}}))",
@@ -165,16 +169,20 @@ STATS = {
     "avg": "AVG({{value}})"
 }
 
-quoted_GUID = quote_table(GUID)
-quoted_UID = quote_table(UID)
-quoted_ORDER = quote_table(ORDER)
-quoted_PARENT = quote_table(PARENT)
+quoted_GUID = quote_column(GUID)
+quoted_UID = quote_column(UID)
+quoted_ORDER = quote_column(ORDER)
+quoted_PARENT = quote_column(PARENT)
 
 
 def sql_text_array_to_set(column):
     def _convert(row):
-        text = [t for t in json2value(row[column]) if t!=Null]
-        return set(text)
+        text = row[column]
+        if text == None:
+            return set()
+        else:
+            value = json2value(row[column])
+            return set(value) - {None}
 
     return _convert
 
@@ -269,7 +277,7 @@ ColumnMapping = DataClass(
         "column_alias"
     ],
     constraint={"and": [
-        {"in": {"type": ["null", "boolean", "number", "string", "object"]}},
+        {"in": {"type": ["0", "boolean", "number", "string", "object"]}},
         {"gte": [{"length": "nested_path"}, 1]}
     ]}
 )
@@ -281,3 +289,5 @@ json_types = {
     "TINYINT": "boolean",
     "OBJECT": "nested"
 }
+
+

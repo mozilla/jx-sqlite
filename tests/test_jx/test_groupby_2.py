@@ -8,10 +8,10 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import division
-from __future__ import unicode_literals
+from __future__ import absolute_import, division, unicode_literals
 
-from tests.test_jx import BaseTestCase, TEST_TABLE, NULL
+from jx_base.expressions import NULL
+from tests.test_jx import BaseTestCase, TEST_TABLE
 
 
 class TestGroupBy2(BaseTestCase):

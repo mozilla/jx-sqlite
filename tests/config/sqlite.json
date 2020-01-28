@@ -1,7 +1,13 @@
 {
 	"use": "sqlite",
+	"db":{
+		"name": "testing",
+//		"filename":"test.sqlite",
+		"upgrade": true,
+		"load_functions": true
+	},
 	"constants": {
-		"pyLibrary.sql.sqlite.DEBUG": false
+		"jx_sqlitel.sqlite.DEBUG": true
 	},
 	"debug": {
 		"trace":true

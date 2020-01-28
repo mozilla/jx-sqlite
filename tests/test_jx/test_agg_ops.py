@@ -8,8 +8,7 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import division
-from __future__ import unicode_literals
+from __future__ import absolute_import, division, unicode_literals
 
 from unittest import skipIf
 
@@ -103,24 +102,55 @@ class TestAggOps(BaseTestCase):
                 "select": {"value": "a", "aggregate": "percentile", "percentile": 0.90}
             },
             "expecting_list": {
-                "meta": {"format": "value"}, "data": 681.3
+                "meta": {"format": "value"}, "data": 702.5
             },
             "expecting_table": {
                 "meta": {"format": "table"},
                 "header": ["a"],
-                "data": [[681.3]]
+                "data": [[702.5]]
             },
             "expecting_cube": {
                 "meta": {"format": "cube"},
                 "edges": [],
                 "data": {
-                    "a": 681.3
+                    "a": 702.5
                 }
             }
         }
-        self.utils.execute_tests(test)
+        self.utils.execute_tests(test, places=1.5)  # 1.5 approx +/- 3%
 
     @skipIf(global_settings.use=="sqlite", "not expected to pass yet")
+    def test_both_percentile(self):
+        test = {
+            "data": [{"a": i**2} for i in range(30)],
+            "query": {
+                "from": TEST_TABLE,
+                "select": [
+                    {"name": "a", "value": "a", "aggregate": "percentile", "percentile": 0.90},
+                    {"name": "b", "value": "a", "aggregate": "median"}
+                ]
+            },
+            "expecting_list": {
+                "meta": {"format": "value"},
+                "data": {"a": 703.5, "b": 210.5}
+            },
+            "expecting_table": {
+                "meta": {"format": "table"},
+                "header": ["a", "b"],
+                "data": [[703.5, 210.5]]
+            },
+            "expecting_cube": {
+                "meta": {"format": "cube"},
+                "edges": [],
+                "data": {
+                    "a": 703.5,
+                    "b": 210.5
+                }
+            }
+        }
+        self.utils.execute_tests(test, places=1.5)  # 1.5 approx +/- 3%
+
+    @skipIf(global_settings.use == "sqlite", "not expected to pass yet")
     def test_stats(self):
         test = {
             "data": [{"a": i**2} for i in range(30)],
@@ -174,7 +204,7 @@ class TestAggOps(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_tests(test)
+        self.utils.execute_tests(test, places=2)
 
     def test_bad_percentile(self):
         test = {
@@ -218,7 +248,7 @@ class TestAggOps(BaseTestCase):
 
     def test_simplest_on_value(self):
         test = {
-            "data": range(30),
+            "data": list(range(30)),
             "query": {
                 "from": TEST_TABLE,
                 "select": {"aggregate": "count"}
@@ -249,7 +279,8 @@ class TestAggOps(BaseTestCase):
                 "select": {"value": ".", "aggregate": "max"}
             },
             "expecting_list": {
-                "meta": {"format": "value"}, "data": 58
+                "meta": {"format": "value"},
+                "data": 58
             },
             "expecting_table": {
                 "meta": {"format": "table"},
@@ -291,7 +322,7 @@ class TestAggOps(BaseTestCase):
         }
         self.utils.execute_tests(test, tjson=True)
 
-    @skipIf(global_settings.use in ["sqlite", "elasticsearch"], "not expected to pass yet")
+    # @skipIf(global_settings.use == "sqlite", "sqlite does not have a median function")
     def test_median_on_value(self):
         test = {
             "data": [i**2 for i in range(30)],
@@ -315,9 +346,8 @@ class TestAggOps(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_tests(test, tjson=True)
+        self.utils.execute_tests(test, tjson=True, places=2)
 
-    @skipIf(global_settings.use == "elasticsearch", "require dynamic typing before primitives are expected to pass")
     def test_many_aggs_on_value(self):
         # ES WILL NOT ACCEPT TWO (NAIVE) AGGREGATES ON SAME FIELD, COMBINE THEM USING stats AGGREGATION
         test = {
@@ -369,19 +399,18 @@ class TestAggOps(BaseTestCase):
                 "data": {"a": 3, "b": 1, "c": 0, "d": 1}
             }
         }
-        self.utils.execute_tests(test, tjson=False)
+        self.utils.execute_tests(test)
 
-    @skipIf(global_settings.use == "elasticsearch", "requires scripted metric aggregations")  # https://www.elastic.co/guide/en/elasticsearch/reference/current/search-aggregations-metrics-scripted-metric-aggregation.html
     def test_max_on_tuple(self):
         test = {
             "data": [
-                {"a": 1, "b": 1},
                 {"a": 1, "b": 2},
+                {"a": 1, "b": 1},
                 {"a": 2, "b": 1},
                 {"a": 2, "b": 2},
                 {"a": 3, "b": 1},
                 {"a": 3, "b": 2},
-                {"a": 3, "b": 3}
+                {"a": 3, "b": 3},
             ],
             "query": {
                 "from": TEST_TABLE,
@@ -395,7 +424,32 @@ class TestAggOps(BaseTestCase):
                 "data": {"max": [3, 3], "min": [1, 1]}
             }
         }
-        self.utils.execute_tests(test, tjson=False)
+        self.utils.execute_tests(test)
+
+    @skipIf(global_settings.elasticsearch.version.startswith("1."), "ES14 does not support max on tuples")
+    def test_max_on_tuple2(self):
+        test = {
+            "data": [
+                {"a": None, "b": True},
+                {"a": None, "b": False},
+                {"a": "a", "b": True},
+                {"a": "a", "b": False},
+                {"a": "b", "b": True},
+                {"a": "b", "b": False},
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "select": [
+                    {"name": "max", "value": ["a", "b"], "aggregate": "max"},
+                    {"name": "min", "value": ["a", "b"], "aggregate": "min"}
+                ]
+            },
+            "expecting_list": {
+                "meta": {"format": "value"},
+                "data": {"max": ["b", True], "min": ["a", False]}
+            }
+        }
+        self.utils.execute_tests(test)
 
     def test_union(self):
         test = {
@@ -416,7 +470,7 @@ class TestAggOps(BaseTestCase):
                 {"b": "y"},
                 {"b": "y"},
                 {"b": "y"},
-                {"b": "z"},
+                {"b": "z"}
             ],
             "query": {
                 "from": TEST_TABLE,
@@ -429,4 +483,28 @@ class TestAggOps(BaseTestCase):
                 "data": {"b": {"x", "y", "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "z"}}
             }
         }
-        self.utils.execute_tests(test, tjson=False)
+        self.utils.execute_tests(test)
+
+    def test_booleans_can_be_summed(self):
+        test = {
+            "data": [
+                {"a": None, "b": True},
+                {"a": None, "b": False},
+                {"a": "a", "b": True},
+                {"a": "a", "b": False},
+                {"a": "b", "b": True},
+                {"a": "b", "b": False},
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "select": [
+                    {"value": "b", "aggregate": "sum"},
+                    {"name": "a", "value": {"eq": {"a": "a"}}, "aggregate": "sum"}
+                ]
+            },
+            "expecting_list": {
+                "meta": {"format": "value"},
+                "data": {"b": 3, "a": 2}
+            }
+        }
+        self.utils.execute_tests(test)

@@ -8,12 +8,11 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import division
-from __future__ import unicode_literals
+from __future__ import absolute_import, division, unicode_literals
 
 from mo_testing.fuzzytestcase import FuzzyTestCase
-from mo_times.dates import parse, Date
-from mo_times.durations import WEEK, MONTH, DAY
+from mo_times.dates import Date, parse
+from mo_times.durations import DAY, MONTH, WEEK
 
 
 class TestTimeParser(FuzzyTestCase):

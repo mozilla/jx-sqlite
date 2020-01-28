@@ -12,7 +12,7 @@ A snowflake is a set of tables, plus the set of hierarchical foreign relations b
 
 **Path taken to row is important**
 
-The snowflake assumes the data is denormalized in document form; every fact in the fact table and all its foreign rows, are not shared with any other fact. This assumption is only a conceptual model, an not seriously expected in practice; A database is often normalized to minimize  redundancy. Therefore, it is important not to talk about any row in a table (which might be shared), but rather the path taken along the foreign relations; starting from the fact to the row in question. 
+The snowflake assumes the data is denormalized in document form; every fact in the fact table and all its foreign rows, are not shared with any other fact. This assumption is only a conceptual model, and not seriously expected in practice; A database is often normalized to minimize  redundancy. Therefore, it is important not to talk about any row in a table (which might be shared), but rather the path taken along the foreign relations; starting from the fact to the row in question. 
 
 **Paths to tables**
 
@@ -181,13 +181,13 @@ It may help to use the file system as a metaphor: The tables are directories in 
 
 Given our documents appear different based on the perspective, the columns in the snowflake can go by many aliases. In *Example 1* column `a.b.x` (column `x` in table `a.b`) can be referred to as simply `x` from the `a.b` perspective.  To capture these aliases the `Column.names` dict maps the nested path to the various aliases
 
-	Column(
-		names={
-			".": "a.b.x", 
-			"a.b": "x"
-		},
+    Column(
+        names={
+            ".": "a.b.x", 
+            "a.b": "x"
+        },
         nested_path=["a.b", "."]
-	)
+    )
 
 There may be some problems with the `names` attribute:
 

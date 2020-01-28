@@ -8,10 +8,10 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import division
-from __future__ import unicode_literals
+from __future__ import absolute_import, division, unicode_literals
 
-from tests.test_jx import BaseTestCase, TEST_TABLE, NULL
+from jx_base.expressions import NULL
+from tests.test_jx import BaseTestCase, TEST_TABLE
 
 
 class TestEdge2(BaseTestCase):
@@ -327,13 +327,14 @@ class TestEdge2(BaseTestCase):
                     {"a": "y", "b": "m", "v": 7},
                     {"a": "y", "b": "n", "v": 50},
                     {"a": "y", "b": NULL, "v": 13},
-                    {"a": "z", "b": "m"},
-                    {"a": "z", "b": "n"},
-                    {"a": "z"},
+                    {"a": "z", "b": "m", "v": NULL},
+                    {"a": "z", "b": "n", "v": NULL},
+                    {"a": "z", "b": NULL, "v": NULL},
                     {"a": NULL, "b": "m", "v": 17},
                     {"a": NULL, "b": "n", "v": 19},
-                    {}
-                ]},
+                    {"a": NULL, "b": NULL, "v": NULL}
+                ]
+            },
             "expecting_table": {
                 "meta": {"format": "table"},
                 "header": ["a", "b", "v"],
@@ -393,10 +394,10 @@ class TestEdge2(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    def test_edge_using_missing_between(self):
+    def test_edge_using_missing_between2(self):
         test = {
             "data": [
-                {"url": NULL},
+                {"url": None},
                 {"url": "/"},
                 {"url": "https://hg.mozilla.org/"},
                 {"url": "https://hg.mozilla.org/a/"},
@@ -423,7 +424,8 @@ class TestEdge2(BaseTestCase):
                         "value": {"between": {"url": ["https://hg.mozilla.org/", "/"]}}
                     }
                 ],
-                "where": {"prefix": {"url": "https://hg.mozilla.org/"}}
+                "where": {"prefix": {"url": "https://hg.mozilla.org/"}},
+                "limit": 100
             },
             "expecting_list": {
                 "meta": {"format": "list"},
@@ -439,16 +441,76 @@ class TestEdge2(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
+    def test_edge_using_missing_between1(self):
+        test = {
+            "data": [
+                {"url": None},
+                {"url": "/"},
+                {"url": "https://hg.mozilla.org/"},
+                {"url": "https://hg.mozilla.org/a/"},
+                {"url": "https://hg.mozilla.org/b/"},
+                {"url": "https://hg.mozilla.org/b/1"},
+                {"url": "https://hg.mozilla.org/b/2"},
+                {"url": "https://hg.mozilla.org/b/3"},
+                {"url": "https://hg.mozilla.org/c/"},
+                {"url": "https://hg.mozilla.org/d"},
+                {"url": "https://hg.mozilla.org/e"}
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "groupby": [
+                    {
+                        "name": "filename",
+                        "value": {
+                            "when": {"missing": {"between": {"url": ["https://hg.mozilla.org/", "/"]}}},
+                            "then": "url"
+                        }
+                    }
+                ],
+                "where": {"prefix": {"url": "https://hg.mozilla.org/"}},
+                "limit": 100
+            },
+            "expecting_list": {
+                "meta": {"format": "list"},
+                "data": [
+                    {"filename": "https://hg.mozilla.org/d", "subdir": NULL, "count": 1},
+                    {"filename": "https://hg.mozilla.org/e", "subdir": NULL, "count": 1},
+                    {"filename": "https://hg.mozilla.org/", "subdir": NULL, "count": 1},
+                    {"count": 6}
+                ]}
+
+        }
+        self.utils.execute_tests(test)
+
+    def test_edge_find_w_start(self):
+        test = {
+            "data": [{"url": "/"}],
+            "query": {
+                "from": TEST_TABLE,
+                "groupby": [
+                    {
+                        "name": "suffix missing",
+                        "value": {"missing": {"find": ["url", {"literal": "/"}], "start": {"literal": 23}}}
+                    }
+                ]
+            },
+            "expecting_list": {
+                "meta": {"format": "list"},
+                "data": [{"suffix missing": True}]}
+
+        }
+        self.utils.execute_tests(test)
+
 
 two_dim_test_data = [
     {"a": "x", "b": "m", "v": 2},
     {"a": "x", "b": "n", "v": 3},
-    {"a": "x", "b": NULL, "v": 5},
+    {"a": "x", "b": None, "v": 5},
     {"a": "y", "b": "m", "v": 7},
     {"a": "y", "b": "n", "v": 11},
-    {"a": "y", "b": NULL, "v": 13},
-    {"a": NULL, "b": "m", "v": 17},
-    {"a": NULL, "b": "n", "v": 19},
+    {"a": "y", "b": None, "v": 13},
+    {"a": None, "b": "m", "v": 17},
+    {"a": None, "b": "n", "v": 19},
     {"a": "x", "b": "m", "v": 27},
     {"a": "y", "b": "n", "v": 39}
 ]

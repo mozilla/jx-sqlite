@@ -8,16 +8,12 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import division
-from __future__ import unicode_literals
+from __future__ import absolute_import, division, unicode_literals
 
 from mo_logs import Log
 from mo_testing.fuzzytestcase import FuzzyTestCase
 
-from jx_python.expressions import NullOp
-
 TEST_TABLE = "testdata"
-NULL = NullOp()
 
 global_settings = None
 utils = None
@@ -30,8 +26,10 @@ class BaseTestCase(FuzzyTestCase):
         if not utils:
             try:
                 import tests
-            except Exception:
-                Log.error("Expecting ./tests/__init__.py to set `global_settings` and `utils` so tests can be run")
+            except Exception as e:
+                Log.error("Expecting ./tests/__init__.py with instructions to setup testing", cause=e)
+        if utils is None:
+            Log.error("Expecting ./tests/__init__.py to set `global_settings` and `utils` so tests can be run")
         self.utils = utils
 
     @classmethod

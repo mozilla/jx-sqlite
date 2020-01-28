@@ -17,20 +17,23 @@ import signal
 import subprocess
 from copy import deepcopy
 
+from jx_sqlite.container import Container
+
 import mo_json_config
-from future.utils import text_type
+from mo_future import text_type
 from mo_dots import wrap, coalesce, unwrap, listwrap, Data, startswith_field
+from mo_json import json2value
 from mo_kwargs import override
 from mo_logs import Log, Except, constants
-from mo_logs.exceptions import extract_stack
+from mo_logs.exceptions import get_stacktrace
 from mo_testing.fuzzytestcase import assertAlmostEqual
 
 from jx_sqlite.query_table import QueryTable
-from pyLibrary import convert
 from jx_python import jx
 from jx_base.query import QueryOp
 
 from tests import test_jx
+from tests.test_jx import TEST_TABLE
 
 
 class SQLiteUtils(object):
@@ -42,9 +45,11 @@ class SQLiteUtils(object):
         self._index = None
 
     def setUp(self):
-        self._index = QueryTable("testing")
+        container = Container(db = test_jx.global_settings.db)
+        self._index = QueryTable(name="testing", container=container)
 
     def tearDown(self):
+
         pass
 
     def setUpClass(self):
@@ -56,17 +61,17 @@ class SQLiteUtils(object):
     def not_real_service(self):
         return True
 
-    def execute_tests(self, subtest, tjson=False):
+    def execute_tests(self, subtest, tjson=False, places=6):
         subtest = wrap(subtest)
-        subtest.name = extract_stack()[1]['method']
+        subtest.name = get_stacktrace()[1]['method']
 
         if subtest.disable:
             return
 
-        self.fill_container(subtest, tjson=tjson)
+        self.fill_container(subtest, typed=tjson)
         self.send_queries(subtest)
 
-    def fill_container(self, subtest, tjson=False):
+    def fill_container(self, subtest, typed=False):
         """
         RETURN SETTINGS THAT CAN BE USED TO POINT TO THE INDEX THAT'S FILLED
         """
@@ -76,11 +81,11 @@ class SQLiteUtils(object):
             # INSERT DATA
             self._index.insert(subtest.data)
         except Exception as  e:
-            Log.error("can not load {{data}} into container", {"data":subtest.data}, e)
+            Log.error("can not load {{data}} into container", {"data": subtest.data}, e)
 
         frum = subtest.query['from']
-        if isinstance(frum, basestring):
-            subtest.query["from"] = frum.replace(test_jx.TEST_TABLE, self._index.sf.fact)
+        if isinstance(frum, text_type):
+            subtest.query["from"] = frum.replace(TEST_TABLE, self._index.name)
         else:
             Log.error("Do not know how to handle")
 
@@ -114,11 +119,11 @@ class SQLiteUtils(object):
                     "name": subtest.name
                 })
         except Exception as e:
-            Log.error("Failed test {{name|quote}}", {"name": subtest.name}, e)
+            Log.error("Failed test {{name|quote}}", name=subtest.name, cause=e)
 
     def execute_query(self, query):
         try:
-            if startswith_field(query["from"], self._index.sf.fact):
+            if startswith_field(query["from"], self._index.name):
                 return self._index.query(deepcopy(query))
             elif query["from"] == "meta.columns":
                 return self._index.query_metadata(deepcopy(query))
@@ -128,7 +133,7 @@ class SQLiteUtils(object):
             Log.error("Failed query", e)
 
     def try_till_response(self, *args, **kwargs):
-        self.execute_query(convert.json2value(convert.utf82unicode(kwargs["data"])))
+        self.execute_query(json2value(kwargs["data"].decode('utf8')))
 
 
 def compare_to_expected(query, result, expect):
@@ -139,14 +144,14 @@ def compare_to_expected(query, result, expect):
         assertAlmostEqual(set(result.header), set(expect.header))
 
         # MAP FROM expected COLUMN TO result COLUMN
-        mapping = zip(*zip(*filter(
+        mapping = list(zip(*list(zip(*filter(
             lambda v: v[0][1] == v[1][1],
             itertools.product(enumerate(expect.header), enumerate(result.header))
-        ))[1])[0]
+        )))[1]))[0]
         result.header = [result.header[m] for m in mapping]
 
         if result.data:
-            columns = zip(*unwrap(result.data))
+            columns = list(zip(*unwrap(result.data)))
             result.data = zip(*[columns[m] for m in mapping])
 
         if not query.sort:
@@ -156,14 +161,14 @@ def compare_to_expected(query, result, expect):
         if query["from"].startswith("meta."):
             pass
         else:
-            query = QueryOp.wrap(query)
+            query = QueryOp.wrap(query, query.frum, query.schema)
 
         if not query.sort:
             try:
                 #result.data MAY BE A LIST OF VALUES, NOT OBJECTS
                 data_columns = jx.sort(set(jx.get_columns(result.data, leaves=True)) | set(jx.get_columns(expect.data, leaves=True)), "name")
-            except Exception:
-                data_columns = [{"name":"."}]
+            except Exception as _:
+                data_columns = [{"name": "."}]
 
             sort_order = listwrap(coalesce(query.edges, query.groupby)) + data_columns
 
@@ -231,10 +236,10 @@ def sort_table(result):
 
 
 def error(response):
-    response = convert.utf82unicode(response.content)
+    response = response.content.decode('utf8')
 
     try:
-        e = Except.new_instance(convert.json2value(response))
+        e = Except.new_instance(json2value(response))
     except Exception:
         e = None
 
@@ -264,7 +269,6 @@ def run_app(please_stop, server_is_ready):
 
     proc.send_signal(signal.CTRL_C_EVENT)
 
-
 # read_alternate_settings
 try:
     filename = os.environ.get("TEST_CONFIG")
@@ -281,6 +285,6 @@ try:
 
     Log.start(test_jx.global_settings.debug)
     test_jx.utils = SQLiteUtils(test_jx.global_settings)
-except Exception, e:
+except Exception as e:
     Log.warning("problem", e)
 

@@ -8,15 +8,15 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import division
-from __future__ import unicode_literals
+from __future__ import absolute_import, division, unicode_literals
 
-from mo_dots import wrap
-from mo_math import Math
-from unittest import skipIf
+from unittest import skip, skipIf
 
+from jx_base.expressions import NULL
 from jx_base.query import DEFAULT_LIMIT, MAX_LIMIT
-from tests.test_jx import BaseTestCase, TEST_TABLE, global_settings, NULL
+from mo_dots import wrap
+import mo_math
+from tests.test_jx import BaseTestCase, TEST_TABLE, global_settings
 
 lots_of_data = wrap([{"a": i} for i in range(30)])
 
@@ -82,12 +82,13 @@ class TestSetOps(BaseTestCase):
             },
             "expecting_list": {
                 "meta": {"format": "list"}, "data": [
-                {},
-                {},
-                {},
-                {},
-                {}
-            ]},
+                    {},
+                    {},
+                    {},
+                    {},
+                    {}
+                ]
+            },
             "expecting_table": {
                 "meta": {"format": "table"},
                 "header": ["a.b.d"],
@@ -301,12 +302,12 @@ class TestSetOps(BaseTestCase):
             },
             "expecting_list": {
                 "meta": {"format": "list"}, "data": [
-                {"_id": Math.is_hex}
+                {"_id": mo_math.is_hex}
             ]},
             "expecting_table": {
                 "meta": {"format": "table"},
                 "header": ["_id"],
-                "data": [[Math.is_hex]]
+                "data": [[mo_math.is_hex]]
             },
             "expecting_cube": {
                 "meta": {"format": "cube"},
@@ -317,7 +318,7 @@ class TestSetOps(BaseTestCase):
                     }
                 ],
                 "data": {
-                    "_id": [Math.is_hex]
+                    "_id": [mo_math.is_hex]
                 }
             }
         }
@@ -338,12 +339,33 @@ class TestSetOps(BaseTestCase):
             "expecting_list": {
                 "meta": {"format": "list"},
                 "data": [
-                    Math.is_hex
+                    mo_math.is_hex
                 ]
             }
         }
         self.utils.execute_tests(test)
 
+    def test_id_and_value_select(self):
+        """
+        ALWAYS GOOD TO HAVE AN ID, CALL IT "_id"
+        """
+        test = {
+            "data": [
+                {"a": "b"}
+            ],
+            "query": {
+                "select": ["_id", "a"],
+                "from": TEST_TABLE
+            },
+            "expecting_table": {
+                "meta": {"format": "table"},
+                "header":["_id", "a"],
+                "data": [
+                    [mo_math.is_hex, "b"]
+                ]
+            }
+        }
+        self.utils.execute_tests(test)
 
     def test_single_star_select(self):
         test = {
@@ -411,7 +433,6 @@ class TestSetOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.use == "elasticsearch", "ES only accepts objects, not values")
     def test_list_of_values(self):
         test = {
             "data": ["a", "b"],
@@ -484,7 +505,7 @@ class TestSetOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(True, "Too complicated")
+    @skip("Too complicated")
     def test_select_into_children(self):
         test = {
             "name": "select into children to table",
@@ -495,7 +516,7 @@ class TestSetOps(BaseTestCase):
                         "type": "nested",
                         "properties": {
                             "y": {
-                                "type": "string"
+                                "type": "keyword"
                             },
                             "b": {
                                 "type": "nested",
@@ -506,7 +527,7 @@ class TestSetOps(BaseTestCase):
                                 }
                             },
                             "z": {
-                                "type": "string"
+                                "type": "keyword"
                             }
                         }
                     }
@@ -594,9 +615,9 @@ class TestSetOps(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_tests(test)
+        self.utils.execute_tests(test, tjson=False)
 
-    @skipIf(global_settings.use=="sqlite", "no need for limit when using own resources")
+    @skipIf(global_settings.use == "sqlite", "no need for limit when using own resources")
     def test_max_limit(self):
         test = wrap({
             "data": lots_of_data,
@@ -767,10 +788,10 @@ class TestSetOps(BaseTestCase):
     def test_select_expression(self):
         test = {
             "data": [
-                       {"a": {"b": 0, "c": 0}},
-                       {"a": {"b": 0, "c": 1}},
-                       {"a": {"b": 1, "c": 0}},
-                       {"a": {"b": 1, "c": 1}},
+                {"a": {"b": 0, "c": 0}},
+                {"a": {"b": 0, "c": 1}},
+                {"a": {"b": 1, "c": 0}},
+                {"a": {"b": 1, "c": 1}},
             ],
             "query": {
                 "from": TEST_TABLE,
@@ -1029,7 +1050,6 @@ class TestSetOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-
     def test_select3_object(self):
         """
         ES DOES NOT ALLOW YOU TO SELECT AN OBJECT, ONLY THE LEAVES
@@ -1083,7 +1103,7 @@ class TestSetOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    def test_select_nested_column(self):
+    def test_select_array_as_value(self):
         test = {
             "data": [
                 {"_a": [{"b": 1, "c": 1}, {"b": 2, "c": 1}]},
@@ -1126,3 +1146,152 @@ class TestSetOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
+    def test_select_w_nested_values(self):
+        test = {
+            "data": [
+                {"_a": [{"k": [{"b": 1}, {"b": 2}]}]},
+                {"_a": [{"k": [{"b": 1}, {"b": 2}]}]}
+            ],
+            "query": {
+                "from": TEST_TABLE
+            },
+            "expecting_list": {
+                "meta": {"format": "list"},
+                "data": [
+                    {"_a": {"k": [{"b": 1}, {"b": 2}]}},
+                    {"_a": {"k": [{"b": 1}, {"b": 2}]}}
+                ]
+            },
+            "expecting_table": {
+                "meta": {"format": "table"},
+                "header": ["."],
+                "data": [
+                    [{"_a": {"k": [{"b": 1}, {"b": 2}]}}],
+                    [{"_a": {"k": [{"b": 1}, {"b": 2}]}}]
+                ]
+            },
+            "expecting_cube": {
+                "meta": {"format": "cube"},
+                "edges": [
+                    {
+                        "name": "rownum",
+                        "domain": {"type": "rownum", "min": 0, "max": 2, "interval": 1}
+                    }
+                ],
+                "data": {
+                    ".": [
+                        {"_a": {"k": [{"b": 1}, {"b": 2}]}},
+                        {"_a": {"k": [{"b": 1}, {"b": 2}]}}
+                    ]
+                }
+            }
+        }
+        self.utils.execute_tests(test)
+
+    def test_select_typed_column(self):
+        test = {
+            "data": [
+                {"a": "test"}
+            ],
+            "query": {
+                "select": ["a.~s~"],
+                "from": TEST_TABLE,
+            },
+            "expecting_list": {
+                "meta": {"format": "list"},
+                "data": [
+                    {"a": {"~s~": "test"}}
+                ]
+            },
+            "expecting_table": {
+                "meta": {"format": "table"},
+                "header": ["a.~s~"],
+                "data": [
+                    ["test"]
+                ]
+            }
+        }
+        self.utils.execute_tests(test)
+
+        pass
+
+        # TODO: The timestamp.~s~ APPEARS TO RESULT IN {"":{"":{"":{"":"2018-09-26 12:41:19.575174"}}}}
+        # {
+        #
+        # 	"select":["machine.name","template","timestamp.~s~"],
+        # 	"from":"debug-etl",
+        # 	"where":{"exists":"timestamp.~s~"}
+        # }
+
+    def test_union_columns(self):
+        test = {
+            "data": [
+                {"a": [1, 2, 3], "b": [2, 3, 4], "c":1},
+                {"a": [4, 4, 4], "b": [2, 3, 4], "c":2}
+            ],
+            "query": {
+                "select": [{"name": "x", "value": {"union": ["a", "b"]}}],
+                "from": TEST_TABLE,
+                "sort": "c"  # USE sort TO ENSURE ORDER OF ROWS TO MATCH expecting_list
+            },
+            "expecting_list": {
+                "meta": {"format": "list"},
+                "data": [
+                    {"x": {1, 2, 3, 4}},
+                    {"x": {2, 3, 4}}
+                ]
+            }
+        }
+        self.utils.execute_tests(test)
+
+    def test_filter_on_deep_property(self):
+        test = {
+            "data": [
+                {"v": 1, "a": "b"},
+                {"v": 4, "a": [{"b": 1}, {"b": 2}, {"b": 2}]},
+                {"v": 2, "a": {"b": 1}},
+                {"v": 3, "a": {}},
+                {"v": 5, "a": {"b": 4}},
+                {"v": 6, "a": 3},
+                {"v": 7}
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "select": "v",
+                "where": {"exists": "a.b"}
+            },
+            "expecting_list": {
+                "meta": {"format": "list"},
+                "data": [2, 4, 5]
+            },
+            "expecting_table": {
+                "meta": {"format": "table"},
+                "header": ["v"],
+                "data": [[2], [4], [5]]
+            },
+            "expecting_cube": {
+                "meta": {"format": "cube"},
+                "data": {
+                    "v": [2, 4, 5]
+                }
+            }
+        }
+        self.utils.execute_tests(test)
+
+    def test_select_id_and_source(self):
+        test = {
+            "data": [
+                {"_id": "test_id", "v": 4, "a": [{"b": 1}, {"b": 2}, {"b": 2}]},
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "select": ["_id", {"name": "_source", "value": "."}]
+            },
+            "expecting_list": {
+                "meta": {"format": "list"},
+                "data": [
+                    {"_id": "test_id", "_source": {"v": 4, "a": [{"b": 1}, {"b": 2}, {"b": 2}]}}
+                ]
+            }
+        }
+        self.utils.execute_tests(test)

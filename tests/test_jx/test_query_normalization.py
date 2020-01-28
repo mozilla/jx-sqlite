@@ -8,13 +8,12 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import division
-from __future__ import unicode_literals
+from __future__ import absolute_import, division, unicode_literals
 
-from mo_json import value2json, json2value
-
+from jx_base.query import _normalize_edges, _normalize_select
+from mo_dots import Null
+from mo_json import json2value, value2json
 from mo_testing.fuzzytestcase import FuzzyTestCase
-from jx_base.query import _normalize_select, _normalize_edges
 
 
 class TestQueryNormalization(FuzzyTestCase):
@@ -25,7 +24,7 @@ class TestQueryNormalization(FuzzyTestCase):
     def test_complex_edge_value(self):
         edge = {"name": "n", "value": ["a", "c"]}
 
-        result = json2value(value2json(_normalize_edges(edge)[0]))
+        result = json2value(value2json(_normalize_edges(edge, Null)[0]))
         expected = {
             "name": "n",
             "value": {"tuple": ["a", "c"]},

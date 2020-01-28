@@ -8,13 +8,14 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import division
-from __future__ import unicode_literals
+from __future__ import absolute_import, division, unicode_literals
 
-from future.utils import text_type
-from mo_dots import wrap, set_default
+from unittest import skip, skipIf
 
-from tests.test_jx import BaseTestCase, TEST_TABLE, NULL
+from jx_base.expressions import NULL
+from mo_dots import set_default, wrap
+from mo_future import text
+from tests.test_jx import BaseTestCase, TEST_TABLE, global_settings
 
 
 class TestgroupBy1(BaseTestCase):
@@ -192,7 +193,6 @@ class TestgroupBy1(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-
     def test_where(self):
         test = {
             "data": simple_test_data,
@@ -281,6 +281,51 @@ class TestgroupBy1(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
+    def test_default(self):
+        test = {
+            "name": "sum column",
+            "metadata": {},
+            "data": [
+                {"a": "c"},
+                {"a": "b", "v": 2},
+                {"v": 3},
+                {"a": "b"},
+                {"a": "c"},
+                {"a": "c"}
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "select": {"value": "v", "aggregate": "sum", "default": 0},
+                "groupby": ["a"]
+            },
+            "expecting_list": {
+                "meta": {"format": "list"},
+                "data": [
+                    {"a": "b", "v": 2},
+                    {"a": "c", "v": 0},
+                    {"a": NULL, "v": 3}
+                ]},
+            "expecting_table": {
+                "meta": {"format": "table"},
+                "header": ["a", "v"],
+                "data": [
+                    ["b", 2],
+                    ["c", 0],
+                    [None, 3]
+                ]
+            },
+            "expecting_cube": {
+                "meta": {"format": "cube"},
+                "edges": [{"name": "a", "domain": {"partitions": [
+                    {"value": "b"},
+                    {"value": "c"}
+                ]}}],
+                "data": {
+                    "v": [2, 0, 3]
+                }
+            }
+        }
+        self.utils.execute_tests(test)
 
     def test_many_aggs_on_one_column(self):
         # ES WILL NOT ACCEPT TWO (NAIVE) AGGREGATES ON SAME FIELD, COMBINE THEM USING stats AGGREGATION
@@ -320,7 +365,6 @@ class TestgroupBy1(BaseTestCase):
             }
         }
         self.utils.execute_tests(test)
-
 
     def test_error_on_same_column_name(self):
         test = {
@@ -362,9 +406,10 @@ class TestgroupBy1(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
+    @skipIf(global_settings.elasticsearch.version.startswith("5."), "Not supported by es5")
     def test_groupby_left_id(self):
         test = {
-            "data": [set_default(d, {"_id": "aa" + text_type(i)}) for i, d in enumerate(simple_test_data)],
+            "data": [set_default(d, {"_id": "aa" + text(i)}) for i, d in enumerate(simple_test_data)],
             "query": {
                 "from": TEST_TABLE,
                 "groupby": {"name": "prefix", "value": {"left": {"_id": 2}}}
@@ -379,7 +424,34 @@ class TestgroupBy1(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    def test_groupby_value(self):
+    @skipIf(global_settings.elasticsearch.version and int(global_settings.elasticsearch.version.split(".")[0]) <= 4, "version 4 and below do not implement")
+    def test_count_values(self):
+        # THIS IS NOT PART OF THE JX SPEC, IT IS AN INTERMEDIATE FORM FOR DEBUGGING
+        test = {
+            "data": [
+                {"a": 1, "b": [1, 2, 3]},
+                {"a": 2, "b": [4, 5, 6]},
+                {"a": 3, "b": [2, 3, 4]},
+                {"a": 4},
+                {"a": 5, "b": [3, 4, 5]},
+                {"a": 6, "b": 6}
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "select": [{"value": "b", "aggregate": "count_values"}]
+            },
+            "expecting_list": {
+                "meta": {"format": "value"},
+                "data":
+                    {"b": {"1.0": 1, "2.0": 2, "3.0": 3, "4.0": 3, "5.0": 2, "6.0": 2}}
+
+            }
+        }
+        self.utils.execute_tests(test)
+
+    # @skipIf(int(global_settings.elasticsearch.version.split(".")[0]) <= 5, "version 5 and below do not implement")
+    @skip("for coverage")
+    def test_groupby_multivalue_nested(self):
         test = {
             "data": [
                 {"a": 1, "b": [1, 2, 3]},
@@ -419,6 +491,7 @@ class TestgroupBy1(BaseTestCase):
                 ]
             }
         }
+        self.utils.execute_tests(test)
 
     def test_groupby_object(self):
         test = {
@@ -451,10 +524,10 @@ class TestgroupBy1(BaseTestCase):
                 "header": ["g", "count"],
                 "data": [
                     [{"a": "b", "v": 1}, 2],
-                    [{"a": "b"}, 1],
+                    [{"a": "b"        }, 1],
                     [{"a": "c", "v": 2}, 2],
                     [{"a": "c", "v": 1}, 1],
-                    [{"v": 2}, 1]
+                    [{          "v": 2}, 1]
                 ]
             }
         }
@@ -466,8 +539,8 @@ class TestgroupBy1(BaseTestCase):
                 {"g": {"a": "c", "v": 1}},
                 {"g": {"a": "b", "v": 1}},
                 {"g": {"a": "b", "v": 1}},
-                {"g": {"v": 2}},
-                {"g": {"a": "b"}},
+                {"g": {          "v": 2}},
+                {"g": {"a": "b"        }},
                 {"g": {"a": "c", "v": 2}},
                 {"g": {"a": "c", "v": 2}}
             ],
@@ -477,12 +550,12 @@ class TestgroupBy1(BaseTestCase):
             },
             "expecting_list": {
                 "meta": {"format": "list"},
-                "data":[
+                "data": [
                     {"g.a": "b", "g.v": 1, "count": 2},
-                    {"g.a": "b", "count": 1},
+                    {"g.a": "b",           "count": 1},
                     {"g.a": "c", "g.v": 2, "count": 2},
                     {"g.a": "c", "g.v": 1, "count": 1},
-                    {"g.v": 2, "count": 1}
+                    {            "g.v": 2, "count": 1}
                 ]
             },
             "expecting_table": {
@@ -497,6 +570,49 @@ class TestgroupBy1(BaseTestCase):
             }
         }
         self.utils.execute_tests(test)
+
+    def test_groupby_multivalue_naive(self):
+        test = {
+            "data": [
+                {"r": {"t": ["a", "b"]}},
+                {"r": {"t": ["b", "a"]}},
+                {"r": {"t": ["a"]}},
+                {"r": {"t": ["b"]}},
+                {},
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "groupby": ["r.t"]
+            },
+            "expecting_list": {
+                "meta": {"format": "list"},
+                "data": [
+                    {"r": {"t": ["a", "b"]}, "count": 2},
+                    {"r": {"t": "b"}, "count": 1},
+                    {"r": {"t": "a"}, "count": 1},
+                    {"r": {"t": NULL}, "count": 1},
+                ]
+            },
+            "expecting_table": {
+                "header": ["r.t", "count"],
+                "data": [
+                    [["a", "b"], 2],
+                    ["a", 1],
+                    ["b", 1],
+                    [NULL, 1]
+                ]
+            }
+        }
+        self.utils.execute_tests(test)
+
+
+# TODO: GROUPBY NUMBER SHOULD NOT RESULT IN A STRING
+#         "groupby":[{
+#        		"name":"date",
+#        		"value":{"floor":[{"div":{"run.timestamp":86400}},1]}
+#        	}],
+
+
 
 # TODO: AGG SHALLOW FIELD WITH DEEP GROUPBY
 # {

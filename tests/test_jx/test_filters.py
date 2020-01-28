@@ -8,9 +8,9 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import division
-from __future__ import unicode_literals
+from __future__ import absolute_import, division, unicode_literals
 
+from jx_base.expressions import NULL
 from mo_dots import wrap
 from tests.test_jx import BaseTestCase, TEST_TABLE
 
@@ -162,7 +162,6 @@ class TestFilters(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-
     def test_empty_in(self):
         test = {
             "data": [{"a": 1}],
@@ -177,6 +176,35 @@ class TestFilters(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
+    def test_in_w_set(self):
+        # ENSURE THE SET IS RECOGNIZED LIKE A LIST
+        test = {
+            "data": [{"a": 1}, {"a": 2}, {"a": 4}],
+            "query": {
+                "select": "a",
+                "from": TEST_TABLE,
+                "where": {"in": {"a": {1, 3}}}
+            },
+            "expecting_list": {
+                "meta": {"format": "list"}, "data": [1]
+            }
+        }
+        self.utils.execute_tests(test)
+
+    def test_in_w_missing_column(self):
+        # ENSURE THE SET IS RECOGNIZED LIKE A LIST
+        test = {
+            "data": [{"a": 1}, {"a": 2}, {"a": 4}],
+            "query": {
+                "select": "a",
+                "from": TEST_TABLE,
+                "where": {"in": {"b": [1, 3]}}
+            },
+            "expecting_list": {
+                "meta": {"format": "list"}, "data": []
+            }
+        }
+        self.utils.execute_tests(test)
 
     def test_empty_match_all(self):
         test = {
@@ -192,6 +220,275 @@ class TestFilters(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
+    def test_empty_prefix(self):
+        test = {
+            "data": [{"v": "test"}],
+            "query": {
+                "from": TEST_TABLE,
+                "select": "*",
+                "where": {"prefix": {"v": ""}}
+            },
+            "expecting_list": {
+                "meta": {"format": "list"}, "data": [{"v": "test"}]
+            }
+        }
+        self.utils.execute_tests(test)
 
+    def test_null_prefix(self):
+        test = {
+            "data": [{"v": "test"}],
+            "query": {
+                "from": TEST_TABLE,
+                "select": "*",
+                "where": {"prefix": {"v": None}}
+            },
+            "expecting_list": {
+                "meta": {"format": "list"}, "data": [{"v": "test"}]
+            }
+        }
+        self.utils.execute_tests(test)
 
-# TODO:  ADD TEST TO ENSURE BOOLEAN COLUMNS (WITH 'T' and 'F' VALUES) CAN BE USED WITH true AND false FILTERS
+    def test_edges_and_empty_prefix(self):
+        test = {
+            "data": [{"v": "test"}],
+            "query": {
+                "from": TEST_TABLE,
+                "edges": "v",
+                "where": {"prefix": {"v": ""}}
+            },
+            "expecting_list": {
+                "meta": {"format": "list"}, "data": [{"v": "test", "count": 1}]
+            }
+        }
+        self.utils.execute_tests(test)
+
+    def test_edges_and_null_prefix(self):
+        test = {
+            "data": [{"v": "test"}],
+            "query": {
+                "from": TEST_TABLE,
+                "edges": "v",
+                "where": {"prefix": {"v": None}}
+            },
+            "expecting_list": {
+                "meta": {"format": "list"}, "data": [{"v": "test", "count": 1}]
+            }
+        }
+        self.utils.execute_tests(test)
+
+    def test_suffix(self):
+        test = {
+            "data": [
+                {"v": "this-is-a-test"},
+                {"v": "this-is-a-vest"},
+                {"v": "test"},
+                {"v": ""},
+                {"v": None}
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "where": {"suffix": {"v": "test"}}
+            },
+            "expecting_list": {
+                "meta": {
+                    "format": "list"},
+                "data": [
+                    {"v": "this-is-a-test"},
+                    {"v": "test"}
+                ]
+            }
+        }
+        self.utils.execute_tests(test)
+
+    def test_null_suffix(self):
+        test = {
+            "data": [
+                {"v": "this-is-a-test"},
+                {"v": "this-is-a-vest"},
+                {"v": "test"},
+                {"v": ""},
+                {"v": None}
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "where": {"postfix": {"v": None}}
+            },
+            "expecting_list": {
+                "meta": {
+                    "format": "list"},
+                "data": [
+                    {"v": "this-is-a-test"},
+                    {"v": "this-is-a-vest"},
+                    {"v": "test"},
+                    {"v": NULL},
+                    {"v": NULL}
+                ]
+            }
+        }
+        self.utils.execute_tests(test)
+
+    def test_empty_suffix(self):
+        test = {
+            "data": [
+                {"v": "this-is-a-test"},
+                {"v": "this-is-a-vest"},
+                {"v": "test"},
+                {"v": ""},
+                {"v": None}
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "where": {"postfix": {"v": ""}}
+            },
+            "expecting_list": {
+                "meta": {
+                    "format": "list"},
+                "data": [
+                    {"v": "this-is-a-test"},
+                    {"v": "this-is-a-vest"},
+                    {"v": "test"},
+                    {"v": NULL},
+                    {"v": NULL}
+                ]
+            }
+        }
+        self.utils.execute_tests(test)
+
+    def test_eq_with_boolean(self):
+        test = {
+            "data": [
+                {"v": True},
+                {"v": True},
+                {"v": True},
+                {"v": False},
+                {"v": False},
+                {"v": False},
+                {"v": None},
+                {"v": None},
+                {"v": None}
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "where": {"eq": {"v": "T"}}
+            },
+            "expecting_list": {
+                "meta": {
+                    "format": "list"
+                },
+                "data": [
+                    {"v": True},
+                    {"v": True},
+                    {"v": True}
+                ]
+            }
+        }
+        self.utils.execute_tests(test)
+
+    def test_big_integers_in_script(self):
+        bigger_than_int32 = 1547 * 1000 * 1000 * 1000
+        test = {
+            "data": [
+                {"v": 42}
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "where": {"lt": [0, {"mul": ["v", bigger_than_int32]}]}  # SOMETHING COMPLICATED ENOUGH TO FORCE SCRIPTING
+            },
+            "expecting_list": {
+                "meta": {
+                    "format": "list"
+                },
+                "data": [
+                    {"v": 42}
+                ]
+            }
+        }
+        self.utils.execute_tests(test)
+
+    def test_where_is_array(self):
+        test = {
+            "data": [
+                {"a": 1, "b": 1},
+                {"a": 1, "b": 2},
+                {"a": 2, "b": 1},
+                {"a": 2, "b": 2}
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "select": "*",
+                "where": [{"eq": {"a": 1}}, {"eq": {"b": 1}}]
+            },
+            "expecting_list": {
+                "meta": {"format": "list"}, "data": [{"a": 1, "b": 1}]
+            }
+        }
+        self.utils.execute_tests(test)
+
+    def test_in_using_tuple_of_literals(self):
+        test = {
+            "data": [
+                {"a": "1"},
+                {"a": "2"},
+                {"a": "3"},
+                {"a": "4"},
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "select": "a",
+                "where": {"in": ["a", [{"literal": "4"}, {"literal": "2"}]]}
+            },
+            "expecting_list": {
+                "meta": {"format": "list"}, "data": ["4", "2"]
+            }
+        }
+        self.utils.execute_tests(test)
+
+    def test_eq_using_tuple_of_literals(self):
+        test = {
+            "data": [
+                {"a": "1"},
+                {"a": "2"},
+                {"a": "3"},
+                {"a": "4"},
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "select": "a",
+                "where": {"eq": ["a", [{"literal": "4"}, {"literal": "2"}]]}
+            },
+            "expecting_list": {
+                "meta": {"format": "list"}, "data": ["4", "2"]
+            }
+        }
+        self.utils.execute_tests(test)
+
+    def test_find_uses_regex(self):
+        test = {
+            "data": [
+                {"v": "this-is-a-test"},
+                {"v": "this-is-a-vest"},
+                {"v": "test"},
+                {"v": ""},
+                {"v": None}
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "where": {"find": {"v": "test"}}
+            },
+            "expecting_list": {
+                "meta": {
+                    "format": "list",
+                    "es_query": {
+                        "from": 0,
+                        "query": {"regexp": {"v.~s~": ".*test.*"}},
+                        "size": 10
+                    },
+                },
+                "data": [
+                    {"v": "this-is-a-test"},
+                    {"v": "test"},
+                ]
+            }
+        }
+        self.utils.execute_tests(test)
+

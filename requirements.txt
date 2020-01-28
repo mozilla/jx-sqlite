@@ -1,4 +1,4 @@
-future
+mo-future>=1.1
 mo-dots>=1.5.17188
 mo-logs
 mo-files>=1.2
@@ -8,5 +8,6 @@ mo-math
 mo-times
 mo-collections>=1.2.17235
 mo-testing>=1.0.17168
-mo-json>=1.0.17168
+mo-json>=2.1.17319
 mo-json-config
+mo-sql

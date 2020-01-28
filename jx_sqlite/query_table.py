@@ -5,48 +5,58 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http:# mozilla.org/MPL/2.0/.
 #
-# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+# Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import unicode_literals
+from __future__ import absolute_import, division, unicode_literals
 
 import mo_json
-from future.utils import text_type
-from jx_python import jx
-from jx_sqlite import quote_table, sql_aggs, unique_name, untyped_column
-from mo_collections.matrix import Matrix, index_to_coordinate
-from mo_dots import listwrap, coalesce, Data, wrap, startswith_field, unwrap, unwraplist, concat_field, relative_field
-from mo_logs import Log
-
+from jx_base import Column, Facts
+from jx_base.container import type2container
 from jx_base.domains import SimpleSetDomain
-from jx_base.expressions import jx_expression, Variable, TupleOp
-from jx_base import STRUCT
-from jx_python.meta import Column
+from jx_base.expressions import TupleOp, Variable, jx_expression
+from jx_base.language import is_op
 from jx_base.query import QueryOp
+from jx_python import jx
+from jx_sqlite import GUID, sql_aggs, unique_name, untyped_column
+from jx_sqlite.base_table import BaseTable
+from jx_sqlite.expressions._utils import SQLang
 from jx_sqlite.groupby_table import GroupbyTable
+from mo_collections.matrix import Matrix, index_to_coordinate
+from mo_dots import Data, Null, coalesce, concat_field, is_list, listwrap, relative_field, startswith_field, unwrap, \
+    unwraplist, wrap
+from mo_future import text, transpose
+from mo_json import STRING, STRUCT
+from mo_logs import Log
+from mo_sql import SQL_FROM, SQL_ORDERBY, SQL_SELECT, SQL_WHERE, sql_count, sql_iso, sql_list, SQL_CREATE, \
+    SQL_AS, SQL_DELETE, ConcatSQL, JoinSQL, SQL_COMMA, SQL
+from jx_sqlite.sqlite import quote_column, sql_alias
 
 
-class QueryTable(GroupbyTable):
+class QueryTable(GroupbyTable, Facts):
+    def __init__(self, name, container):
+        BaseTable.__init__(self, name, container)
+        Facts.__init__(self, name, container)
+
     def get_column_name(self, column):
-        return column.names[self.sf.fact]
+        return relative_field(column.name, self.snowflake.fact_name)
 
     def __len__(self):
-        counter = self.db.query("SELECT COUNT(*) FROM " + quote_table(self.sf.fact))[0][0]
+        counter = self.db.query(SQL_SELECT + sql_count("*") + SQL_FROM + quote_column(self.snowflake.fact_name))[0][0]
         return counter
 
     def __nonzero__(self):
-        counter = self.db.query("SELECT COUNT(*) FROM " + quote_table(self.sf.fact))[0][0]
+        counter = self.db.query(SQL_SELECT + sql_count("*") + SQL_FROM + quote_column(self.snowflake.fact_name))[0][0]
         return bool(counter)
 
     def delete(self, where):
-        filter = where.to_sql()
-        self.db.execute("DELETE FROM " + quote_table(self.sf.fact) + " WHERE " + filter)
+        filter = SQLang[jx_expression(where)].to_sql(self.schema)
+        with self.db.transaction() as t:
+            t.execute(ConcatSQL(SQL_DELETE, SQL_FROM, quote_column(self.snowflake.fact_name), SQL_WHERE, filter))
 
     def vars(self):
-        return set(self.columns.keys())
+        return set(self.schema.columns.keys())
 
     def map(self, map_):
         return self
@@ -59,25 +69,21 @@ class QueryTable(GroupbyTable):
         """
         select = []
         column_names = []
-        for cname, cs in self.columns.items():
-            cs = [c for c in cs if c.type not in STRUCT and len(c.nested_path) == 1]
-            if len(cs) == 0:
+        for c in self.schema.columns:
+            if c.jx_type in STRUCT:
                 continue
-            column_names.append(cname)
-            if len(cs) == 1:
-                select.append(quote_table(c.es_column) + " " + quote_table(c.name))
-            else:
-                select.append(
-                    "coalesce(" +
-                    ",".join(quote_table(c.es_column) for c in cs) +
-                    ") " + quote_table(c.name)
-                )
+            if len(c.nested_path) != 1:
+                continue
+            column_names.append(c.name)
+            select.append(sql_alias(quote_column(c.es_column), c.name))
 
-        result = self.db.query(
-            " SELECT " + "\n,".join(select) +
-            " FROM " + quote_table(self.sf.fact) +
-            " WHERE " + jx_expression(filter).to_sql()
-        )
+        where_sql = SQLang[jx_expression(filter)].to_sql(self.schema)[0].sql.b
+        result = self.db.query(ConcatSQL(
+            SQL_SELECT, JoinSQL(SQL_COMMA, select),
+            SQL_FROM, quote_column(self.snowflake.fact_name),
+            SQL_WHERE, where_sql
+        ))
+
         return wrap([{c: v for c, v in zip(column_names, r)} for r in result.data])
 
     def query(self, query):
@@ -85,48 +91,31 @@ class QueryTable(GroupbyTable):
         :param query:  JSON Query Expression, SET `format="container"` TO MAKE NEW TABLE OF RESULT
         :return:
         """
-        if not startswith_field(query['from'], self.sf.fact):
+        if not query.get('from'):
+            query['from'] = self.name
+        elif not startswith_field(query['from'], self.name):
             Log.error("Expecting table, or some nested table")
-        frum, query['from'] = query['from'], self
-        schema = self.sf.tables["."].schema
-        if not query.groupby:
-            query = QueryOp.wrap(query, schema)
-        # TYPE CONFLICTS MUST NOW BE RESOLVED DURING
-        # TYPE-SPECIFIC QUERY NORMALIZATION
-        # vars_ = query.vars(exclude_select=True)
-        # type_map = {
-        #     v: c.es_column
-        #     for v in vars_
-        #     if v in self.columns and len([c for c in self.columns[v] if c.type != "nested"]) == 1
-        #     for c in self.columns[v]
-        #     if c.type != "nested"
-        # }
-        #
-        # sql_query = query.map(type_map)
-        query = query
-
+        query = QueryOp.wrap(query, self.container, self.namespace)
         new_table = "temp_" + unique_name()
 
         if query.format == "container":
-            create_table = "CREATE TABLE " + quote_table(new_table) + " AS "
+            create_table = SQL_CREATE + quote_column(new_table) + SQL_AS
         else:
             create_table = ""
 
         if query.groupby and query.format != "cube":
-            query = QueryOp.wrap(query, schema)
-            op, index_to_columns = self._groupby_op(query, frum)
+            op, index_to_columns = self._groupby_op(query, self.schema)
             command = create_table + op
         elif query.groupby:
             query.edges, query.groupby = query.groupby, query.edges
-            query = QueryOp.wrap(query, schema)
-            op, index_to_columns = self._edges_op(query, frum)
+            op, index_to_columns = self._edges_op(query, self.schema)
             command = create_table + op
             query.edges, query.groupby = query.groupby, query.edges
         elif query.edges or any(a != "none" for a in listwrap(query.select).aggregate):
-            op, index_to_columns = self._edges_op(query, frum)
+            op, index_to_columns = self._edges_op(query, query.frum.schema)
             command = create_table + op
         else:
-            op = self._set_op(query, frum)
+            op = self._set_op(query)
             return op
 
         result = self.db.query(command)
@@ -134,7 +123,7 @@ class QueryTable(GroupbyTable):
         if query.format == "container":
             output = QueryTable(new_table, db=self.db, uid=self.uid, exists=True)
         elif query.format == "cube" or (not query.format and query.edges):
-            column_names= [None]*(max(c.push_column for c in index_to_columns.values()) + 1)
+            column_names = [None] * (max(c.push_column for c in index_to_columns.values()) + 1)
             for c in index_to_columns.values():
                 column_names[c.push_column] = c.push_column_name
 
@@ -142,7 +131,7 @@ class QueryTable(GroupbyTable):
                 data = {n: Data() for n in column_names}
                 for s in index_to_columns.values():
                     data[s.push_name][s.push_child] = unwrap(s.pull(result.data[0]))
-                if isinstance(query.select, list):
+                if is_list(query.select):
                     select = [{"name": s.name} for s in query.select]
                 else:
                     select = {"name": query.select.name}
@@ -163,7 +152,7 @@ class QueryTable(GroupbyTable):
                         domain = SimpleSetDomain(partitions=e.domain.partitions.name)
                     elif e.domain.type == "range":
                         domain = e.domain
-                    elif isinstance(e.value, TupleOp):
+                    elif is_op(e.value, TupleOp):
                         pulls = jx.sort([c for c in index_to_columns.values() if c.push_name == e.name],
                                         "push_child").pull
                         parts = [tuple(p(d) for p in pulls) for d in result.data]
@@ -185,7 +174,7 @@ class QueryTable(GroupbyTable):
                     else:
                         data[s.name] = Matrix(dims=dims)
 
-                if isinstance(query.select, list):
+                if is_list(query.select):
                     select = [{"name": s.name} for s in query.select]
                 else:
                     select = {"name": query.select.name}
@@ -215,20 +204,20 @@ class QueryTable(GroupbyTable):
                     domain = wrap(mo_json.scrub(e.domain))
                 elif e.domain.type == "duration":
                     domain = wrap(mo_json.scrub(e.domain))
-                elif isinstance(e.value, TupleOp):
+                elif is_op(e.value, TupleOp):
                     pulls = jx.sort([c for c in index_to_columns.values() if c.push_name == e.name], "push_child").pull
                     parts = [tuple(p(d) for p in pulls) for d in result.data]
                     domain = SimpleSetDomain(partitions=jx.sort(set(parts)))
                 else:
                     if not columns:
-                        columns = zip(*result.data)
+                        columns = transpose(*result.data)
                     parts = set(columns[i])
                     if e.is_groupby and None in parts:
                         allowNulls = True
                     parts -= {None}
 
-                    if query.sort[i].sort==-1:
-                        domain = SimpleSetDomain(partitions=wrap(sorted(parts,reverse=True)))
+                    if query.sort[i].sort == -1:
+                        domain = SimpleSetDomain(partitions=wrap(sorted(parts, reverse=True)))
                     else:
                         domain = SimpleSetDomain(partitions=jx.sort(parts))
 
@@ -258,7 +247,9 @@ class QueryTable(GroupbyTable):
                     else:
                         data_cubes[s.push_name][coord][s.push_child] = s.pull(row)
 
-            if isinstance(query.select, list):
+            if query.select == None:
+                select = Null
+            elif is_list(query.select):
                 select = [{"name": s.name} for s in query.select]
             else:
                 select = {"name": query.select.name}
@@ -270,9 +261,9 @@ class QueryTable(GroupbyTable):
                 data={k: v.cube for k, v in data_cubes.items()}
             )
         elif query.format == "table" or (not query.format and query.groupby):
-            column_names= [None]*(max(c.push_column for c in index_to_columns.values()) + 1)
+            column_names = [None] * (max(c.push_column for c in index_to_columns.values()) + 1)
             for c in index_to_columns.values():
-                    column_names[c.push_column] = c.push_column_name
+                column_names[c.push_column] = c.push_column_name
             data = []
             for d in result.data:
                 row = [None for _ in column_names]
@@ -298,13 +289,13 @@ class QueryTable(GroupbyTable):
             )
         elif query.format == "list" or (not query.edges and not query.groupby):
             if not query.edges and not query.groupby and any(listwrap(query.select).aggregate):
-                if isinstance(query.select, list):
+                if is_list(query.select):
                     data = Data()
                     for c in index_to_columns.values():
                         if c.push_child == ".":
                             if data[c.push_name] == None:
                                 data[c.push_name] = c.pull(result.data[0])
-                            elif isinstance(data[c.push_name], list):
+                            elif is_list(data[c.push_name]):
                                 data[c.push_name].append(c.pull(result.data[0]))
                             else:
                                 data[c.push_name] = [data[c.push_name], c.pull(result.data[0])]
@@ -318,7 +309,7 @@ class QueryTable(GroupbyTable):
                 else:
                     data = Data()
                     for s in index_to_columns.values():
-                        if data[s.push_child] == None:
+                        if not data[s.push_child]:
                             data[s.push_child] = s.pull(result.data[0])
                         else:
                             data[s.push_child] += [s.pull(result.data[0])]
@@ -354,46 +345,45 @@ class QueryTable(GroupbyTable):
 
     def query_metadata(self, query):
         frum, query['from'] = query['from'], self
-        schema = self.sf.tables["."].schema
+        schema = self.snowflake.tables["."].schema
         query = QueryOp.wrap(query, schema)
-        columns = self.sf.columns
+        columns = self.snowflake.columns
         where = query.where
-        tableName = None
-        columnName = None
+        table_name = None
+        column_name = None
 
         if query.edges or query.groupby:
             Log.error("Aggregates(groupby or edge) are not supported")
 
         if where.op == "eq" and where.lhs.var == "table":
-            tableName = mo_json.json2value(where.rhs.json)
-        elif where.op =="eq" and where.lhs.var =="name":
-            columnName = mo_json.json2value(where.rhs.json)
+            table_name = mo_json.json2value(where.rhs.json)
+        elif where.op == "eq" and where.lhs.var == "name":
+            column_name = mo_json.json2value(where.rhs.json)
         else:
             Log.error("Only simple filters are expected like: \"eq\" on table and column name")
 
-        t = [i for i in columns[0].names.keys()]
-        tables = [concat_field(self.sf.fact, i) for i in t]
+        tables = [concat_field(self.snowflake.fact_name, i) for i in self.tables.keys()]
 
         metadata = []
-        if columns[-1].es_column!="_id":
+        if columns[-1].es_column != GUID:
             columns.append(Column(
-                names={i: relative_field("_id", i) for i in t},
-                type="string",
-                es_column="_id",
-                es_index=self.sf.fact,
+                name=GUID,
+                jx_type=STRING,
+                es_column=GUID,
+                es_index=self.snowflake.fact_name,
                 nested_path=["."]
             ))
 
         for tname, table in zip(t, tables):
-            if tableName != None and tableName != table:
+            if table_name != None and table_name != table:
                 continue
 
             for col in columns:
                 cname, ctype = untyped_column(col.es_column)
-                if columnName != None and columnName != cname:
+                if column_name != None and column_name != cname:
                     continue
 
-                metadata.append((table, col.names[tname], col.type, unwraplist(col.nested_path)))
+                metadata.append((table, relative_field(col.name, tname), col.type, unwraplist(col.nested_path)))
 
         if query.format == "cube":
             num_rows = len(metadata)
@@ -422,33 +412,37 @@ class QueryTable(GroupbyTable):
         else:
             header = ["table", "name", "type", "nested_path"]
             return Data(
-                    meta={"format": "list"},
-                    data=[dict(zip(header, r)) for r in metadata]
-                )
+                meta={"format": "list"},
+                data=[dict(zip(header, r)) for r in metadata]
+            )
 
     def _window_op(self, query, window):
         # http://www2.sqlite.org/cvstrac/wiki?p=UnsupportedSqlAnalyticalFunctions
         if window.value == "rownum":
-            return "ROW_NUMBER()-1 OVER (" + \
-                   " PARTITION BY " + (", ".join(window.edges.values)) + \
-                   " ORDER BY " + (", ".join(window.edges.sort)) + \
-                   ") AS " + quote_table(window.name)
+            return (
+                "ROW_NUMBER()-1 OVER (" +
+                " PARTITION BY " + sql_iso(sql_list(window.edges.values)) +
+                SQL_ORDERBY + sql_iso(sql_list(window.edges.sort)) +
+                ") AS " + quote_column(window.name)
+            )
 
-        range_min = text_type(coalesce(window.range.min, "UNBOUNDED"))
-        range_max = text_type(coalesce(window.range.max, "UNBOUNDED"))
+        range_min = text(coalesce(window.range.min, "UNBOUNDED"))
+        range_max = text(coalesce(window.range.max, "UNBOUNDED"))
 
-        return sql_aggs[window.aggregate] + "(" + window.value.to_sql() + ") OVER (" + \
-               " PARTITION BY " + (", ".join(window.edges.values)) + \
-               " ORDER BY " + (", ".join(window.edges.sort)) + \
-               " ROWS BETWEEN " + range_min + " PRECEDING AND " + range_max + " FOLLOWING " + \
-               ") AS " + quote_table(window.name)
+        return (
+            sql_aggs[window.aggregate] + sql_iso(window.value.to_sql(schema)) + " OVER (" +
+            " PARTITION BY " + sql_iso(sql_list(window.edges.values)) +
+            SQL_ORDERBY + sql_iso(sql_list(window.edges.sort)) +
+            " ROWS BETWEEN " + range_min + " PRECEDING AND " + range_max + " FOLLOWING " +
+            ") AS " + quote_column(window.name)
+        )
 
     def _normalize_select(self, select):
         output = []
         if select.value == ".":
             for cname, cs in self.columns.items():
                 for c in cs:
-                    if c.type in STRUCT:
+                    if c.jx_type in STRUCT:
                         continue
 
                     new_select = select.copy()
@@ -462,7 +456,33 @@ class QueryTable(GroupbyTable):
             Log.error("not done")
         return output
 
+    def transaction(self):
+        """
+        PERFORM MULTIPLE ACTIONS IN A TRANSACTION
+        """
+        return Transaction(
+            self
+        )
 
-from jx_base.container import type2container
+
+class Transaction:
+
+    def __init__(self, table):
+        self.transaction = None
+        self.table = table
+
+    def __enter__(self):
+        self.transaction = self.container.db.transaction()
+        self.table.db = self.transaction  # REDIRECT SQL TO TRANSACTION
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.table.db = self.table.container.db
+        self.transaction.__exit__(exc_type, exc_val, exc_tb)
+        self.transaction = None
+
+    def __getattr__(self, item):
+        return getattr(self.table, item)
+
 
 type2container["sqlite"] = QueryTable
