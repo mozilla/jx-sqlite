@@ -13,7 +13,6 @@ from mo_future import is_binary, text, none_type
 
 from mo_dots.utils import CLASS, OBJ
 
-
 wrap = None
 is_sequence = None
 _get = object.__getattribute__

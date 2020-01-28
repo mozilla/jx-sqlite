@@ -9,13 +9,13 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
-import collections
 import types
 from copy import deepcopy
 
+from mo_future import generator_types, text, first
+
 from mo_dots import CLASS, coalesce, unwrap, wrap
 from mo_dots.nones import Null
-from mo_future import generator_types, text, first
 
 LIST = text("list")
 
