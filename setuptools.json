@@ -14,12 +14,12 @@
     "description": "JSON query expressions using SQLite",
     "include_package_data": true,
     "install_requires": [
-        "mo-collections>=1.2.17235",        "mo-dots>=1.5.17188",
-                    "mo-files>=1.2",            "mo-future>=1.1",
-               "mo-json>=2.1.17319",            "mo-json-config",
+        "mo-collections==1.2.17235",        "mo-dots==1.5.17188",
+                    "mo-files==1.2",            "mo-future==1.1",
+               "mo-json==2.1.17319",            "mo-json-config",
                         "mo-kwargs",                   "mo-logs",
                           "mo-math",                    "mo-sql",
-            "mo-testing>=1.0.17168",                "mo-threads",
+            "mo-testing==1.0.17168",                "mo-threads",
                          "mo-times"
     ],
     "license": "MPL 2.0",
@@ -149,5 +149,5 @@
     "packages": ["jx_sqlite", "jx-sqlite/expressions"],
     "python_requires": "==2.7, ==3.6, ==3.7, ==3.8",
     "url": "https://github.com/mozilla/jx-sqlite",
-    "version": "1.10.20029"
+    "version": "1.11.20029"
 }
