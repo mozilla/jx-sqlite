@@ -60,11 +60,9 @@ The most interesting, and most important feature is that we query nested object 
 2. Schemas can be expanded from one-to-one  to one-to-many `{"a": [{"b": 0}, {"b": 1}]}`.
 
 
-
 ## Motivation
 
 JSON is a nice format to store data, and it has become quite prevalent. Unfortunately, databases do not handle it well, often a human is required to declare a schema that can hold the JSON before it can be queried. If we are not overwhelmed by the diversity of JSON now, we soon will be. There will be more JSON, of more different shapes, as the number of connected devices( and the information they generate) continues to increase.
-
 
 ## Contributing
 
@@ -90,8 +88,8 @@ There are over 200 tests used to confirm the expected behaviour: They test a var
 * [JSON in Database](https://github.com/mozilla/jx-sqlite/blob/master/docs/JSON%20in%20Database.md)
 * [The Future](https://github.com/mozilla/jx-sqlite/blob/master/docs/The%20Future.md)
 
-
 ## License
+
 This project is licensed under Mozilla Public License, v. 2.0. If a copy of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 
@@ -107,6 +105,7 @@ This project is licensed under Mozilla Public License, v. 2.0. If a copy of the 
 ## GSOC
 
 Work done upto the deadline of GSoC'17:
+
 * [Pull Requests](https://github.com/mozilla/jx-sqlite/pulls?utf8=%E2%9C%93&q=is%3Apr%20author%3Arohit-rk)
 * [Commits](https://github.com/mozilla/jx-sqlite/commits?author=rohit-rk)
 
