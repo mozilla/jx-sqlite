@@ -146,7 +146,7 @@
     },
     "long_description_content_type": "text/markdown",
     "name": "jx-sqlite",
-    "packages": ["jx_mysql", "jx-mysql/expressions"],
+    "packages": ["jx_sqlite", "jx-sqlite/expressions"],
     "python_requires": "==2.7, ==3.6, ==3.7, ==3.8",
     "url": "https://github.com/mozilla/jx-sqlite",
     "version": "1.10.20029"
