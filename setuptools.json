@@ -149,5 +149,5 @@
     "packages": ["jx_sqlite", "jx_sqlite/expressions"],
     "python_requires": "==2.7, ==3.6, ==3.7, ==3.8",
     "url": "https://github.com/mozilla/jx-sqlite",
-    "version": "1.11.20029"
+    "version": "1.12.20029"
 }
